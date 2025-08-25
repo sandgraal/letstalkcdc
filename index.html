@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Truth About Change Data Capture | A Deep Dive Series</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="nav-container">
+        <a href="index.html" class="site-title">CDC: The Missing Manual</a>
+        <nav class="nav-links">
+          <a href="index.html" class="active">Home</a>
+          <a href="overview.html">The Series</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="prose">
+          <h1>
+            Why Change Data Capture Still Breaks, and How To Get It Right.
+          </h1>
+          <p class="text-xl text-slate-600">
+            Your analytics team needs data in real-time. Your business partners
+            want to build dashboards, set up alerts, and tailor customer
+            experiences on the fly. Change Data Capture (CDC) seems like the
+            magic answer, but most implementations fail to deliver on the
+            promise. This series is about how to get it right.
+          </p>
+        </div>
+      </section>
+
+      <!-- Series Intro Section -->
+      <section class="series-intro">
+        <div style="text-align: center">
+          <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem">
+            A Deep Dive into Production-Ready CDC
+          </h2>
+          <p
+            style="
+              font-size: 1.125rem;
+              color: var(--text-secondary);
+              max-width: 65ch;
+              margin: 0 auto 1.5rem;
+            "
+          >
+            The first event is easy. Scaling to millions of events with
+            unshakable reliability is the real challenge. This series moves
+            beyond the basics to cover the advanced, real-world patterns
+            required for success.
+          </p>
+          <a
+            href="overview.html"
+            style="
+              display: inline-block;
+              background-color: var(--accent-primary);
+              color: white;
+              font-weight: 600;
+              padding: 0.75rem 2rem;
+              border-radius: 0.5rem;
+              text-decoration: none;
+              transition: background-color 0.2s;
+            "
+          >
+            Explore Part 2: Advanced Patterns &rarr;
+          </a>
+        </div>
+      </section>
+
+      <article class="prose">
+        <h2>The Core Problem</h2>
+        <p>
+          We've advanced from overnight batch jobs to log-based CDC, which
+          promises real-time data with no load on source systems. Yet, reality
+          frequently doesn’t measure up. The challenge isn't capturing an event;
+          it's building a system that is scalable, reliable, fault-tolerant, and
+          observable under pressure.
+        </p>
+
+        <h2>What We'll Uncover</h2>
+        <p>
+          In our deep-dive series, we’ll move beyond the basics and into the
+          real-world patterns required for production success:
+        </p>
+        <ul>
+          <li>
+            <strong>Exactly-Once Semantics:</strong> How to build unshakeable
+            trust in your data.
+          </li>
+          <li>
+            <strong>Multi-Tenant Architectures:</strong> Scaling CDC for
+            hundreds of sources or customers.
+          </li>
+          <li>
+            <strong>Advanced Partitioning Strategies:</strong> The key to
+            unlocking massive throughput.
+          </li>
+          <li>
+            <strong>Auditing and Reconciliation:</strong> How to prove your
+            pipeline is working perfectly.
+          </li>
+          <li>
+            <strong>Handling Late-Arriving Data:</strong> Managing the
+            inevitable chaos of real-world events.
+          </li>
+        </ul>
+      </article>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <p>
+        &copy; 2025 Your Name. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+  </body>
+</html>

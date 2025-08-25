@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exactly-Once Semantics | A Deep Dive Series</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="nav-container">
+        <a href="index.html" class="site-title">CDC: The Missing Manual</a>
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="overview.html" class="active">The Series</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <article class="prose">
+        <a href="overview.html">&larr; Back to Series Overview</a>
+        <h1 style="margin-top: 1rem">Deep Dive: Exactly-Once Semantics</h1>
+
+        <p class="text-xl text-slate-600">
+          Of all the promises of modern data streaming, "exactly-once" is the
+          most powerful and the most misunderstood. When your CDC pipeline
+          powers financial reporting, fraud detection, or critical analytics,
+          you can't afford to count events twice or, even worse, not at all.
+          This is where semantics become everything.
+        </p>
+
+        <h2>Understanding Delivery Guarantees</h2>
+        <p>
+          In a distributed system, failures are inevitable. Networks partition,
+          servers crash, and processes restart. In the face of failure, a system
+          can offer one of three delivery guarantees:
+        </p>
+        <ul>
+          <li>
+            <strong>At-Most-Once:</strong> The system tries to deliver an event,
+            but if a failure occurs, the event might be lost. It's fast but
+            unreliable.
+          </li>
+          <li>
+            <strong>At-Least-Once:</strong> The system ensures an event is
+            delivered, typically by retrying until it receives an
+            acknowledgement. This can lead to duplicates.
+          </li>
+          <li>
+            <strong>Exactly-Once:</strong> The holy grail. Each event is
+            processed as if it were delivered one and only one time, even in the
+            presence of failures. No data loss, no duplicates.
+          </li>
+        </ul>
+
+        <h2>How to Achieve Exactly-Once Processing</h2>
+        <p>
+          Exactly-once is not a single feature you can turn on. It's an
+          end-to-end property of your system, achieved through two core
+          patterns: Idempotent Consumers and Transactional Producers.
+        </p>
+
+        <h3>1. Idempotent Consumers</h3>
+        <p>
+          An operation is "idempotent" if the result of performing it once is
+          the same as performing it multiple times. In data pipelines, this
+          means your consumer must be able to handle duplicate messages without
+          creating duplicate data, often by using unique business keys from the
+          source event.
+        </p>
+
+        <blockquote>
+          <strong>Example:</strong> A consumer processes an
+          <code>order_created</code> event with <code>order_id: 90210</code>. It
+          writes the order to a database table with a primary key on
+          <code>order_id</code>. If it receives the same event again due to a
+          retry, the database insert will fail (or perform an update),
+          preventing a duplicate order from being created.
+        </blockquote>
+
+        <h3>2. Transactional Producers (The Outbox Pattern)</h3>
+        <p>
+          The second challenge is ensuring an event is sent if, and only if, the
+          original database transaction commits. The
+          <strong>Transactional Outbox Pattern</strong> solves this by writing
+          the event to a special "outbox" table within the same database
+          transaction as the business change. A separate CDC process then reads
+          from this outbox table, guaranteeing that the event is only sent if
+          the original transaction was successful.
+        </p>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <a href="overview.html" class="prev">&larr; Overview</a>
+          <a href="multi-tenancy.html" class="next"
+            >Next: Multi-Tenancy &rarr;</a
+          >
+        </div>
+      </article>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <p>
+        &copy; 2025 Your Name. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+  </body>
+</html>
