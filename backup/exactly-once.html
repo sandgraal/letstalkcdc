@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SEO Tags -->
+    <title>
+      Exactly-Once Semantics in CDC Explained | CDC: The Missing Manual
+    </title>
+    <meta
+      name="description"
+      content="A deep dive into exactly-once semantics for data streaming. Learn how idempotent consumers and the transactional outbox pattern prevent data loss and duplicates in CDC."
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="nav-container">
+        <a href="index.html" class="site-title">CDC: The Missing Manual</a>
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="overview.html" class="active">The Series</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="article-container">
+      <!-- Series Progress Sidebar -->
+      <aside class="series-nav">
+        <h3>Part 2 Articles</h3>
+        <ul>
+          <li>
+            <a href="exactly-once.html" class="active"
+              >1. Exactly-Once Semantics</a
+            >
+          </li>
+          <li>
+            <a href="multi-tenancy.html">2. Multi-Tenant Architectures</a>
+          </li>
+          <li><a href="#" class="disabled">3. Partitioning Strategies</a></li>
+          <li><a href="#" class="disabled">4. Auditing & Reconciliation</a></li>
+        </ul>
+      </aside>
+
+      <!-- Main Article Content -->
+      <main>
+        <article class="prose">
+          <h1 style="margin-top: 0">Deep Dive: Exactly-Once Semantics</h1>
+          <p class="text-xl text-slate-600">
+            Of all the promises of modern data streaming, "exactly-once" is the
+            most powerful and the most misunderstood. When your CDC pipeline
+            powers financial reporting or fraud detection, you can't afford to
+            count events twice or not at all. This is where semantics become
+            everything.
+          </p>
+
+          <!-- ... rest of the article content (diagrams, demo, etc.) remains the same ... -->
+          <h2>Understanding Delivery Guarantees</h2>
+          <p>
+            In a distributed system, failures are inevitable. A system can offer
+            one of three delivery guarantees. Click the buttons below to see how
+            each scenario plays out when failures occur.
+          </p>
+          <!-- Animated Diagram -->
+          <div class="animated-diagram-container">
+            <div class="diagram-controls">
+              <button id="play-at-most-once">At-Most-Once</button>
+              <button id="play-at-least-once">At-Least-Once</button>
+              <button id="play-exactly-once">Exactly-Once</button>
+            </div>
+            <svg
+              class="diagram-svg"
+              viewBox="0 0 400 150"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                x="20"
+                y="50"
+                width="80"
+                height="50"
+                rx="8"
+                fill="#e2e8f0"
+              ></rect>
+              <text
+                x="60"
+                y="80"
+                text-anchor="middle"
+                font-family="Inter"
+                font-weight="600"
+              >
+                DB
+              </text>
+              <rect
+                x="300"
+                y="50"
+                width="80"
+                height="50"
+                rx="8"
+                fill="#e2e8f0"
+              ></rect>
+              <text
+                x="340"
+                y="80"
+                text-anchor="middle"
+                font-family="Inter"
+                font-weight="600"
+              >
+                App
+              </text>
+              <g id="event1" class="event">
+                <rect
+                  x="110"
+                  y="65"
+                  width="20"
+                  height="20"
+                  rx="4"
+                  fill="#0d9488"
+                ></rect>
+              </g>
+              <g id="event2" class="event">
+                <rect
+                  x="110"
+                  y="65"
+                  width="20"
+                  height="20"
+                  rx="4"
+                  fill="#f59e0b"
+                ></rect>
+              </g>
+              <g id="ack1" class="ack">
+                <circle cx="290" cy="75" r="10" fill="#cbd5e1"></circle>
+              </g>
+              <text
+                id="status-lost"
+                x="200"
+                y="130"
+                fill="#ef4444"
+                text-anchor="middle"
+                class="status-text"
+              >
+                EVENT LOST
+              </text>
+              <text
+                id="status-duplicate"
+                x="200"
+                y="130"
+                fill="#f59e0b"
+                text-anchor="middle"
+                class="status-text"
+              >
+                DUPLICATE DELIVERED
+              </text>
+              <text
+                id="status-deduped"
+                x="200"
+                y="130"
+                fill="#10b981"
+                text-anchor="middle"
+                class="status-text"
+              >
+                DUPLICATE REJECTED
+              </text>
+            </svg>
+          </div>
+
+          <h2>How to Achieve Exactly-Once Processing</h2>
+          <p>
+            Exactly-once is an end-to-end property of your system, achieved
+            through two core patterns: Idempotent Consumers and Transactional
+            Producers.
+          </p>
+
+          <h3>1. Idempotent Consumers</h3>
+          <p>
+            An operation is "idempotent" if performing it once has the same
+            result as performing it multiple times. In data pipelines, this
+            means your consumer must handle duplicate messages without creating
+            duplicate data, often by using unique business keys from the source
+            event.
+          </p>
+
+          <!-- Interactive Demo -->
+          <div class="interactive-demo">
+            <h3 style="margin-top: 0">Try It: Idempotent Order Processing</h3>
+            <p style="font-size: 1rem; margin-bottom: 1.5rem">
+              Enter an Order ID and click "Process". Notice how processing the
+              same ID more than once doesn't create duplicate entries in the
+              "Processed Orders" log.
+            </p>
+            <div class="demo-controls">
+              <input
+                type="text"
+                id="orderIdInput"
+                placeholder="Enter Order ID (e.g., ORD-123)"
+              />
+              <button id="processOrderBtn">Process Order</button>
+            </div>
+            <div class="demo-log" id="demoLog">
+              <p>Waiting for events...</p>
+            </div>
+          </div>
+
+          <h3>2. Transactional Producers (The Outbox Pattern)</h3>
+          <p>
+            The second challenge is ensuring an event is sent if, and only if,
+            the original database transaction commits. The
+            <strong>Transactional Outbox Pattern</strong> solves this by writing
+            the event to a special "outbox" table within the same database
+            transaction as the business change.
+          </p>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <a href="overview.html" class="prev">&larr; Overview</a>
+            <a href="multi-tenancy.html" class="next"
+              >Next: Multi-Tenancy &rarr;</a
+            >
+          </div>
+        </article>
+      </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <p>
+        &copy; 2025 Christopher Ennis. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+
+    <!-- Replace the placeholder <script> with this safer version -->
+    <script type="module">
+      const processed = new Set();
+      const input = document.querySelector("#orderIdInput");
+      const log = document.querySelector("#demoLog");
+      const btn = document.querySelector("#processOrderBtn");
+      const safe = (s) =>
+        s.replace(
+          /[<>"]/g,
+          (ch) => ({ "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])
+        );
+      btn.addEventListener("click", () => {
+        const id = input.value.trim().slice(0, 120);
+        if (!id) return;
+        const first = !processed.has(id);
+        processed.add(id);
+        const p = document.createElement("p");
+        p.innerHTML = first
+          ? `<span class="log-success">✔ Processed</span> ${safe(id)}`
+          : `<span class="log-warning">↻ Duplicate ignored</span> ${safe(id)}`;
+        log.appendChild(p);
+        log.scrollTop = log.scrollHeight;
+      });
+    </script>
+
+    <!-- Add near the end of <body> on all pages -->
+    <script type="module">
+      // --- Dark mode toggle ---
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+
+      // --- Reduced motion guard for animations ---
+      const reduceMotion = matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+      if (reduceMotion) document.documentElement.classList.add("reduce-motion");
+
+      // --- Copy buttons for code ---
+      document.querySelectorAll("pre > code").forEach((code) => {
+        const btn = Object.assign(document.createElement("button"), {
+          textContent: "Copy",
+          className: "copy-btn",
+        });
+        const pre = code.parentElement;
+        pre.style.position = "relative";
+        pre.appendChild(btn);
+        btn.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy"), 1200);
+        });
+      });
+
+      // --- Heading anchors ---
+      document.querySelectorAll(".prose h2, .prose h3").forEach((h) => {
+        const id =
+          h.id ||
+          h.textContent
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-");
+        h.id = id;
+        const a = Object.assign(document.createElement("a"), {
+          href: `#${id}`,
+          className: "anchor",
+          ariaLabel: "Link to section",
+        });
+        h.appendChild(a);
+      });
+
+      // --- Lightweight search (builds an index from links + headings) ---
+      const pages = [
+        "index.html",
+        "overview.html",
+        "exactly-once.html",
+        "multi-tenancy.html",
+      ];
+      async function buildIndex() {
+        const docs = await Promise.all(
+          pages.map((p) =>
+            fetch(p, { credentials: "omit" })
+              .then((r) => r.text())
+              .then((html) => ({ p, html }))
+          )
+        );
+        return docs.map(({ p, html }) => {
+          const tmp = document.createElement("div");
+          tmp.innerHTML = html;
+          const title = (tmp.querySelector("title")?.textContent || "").trim();
+          const text = Array.from(
+            tmp.querySelectorAll(
+              ".prose p, .prose li, .prose h1, .prose h2, .prose h3"
+            )
+          )
+            .map((n) => n.textContent.trim())
+            .join(" ");
+          return { p, title, text: text.slice(0, 50000) }; // cap to keep it snappy
+        });
+      }
+      const searchBox = document.querySelector("#site-search");
+      const resultsBox = document.querySelector("#search-results");
+      if (searchBox && resultsBox) {
+        const index = await buildIndex();
+        searchBox.addEventListener("input", (e) => {
+          const q = e.target.value.trim().toLowerCase();
+          resultsBox.innerHTML = "";
+          if (!q) return;
+          const hits = index
+            .map((d) => {
+              const i = d.text.toLowerCase().indexOf(q);
+              const ctx =
+                i > 40 ? d.text.slice(i - 40, i + 160) : d.text.slice(0, 200);
+              return { score: i === -1 ? Infinity : i, d, ctx };
+            })
+            .filter((h) => h.score !== Infinity)
+            .sort((a, b) => a.score - b.score)
+            .slice(0, 6);
+          hits.forEach(({ d, ctx }) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<a href="${d.p}">${
+              d.title || d.p
+            }</a><div class="hit">${ctx.replaceAll(
+              q,
+              `<mark>${q}</mark>`
+            )}</div>`;
+            resultsBox.appendChild(li);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

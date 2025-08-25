@@ -3,155 +3,87 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SEO Tags -->
     <title>
-      CDC: The Missing Manual | A Deep Dive into Change Data Capture
+      Advanced CDC Patterns: Series Overview | CDC: The Missing Manual
     </title>
     <meta
       name="description"
-      content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines. A deep-dive series."
+      content="An overview of the advanced patterns for production-grade Change Data Capture (CDC), covering exactly-once semantics, multi-tenancy, partitioning, and more."
     />
+
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Global Header -->
     <header class="global-header">
       <div class="nav-container">
         <a href="index.html" class="site-title"
-          >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
+          >CDC: The Missing Manual | Series Overview</a
         >
         <nav class="nav-links">
-          <a href="index.html" class="active">Home</a>
-          <a href="overview.html">The Series</a>
+          <a href="index.html">Home</a>
+          <a href="overview.html" class="active">The Series</a>
         </nav>
       </div>
     </header>
 
     <main>
-      <section class="hero-section">
-        <div class="prose">
-          <h1>
-            Why Change Data Capture Still Breaks, and How To Get It Right.
-          </h1>
-          <p class="text-xl text-slate-600">
-            Your analytics team needs data in real-time. Your business partners
-            want to build dashboards, set up alerts, and tailor customer
-            experiences on the fly. Change Data Capture (CDC) seems like the
-            magic answer, but most implementations fail to deliver on the
-            promise. This series is about how to get it right.
+      <div class="prose" style="text-align: center; margin-bottom: 3rem">
+        <h1>Series Overview</h1>
+        <p class="text-xl text-slate-600">
+          This series serves as a definitive guide to the advanced patterns that
+          distinguish a fragile CDC pipeline from a resilient, reliable data
+          bloodstream. We will shift from the "what" of CDC to the "how,"
+          providing a blueprint for success in the real world.
+        </p>
+      </div>
+
+      <!-- Series Card Grid -->
+      <div class="series-card-grid">
+        <!-- Card 1: Exactly-Once -->
+        <a href="exactly-once.html" class="series-card">
+          <span class="card-tag">Section 1</span>
+          <h3 class="card-title">Exactly-Once Semantics</h3>
+          <p class="card-description">
+            Move beyond simple data duplication to guaranteeing absolute data
+            integrity and trust in your pipeline.
           </p>
-        </div>
-      </section>
-
-      <section class="series-intro">
-        <div style="text-align: center">
-          <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem">
-            A Deep Dive into Production-Ready CDC
-          </h2>
-          <p
-            style="
-              font-size: 1.125rem;
-              color: var(--text-secondary);
-              max-width: 65ch;
-              margin: 0 auto 1.5rem;
-            "
-          >
-            The first event is easy. Scaling to millions of events with
-            unshakable reliability is the real challenge. This series moves
-            beyond the basics to cover the advanced, real-world patterns
-            required for success.
-          </p>
-        </div>
-      </section>
-
-      <article class="prose">
-        <h2>The Core Problem</h2>
-        <p>
-          We've advanced from overnight batch jobs to log-based CDC, which
-          promises real-time data with no load on source systems. Yet, reality
-          frequently doesn’t measure up. The challenge isn't capturing an event;
-          it's building a system that is scalable, reliable, fault-tolerant, and
-          observable under pressure.
-        </p>
-
-        <h2>Our Blueprint for Production CDC</h2>
-        <p>
-          In this deep-dive series, we’re building a blueprint for
-          production-ready CDC. This is a living series, organized around the
-          core challenges you'll face. We'll be adding new modules over time to
-          create the most comprehensive guide available.
-        </p>
-
-        <h3>Foundations of Trust & Scale</h3>
-        <ul>
-          <li>
-            <strong
-              >Understanding Delivery Guarantees and Exactly-Once
-              Semantics:</strong
-            >
-            How to build unshakeable trust in your data pipeline.
-          </li>
-          <li>
-            <strong>Multi-Tenant Architectures:</strong> Designing for massive
-            scale and workload isolation.
-          </li>
-        </ul>
-
-        <h3>Performance and Reliability</h3>
-        <ul>
-          <li>
-            <strong>Advanced Partitioning Strategies:</strong> The key to
-            unlocking massive throughput. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>Automated Auditing and Reconciliation:</strong> How to prove
-            your pipeline is working perfectly. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-
-        <h3>Operational Excellence</h3>
-        <ul>
-          <li>
-            <strong>Monitoring & Alerting:</strong> End-to-end observability for
-            your pipelines. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>Error Handling & Recovery Patterns:</strong> What to do when
-            things inevitably break. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-
-        <h3>Advanced Patterns & Data Governance</h3>
-        <ul>
-          <li>
-            <strong>Mastering Schema Evolution:</strong> Handling schema changes
-            without downtime. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>The Initial Snapshot Problem:</strong> Strategies for
-            seamless backfills. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-        <p>
-          Ready to build data pipelines you can trust? Dive in to see how these
-          pieces fit together.
-        </p>
-        <a
-          href="overview.html"
-          style="
-            display: inline-block;
-            background-color: var(--accent-primary);
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 2rem;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            transition: background-color 0.2s;
-          "
-        >
-          Dive Into The Series &rarr;
         </a>
-      </article>
+
+        <!-- Card 2: Multi-Tenancy -->
+        <a href="multi-tenancy.html" class="series-card">
+          <span class="card-tag">Section 2</span>
+          <h3 class="card-title">Multi-Tenant CDC Architectures</h3>
+          <p class="card-description">
+            Architect for massive scale with hundreds of data sources without
+            compromising isolation or security.
+          </p>
+        </a>
+
+        <!-- Card 3: Partitioning (Coming Soon) -->
+        <div class="series-card disabled">
+          <span class="card-tag">Section 3</span>
+          <h3 class="card-title">Advanced Partitioning Strategies</h3>
+          <p class="card-description">
+            Optimize system performance and throughput by intelligently
+            distributing data across your infrastructure.
+          </p>
+        </div>
+
+        <!-- Card 4: Auditing (Coming Soon) -->
+        <div class="series-card disabled">
+          <span class="card-tag">Section 4</span>
+          <h3 class="card-title">Auditing and Reconciliation</h3>
+          <p class="card-description">
+            Establish continuous verification processes to ensure data quality
+            and build stakeholder confidence.
+          </p>
+        </div>
+      </div>
     </main>
 
+    <!-- Footer -->
     <footer class="site-footer">
       <p>
         &copy; 2025 Christopher Ennis. A deep dive into the world of Change Data

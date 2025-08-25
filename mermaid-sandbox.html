@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mermaid Sandbox</title>
+  <!-- This file is intentionally isolated from parent CSP. Only allows scripts within the sandbox. -->
+  <style>
+    html, body { height:100%; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#0b1220; color:#e6eefc; }
+    .wrap { padding: 12px; }
+    .error { color: #fca5a5; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mermaid">graph LR; A[Loading...]-->B[Mermaid CDN];</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" integrity="" crossorigin="anonymous"></script>
+  <script>
+    const hash = (location.hash || "").slice(1);
+    const defs = {
+      outbox: `
+        sequenceDiagram
+          autonumber
+          participant App as App Service
+          participant DB as OLTP DB
+          participant OB as Outbox Table
+          participant Bus as Event Bus
+          participant Sink as Consumer
+
+          App->>DB: BEGIN TX
+          App->>DB: UPDATE domain rows
+          App->>OB: INSERT event record
+          DB-->>App: COMMIT
+          OB-->>Bus: Outbox relay publishes
+          Bus-->>Sink: Consume and apply (idempotent)
+      `
+    };
+    const def = defs[hash] || defs.outbox;
+    try {
+      mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+      document.querySelector(".mermaid").textContent = def;
+      mermaid.run({ querySelector: ".mermaid" });
+    } catch (e) {
+      const el = document.querySelector(".mermaid");
+      el.outerHTML = '<pre class="error">'+ String(e && e.stack || e) +'</pre>';
+    }
+  </script>
+</body>
+</html>

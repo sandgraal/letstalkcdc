@@ -1,121 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Multi-Tenant CDC Architectures | A Deep Dive Series</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <!-- Global Header -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multi‑Tenancy — Isolation vs Cost | CDC: The Missing Manual</title>
+  <meta name="description" content="Interactive slider to explore tenant isolation levels, topic counts, consumer groups, and rough egress estimates for CDC." />
+  <link rel="stylesheet" href="styles.css" />
+  
+</head>
+<body>
     <header class="global-header">
       <div class="nav-container">
-        <a href="index.html" class="site-title">CDC: The Missing Manual</a>
+        <a href="index.html" class="site-title"
+          >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
+        >
         <nav class="nav-links">
-          <a href="index.html">Home</a>
-          <a href="overview.html" class="active">The Series</a>
+          <a href="index.html" class="active">Home</a>
+          <a href="overview.html">The Series</a>
         </nav>
       </div>
     </header>
 
-    <main>
-      <article class="prose">
-        <a href="overview.html">&larr; Back to Series Overview</a>
-        <h1 style="margin-top: 1rem">
-          Deep Dive: Multi-Tenant CDC Architectures
-        </h1>
+  <main id="main" class="page-wrap prose">
+    <h1>Multi‑Tenancy: Cost vs Isolation</h1>
+    <p>Move the sliders. We recompute derived resources locally (no network). These are back‑of‑napkin estimates—adjust the coefficients for your stack.</p>
 
-        <p class="text-xl text-slate-600">
-          When you move from a single CDC pipeline to serving dozens or hundreds
-          of tenants—be they internal teams or external customers—the
-          architectural challenges multiply. A naive approach will quickly lead
-          to resource contention, security risks, and operational chaos. A
-          robust multi-tenant architecture is essential for scaling CDC
-          effectively.
-        </p>
-
-        <h2>The Core Challenge: Isolation vs. Efficiency</h2>
-        <p>
-          Multi-tenancy is a balancing act. You need to provide each tenant with
-          a logically isolated pipeline, ensuring their data and performance are
-          unaffected by others. At the same time, you want to maximize resource
-          utilization and minimize operational overhead by sharing
-          infrastructure where possible.
-        </p>
-
-        <h3>Model 1: Fully Isolated Stacks</h3>
-        <p>
-          In this model, each tenant gets a completely separate stack: their own
-          CDC connector, message broker topics, and processing jobs. This offers
-          maximum isolation and security but comes at a high operational cost
-          and can lead to underutilized resources.
-        </p>
-        <ul>
-          <li>
-            <strong>Pros:</strong> Strongest security and performance isolation.
-            Simple to reason about.
-          </li>
-          <li>
-            <strong>Cons:</strong> Expensive. Operationally complex to manage
-            hundreds of stacks.
-          </li>
-        </ul>
-
-        <h3>Model 2: Shared Infrastructure with Logical Separation</h3>
-        <p>
-          A more common and efficient approach is to share the core
-          infrastructure (like a Kafka cluster and a processing engine) while
-          using logical constructs to isolate tenants. This could involve:
-        </p>
-        <ul>
-          <li>
-            <strong>Tenant-Specific Topics:</strong> Each tenant's data flows
-            into a dedicated Kafka topic (e.g.,
-            <code>cdc.tenant_a.orders</code>).
-          </li>
-          <li>
-            <strong>Tenant ID in Messages:</strong> A single topic is used, but
-            every message is enriched with a <code>tenant_id</code> field.
-            Downstream consumers use this ID to filter and process data.
-          </li>
-          <li>
-            <strong>Access Control Lists (ACLs):</strong> Enforce which
-            consumers can read from which topics, preventing data leakage.
-          </li>
-        </ul>
-
-        <blockquote>
-          <strong>Key Decision:</strong> The choice between a single topic with
-          a tenant ID versus per-tenant topics depends on the number of tenants
-          and the volume of data. Per-tenant topics offer better isolation and
-          throughput control but can be harder to manage at extreme scale
-          (thousands of tenants).
-        </blockquote>
-
-        <h2>Schema Management in a Multi-Tenant World</h2>
-        <p>
-          When multiple tenants use the same table structure, a shared schema
-          registry works well. However, if tenants can extend or modify their
-          schemas, you need a strategy to manage these variations without
-          breaking the pipeline. This often involves a central schema registry
-          that supports multiple versions and robust validation on the producer
-          side to prevent schema drift.
-        </p>
-
-        <!-- Pagination -->
-        <div class="pagination">
-          <a href="exactly-once.html" class="prev">&larr; Prev: Exactly-Once</a>
-          <a href="#" class="next disabled">Next: Partitioning &rarr;</a>
+    <div class="panel">
+      <div class="grid">
+        <div>
+          <label for="tenantCount"><strong>Tenants</strong>: <span id="tenantCountLabel">10</span></label>
+          <input id="tenantCount" type="range" min="1" max="200" value="10" step="1" />
+          <label for="isolationLevel"><strong>Isolation</strong>: <span id="isolationLabel">shared topics</span></label>
+          <input id="isolationLevel" type="range" min="0" max="2" value="0" step="1" />
+          <p class="muted">Isolation: 0 = shared topics, 1 = per‑tenant topics, 2 = per‑tenant cluster (logical).</p>
         </div>
-      </article>
-    </main>
+        <div>
+          <label for="changeRate"><strong>Avg row changes / tenant / sec</strong>: <span id="rateLabel">5</span></label>
+          <input id="changeRate" type="range" min="1" max="200" value="5" step="1" />
+          <label for="avgPayload"><strong>Avg payload size (bytes)</strong>: <span id="payloadLabel">600</span></label>
+          <input id="avgPayload" type="range" min="100" max="5000" value="600" step="50" />
+        </div>
+      </div>
+    </div>
 
-    <!-- Footer -->
-    <footer class="site-footer">
-      <p>
-        &copy; 2025 Your Name. A deep dive into the world of Change Data
-        Capture.
-      </p>
-    </footer>
-  </body>
+    <div class="grid" style="margin-top:1rem;">
+      <div class="kpi"><h3>Total Topics</h3><div id="kTopics" class="muted">—</div></div>
+      <div class="kpi"><h3>Consumer Groups</h3><div id="kGroups" class="muted">—</div></div>
+      <div class="kpi"><h3>Estimated Egress (MB/s)</h3><div id="kEgress" class="muted">—</div></div>
+      <div class="kpi"><h3>Connector Footprint</h3><div id="kConnect" class="muted">—</div></div>
+    </div>
+
+    <p class="muted">Rule‑of‑thumb parameters are inside the script; tune to your infra. We avoid decimals for clarity.</p>
+  </main>
+
+  <footer class="site-footer"><p>&copy; 2025.</p></footer>
+
+  <script type="module">
+    const $ = sel => document.querySelector(sel);
+    const tenants = $("#tenantCount");
+    const iso = $("#isolationLevel");
+    const rate = $("#changeRate");
+    const payload = $("#avgPayload");
+
+    const labels = {
+      tenants: $("#tenantCountLabel"),
+      iso: $("#isolationLabel"),
+      rate: $("#rateLabel"),
+      payload: $("#payloadLabel"),
+      kTopics: $("#kTopics"),
+      kGroups: $("#kGroups"),
+      kEgress: $("#kEgress"),
+      kConnect: $("#kConnect"),
+    };
+
+    // Tunables
+    const PARTITIONS_PER_TOPIC = 3;
+    const GROUPS_PER_TENANT = 2;  // readers + transformers
+    const CONNECTOR_PER_TENANT = 0.2; // avg agent footprint in shared infra
+
+    function isoLabel(v){
+      return ["shared topics","per‑tenant topics","per‑tenant cluster"][+v] || "shared topics";
+    }
+
+    function recompute(){
+      const t = +tenants.value;
+      const isolation = +iso.value;
+      const r = +rate.value;
+      const s = +payload.value;
+
+      labels.tenants.textContent = t;
+      labels.iso.textContent = isoLabel(isolation);
+      labels.rate.textContent = r;
+      labels.payload.textContent = s;
+
+      // Topics
+      const topics = isolation === 0 ? 6 : (isolation === 1 ? t * 6 : t * 6); // same count, different placement
+      // Consumer groups (scale with tenants regardless of isolation level)
+      const groups = Math.max(1, Math.round(t * GROUPS_PER_TENANT));
+
+      // Egress MB/s (t * r events * (s bytes + overhead) / 1e6)
+      const overhead = 120; // headers, envelope, key
+      const egress = Math.round((t * r * (s + overhead)) / 1e6);
+
+      // Connectors/agents footprint
+      const footprint = isolation === 2 ? t : Math.max(1, Math.round(t * CONNECTOR_PER_TENANT));
+
+      labels.kTopics.textContent = String(topics);
+      labels.kGroups.textContent = String(groups);
+      labels.kEgress.textContent = String(egress);
+      labels.kConnect.textContent = String(footprint);
+    }
+
+    [tenants, iso, rate, payload].forEach(el => el.addEventListener("input", recompute));
+    recompute();
+  </script>
+</body>
 </html>

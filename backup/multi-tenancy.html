@@ -3,155 +3,116 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SEO Tags -->
     <title>
-      CDC: The Missing Manual | A Deep Dive into Change Data Capture
+      Architecting Multi-Tenant CDC Pipelines | CDC: The Missing Manual
     </title>
     <meta
       name="description"
-      content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines. A deep-dive series."
+      content="Explore architectural patterns for building scalable, multi-tenant Change Data Capture (CDC) systems. Compare isolation models and schema management strategies."
     />
+
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Global Header -->
     <header class="global-header">
       <div class="nav-container">
-        <a href="index.html" class="site-title"
-          >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
-        >
+        <a href="index.html" class="site-title">CDC: The Missing Manual</a>
         <nav class="nav-links">
-          <a href="index.html" class="active">Home</a>
-          <a href="overview.html">The Series</a>
+          <a href="index.html">Home</a>
+          <a href="overview.html" class="active">The Series</a>
         </nav>
       </div>
     </header>
 
-    <main>
-      <section class="hero-section">
-        <div class="prose">
-          <h1>
-            Why Change Data Capture Still Breaks, and How To Get It Right.
+    <div class="article-container">
+      <!-- Series Progress Sidebar -->
+      <aside class="series-nav">
+        <h3>Part 2 Articles</h3>
+        <ul>
+          <li><a href="exactly-once.html">1. Exactly-Once Semantics</a></li>
+          <li>
+            <a href="multi-tenancy.html" class="active"
+              >2. Multi-Tenant Architectures</a
+            >
+          </li>
+          <li><a href="#" class="disabled">3. Partitioning Strategies</a></li>
+          <li><a href="#" class="disabled">4. Auditing & Reconciliation</a></li>
+        </ul>
+      </aside>
+
+      <!-- Main Article Content -->
+      <main>
+        <article class="prose">
+          <h1 style="margin-top: 0">
+            Deep Dive: Multi-Tenant CDC Architectures
           </h1>
           <p class="text-xl text-slate-600">
-            Your analytics team needs data in real-time. Your business partners
-            want to build dashboards, set up alerts, and tailor customer
-            experiences on the fly. Change Data Capture (CDC) seems like the
-            magic answer, but most implementations fail to deliver on the
-            promise. This series is about how to get it right.
+            When you move from a single CDC pipeline to serving dozens or
+            hundreds of tenants—be they internal teams or external customers—the
+            architectural challenges multiply. A naive approach will quickly
+            lead to resource contention, security risks, and operational chaos.
+            A robust multi-tenant architecture is essential for scaling CDC
+            effectively.
           </p>
-        </div>
-      </section>
 
-      <section class="series-intro">
-        <div style="text-align: center">
-          <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem">
-            A Deep Dive into Production-Ready CDC
-          </h2>
-          <p
-            style="
-              font-size: 1.125rem;
-              color: var(--text-secondary);
-              max-width: 65ch;
-              margin: 0 auto 1.5rem;
-            "
-          >
-            The first event is easy. Scaling to millions of events with
-            unshakable reliability is the real challenge. This series moves
-            beyond the basics to cover the advanced, real-world patterns
-            required for success.
+          <h2>The Core Challenge: Isolation vs. Efficiency</h2>
+          <p>
+            Multi-tenancy is a balancing act. You need to provide each tenant
+            with a logically isolated pipeline, ensuring their data and
+            performance are unaffected by others. At the same time, you want to
+            maximize resource utilization and minimize operational overhead by
+            sharing infrastructure where possible.
           </p>
-        </div>
-      </section>
 
-      <article class="prose">
-        <h2>The Core Problem</h2>
-        <p>
-          We've advanced from overnight batch jobs to log-based CDC, which
-          promises real-time data with no load on source systems. Yet, reality
-          frequently doesn’t measure up. The challenge isn't capturing an event;
-          it's building a system that is scalable, reliable, fault-tolerant, and
-          observable under pressure.
-        </p>
+          <h3>Model 1: Fully Isolated Stacks</h3>
+          <p>
+            In this model, each tenant gets a completely separate stack: their
+            own CDC connector, message broker topics, and processing jobs. This
+            offers maximum isolation and security but comes at a high
+            operational cost and can lead to underutilized resources.
+          </p>
 
-        <h2>Our Blueprint for Production CDC</h2>
-        <p>
-          In this deep-dive series, we’re building a blueprint for
-          production-ready CDC. This is a living series, organized around the
-          core challenges you'll face. We'll be adding new modules over time to
-          create the most comprehensive guide available.
-        </p>
+          <h3>Model 2: Shared Infrastructure with Logical Separation</h3>
+          <p>
+            A more common and efficient approach is to share the core
+            infrastructure (like a Kafka cluster and a processing engine) while
+            using logical constructs to isolate tenants. This could involve
+            tenant-specific topics or a tenant ID within a shared message
+            stream.
+          </p>
 
-        <h3>Foundations of Trust & Scale</h3>
-        <ul>
-          <li>
-            <strong
-              >Understanding Delivery Guarantees and Exactly-Once
-              Semantics:</strong
+          <blockquote>
+            <strong>Key Decision:</strong> The choice between a single topic
+            with a tenant ID versus per-tenant topics depends on the number of
+            tenants and the volume of data. Per-tenant topics offer better
+            isolation and throughput control but can be harder to manage at
+            extreme scale.
+          </blockquote>
+
+          <h2>Schema Management in a Multi-Tenant World</h2>
+          <p>
+            When multiple tenants use the same table structure, a shared schema
+            registry works well. However, if tenants can extend or modify their
+            schemas, you need a strategy to manage these variations without
+            breaking the pipeline. This often involves a central schema registry
+            that supports multiple versions and robust validation on the
+            producer side to prevent schema drift.
+          </p>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <a href="exactly-once.html" class="prev"
+              >&larr; Prev: Exactly-Once</a
             >
-            How to build unshakeable trust in your data pipeline.
-          </li>
-          <li>
-            <strong>Multi-Tenant Architectures:</strong> Designing for massive
-            scale and workload isolation.
-          </li>
-        </ul>
+            <a href="#" class="next disabled">Next: Partitioning &rarr;</a>
+          </div>
+        </article>
+      </main>
+    </div>
 
-        <h3>Performance and Reliability</h3>
-        <ul>
-          <li>
-            <strong>Advanced Partitioning Strategies:</strong> The key to
-            unlocking massive throughput. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>Automated Auditing and Reconciliation:</strong> How to prove
-            your pipeline is working perfectly. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-
-        <h3>Operational Excellence</h3>
-        <ul>
-          <li>
-            <strong>Monitoring & Alerting:</strong> End-to-end observability for
-            your pipelines. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>Error Handling & Recovery Patterns:</strong> What to do when
-            things inevitably break. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-
-        <h3>Advanced Patterns & Data Governance</h3>
-        <ul>
-          <li>
-            <strong>Mastering Schema Evolution:</strong> Handling schema changes
-            without downtime. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>The Initial Snapshot Problem:</strong> Strategies for
-            seamless backfills. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-        <p>
-          Ready to build data pipelines you can trust? Dive in to see how these
-          pieces fit together.
-        </p>
-        <a
-          href="overview.html"
-          style="
-            display: inline-block;
-            background-color: var(--accent-primary);
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 2rem;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            transition: background-color 0.2s;
-          "
-        >
-          Dive Into The Series &rarr;
-        </a>
-      </article>
-    </main>
-
+    <!-- Footer -->
     <footer class="site-footer">
       <p>
         &copy; 2025 Christopher Ennis. A deep dive into the world of Change Data
