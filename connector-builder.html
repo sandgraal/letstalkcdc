@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>connector config builder — debezium (postgres • mysql • oracle)</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Generate Debezium connector configs for Postgres, MySQL, Oracle. Choose Debezium 2.x or 1.x, set DLQ, snapshot, filters, then copy or curl." name="description"/>
+<style>
+  :root{--bg:#0b121d;--surface:#0f1726;--surface2:#0b1322;--border:#2a3441;--muted:#9aa7b7}
+  body{margin:0;background:var(--bg);color:#e6eef7;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+  header,main{max-width:1100px;margin:0 auto;padding:0 1rem}
+  header{padding:1rem 0;border-bottom:1px solid var(--border)}
+  a{color:inherit}
+  h1{font-size:clamp(1.5rem,3vw,2.2rem);margin:.35rem 0}
+  .lede{opacity:.9;margin:0 0 1rem}
+  .wrap{display:grid;gap:1rem;grid-template-columns:1fr}
+  @media(min-width:1100px){.wrap{grid-template-columns:1.1fr 1fr}}
+  .panel{border:1px solid var(--border);border-radius:.75rem;background:var(--surface);padding:1rem}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
+  label{font-size:.92rem}
+  input[type=text], input[type=password], select{
+    min-width:220px;border:1px solid var(--border);border-radius:.5rem;
+    background:var(--surface2);color:#e6eef7;padding:.45rem .55rem
+  }
+  .btn{display:inline-block;border:1px solid var(--border);border-radius:.5rem;padding:.45rem .65rem;background:transparent;color:inherit;text-decoration:none;cursor:pointer}
+  .btn:hover,.btn:focus{background:rgba(255,255,255,.06);outline:none}
+  .tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:.4rem 0}
+  .tabs button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:.5rem;padding:.35rem .6rem;cursor:pointer}
+  .tabs button.active{background:rgba(255,255,255,.06);font-weight:600}
+  details{border:1px solid var(--border);border-radius:.6rem;background:var(--surface2);padding:.6rem;margin:.6rem 0}
+  details summary{cursor:pointer;font-weight:600}
+  pre{margin:.4rem 0 0;border:1px solid var(--border);border-radius:.6rem;background:var(--surface2);padding:.65rem;overflow:auto}
+  code{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .copy{float:right}
+  .two{display:grid;gap:1rem;grid-template-columns:1fr}
+  @media(min-width:860px){.two{grid-template-columns:1fr 1fr}}
+  .hint{border-left:4px solid #2563eb;background:#071427;padding:.6rem;border-radius:.25rem;margin:.5rem 0}
+</style>
+<link href="https://letstalkcdc.nfshost.com/connector-builder.html" rel="canonical"/></head>
+<body><a class="skip-link" href="#main">Skip to content</a>
+<header>
+<a href="everything-else.html">← extras</a>
+<h1>connector config builder</h1>
+<p class="lede">generate Debezium configs for Postgres, MySQL, or Oracle. pick Debezium 2.x or 1.x, add filters &amp; DLQ, then copy or curl to Kafka Connect.</p>
+</header>
+<main class="wrap" id="top">
+<section class="panel">
+<h2>1) choose source &amp; version</h2>
+<div aria-label="source" class="tabs" role="tablist">
+<button class="active" data-src="postgres" role="tab">postgres</button>
+<button data-src="mysql" role="tab">mysql</button>
+<button data-src="oracle" role="tab">oracle</button>
+</div>
+<div class="row">
+<label>debezium version:</label>
+<select id="debz">
+<option value="2">2.x (topic.prefix)</option>
+<option value="1">1.x (database.server.name)</option>
+</select>
+</div>
+<h2 style="margin-top:.6rem">2) connection &amp; naming</h2>
+<div class="two">
+<div>
+<div class="row"><label>connector name:</label><input id="cname" type="text" value="inventory-connector"/></div>
+<div class="row"><label>connect url:</label><input id="curl" type="text" value="http://localhost:8083"/></div>
+<div class="row"><label>host:</label><input id="host" type="text" value="pg"/></div>
+<div class="row"><label>port:</label><input id="port" type="text" value="5432"/></div>
+<div class="row"><label>user:</label><input id="user" type="text" value="cdc"/></div>
+<div class="row"><label>password:</label><input id="pass" type="password" value="cdc"/></div>
+</div>
+<div id="db-specific">
+<!-- per-source fields go here -->
+</div>
+</div>
+<h2 style="margin-top:.6rem">3) filters &amp; behavior</h2>
+<div class="two">
+<div>
+<div class="row"><label>schema include list:</label><input id="schemainc" placeholder="app,public" type="text"/></div>
+<div class="row"><label>table include list:</label><input id="tableinc" placeholder="app.customer,public.orders" type="text"/></div>
+<div class="row"><label>topic prefix / server name:</label><input id="prefix" type="text" value="server1"/></div>
+<div class="row"><label>snapshot mode:</label>
+<select id="snap">
+<option value="initial">initial</option>
+<option value="initial_only">initial_only</option>
+<option value="never">never</option>
+</select>
+</div>
+</div>
+<div>
+<div class="row"><label><input id="tomb" type="checkbox"/> disable tombstones</label></div>
+<div class="row"><label><input checked="" id="schchg" type="checkbox"/> exclude schema changes</label></div>
+<div class="row"><label>DLQ topic (optional):</label><input id="dlq" placeholder="dlq.inventory" type="text"/></div>
+<div class="row"><label>heartbeat (ms):</label><input id="hb" type="text" value="5000"/></div>
+</div>
+</div>
+<details>
+<summary>advanced (optional)</summary>
+<div id="advanced"></div>
+</details>
+<div class="hint"><strong>note:</strong> toggle Debezium version above. 2.x uses <code>topic.prefix</code>; 1.x uses <code>database.server.name</code>. choose the one your image supports.</div>
+</section>
+<section class="panel">
+<h2>4) generated config</h2>
+<button class="btn copy" id="copyJson">copy json</button>
+<button class="btn" id="dlJson">download config.json</button>
+<pre><code id="json">{}</code></pre>
+<h2>5) curl to create/update on connect</h2>
+<div class="row">
+<button class="btn copy" id="copyPost">copy create (POST)</button>
+<button class="btn copy" id="copyPut">copy update (PUT)</button>
+</div>
+<pre><code id="post"># POST /connectors
+curl -s -X POST http://localhost:8083/connectors \
+  -H 'content-type: application/json' \
+  -d '{ "name":"inventory-connector", "config": { ... } }' | jq .</code></pre>
+<pre><code id="put"># PUT /connectors/{name}/config
+curl -s -X PUT http://localhost:8083/connectors/inventory-connector/config \
+  -H 'content-type: application/json' \
+  -d '{ ... }' | jq .</code></pre>
+</section>
+</main>
+<script>
+(function(){
+  const $ = s=>document.querySelector(s);
+  const $$ = s=>Array.from(document.querySelectorAll(s));
+
+  let src = 'postgres';
+
+  // tabs
+  $$('.tabs button').forEach(b=> b.addEventListener('click', ()=>{
+    $$('.tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); src = b.dataset.src; renderSpecific(); renderAll();
+  }));
+
+  // input refs
+  const cname  = $('#cname'), curl = $('#curl'), host = $('#host'), port = $('#port'), user = $('#user'), pass = $('#pass');
+  const schemainc = $('#schemainc'), tableinc = $('#tableinc'), prefix = $('#prefix'), snap = $('#snap'), tomb = $('#tomb'), schchg = $('#schchg'), dlq = $('#dlq'), hb = $('#hb'), debz = $('#debz');
+  const jsonEl = $('#json'), postEl = $('#post'), putEl = $('#put');
+
+  // per-source container
+  const sp = $('#db-specific'), adv = $('#advanced');
+
+  function renderSpecific(){
+    if (src==='postgres'){
+      sp.innerHTML = `
+        <div class="row"><label>database:</label><input id="dbname" type="text" value="postgres"></div>
+        <div class="row"><label>slot name:</label><input id="slot" type="text" value="cdc_slot"></div>
+        <div class="row"><label>publication mode:</label>
+          <select id="pubmode">
+            <option value="filtered" selected>filtered (auto)</option>
+            <option value="all_tables">all_tables (auto)</option>
+            <option value="disabled">disabled (manual)</option>
+          </select>
+        </div>`;
+      adv.innerHTML = `
+        <div class="row"><label>decimal handling:</label>
+          <select id="decimal"><option>string</option><option>precise</option><option>double</option></select>
+        </div>`;
+    } else if (src==='mysql'){
+      sp.innerHTML = `
+        <div class="row"><label>server id:</label><input id="serverid" type="text" value="5400"></div>`;
+      adv.innerHTML = `
+        <div class="row"><label>time.precision.mode:</label>
+          <select id="timeprec"><option>connect</option><option>adaptive</option></select>
+        </div>`;
+      if (port.value === '5432') port.value = '3306';
+      if (host.value === 'pg') host.value = 'mysql';
+    } else if (src==='oracle'){
+      sp.innerHTML = `
+        <div class="row"><label>service (CDB):</label><input id="dbname" type="text" value="ORCLCDB"></div>
+        <div class="row"><label>PDB name:</label><input id="pdb" type="text" value="ORCLPDB1"></div>`;
+      adv.innerHTML = `
+        <div class="row"><label>log mining:</label>
+          <select id="logmin"><option value="online_catalog">online_catalog</option><option value="redo_log_catalog">redo_log_catalog</option></select>
+        </div>`;
+      if (port.value === '5432') port.value = '1521';
+      if (host.value === 'pg') host.value = 'oracle';
+    }
+  }
+
+  function buildConfig(){
+    const v2 = debz.value === '2';
+    const base = {
+      "tombstones.on.delete": tomb.checked ? "false" : "true",
+      "include.schema.changes": schchg.checked ? "false" : "true",
+      "heartbeat.interval.ms": hb.value || "5000",
+      "snapshot.mode": snap.value || "initial",
+    };
+    // versioned naming
+    if (v2) base["topic.prefix"] = prefix.value || "server1";
+    else    base["database.server.name"] = prefix.value || "server1";
+
+    if (schemainc.value) base["schema.include.list"] = csv(schemainc.value);
+    if (tableinc.value)  base["table.include.list"]  = csv(tableinc.value);
+    if (dlq.value) {
+      base["errors.tolerance"] = "all";
+      base["errors.deadletterqueue.topic.name"] = dlq.value.trim();
+    }
+
+    if (src==='postgres'){
+      Object.assign(base, {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "database.hostname": host.value, "database.port": port.value, "database.user": user.value, "database.password": pass.value,
+        "database.dbname": $('#dbname').value,
+        "slot.name": $('#slot').value,
+        "publication.autocreate.mode": $('#pubmode').value,
+        "decimal.handling.mode": $('#decimal').value || "string"
+      });
+    } else if (src==='mysql'){
+      Object.assign(base, {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "database.hostname": host.value, "database.port": port.value, "database.user": user.value, "database.password": pass.value,
+        "database.server.id": $('#serverid').value || "5400"
+      });
+    } else if (src==='oracle'){
+      Object.assign(base, {
+        "connector.class": "io.debezium.connector.oracle.OracleConnector",
+        "database.hostname": host.value, "database.port": port.value, "database.user": user.value, "database.password": pass.value,
+        "database.dbname": $('#dbname').value,
+        "database.pdb.name": $('#pdb').value,
+        "log.mining.strategy": $('#logmin').value || "online_catalog"
+      });
+    }
+    return base;
+  }
+
+  function renderAll(){
+    const cfg = buildConfig();
+    // JSON view
+    jsonEl.textContent = JSON.stringify({ name: cname.value, config: cfg }, null, 2);
+
+    // POST /connectors (create)
+    const post = [
+      `curl -s -X POST ${curl.value.replace(/\/$/,'')}/connectors \\`,
+      `  -H 'content-type: application/json' \\`,
+      `  -d '${JSON.stringify({ name: cname.value, config: cfg }).replace(/'/g,"'\\''")}' | jq .`
+    ].join("\n");
+    postEl.textContent = post;
+
+    // PUT /connectors/{name}/config (update)
+    const put = [
+      `curl -s -X PUT ${curl.value.replace(/\/$/,'')}/connectors/${cname.value}/config \\`,
+      `  -H 'content-type: application/json' \\`,
+      `  -d '${JSON.stringify(cfg).replace(/'/g,"'\\''")}' | jq .`
+    ].join("\n");
+    putEl.textContent = put;
+  }
+
+  // utils
+  function csv(s){ return s.split(',').map(x=>x.trim()).filter(Boolean).join(','); }
+
+  // copy/download
+  $('#copyJson').addEventListener('click', ()=> copy(jsonEl.textContent, '#copyJson'));
+  $('#copyPost').addEventListener('click', ()=> copy(postEl.textContent, '#copyPost'));
+  $('#copyPut').addEventListener('click', ()=> copy(putEl.textContent, '#copyPut'));
+  $('#dlJson').addEventListener('click', ()=>{
+    const blob = new Blob([jsonEl.textContent], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${$('#cname').value||'connector'}.json`; a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  function copy(txt, sel){
+    navigator.clipboard.writeText(txt).then(()=>{
+      const b = document.querySelector(sel); const old=b.textContent; b.textContent='copied!'; setTimeout(()=>b.textContent=old,1200);
+    }).catch(()=>{ const b = document.querySelector(sel); const old=b.textContent; b.textContent='error'; setTimeout(()=>b.textContent=old,1200); });
+  }
+
+  // events
+  ['input','change'].forEach(ev=>{
+    [cname,curl,host,port,user,pass,schemainc,tableinc,prefix,snap,tomb,schchg,dlq,hb,debz].forEach(el=> el.addEventListener(ev, renderAll));
+  });
+
+  // initial
+  renderSpecific(); renderAll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Snapshotting (Initial Load) | CDC: The Missing Manual</title>
+    <meta
+      content="Learn how to handle the initial data load (snapshotting) in a CDC pipeline consistently and without data loss."
+      name="description"
+    />
+    <link href="styles.css" rel="stylesheet" />
+    <link
+      rel="canonical"
+      href="https://letstalkcdc.nfshost.com/snapshotting.html"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="index.html"
+          >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
+        >
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a href="index.html">Home</a>
+            <a class="active" href="overview.html">The Series</a>
+          </nav>
+          <button
+            aria-label="Toggle dark mode"
+            class="theme-toggle"
+            data-toggle-theme=""
+            type="button"
+          >
+            🌓
+          </button>
+        </div>
+      </div>
+    </header>
+    <main class="page-wrap prose" id="main">
+      <h1>The First Hurdle: Initial Data Load (Snapshotting)</h1>
+      <article class="prose">
+        <p>
+          A CDC pipeline is designed to stream ongoing <em>changes</em>, but it
+          must first be initialized with the data that
+          <em>already exists</em> in the source tables. This process of
+          performing an initial, full copy of the data is known as
+          <strong>snapshotting</strong> or the <strong>initial load</strong>.
+        </p>
+
+        <h2 id="challenge">The Challenge: Ensuring Consistency</h2>
+        <p>
+          The central problem of snapshotting is ensuring consistency. How can
+          you take a complete copy of a large, active table while new
+          transactions are constantly modifying it? A naive approach might miss
+          transactions that occur during the snapshot process or, conversely,
+          process them twice, once in the snapshot and again in the change
+          stream, leading to data duplication or loss.
+        </p>
+
+        <h2 id="solution">The Solution: Consistent Snapshots</h2>
+        <p>
+          Modern log-based CDC tools like Debezium employ sophisticated,
+          coordinated procedures to handle this seamlessly. The typical process
+          works as follows:
+        </p>
+        <ol>
+          <li>
+            The CDC connector first establishes a low-level lock on the tables
+            it needs to snapshot. This is typically a read lock that prevents
+            structural changes but still allows concurrent application reads and
+            writes, minimizing production impact.
+          </li>
+          <li>
+            It then records the exact current position in the database's
+            transaction log (a Log Sequence Number or LSN). This marks the
+            precise point in time where the streaming will begin.
+          </li>
+          <li>
+            With the log position recorded, the connector performs the full read
+            of the table data, creating the snapshot.
+          </li>
+          <li>
+            Once the snapshot is complete, the locks are released, and the
+            connector transitions from snapshot mode to streaming mode. It
+            starts reading the transaction log from the exact position it
+            recorded earlier, ensuring a perfectly seamless handover from the
+            historical data to the live stream with no gaps and no overlaps.
+          </li>
+        </ol>
+      </article>
+      <div class="pagination">
+        <a href="intro.html">← Back: Intro to CDC</a>
+        <a href="exactly-once.html">Next: Exactly-Once →</a>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <p>
+        © 2025 Christopher Ennis. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+    <script type="module">
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+    </script>
+  </body>
+</html>

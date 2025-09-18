@@ -1,188 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Exactly-Once Semantics in CDC | CDC: The Missing Manual</title>
-  <meta name="description" content="Interactive, visual walkthrough of at-least-once vs exactly-once delivery in Change Data Capture with a transactional outbox demo." />
-  <link rel="stylesheet" href="styles.css" />
-  
-</head>
-<body>
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Exactly-Once Semantics | CDC: The Missing Manual</title>
+    <meta
+      content="A deep dive into at-least-once vs. exactly-once semantics, idempotency, and the transactional outbox pattern for reliable data pipelines."
+      name="description"
+    />
+    <link href="styles.css" rel="stylesheet" />
+    <style>
+      /* Module-specific styles */
+      .interactive-demo {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        margin: 2rem 0;
+      }
+      @media (min-width: 800px) {
+        .interactive-demo {
+          grid-template-columns: 1.5fr 1fr;
+        }
+      }
+      .step-diagram .step {
+        padding: 1rem;
+        border-left: 4px solid var(--border-color);
+        opacity: 0.4;
+        transition: opacity 0.3s, background-color 0.3s;
+      }
+      .step-diagram .step.active {
+        opacity: 1;
+        border-left-color: var(--accent-primary);
+        background-color: var(--bg-primary);
+      }
+      .step-diagram .step.completed {
+        opacity: 0.6;
+        border-left-color: var(--text-muted);
+      }
+      .diagram-visual-panel {
+        background: var(--bg-primary);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        min-height: 200px;
+      }
+      .diagram-visual-panel .icon {
+        font-size: 3rem;
+      }
+      .code-comparison {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin: 2rem 0;
+      }
+      @media (min-width: 768px) {
+        .code-comparison {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .code-comparison h4 {
+        margin-top: 0;
+        text-align: center;
+      }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Exactly-Once Semantics",
+        "description": "A deep dive into at-least-once vs. exactly-once semantics, idempotency, and the transactional outbox pattern for reliable data pipelines.",
+        "url": "https://letstalkcdc.nfshost.com/exactly-once.html",
+        "inLanguage": "en",
+        "about": [
+          "Change Data Capture",
+          "Exactly-Once Semantics",
+          "Idempotency",
+          "Transactional Outbox",
+          "Data Engineering"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Series Overview",
+            "item": "https://letstalkcdc.nfshost.com/overview.html"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Exactly-Once Semantics",
+            "item": "https://letstalkcdc.nfshost.com/exactly-once.html"
+          }
+        ]
+      }
+    </script>
+    <link
+      href="https://letstalkcdc.nfshost.com/exactly-once.html"
+      rel="canonical"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="global-header">
       <div class="nav-container">
-        <a href="index.html" class="site-title"
+        <a class="site-title" href="index.html"
           >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
         >
-        <nav class="nav-links">
-          <a href="index.html" class="active">Home</a>
-          <a href="overview.html">The Series</a>
-        </nav>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a href="index.html">Home</a>
+            <a class="active" href="overview.html">The Series</a>
+          </nav>
+          <button
+            aria-label="Toggle dark mode"
+            class="theme-toggle"
+            data-toggle-theme=""
+            type="button"
+          >
+            🌓
+          </button>
+        </div>
       </div>
     </header>
+    <main class="page-wrap prose" id="main">
+      <h1>The Pragmatic Reality of Exactly-Once Processing</h1>
+      <article class="prose">
+        <p>
+          True, end-to-end "exactly-once <em>delivery</em>" across multiple,
+          distinct distributed systems (like a database, Kafka, and a data
+          warehouse) is a theoretical ideal, not a practical reality. The
+          industry has converged on a more robust and achievable pattern:
+          <strong>Exactly-Once <em>Processing</em> (EOP)</strong>. This is
+          accomplished by combining guaranteed
+          <strong>At-Least-Once Delivery</strong> with a consumer that is
+          designed to be <strong>Idempotent</strong>.
+        </p>
+        <p>
+          How a CDC pipeline behaves during failures is defined by its data
+          delivery guarantees:
+        </p>
+        <ul>
+          <li>
+            <strong>At-Most-Once:</strong> The weakest guarantee. A message is
+            sent once, but if a failure occurs before it's processed, the
+            message is lost forever. Unsuitable for critical data.
+          </li>
+          <li>
+            <strong>At-Least-Once:</strong> The most common default. The system
+            ensures every message is delivered, but a message might be delivered
+            more than once during a retry. This prevents data loss but requires
+            consumers to handle duplicates.
+          </li>
+          <li>
+            <strong>Exactly-Once Processing:</strong> The effective goal. The
+            system delivers every message at least once, and the consumer is
+            designed to process each unique message precisely one time, even if
+            it receives duplicates.
+          </li>
+        </ul>
+        <h2 id="at-least-once">
+          The Problem: Duplicates in At-Least-Once Systems
+        </h2>
+        <p>
+          Imagine a consumer reads an event from a Kafka topic, processes it
+          (writes to a database), and then crashes before it can commit the
+          topic offset. When the consumer restarts, it will re-read the same
+          event, leading to duplicate processing. The interactive demo below
+          walks through this failure scenario.
+        </p>
+      </article>
 
-  <main id="main" class="page-wrap prose">
-    <section class="section-block">
-      <h2>1) Delivery Semantics Visualizer</h2>
-    <h1 class="mt-0">Exactly‑Once Semantics — Visual Walkthrough</h1>
-    <p>Click through the modes. If your OS/browser prefers reduced motion, animations are minimized automatically.</p>
-
-    <p class="muted">Choose a delivery mode to visualize the flow:</p>
-    <h3 class="muted" style="margin-bottom:-.5rem">Choose delivery mode</h3>
-    <div class="toggle-row" role="group" aria-label="Delivery mode">
-      <button id="btn-alo" class="pill" aria-pressed="true">At‑Least‑Once</button>
-      <button id="btn-eos" class="pill" aria-pressed="false">Exactly‑Once</button>
-      <button id="btn-reset" class="pill" aria-pressed="false" title="Clear the event log">Reset demo</button>
-    </div>
-
-    <div class="diagram-wrap">
-      <div class="legend" aria-hidden="true">
-        <span><i class="dot src"></i>Producer</span>
-        <span><i class="dot bus"></i>Bus</span>
-        <span><i class="dot sink"></i>Sink</span>
-        <span><i class="dot dupe"></i>Duplicate</span>
-      </div>
-      <!-- Progressive SVG: nodes + paths toggled by state -->
-      <svg viewBox="0 0 900 330" role="img" aria-label="Flow diagram for delivery semantics">
-        <defs>
-          <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto-start-reverse">
-            <path d="M0,0 L6,3 L0,6 z"></path>
-          </marker>
-          
-        </defs>
-
-        <!-- Nodes -->
-        <rect class="node" x="40" y="50" width="160" height="70"></rect>
-        <text class="label" x="120" y="92" text-anchor="middle">Producer</text>
-
-        <rect class="node" x="350" y="40" width="180" height="90"></rect>
-        <text class="label" x="440" y="83" text-anchor="middle">Event Bus</text>
-
-        <rect class="node" x="690" y="50" width="170" height="70"></rect>
-        <text class="label" x="775" y="92" text-anchor="middle">Sink</text>
-
-        <!-- Dedup store & Outbox (hidden by default) -->
-        <rect id="outboxNode" class="node" x="40" y="180" width="160" height="70" style="opacity:0"></rect>
-        <text id="outboxLabel" class="label" x="120" y="222" text-anchor="middle" style="opacity:0">Transactional Outbox</text>
-
-        <rect id="dedupNode" class="node" x="690" y="180" width="170" height="70" style="opacity:0"></rect>
-        <text id="dedupLabel" class="label" x="775" y="222" text-anchor="middle" style="opacity:0">Dedup Store</text>
-
-        <!-- Wires -->
-        <path id="wire1" class="wire bus" d="M200,85 C250,85 290,85 350,85"></path>
-        <path id="wire2" class="wire bus" d="M530,85 C590,85 630,85 690,85"></path>
-
-        <!-- Duplicate path (ALS only) -->
-        <path id="dupeWire" class="wire dupe" d="M530,105 C590,105 630,120 690,120" style="opacity:0"></path>
-
-        <!-- Outbox wiring (EOS only) -->
-        <path id="outboxWire" class="wire" d="M120,120 C120,140 120,160 120,180" style="opacity:0"></path>
-        <path id="busFromOutbox" class="wire bus" d="M200,215 C250,215 290,215 350,215" style="opacity:0"></path>
-        <path id="dedupWire" class="wire" d="M775,120 C775,140 775,160 775,180" style="opacity:0"></path>
-      </svg>
-
-      </div>
-
-    <section class="demo-block">
-      <h2>Idempotent Processing Demo</h2>
-      </section>
-    <hr />
-    <section class="section-block">
-      <h2>2) Idempotent Processing Playground</h2>
-      <p class="muted">Simulates how dedup protects sinks from duplicates. Enter the same Order ID twice to see the duplicate dropped.</p>
-      <div class="toggle-row" style="justify-content:space-between;">
-        <div>
-          <input id="orderIdInput" placeholder="Enter Order ID (try 1001 twice)" aria-label="Order ID" />
-          <button id="processOrderBtn" class="pill">Process</button>
+      <div class="interactive-demo">
+        <div class="step-diagram">
+          <div class="step" id="step-1">
+            <h4>1. Consume Message</h4>
+            <p>
+              The consumer service pulls a message (`Order #123`) from the
+              message broker.
+            </p>
+          </div>
+          <div class="step" id="step-2">
+            <h4>2. Process &amp; Write to Sink</h4>
+            <p>
+              The service processes the order and successfully inserts a record
+              into the `orders` table in the downstream database.
+            </p>
+          </div>
+          <div class="step" id="step-3">
+            <h4>3. CRASH! 💥</h4>
+            <p>
+              Before the service can acknowledge the message by committing its
+              offset to the broker, the service crashes. The broker assumes the
+              message was never processed.
+            </p>
+          </div>
+          <div class="step" id="step-4">
+            <h4>4. Restart &amp; Re-process</h4>
+            <p>
+              The service restarts. Since the offset was not committed, it
+              fetches the same message (`Order #123`) again and inserts a
+              <em>duplicate record</em> into the `orders` table.
+            </p>
+          </div>
         </div>
-        <small class="text-muted">Demo uses in‑memory sets; no network, no storage.</small>
+        <div class="diagram-visual-panel">
+          <div
+            class="w-full text-center transition-all duration-500"
+            id="diagram-visual"
+          >
+            <div class="icon">🎬</div>
+            <p class="mt-2 font-semibold">Ready to start</p>
+          </div>
+          <button
+            class="button"
+            id="failure-stepper"
+            style="margin-top: 1rem; width: 100%"
+          >
+            Start Animation
+          </button>
+        </div>
       </div>
-      <div id="demoLog" class="log" aria-live="polite"></div>
-    </div>
 
-    </section>
+      <article class="prose">
+        <h2 id="idempotency">The Solution: Idempotent Consumers</h2>
+        <p>
+          <strong>Idempotency</strong> is the property of an operation that
+          allows it to be applied multiple times without changing the result
+          beyond the initial application. An idempotent consumer can safely
+          process the same message multiple times with no side effects. This
+          requires two things:
+        </p>
+        <ol>
+          <li>
+            <strong>A Unique, Deterministic Event ID:</strong> Every change
+            event must have a unique identifier. This can be a UUID from an
+            outbox table or a composite key of the source table's primary key
+            and the transaction's log position.
+          </li>
+          <li>
+            <strong>Deduplication Logic at the Sink:</strong> The consumer uses
+            this ID to check if the event has already been processed before
+            applying the change. Common patterns include:
+            <ul>
+              <li>
+                <strong>Using `MERGE` or `UPSERT`:</strong> The sink database
+                handles the logic of creating a new record or updating an
+                existing one atomically. This is the preferred method.
+              </li>
+              <li>
+                <strong>Using a Deduplication Table:</strong> The consumer first
+                tries to `INSERT` the event ID into a `processed_events` table.
+                If it succeeds, it proceeds; if it fails (due to a primary key
+                violation), it knows the event is a duplicate and can be safely
+                ignored.
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <div class="code-comparison">
+          <div>
+            <h4>Naive Consumer</h4>
+            <pre><code>// Pseudocode: may create duplicates
+for (event of stream) {
+  // Simple insert will create a new
+  // record for every retry.
+  insert_into_sink(event.payload);
+  commit_offset();
+}</code></pre>
+          </div>
+          <div>
+            <h4>Idempotent Consumer</h4>
+            <pre><code>// Pseudocode: safe from duplicates
+for (event of stream) {
+  // MERGE/UPSERT handles existing records
+  // based on a primary key.
+  upsert_into_sink(
+    event.key,
+    event.payload
+  );
+  commit_offset();
+}</code></pre>
+          </div>
+        </div>
+        <h2 id="outbox">
+          The Transactional Outbox Pattern (Solving the Dual-Write Problem)
+        </h2>
+        <p>
+          A common anti-pattern is the "dual-write," where an application first
+          writes to its database and *then*, in a separate network call, tries
+          to publish a message. If the application crashes between these two
+          steps, the systems become inconsistent. The
+          <strong>Transactional Outbox Pattern</strong> solves this.
+        </p>
+        <ol>
+          <li>
+            An application writes both its business data (an `orders` record)
+            and an event record to an "outbox" table within the same single,
+            atomic database transaction.
+          </li>
+          <li>
+            A log-based CDC process monitors the outbox table. When it detects
+            the committed transaction in the database log, it reliably reads the
+            event from the log and publishes it to a message bus like Kafka.
+          </li>
+          <li>
+            This guarantees that an event is published if, and only if, the
+            corresponding business transaction was successfully committed to the
+            database. Data consistency is preserved.
+          </li>
+        </ol>
+      </article>
 
-    <section class="demo-block iframe-box" aria-labelledby="mx-title">
-      <header id="mx-title">Transactional Outbox — Mermaid Diagram (sandboxed)</header>
-      <iframe
-        src="mermaid-sandbox.html#outbox"
-        title="Mermaid diagram: Transactional Outbox"
-        sandbox="allow-scripts"
-        referrerpolicy="no-referrer"
-        loading="lazy">
-      </iframe>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <p>&copy; 2025. CDC: The Missing Manual.</p>
-  </footer>
-
-  <script type="module">
-    // Reduced motion flag
-    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // Buttons
-    const btnALO = document.getElementById("btn-alo");
-    const btnEOS = document.getElementById("btn-eos");
-    const btnReset = document.getElementById("btn-reset");
-
-    // Elements
-    const dupeWire = document.getElementById("dupeWire");
-    const outboxNode = document.getElementById("outboxNode");
-    const outboxLabel = document.getElementById("outboxLabel");
-    const outboxWire = document.getElementById("outboxWire");
-    const busFromOutbox = document.getElementById("busFromOutbox");
-    const dedupNode = document.getElementById("dedupNode");
-    const dedupLabel = document.getElementById("dedupLabel");
-    const dedupWire = document.getElementById("dedupWire");
-    const wire1 = document.getElementById("wire1");
-    const wire2 = document.getElementById("wire2");
-
-    // Helper to set aria + active styles
-    function setMode(mode){
-      const alo = mode === "ALO";
-      btnALO.setAttribute("aria-pressed", String(alo));
-      btnEOS.setAttribute("aria-pressed", String(!alo));
-
-      // Animate path emphasis subtly (or just toggle opacity if reduced motion)
-      const dur = reduceMotion ? 0 : 350;
-      function fade(el, visible){
-        el.style.transition = dur ? `opacity ${dur}ms ease` : "";
-        el.style.opacity = visible ? 1 : 0;
+      <div class="pagination">
+        <a href="snapshotting.html">← Back: Snapshotting</a>
+        <a href="multi-tenancy.html">Next: Multi-Tenancy →</a>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <p>
+        © 2025 Christopher Ennis. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+    <script type="module">
+      // --- Theme toggling ---
+      const applyTheme = (theme) =>
+        (document.documentElement.dataset.theme = theme);
+      const savedTheme = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(savedTheme ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const nextTheme =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          applyTheme(nextTheme);
+          localStorage.setItem("theme", nextTheme);
+        }
+      });
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("reduce-motion");
       }
-      // Base wires always visible
-      wire1.classList.toggle("emph", alo);
-      wire2.classList.toggle("emph", alo);
 
-      // ALS: show duplicate wire; hide outbox/dedup
-      fade(dupeWire, alo);
-      [outboxNode,outboxLabel,outboxWire,busFromOutbox,dedupNode,dedupLabel,dedupWire]
-        .forEach(el => fade(el, !alo));
-    }
-
-    setMode("ALO");
-    btnALO.addEventListener("click", () => setMode("ALO"));
-    btnEOS.addEventListener("click", () => setMode("EOS"));
-
-    // Idempotent processing demo (sanitized, in-memory only)
-    const processed = new Set();
-    const input = document.querySelector("#orderIdInput");
-    const log = document.querySelector("#demoLog");
-    const btn = document.querySelector("#processOrderBtn");
-    const safe = s => s.replace(/[<>&"]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch]));
-    btn.addEventListener("click", () => {
-      const id = input.value.trim().slice(0, 120);
-      if (!id) return;
-      const first = !processed.has(id);
-      processed.add(id);
-      const p = document.createElement("p");
-      p.innerHTML = first
-        ? `<span class="ok">✔ Processed</span> ${safe(id)}`
-        : `<span class="warn">↻ Duplicate ignored</span> ${safe(id)}`;
-      log.appendChild(p); log.scrollTop = log.scrollHeight;
-    });
-    btnReset.addEventListener("click", () => { processed.clear(); log.textContent=""; input.value=""; });
-  </script>
-</body>
+      // --- Failure Scenario Stepper ---
+      const stepperBtn = document.getElementById("failure-stepper");
+      const steps = [
+        { id: "step-1", icon: "📥", text: "1. Consume Message" },
+        { id: "step-2", icon: "💾", text: "2. Process & Write" },
+        { id: "step-3", icon: "💥", text: "3. CRASH!" },
+        {
+          id: "step-4",
+          icon: "🔄",
+          text: "4. Restart & Re-process (Duplicate!)",
+        },
+      ];
+      const diagramVisual = document.getElementById("diagram-visual");
+      let currentStep = 0;
+      stepperBtn.addEventListener("click", () => {
+        const allStepElements = document.querySelectorAll(
+          ".step-diagram .step"
+        );
+        if (currentStep >= steps.length) {
+          currentStep = 0;
+          allStepElements.forEach((el) =>
+            el.classList.remove("active", "completed")
+          );
+          diagramVisual.innerHTML = `<div class="icon">🎬</div><p>Ready to start</p>`;
+          stepperBtn.textContent = "Start Animation";
+          return;
+        }
+        if (currentStep > 0) {
+          document
+            .getElementById(steps[currentStep - 1].id)
+            .classList.add("completed");
+        }
+        const currentStepElement = document.getElementById(
+          steps[currentStep].id
+        );
+        currentStepElement.classList.add("active");
+        currentStepElement.classList.remove("completed");
+        diagramVisual.innerHTML = `<div class="icon">${steps[currentStep].icon}</div><p>${steps[currentStep].text}</p>`;
+        stepperBtn.textContent =
+          currentStep === steps.length - 1 ? "Reset Animation" : "Next Step";
+        currentStep++;
+      });
+    </script>
+  </body>
 </html>

@@ -1,27 +1,48 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mermaid Sandbox</title>
-  <!-- This file is intentionally isolated from parent CSP. Only allows scripts within the sandbox. -->
-  <style>
-    html, body { height:100%; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#0b1220; color:#e6eefc; }
-    .wrap { padding: 12px; }
-    .error { color: #fca5a5; white-space: pre-wrap; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="mermaid">graph LR; A[Loading...]-->B[Mermaid CDN];</div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" integrity="" crossorigin="anonymous"></script>
-  <script>
-    const hash = (location.hash || "").slice(1);
-    const defs = {
-      outbox: `
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Mermaid Sandbox</title>
+<!-- Isolated sandbox: only client-side render inside iframe. -->
+<style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial;
+        background: #0b1220;
+        color: #e6eefc;
+      }
+      .wrap {
+        padding: 12px;
+      }
+      .error {
+        color: #fca5a5;
+        white-space: pre-wrap;
+      }
+    </style>
+<link href="https://letstalkcdc.nfshost.com/mermaid-sandbox.html" rel="canonical"/><meta content="Hands-on, precise guidance for building and operating Change Data Capture pipelines." name="description"/></head>
+<body><a class="skip-link" href="#main">Skip to content</a>
+<div class="wrap">
+<div class="mermaid">
+        sequenceDiagram autonumber participant App as App Service participant DB
+        as OLTP DB participant OB as Outbox Table participant Bus as Event Bus
+        participant Sink as Consumer App-&gt;&gt;DB: BEGIN TX App-&gt;&gt;DB: UPDATE domain
+        rows App-&gt;&gt;OB: INSERT event record DB--&gt;&gt;App: COMMIT OB--&gt;&gt;Bus: Outbox
+        relay publishes Bus--&gt;&gt;Sink: Consume and apply (idempotent)
+      </div>
+</div>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+      // Support hash-based selection if you add more diagrams later
+      const hash = (location.hash || "").slice(1);
+      const defs = {
+        outbox: `
         sequenceDiagram
           autonumber
           participant App as App Service
@@ -36,17 +57,23 @@
           DB-->>App: COMMIT
           OB-->>Bus: Outbox relay publishes
           Bus-->>Sink: Consume and apply (idempotent)
-      `
-    };
-    const def = defs[hash] || defs.outbox;
-    try {
-      mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
-      document.querySelector(".mermaid").textContent = def;
-      mermaid.run({ querySelector: ".mermaid" });
-    } catch (e) {
-      const el = document.querySelector(".mermaid");
-      el.outerHTML = '<pre class="error">'+ String(e && e.stack || e) +'</pre>';
-    }
-  </script>
+      `,
+      };
+      // If hash matches a known def, use it; otherwise keep inline content
+      const node = document.querySelector(".mermaid");
+      if (hash && defs[hash]) node.textContent = defs[hash];
+
+      try {
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "strict",
+          theme: "dark",
+        });
+        mermaid.run({ querySelector: ".mermaid" });
+      } catch (e) {
+        node.outerHTML =
+          '<pre class="error">' + String((e && e.stack) || e) + "</pre>";
+      }
+    </script>
 </body>
 </html>

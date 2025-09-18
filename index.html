@@ -1,170 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
     <title>
       CDC: The Missing Manual | A Deep Dive into Change Data Capture
     </title>
     <meta
-      name="description"
       content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines. A deep-dive series."
+      name="description"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link href="styles.css" rel="stylesheet" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "CDC: The Missing Manual",
+        "url": "https://letstalkcdc.nfshost.com/",
+        "inLanguage": "en"
+      }
+    </script>
+    <link href="https://letstalkcdc.nfshost.com/index.html" rel="canonical" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="global-header">
       <div class="nav-container">
-        <a href="index.html" class="site-title"
+        <a class="site-title" href="index.html"
           >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
         >
-        <nav class="nav-links">
-          <a href="index.html" class="active">Home</a>
-          <a href="overview.html">The Series</a>
-        </nav>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="active" href="index.html">Home</a>
+            <a href="overview.html">The Series</a>
+          </nav>
+          <button
+            aria-label="Toggle dark mode"
+            class="theme-toggle"
+            data-toggle-theme=""
+            type="button"
+          >
+            🌓
+          </button>
+        </div>
       </div>
     </header>
 
-    <main>
+    <main id="main">
       <section class="hero-section">
         <div class="prose">
           <h1>
             Why Change Data Capture Still Breaks, and How To Get It Right.
           </h1>
-          <p class="text-xl text-slate-600">
-            Your analytics team needs data in real-time. Your business partners
-            want to build dashboards, set up alerts, and tailor customer
-            experiences on the fly. Change Data Capture (CDC) seems like the
-            magic answer, but most implementations fail to deliver on the
-            promise. This series is about how to get it right.
-          </p>
         </div>
       </section>
 
-      <section class="series-intro">
-        <div style="text-align: center">
-          <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem">
-            A Deep Dive into Production-Ready CDC
-          </h2>
-          <p
-            style="
-              font-size: 1.125rem;
-              color: var(--text-secondary);
-              max-width: 65ch;
-              margin: 0 auto 1.5rem;
-            "
-          >
-            The first event is easy. Scaling to millions of events with
-            unshakable reliability is the real challenge. This series moves
-            beyond the basics to cover the advanced, real-world patterns
-            required for success.
-          </p>
-        </div>
-      </section>
-
-      <article class="prose">
-        <h2>The Core Problem</h2>
+      <!-- INTRO / WHAT IS CDC -->
+      <section aria-labelledby="cdc-101" class="prose">
         <p>
-          We've advanced from overnight batch jobs to log-based CDC, which
-          promises real-time data with no load on source systems. Yet, reality
-          frequently doesn’t measure up. The challenge isn't capturing an event;
-          it's building a system that is scalable, reliable, fault-tolerant, and
-          observable under pressure.
+          <strong>In the modern data landscape</strong>, the value of
+          information is intrinsically linked to its timeliness. Decisions made
+          on outdated data can lead to missed opportunities, inefficient
+          operations, and a diminished competitive edge. This reality has
+          exposed the limitations of traditional data integration methods like
+          nightly batch jobs and paved the way for a more dynamic, real-time
+          approach. This series shows you how to build production-grade CDC
+          pipelines that deliver on the promise of real-time data.
         </p>
 
-        <h2>Our Blueprint for Production CDC</h2>
+        <h2 id="cdc-101">What is Change Data Capture (CDC)?</h2>
         <p>
-          In this deep-dive series, we’re building a blueprint for
-          production-ready CDC. This is a living series, organized around the
-          core challenges you'll face. We'll be adding new modules over time to
-          create the most comprehensive guide available.
+          <strong>Change Data Capture (CDC)</strong> is a set of software design
+          patterns used to identify, capture, and deliver the changes made to
+          data in a source system, most commonly a database. Instead of copying
+          entire datasets at intervals, CDC focuses exclusively on incremental,
+          row-level changes like INSERT, UPDATE, and DELETE operations. Once
+          captured, these change events are delivered in real-time or
+          near-real-time to downstream systems such as data warehouses,
+          analytics platforms, or other applications that need to stay
+          synchronized with the source data.
         </p>
-
-        <h3>Foundations of Trust & Scale</h3>
-        <ul>
-          <li>
-            <strong
-              >Understanding Delivery Guarantees and Exactly-Once
-              Semantics:</strong
-            >
-            How to build unshakeable trust in your data pipeline.
-          </li>
-          <li>
-            <strong>Multi-Tenant Architectures:</strong> Designing for massive
-            scale and workload isolation.
-          </li>
-        </ul>
-
-        <h3>Performance and Reliability</h3>
-        <ul>
-          <li>
-            <strong>Advanced Partitioning Strategies:</strong> The key to
-            unlocking massive throughput. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>Automated Auditing and Reconciliation:</strong> How to prove
-            your pipeline is working perfectly. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-
-        <h3>Operational Excellence</h3>
-        <ul>
-          <li>
-            <strong>Monitoring & Alerting:</strong> End-to-end observability for
-            your pipelines. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>Error Handling & Recovery Patterns:</strong> What to do when
-            things inevitably break. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-
-        <h3>Advanced Patterns & Data Governance</h3>
-        <ul>
-          <li>
-            <strong>Mastering Schema Evolution:</strong> Handling schema changes
-            without downtime. <em>(Coming Soon)</em>
-          </li>
-          <li>
-            <strong>The Initial Snapshot Problem:</strong> Strategies for
-            seamless backfills. <em>(Coming Soon)</em>
-          </li>
-        </ul>
-        <p>
-          Ready to build data pipelines you can trust? Dive in to see how these
-          pieces fit together.
-        </p>
-        <a
-          href="overview.html"
-          style="
-            display: inline-block;
-            background-color: var(--accent-primary);
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 2rem;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            transition: background-color 0.2s;
-          "
+        <figure
+          class="cdc-flow-diagram"
+          aria-label="A diagram showing the four stages of a Change Data Capture pipeline: Source Database, Transaction Log, a Broker like Kafka, and Sink Systems."
         >
-          Dive Into The Series &rarr;
-        </a>
-      </article>
+          <div class="flow-step">
+            <div class="step-icon db-icon"></div>
+            <figcaption>1. Source DB</figcaption>
+          </div>
+          <div class="flow-arrow">&#10230;</div>
+          <div class="flow-step">
+            <div class="step-icon log-icon"></div>
+            <figcaption>2. Transaction Log</figcaption>
+          </div>
+          <div class="flow-arrow">&#10230;</div>
+          <div class="flow-step">
+            <div class="step-icon stream-icon"></div>
+            <figcaption>3. Broker / Stream</figcaption>
+          </div>
+          <div class="flow-arrow">&#10230;</div>
+          <div class="flow-step">
+            <div class="step-icon sink-icon"></div>
+            <figcaption>4. Sinks</figcaption>
+          </div>
+        </figure>
+        <h3>How it works (at a glance)</h3>
+        <ol>
+          <li><strong>Source DB</strong> writes to its transaction log.</li>
+          <li>
+            <strong>Log reader/agent</strong> tails the log and emits change
+            events.
+          </li>
+          <li><strong>Broker/stream</strong> transports events (Kafka).</li>
+          <li>
+            <strong>Sinks</strong> consume and apply changes (MERGE/UPSERT).
+          </li>
+        </ol>
+
+        <h3 id="analogy">A Tale of Two Worlds: Batch vs. Real-Time</h3>
+        <p>
+          To understand the paradigm shift that CDC represents, consider the
+          difference between a daily newspaper and a live, streaming news feed.
+        </p>
+        <ul>
+          <li>
+            <strong>The Newspaper (Batch Processing)</strong>: Snapshot of
+            yesterday—reliable but latent.
+          </li>
+          <li>
+            <strong>The Live News Feed (CDC)</strong>: Updates within seconds;
+            systems react as changes happen.
+          </li>
+        </ul>
+
+        <section class="benefits-section">
+          <h2 id="key-benefits">The Core Advantages</h2>
+          <div class="benefits-grid">
+            <div class="benefit-card">
+              <div class="benefit-icon icon-insights">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="1" x2="12" y2="23"></line>
+                  <path
+                    d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+                  ></path>
+                </svg>
+              </div>
+              <h3>Real-Time Insights</h3>
+              <p>
+                Move from stale batch reports to a live, streaming view of your
+                data. Make decisions on what's happening now, not yesterday.
+              </p>
+            </div>
+            <div class="benefit-card">
+              <div class="benefit-icon icon-impact">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                  <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                </svg>
+              </div>
+              <h3>Low System Impact</h3>
+              <p>
+                Tailing a transaction log is far more efficient than running
+                resource-intensive bulk queries against your production
+                databases.
+              </p>
+            </div>
+            <div class="benefit-card">
+              <div class="benefit-icon icon-fidelity">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <h3>Complete Data Fidelity</h3>
+              <p>
+                Capture every single INSERT, UPDATE, and, most importantly,
+                DELETE operation, ensuring downstream systems are perfect
+                replicas.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <h3>Why teams adopt CDC</h3>
+        <p>
+          By turning a database into a real-time stream of events, CDC unlocks
+          powerful capabilities. Teams use it to keep analytics dashboards and
+          search indexes fresh, reliably synchronize microservices, and power
+          real-time features like fraud detection and personalization. For a
+          detailed breakdown, explore our deep dive into
+          <a href="use-cases.html">real-world use cases</a>.
+        </p>
+
+        <h3 id="why-not-batch">Why Batch ETL Is No Longer Enough</h3>
+        <p>
+          For decades, data integration relied on batch-based Extract,
+          Transform, Load (ETL) processes, which run on a fixed schedule. This
+          approach has critical limitations in the modern enterprise:
+        </p>
+        <ul>
+          <li>
+            <strong>High Latency:</strong> Perishable insights; minutes can kill
+            value (fraud).
+          </li>
+          <li>
+            <strong>Resource Intensive:</strong> Repeated full-table copies
+            stress CPUs, memory, and I/O.
+          </li>
+          <li>
+            <strong>Incomplete Picture:</strong> Misses intermediate changes;
+            deletes are hard to detect reliably.
+          </li>
+        </ul>
+        <p>
+          CDC shifts focus from “what is the state?” to “what just happened?”.
+        </p>
+        <!-- Glossary -->
+        <h2 id="glossary">Glossary</h2>
+        <ul>
+          <li>
+            <strong>WAL/redo log:</strong> append-only record of committed DB
+            changes.
+          </li>
+          <li>
+            <strong>LSN/SCN:</strong> monotonically increasing sequence used for
+            checkpoints.
+          </li>
+          <li>
+            <strong>Tombstone:</strong> delete event with key so sinks can
+            remove a row.
+          </li>
+          <li>
+            <strong>Idempotent write:</strong> repeated apply yields the same
+            state (keyed <code>MERGE</code>).
+          </li>
+          <li>
+            <strong>Lag:</strong> time from source commit → sink apply (track
+            p50/p95/p99).
+          </li>
+        </ul>
+      </section>
+
+      <!-- LEARNING PATH -->
+      <section aria-labelledby="learn" class="prose learn">
+        <section id="learning-path">
+          <h2 class="section-title">What You'll Learn</h2>
+          <p>
+            Follow our structured learning path to build a comprehensive
+            understanding of Change Data Capture, from core concepts to
+            advanced, real-world implementation.
+          </p>
+          <div class="learning-modules">
+            <div class="module-card">
+              <h3>1. Interactive Introduction to CDC</h3>
+              <p>
+                This interactive introduction is the central starting point for
+                your CDC journey. Get a firm grasp on the core concepts,
+                methods, and tooling, then choose the path that fits your
+                needs—from beginner fundamentals to advanced production
+                patterns.
+              </p>
+              <a href="overview.html" class="cta-button">Choose what to Read</a>
+            </div>
+
+            <div class="module-card">
+              <h3>2. Core Concepts and Mechanics</h3>
+              <p>
+                Dive into the mechanics. Learn about the transaction log, change
+                tables, and the essential metadata that powers CDC from the
+                ground up.
+              </p>
+              <a href="intro.html" class="cta-button">Learn the Concepts</a>
+            </div>
+
+            <div class="module-card">
+              <h3>3. The Three Pillars of CDC (The Patterns)</h3>
+              <p>
+                Compare the primary implementation patterns: Log-based,
+                Trigger-based, and Timestamp-based. Understand the pros and cons
+                of each.
+              </p>
+              <a href="strategy.html" class="cta-button"
+                >Explore the Patterns</a
+              >
+            </div>
+
+            <div class="module-card">
+              <h3>4. Implementation and The Data Pipeline</h3>
+              <p>
+                Put theory into practice. See how CDC fits into modern ETL/ELT
+                pipelines and integrates with streaming platforms like Apache
+                Kafka.
+              </p>
+              <a href="quickstarts.html" class="cta-button"
+                >View Implementations</a
+              >
+            </div>
+
+            <div class="module-card">
+              <h3>5. Advanced Topics</h3>
+              <p>
+                Level up your knowledge. Tackle complex challenges like handling
+                Slowly Changing Dimensions (SCD) and managing schema drift in
+                production systems.
+              </p>
+              <a href="schema-evolution.html" class="cta-button">Go Advanced</a>
+            </div>
+
+            <div class="module-card">
+              <h3>6. The Ecosystem</h3>
+              <p>
+                Explore the landscape of CDC technologies. Get a curated
+                overview of the most popular open-source and commercial tools in
+                the ecosystem.
+              </p>
+              <a href="tooling.html" class="cta-button">Discover the Tools</a>
+            </div>
+          </div>
+        </section>
+      </section>
     </main>
 
-    <footer class="site-footer">
-      <p>
-        &copy; 2025 Christopher Ennis. A deep dive into the world of Change Data
-        Capture.
-      </p>
-    </footer>
-    <!-- Add near the end of <body> on all pages -->
     <script type="module">
-      // --- Dark mode toggle ---
+      // Theme bootstrap
       const apply = (m) => (document.documentElement.dataset.theme = m);
       const saved = localStorage.getItem("theme");
       const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
       apply(saved ?? (prefersDark ? "dark" : "light"));
+
+      // Toggle
       document.addEventListener("click", (e) => {
         if (e.target.matches("[data-toggle-theme]")) {
           const next =
@@ -176,29 +367,12 @@
         }
       });
 
-      // --- Reduced motion guard for animations ---
-      const reduceMotion = matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
-      if (reduceMotion) document.documentElement.classList.add("reduce-motion");
+      // Reduced motion class
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("reduce-motion");
+      }
 
-      // --- Copy buttons for code ---
-      document.querySelectorAll("pre > code").forEach((code) => {
-        const btn = Object.assign(document.createElement("button"), {
-          textContent: "Copy",
-          className: "copy-btn",
-        });
-        const pre = code.parentElement;
-        pre.style.position = "relative";
-        pre.appendChild(btn);
-        btn.addEventListener("click", async () => {
-          await navigator.clipboard.writeText(code.innerText);
-          btn.textContent = "Copied!";
-          setTimeout(() => (btn.textContent = "Copy"), 1200);
-        });
-      });
-
-      // --- Heading anchors ---
+      // Heading anchors + copy buttons for any code
       document.querySelectorAll(".prose h2, .prose h3").forEach((h) => {
         const id =
           h.id ||
@@ -214,66 +388,27 @@
         });
         h.appendChild(a);
       });
-
-      // --- Lightweight search (builds an index from links + headings) ---
-      const pages = [
-        "index.html",
-        "overview.html",
-        "exactly-once.html",
-        "multi-tenancy.html",
-      ];
-      async function buildIndex() {
-        const docs = await Promise.all(
-          pages.map((p) =>
-            fetch(p, { credentials: "omit" })
-              .then((r) => r.text())
-              .then((html) => ({ p, html }))
-          )
-        );
-        return docs.map(({ p, html }) => {
-          const tmp = document.createElement("div");
-          tmp.innerHTML = html;
-          const title = (tmp.querySelector("title")?.textContent || "").trim();
-          const text = Array.from(
-            tmp.querySelectorAll(
-              ".prose p, .prose li, .prose h1, .prose h2, .prose h3"
-            )
-          )
-            .map((n) => n.textContent.trim())
-            .join(" ");
-          return { p, title, text: text.slice(0, 50000) }; // cap to keep it snappy
+      document.querySelectorAll("pre > code").forEach((code) => {
+        const pre = code.parentElement;
+        const btn = Object.assign(document.createElement("button"), {
+          textContent: "Copy",
+          className: "theme-toggle",
         });
-      }
-      const searchBox = document.querySelector("#site-search");
-      const resultsBox = document.querySelector("#search-results");
-      if (searchBox && resultsBox) {
-        const index = await buildIndex();
-        searchBox.addEventListener("input", (e) => {
-          const q = e.target.value.trim().toLowerCase();
-          resultsBox.innerHTML = "";
-          if (!q) return;
-          const hits = index
-            .map((d) => {
-              const i = d.text.toLowerCase().indexOf(q);
-              const ctx =
-                i > 40 ? d.text.slice(i - 40, i + 160) : d.text.slice(0, 200);
-              return { score: i === -1 ? Infinity : i, d, ctx };
-            })
-            .filter((h) => h.score !== Infinity)
-            .sort((a, b) => a.score - b.score)
-            .slice(0, 6);
-          hits.forEach(({ d, ctx }) => {
-            const li = document.createElement("li");
-            li.innerHTML = `<a href="${d.p}">${
-              d.title || d.p
-            }</a><div class="hit">${ctx.replaceAll(
-              q,
-              `<mark>${q}</mark>`
-            )}</div>`;
-            resultsBox.appendChild(li);
-          });
+        pre.style.position = "relative";
+        pre.appendChild(btn);
+        btn.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy"), 1200);
         });
-      }
+      });
     </script>
+
+    <footer class="site-footer">
+      <p>
+        © 2025 Christopher Ennis. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
   </body>
 </html>

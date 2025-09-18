@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Schema Evolution | CDC: The Missing Manual</title>
+    <meta
+      content="Learn how to handle schema drift and evolution in CDC pipelines using a Schema Registry to prevent breakages."
+      name="description"
+    />
+    <link href="styles.css" rel="stylesheet" />
+    <link
+      rel="canonical"
+      href="https://letstalkcdc.nfshost.com/schema-evolution.html"
+    />
+    <style>
+      .data-flow-diagram {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        font-family: var(--font-mono);
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .compatibility-modes {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin: 2rem 0;
+      }
+      @media (min-width: 768px) {
+        .compatibility-modes {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .mode-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+      }
+      .mode-card h3 {
+        margin-top: 0;
+        border-bottom: 2px solid var(--accent-primary);
+        padding-bottom: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="index.html"
+          >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
+        >
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a href="index.html">Home</a>
+            <a class="active" href="overview.html">The Series</a>
+          </nav>
+          <button
+            aria-label="Toggle dark mode"
+            class="theme-toggle"
+            data-toggle-theme=""
+            type="button"
+          >
+            🌓
+          </button>
+        </div>
+      </div>
+    </header>
+    <main class="page-wrap prose" id="main">
+      <h1>The Inevitable Problem: Handling Schema Evolution</h1>
+      <article class="prose">
+        <p>
+          Source database schemas are not static. Over the lifecycle of an
+          application, developers will inevitably make changes: adding new
+          columns, removing old ones, or modifying data types. This phenomenon,
+          known as <strong>schema drift</strong> or
+          <strong>schema evolution</strong>, is a primary cause of brittle data
+          pipelines. A pipeline not designed for this will break the moment an
+          incoming change event no longer matches what downstream consumers
+          expect.
+        </p>
+
+        <h2 id="solution">
+          The Solution: The Schema Registry (An API Contract for Your Data)
+        </h2>
+        <p>
+          The industry-standard solution is to treat your data's schema like a
+          formal API contract. This is managed by a
+          <strong>Schema Registry</strong>. Think of it as the 'OpenAPI' or
+          'Swagger' for your event streams. It's a centralized service that
+          ensures all data producers and consumers agree on the 'shape' of the
+          data, even as that shape evolves over time.
+        </p>
+        <p>
+          By using a schema-aware format like Apache Avro or Protobuf, producers
+          and consumers can be decoupled, allowing them to evolve independently
+          without breaking the pipeline.
+        </p>
+
+        <h2 id="compatibility">
+          Choosing Your Contract Strategy: Compatibility Modes
+        </h2>
+        <p>
+          A schema registry isn't just a database of schemas; it actively
+          enforces rules. When a producer tries to register a new schema
+          version, the registry checks it against a configured compatibility
+          mode. Understanding these modes is critical for operations.
+        </p>
+
+        <div class="compatibility-modes">
+          <div class="mode-card">
+            <h3>Backward Compatibility</h3>
+            <p><em>(New schemas can read old data)</em></p>
+            <p>
+              This mode allows you to <strong>delete fields</strong> and
+              <strong>add optional new fields</strong> (with a default value).
+              Consumers can upgrade at their own pace without breaking when they
+              encounter old data.
+            </p>
+            <p>
+              <strong>Use this for most standard use cases.</strong> It offers
+              the most operational flexibility.
+            </p>
+          </div>
+          <div class="mode-card">
+            <h3>Forward Compatibility</h3>
+            <p><em>(Old schemas can read new data)</em></p>
+            <p>
+              This mode allows you to <strong>add new fields</strong> and
+              <strong>delete optional old fields</strong>. This is less common
+              and requires careful coordination, as you must upgrade all
+              consumers <em>before</em> producers start sending data with the
+              new schema.
+            </p>
+          </div>
+        </div>
+        <p>
+          For most CDC pipelines,
+          <strong>start with Backward Compatibility</strong>. It provides the
+          most flexibility and prevents producers from making changes that will
+          break existing, non-updated consumers.
+        </p>
+
+        <h2 id="flow">The Data Flow in a Schema-Aware Pipeline</h2>
+        <div class="data-flow-diagram">
+          1. PRODUCER (CDC Agent): Registers 'user_v1' schema with Schema
+          Registry. ↳ SCHEMA REGISTRY: Stores 'user_v1', returns Schema ID: 1.
+          2. PRODUCER: Serializes event using 'user_v1' schema. Payload: [ID=1 |
+          data...] → sends to Kafka Topic. 3. CONSUMER: Receives message, sees
+          Schema ID 1. ↳ Has it seen ID 1 before? No. 4. CONSUMER: Requests
+          schema for ID 1 from Schema Registry. ↳ SCHEMA REGISTRY: Returns
+          'user_v1' schema. 5. CONSUMER: Caches 'user_v1' schema and
+          deserializes the message.
+        </div>
+        <p>
+          This flow, mediated by the schema registry, allows a producer to
+          upgrade to a `v2` schema and start sending messages with ID `2`. An
+          old consumer that only knows about ID `1` can either fail gracefully
+          or, if the schemas are compatible, process the new message by ignoring
+          the new fields.
+        </p>
+      </article>
+      <div class="pagination">
+        <a href="partitioning.html">← Back: Partitioning</a>
+        <a href="use-cases.html">Next: Real-World Use Cases →</a>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <p>
+        © 2025 Christopher Ennis. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+    <script type="module">
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+    </script>
+  </body>
+</html>

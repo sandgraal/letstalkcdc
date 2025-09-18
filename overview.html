@@ -1,84 +1,245 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Series Overview | CDC: The Missing Manual</title>
-  <meta name="description" content="Series hub for advanced CDC patterns. Subscribe to get updates for new parts as they ship." />
-  <link rel="stylesheet" href="styles.css" />
-  <style>
-    .page-wrap { max-width: 1100px; margin: 0 auto; padding: 1.25rem; }
-    .card-grid { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
-    .card { border:1px solid var(--border-color); background: var(--bg-secondary); border-radius:.75rem; padding:1rem; display:flex; flex-direction:column; gap:.6rem; }
-    .card h3 { margin:.2rem 0; }
-    .muted { color: var(--text-secondary); }
-    .sub-box { display:flex; gap:.5rem; align-items:center; }
-    .sub-box input { flex:1; padding:.5rem .6rem; border:1px solid var(--border-color); border-radius:.375rem; }
-    .sub-box button { border:1px solid var(--border-color); background: var(--bg-primary); border-radius:.375rem; padding:.45rem .7rem; cursor:pointer; }
-    .note { font-size:.85rem; color: var(--text-secondary); }
-    @media (max-width: 980px){ .card-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 640px){ .card-grid { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-    <header class="global-header">
-    <div class="nav-container">
-      <a href="index.html" class="site-title">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
-      <nav class="nav-links">
-        <a href="index.html">Home</a>
-        <a href="overview.html" class="active">The Series</a>
-      </nav>
-    </div>
-  </header>
-
-  <main id="main" class="page-wrap prose">
-    <h1>Series Overview</h1>
-    <p class="muted">Drop your email to get the micro‑posts for Part 2 as they publish. No trackers; this uses your mail client only.</p>
-
-    <section class="card-grid">
-      <article class="card">
-        <h3>Exactly‑Once Semantics</h3>
-        <p class="muted">Visual walkthrough + outbox patterns. Updated as new demos land.</p>
-        <p><a href="exactly-once.html" class="button">Open demo</a></p>
-        
-      </article>
-
-      <article class="card">
-        <h3>Multi‑Tenancy</h3>
-        <p class="muted">Tenant isolation patterns and cost levers with interactive estimates.</p>
-        <p><a href="multi-tenancy.html" class="button">Open demo</a></p>
-        
-      </article>
-
-      <article class="card">
-        <h3>Partitioning & Reconciliation</h3>
-        <p class="muted">Upcoming: partition keys, skew, late‑arrivals, and audit loops.</p>
-        <p><a href="overview.html#partitioning" class="button">Read teaser</a></p>
-        
-      </article>
-    </section>
-  </main>
-
-  <footer class="site-footer"><p>&copy; 2025.</p></footer>
-
-  <script type="module">
-    // Enhance mailto with the typed email in body for convenience
-    function bind(idInput, idLink, label){
-      const input = document.getElementById(idInput);
-      const a = document.getElementById(idLink);
-      const base = new URL(a.href);
-      function update(){
-        const email = input.value.trim();
-        const params = new URLSearchParams(base.search);
-        const body = `${params.get("body")}\n\nFrom: ${email || "(enter email before sending)"}`;
-        a.href = `mailto:${base.pathname.slice(1)}?subject=${encodeURIComponent(params.get("subject"))}&body=${encodeURIComponent(body)}`;
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>CDC: The Missing Manual | Series Overview</title>
+<meta content="Series hub for advanced CDC patterns. Exactly-once semantics, multi-tenancy, partitioning, and reconciliation." name="description"/>
+<link href="styles.css" rel="stylesheet"/>
+<script type="application/ld+json">
+      {
+        "@context":"https://schema.org",
+        "@type":"ItemList",
+        "name":"CDC Learning Series",
+        "itemListElement":[
+          {"@type":"ListItem","position":1,"name":"Interactive Introduction to CDC","url":"https://letstalkcdc.nfshost.com/intro.html"},
+          {"@type":"ListItem","position":2,"name":"Exactly-Once Semantics","url":"https://letstalkcdc.nfshost.com/exactly-once.html"},
+          {"@type":"ListItem","position":3,"name":"Multi-Tenancy: Cost vs Isolation","url":"https://letstalkcdc.nfshost.com/multi-tenancy.html"},
+          {"@type":"ListItem","position":4,"name":"Hands-On Lab: Kafka + Debezium + Postgres","url":"https://letstalkcdc.nfshost.com/lab-kafka-debezium.html"}
+        ]
       }
-      input.addEventListener("input", update);
-      update();
-    }
-    bind("email1","sub1","Exactly-Once");
-    bind("email2","sub2","Multi-Tenancy");
-    bind("email3","sub3","Partitioning");
-  </script>
+    </script>
+<link href="https://letstalkcdc.nfshost.com/overview.html" rel="canonical"/></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="global-header">
+<div class="nav-container">
+<a class="site-title" href="index.html">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
+<div class="nav-right">
+<nav aria-label="Primary" class="nav-links">
+<a href="index.html">Home</a>
+<a class="active" href="overview.html">The Series</a>
+</nav>
+<button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme="" type="button">
+            🌓
+          </button>
+</div>
+</div>
+</header>
+<main id="main">
+<section class="hero-section">
+<div class="prose">
+<h1>Series Overview</h1>
+<p class="text-xl text-slate-600">
+    Change Data Capture marks a fundamental evolution in data integration, moving away from the latent, resource-intensive world of batch processing and into the dynamic paradigm of real-time streaming. By capturing individual data changes as they occur, CDC provides a mechanism to keep disparate systems synchronized with minimal impact and sub-second latency. This technology is a strategic enabler, unlocking real-time analytics and forming the backbone of resilient, modern data architectures.
+</p>
+<p class="text-xl text-slate-600">
+    Start with the fundamentals. Understand what Change Data Capture is and why it's a cornerstone of modern data architecture through real-world use cases.
+</p>
+</div>
+</section>
+<section class="series-card-grid">
+  <article class="series-card is-recommended">
+    <div class="card-meta">
+      <div class="badge recommended">Start Here</div>
+      <div class="card-tags">
+        <span class="tag tag-concept">Core Concept</span>
+      </div>
+    </div>
+    <h3 class="card-title">Interactive Introduction to CDC</h3>
+    <p class="card-description">
+      An interactive dashboard covering core concepts, methods,
+      architectures, and the tooling ecosystem.
+    </p>
+    <p>
+      <a class="button" href="intro.html" aria-label="Read: Interactive Introduction to CDC">
+        Dive In!
+      </a>
+    </p>
+  </article>
+  <article class="series-card">
+  <div class="card-meta">
+    <div class="card-tags">
+      <span class="tag tag-concept">Core Concept</span>
+    </div>
+  </div>
+  <h3 class="card-title">Snapshotting: The First Sync</h3>
+  <p class="card-description">
+    Learn how CDC pipelines perform the initial, consistent snapshot of a
+    database before streaming live changes.
+  </p>
+  <p><a class="button" href="snapshotting.html">Dive In!</a></p>
+</article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Exactly‑Once Semantics</h3>
+    <p class="card-description">
+      Visual walkthrough of ALO vs EOS + transactional outbox.
+    </p>
+    <p><a class="button" href="exactly-once.html">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Multi‑Tenancy</h3>
+    <p class="card-description">
+      Isolation patterns, topic math, and rough egress estimates.
+    </p>
+    <p><a class="button" href="multi-tenancy.html">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Partitioning</h3>
+    <p class="card-description">
+      Partition keys, skew, late‑arrivals, and audit loops.
+    </p>
+    <p><a class="button" href="partitioning.html">Dive In!</a></p>
+  </article>
+    <article class="series-card">
+  <div class="card-meta">
+    <div class="card-tags">
+      <span class="tag tag-pattern">Advanced Pattern</span>
+    </div>
+  </div>
+  <h3 class="card-title">Schema Evolution</h3>
+  <p class="card-description">
+    Handle schema changes gracefully with forward/backward compatibility
+    and schema registries.
+  </p>
+  <p><a class="button" href="schema-evolution.html">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-concept">Core Concept</span>
+      </div>
+    </div>
+    <h3 class="card-title">Real-World Use Cases</h3>
+    <p class="card-description">
+      Explore practical applications of CDC, from real-time analytics to
+      cache invalidation.
+    </p>
+    <p><a class="button" href="use-cases.html">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-strategy">Strategy</span>
+      </div>
+    </div>
+    <h3 class="card-title">The Strategic Value of CDC</h3>
+    <p class="card-description">
+      Understand the business case and philosophical shift behind adopting
+      an event-driven data culture.
+    </p>
+    <p><a class="button" href="strategy.html">Dive In!</a></p>
+  </article>
+<article class="series-card">
+  <div class="card-meta">
+    <div class="card-tags">
+      <span class="tag tag-tooling">Tooling</span>
+    </div>
+  </div>
+  <h3 class="card-title">The CDC Ecosystem</h3>
+  <p class="card-description">
+    A curated overview of the most popular open-source and commercial
+    tools in the landscape (Debezium, Fivetran, etc).
+  </p>
+  <p><a class="button" href="tooling.html">Dive In!</a></p>
+</article>
+
+<!--  removed articles
+<article class="series-card">
+  <div class="card-meta">
+    <div class="card-tags">
+      <span class="tag tag-troubleshooting">Troubleshooting</span>
+    </div>
+  </div>
+  <h3 class="card-title">Troubleshooting Common Issues</h3>
+  <p class="card-description">
+    Diagnose and fix common problems like high latency, data loss, and
+    consumer lag in production systems.
+  </p>
+  <p><a class="button" href="troubleshooting.html">Dive In!</a></p>
+</article>
+<article class="series-card">
+  <div class="card-meta">
+    <div class="card-tags">
+      <span class="tag tag-lab">Hands-On Lab</span>
+    </div>
+  </div>
+  <h3 class="card-title">Lab: Kafka + Debezium</h3>
+  <p class="card-description">
+    A practical, step-by-step guide to building a real CDC pipeline with
+    Docker, Postgres, Kafka, and Debezium.
+  </p>
+  <p><a class="button" href="lab-kafka-debezium.html">Dive In!</a></p>
+</article>
+<article class="series-card">
+  <div class="card-meta">
+    <div class="card-tags">
+      <span class="tag tag-quickstart">Quick Start</span>
+    </div>
+  </div>
+  <h3 class="card-title">Quick Start Guides</h3>
+  <p class="card-description">
+    Get a pipeline running in minutes with step-by-step guides for
+    Postgres, MySQL, and Oracle.
+  </p>
+  <p><a class="button" href="quickstarts.html">Dive In!</a></p>
+</article>
+-->
+
+</section>
+<div class="prose">
+<div class="pagination">
+<a class="disabled" href="#">← Previous</a>
+<a href="intro.html">Next: Intro to CDC →</a>
+</div>
+</div>
+<footer class="site-footer">
+<p>© 2025 Christopher Ennis. A deep dive into the world of Change Data Capture.</p>
+</footer>
+<script type="module">
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("reduce-motion");
+      }
+    </script>
 </body>
 </html>
