@@ -1,0 +1,71 @@
+# -------------------------
+
+# Long-term caching (with cache-busting filenames)
+
+# -------------------------
+
+<FilesMatch "\.(css|js|mjs|woff2|woff|ttf|otf|eot|png|jpg|jpeg|gif|webp|avif|svg)$">
+Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# HTML gets short cache (so content updates show quickly)
+
+<FilesMatch "\.(html)$">
+Header set Cache-Control "no-cache"
+</FilesMatch>
+
+# Gzip/Brotli (if modules are available)
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/css application/javascript text/javascript application/json image/svg+xml
+</IfModule>
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/css application/javascript text/javascript application/json image/svg+xml
+</IfModule>
+
+# Proper content types for SVG/WOFF2 (prevents oddities)
+
+AddType image/svg+xml .svg
+AddType font/woff2 .woff2
+
+# CORS for fonts if ever served cross-origin (harmless on same origin)
+
+<FilesMatch "\.(woff2|woff|ttf|otf|eot)$">
+Header set Access-Control-Allow-Origin "\*"
+</FilesMatch>
+
+# -------------------------
+
+# Security & best practices
+
+# -------------------------
+
+# Prevent MIME sniffing
+
+Header set X-Content-Type-Options "nosniff"
+
+# Clickjacking protection
+
+Header always set X-Frame-Options "DENY"
+
+# Basic Referrer policy
+
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Permissions policy (disable sensitive APIs by default)
+
+Header always set Permissions-Policy "camera=(), geolocation=(), microphone=()"
+
+# Cross-origin isolation (optional; only if you know you need it)
+
+# Header always set Cross-Origin-Opener-Policy "same-origin"
+
+# Header always set Cross-Origin-Resource-Policy "same-origin"
+
+# HSTS (enable only if your site is 100% HTTPS and stable on HTTPS!)
+
+# Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+# Content Security Policy (start in report-only if unsure)
+
+# Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; connect-src 'self'; frame-ancestors 'none'"

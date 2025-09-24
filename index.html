@@ -3,14 +3,57 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
+
+    <!-- Primary Meta -->
     <title>
       CDC: The Missing Manual | A Deep Dive into Change Data Capture
     </title>
+    <!-- Consider adding a 301 redirect between www and non-www versions -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta
-      content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines. A deep-dive series."
       name="description"
+      content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines. A deep-dive series."
     />
-    <link href="styles.css" rel="stylesheet" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+
+    <!-- Canonical (consolidate to the root URL) -->
+    <link rel="canonical" href="https://letstalkcdc.nfshost.com/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://letstalkcdc.nfshost.com/" />
+    <meta
+      property="og:title"
+      content="CDC: The Missing Manual | A Deep Dive into Change Data Capture"
+    />
+    <meta
+      property="og:description"
+      content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines."
+    />
+    <!-- Update this to your actual OG image (recommended 1200x630) -->
+    <meta
+      property="og:image"
+      content="https://letstalkcdc.nfshost.com/images/cdc-cover.jpg"
+    />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://letstalkcdc.nfshost.com/" />
+    <meta
+      name="twitter:title"
+      content="CDC: The Missing Manual | A Deep Dive into Change Data Capture"
+    />
+    <meta
+      name="twitter:description"
+      content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines."
+    />
+    <meta
+      name="twitter:image"
+      content="https://letstalkcdc.nfshost.com/images/cdc-cover.jpg"
+    />
+
+    <!-- Structured Data -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -20,7 +63,29 @@
         "inLanguage": "en"
       }
     </script>
-    <link href="https://letstalkcdc.nfshost.com/index.html" rel="canonical" />
+    <!-- Fonts: preconnect + stylesheet (no @import in CSS) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tiny CSS: load normally for a stable first paint -->
+    <link rel="stylesheet" href="styles.css" />
+
+    <!-- theme color for a nicer mobile UI -->
+    <meta name="theme-color" content="#0f172a" />
+
+    <!-- (enable when you have GA4 ID): Replace G-XXXXXXX and remove HTML comments
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXX', { anonymize_ip: true });
+    </script>
+    -->
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -38,7 +103,7 @@
           <button
             aria-label="Toggle dark mode"
             class="theme-toggle"
-            data-toggle-theme=""
+            data-toggle-theme
             type="button"
           >
             🌓
@@ -81,6 +146,7 @@
           analytics platforms, or other applications that need to stay
           synchronized with the source data.
         </p>
+
         <figure
           class="cdc-flow-diagram"
           aria-label="A diagram showing the four stages of a Change Data Capture pipeline: Source Database, Transaction Log, a Broker like Kafka, and Sink Systems."
@@ -105,6 +171,7 @@
             <figcaption>4. Sinks</figcaption>
           </div>
         </figure>
+
         <h3>How it works (at a glance)</h3>
         <ol>
           <li><strong>Source DB</strong> writes to its transaction log.</li>
@@ -242,6 +309,7 @@
         <p>
           CDC shifts focus from “what is the state?” to “what just happened?”.
         </p>
+
         <!-- Glossary -->
         <h2 id="glossary">Glossary</h2>
         <ul>
