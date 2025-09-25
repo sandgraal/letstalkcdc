@@ -13,7 +13,6 @@
       rel="canonical"
       href="https://letstalkcdc.nfshost.com/snapshotting.html"
     />
-
     <!-- SME STYLE START -->
     <style>
       .callout {
@@ -77,6 +76,275 @@
       );
     </script>
     <!-- SME SCRIPT END -->
+    <!-- SME DARK CALLOUT START -->
+    <style>
+      /* SME DARK CALLOUT */
+      html[data-theme="dark"] .callout {
+        background: rgba(255, 255, 255, 0.06);
+        border-left-color: #9ca3af;
+      }
+      html[data-theme="light"] .callout {
+        background: #f7f7f7;
+        border-left-color: #6b7280;
+      }
+    </style>
+    <!-- SME DARK CALLOUT END -->
+    <!-- SME THEME FIXES START -->
+    <style>
+      :root {
+        --sme-accent: #22d3ee;
+      } /* teal accent */
+      html[data-theme="dark"] .callout {
+        background: rgba(255, 255, 255, 0.06);
+        border-left-color: var(--sme-accent);
+      }
+      html[data-theme="light"] .callout {
+        background: #f7f7f7;
+        border-left-color: #6b7280;
+      }
+      html[data-theme="dark"] pre {
+        background: #0b1220;
+        border: 1px solid #1f2937;
+      }
+      html[data-theme="dark"] pre code {
+        background: transparent;
+      }
+      html[data-theme="dark"] code {
+        background: rgba(255, 255, 255, 0.06);
+        color: #e5e7eb;
+        border-radius: 4px;
+        padding: 0 0.25rem;
+      }
+      html[data-theme="dark"] kbd {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid #374151;
+        color: #e5e7eb;
+        border-radius: 4px;
+        padding: 0 0.25rem;
+      }
+      html[data-theme="dark"] mark {
+        background: rgba(34, 211, 238, 0.18);
+        color: #e5e7eb;
+      }
+      html[data-theme="dark"] .prose code::before,
+      html[data-theme="dark"] .prose code::after {
+        content: "";
+      }
+      .copy-btn {
+        transition: background 0.15s ease, border-color 0.15s ease,
+          color 0.15s ease;
+      }
+      html[data-theme="dark"] .copy-btn {
+        background: #0b1220;
+        border-color: #374151;
+        color: #e5e7eb;
+      }
+      html[data-theme="dark"] .copy-btn:hover {
+        background: #111827;
+        border-color: #4b5563;
+      }
+      html[data-theme="dark"] details {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid #1f2937;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+      }
+      html[data-theme="dark"] details > summary {
+        cursor: pointer;
+      }
+    </style>
+    <!-- SME THEME FIXES END -->
+    <!-- SME SNAPSHOT THEME OVERRIDE START -->
+    <style>
+      :root {
+        --cdc-bg: #0b1220;
+        --cdc-surface: #0f172a;
+        --cdc-border: #1f2937;
+        --cdc-text: #e5e7eb;
+        --cdc-muted: #9ca3af;
+        --cdc-accent: #22d3ee; /* teal from overview */
+        --cdc-accent-2: #a78bfa; /* purple tags */
+      }
+      /* Handoff stepper (uses your theme tokens) */
+      .handoff {
+        margin: 0.75rem 0 1.25rem;
+      }
+      .handoff-steps {
+        display: grid;
+        grid-auto-flow: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+      @media (max-width: 760px) {
+        .handoff-steps {
+          grid-auto-flow: row;
+        }
+        .handoff .arrow {
+          justify-self: center;
+          transform: rotate(90deg);
+        }
+      }
+      .handoff .stage {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: linear-gradient(
+          180deg,
+          rgba(34, 211, 238, 0.08),
+          rgba(167, 139, 250, 0.06)
+        );
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.7rem;
+        padding: 0.9rem 0.95rem;
+        box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08) inset;
+      }
+      .handoff .stage:hover {
+        border-color: color-mix(
+          in oklab,
+          var(--cdc-accent) 35%,
+          var(--cdc-border)
+        );
+        box-shadow: 0 0 0 1px
+          color-mix(in oklab, var(--cdc-accent) 35%, transparent) inset;
+      }
+      .handoff .num {
+        flex: 0 0 auto;
+        width: 1.8rem;
+        height: 1.8rem;
+        line-height: 1.8rem;
+        text-align: center;
+        font-weight: 700;
+        border-radius: 999px;
+        background: radial-gradient(
+          75% 75% at 30% 30%,
+          var(--cdc-accent),
+          var(--cdc-accent-2)
+        );
+        color: #0b1220; /* high contrast badge text */
+        filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.25));
+      }
+      .handoff .stage-body {
+        display: grid;
+        gap: 0.15rem;
+      }
+      .handoff .stage-title {
+        font-weight: 600;
+        color: var(--cdc-text);
+      }
+      .handoff .stage-sub {
+        font-size: 0.9rem;
+        color: var(--cdc-muted);
+      }
+      .handoff .arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.25rem;
+        color: var(--cdc-muted);
+      }
+      .handoff-cap {
+        color: var(--cdc-muted);
+        margin: 0.5rem 0 0;
+      }
+      html[data-theme="dark"] body {
+        background: var(--cdc-bg);
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .page-wrap.prose {
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .prose {
+        max-width: 70ch;
+      }
+      html[data-theme="dark"] .prose h1,
+      html[data-theme="dark"] .prose h2,
+      html[data-theme="dark"] .prose h3 {
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .prose h2 {
+        border-bottom: 1px solid var(--cdc-border);
+        padding-bottom: 0.25rem;
+        margin-top: 2rem;
+      }
+      html[data-theme="dark"] .prose a {
+        color: var(--cdc-accent);
+      }
+      html[data-theme="dark"] .prose a:hover {
+        text-decoration: underline;
+      }
+      html[data-theme="dark"] .prose ul > li::marker {
+        color: var(--cdc-accent);
+      }
+      html[data-theme="dark"] .prose ol > li::marker {
+        color: var(--cdc-accent-2);
+      }
+      html[data-theme="dark"] .prose li {
+        margin-left: 0.15rem;
+      }
+      html[data-theme="dark"] details {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.6rem;
+        padding: 0.55rem 0.75rem;
+      }
+      html[data-theme="dark"] details > summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--cdc-surface);
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] details[open] > summary {
+        border-color: var(--cdc-accent);
+      }
+      html[data-theme="dark"] .callout {
+        background: rgba(34, 211, 238, 0.06);
+        border-left: 4px solid var(--cdc-accent);
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .callout strong {
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] pre {
+        background: var(--cdc-surface);
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.6rem;
+      }
+      html[data-theme="dark"] code {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--cdc-text);
+        border-radius: 4px;
+        padding: 0 0.25rem;
+      }
+      html[data-theme="dark"] .prose code::before,
+      html[data-theme="dark"] .prose code::after {
+        content: "";
+      }
+      .copy-btn {
+        transition: background 0.15s ease, border-color 0.15s ease,
+          color 0.15s ease;
+      }
+      html[data-theme="dark"] .copy-btn {
+        background: var(--cdc-surface);
+        border-color: var(--cdc-border);
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .copy-btn:hover {
+        background: #111827;
+        border-color: #4b5563;
+      }
+      html[data-theme="dark"] figure figcaption {
+        color: var(--cdc-muted);
+      }
+      html[data-theme="dark"] blockquote {
+        border-left: 3px solid var(--cdc-accent-2);
+        background: rgba(167, 139, 250, 0.06);
+      }
+    </style>
+    <!-- SME SNAPSHOT THEME OVERRIDE END -->
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -214,82 +482,42 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
 
         <h2 id="solution">The Solution: Consistent Snapshots</h2>
 
-        <!-- SME ADDITIONS START: Snapshot→Stream Diagram -->
-        <figure aria-label="Snapshot to stream handoff diagram">
-          <svg
-            viewBox="0 0 760 120"
-            width="100%"
-            role="img"
-            aria-labelledby="handoffTitle"
-          >
-            <title id="handoffTitle">High-watermark boundary handoff</title>
-            <rect
-              x="10"
-              y="20"
-              width="300"
-              height="80"
-              rx="8"
-              fill="currentColor"
-              opacity="0.08"
-            ></rect>
-            <text x="25" y="45" font-size="14">1) Mark high-watermark</text>
-            <text x="25" y="70" font-size="12">Record LSN/SCN (boundary)</text>
-
-            <rect
-              x="330"
-              y="20"
-              width="200"
-              height="80"
-              rx="8"
-              fill="currentColor"
-              opacity="0.08"
-            ></rect>
-            <text x="345" y="45" font-size="14">2) Consistent read</text>
-            <text x="345" y="70" font-size="12">
-              Snapshot tables without gaps
-            </text>
-
-            <rect
-              x="540"
-              y="20"
-              width="210"
-              height="80"
-              rx="8"
-              fill="currentColor"
-              opacity="0.08"
-            ></rect>
-            <text x="555" y="45" font-size="14">3) Stream after boundary</text>
-            <text x="555" y="70" font-size="12">Apply idempotently</text>
-
-            <line
-              x1="310"
-              y1="60"
-              x2="330"
-              y2="60"
-              stroke="currentColor"
-            ></line>
-            <line
-              x1="530"
-              y1="60"
-              x2="540"
-              y2="60"
-              stroke="currentColor"
-            ></line>
-            <polygon
-              points="330,60 322,56 322,64"
-              fill="currentColor"
-            ></polygon>
-            <polygon
-              points="540,60 532,56 532,64"
-              fill="currentColor"
-            ></polygon>
-          </svg>
-          <figcaption>
-            Snapshot → high-watermark → stream; keep per-key order and
-            idempotent sinks.
-          </figcaption>
-        </figure>
-        <!-- SME ADDITIONS END -->
+        <!-- SME REPLACEMENT START: Snapshot→Stream Stepper -->
+        <section class="handoff" aria-labelledby="handoff-h2">
+          <h3 id="handoff-h2" class="sr-only">
+            High-watermark boundary handoff
+          </h3>
+          <ol class="handoff-steps" role="list">
+            <li class="stage">
+              <span class="num" aria-hidden="true">1</span>
+              <div class="stage-body">
+                <div class="stage-title">Mark high-watermark</div>
+                <div class="stage-sub">Record LSN/SCN (boundary)</div>
+              </div>
+            </li>
+            <li class="arrow" aria-hidden="true">→</li>
+            <li class="stage">
+              <span class="num" aria-hidden="true">2</span>
+              <div class="stage-body">
+                <div class="stage-title">Consistent read</div>
+                <div class="stage-sub">Snapshot tables without gaps</div>
+              </div>
+            </li>
+            <li class="arrow" aria-hidden="true">→</li>
+            <li class="stage">
+              <span class="num" aria-hidden="true">3</span>
+              <div class="stage-body">
+                <div class="stage-title">Stream after boundary</div>
+                <div class="stage-sub">Apply idempotently</div>
+              </div>
+            </li>
+          </ol>
+          <p class="handoff-cap">
+            Snapshot → high-watermark → stream. Preserve per-key order and use
+            idempotent upserts/deletes at the sink.
+          </p>
+        </section>
+        <!-- SME REPLACEMENT END -->
 
         <p>
           Modern log-based CDC tools like Debezium coordinate a
@@ -416,6 +644,112 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             resume from last completed chunk and the recorded high-watermark.
           </li>
         </ul>
+        <!-- SME ADDITIONS START: Patterns, Observability, Lab, Gotchas -->
+        <section aria-labelledby="idempotent">
+          <h2 id="idempotent">Idempotent sink patterns</h2>
+          <p>Use UPSERT/MERGE semantics and explicit delete handling.</p>
+          <details>
+            <summary><strong>Warehouse MERGE example</strong></summary>
+            <pre><button class="copy-btn" type="button">Copy</button><code>MERGE INTO dw.customers AS t
+USING staging.customers AS s
+ON t.customer_id = s.customer_id
+WHEN MATCHED THEN UPDATE SET
+  name = s.name,
+  email = s.email,
+  updated_at = s.updated_at
+WHEN NOT MATCHED THEN INSERT (customer_id, name, email, updated_at)
+VALUES (s.customer_id, s.name, s.email, s.updated_at);</code></pre>
+          </details>
+          <aside aria-label="Gotcha" class="callout">
+            <strong>Gotcha:</strong> Handle deletes explicitly (tombstones or a
+            <code>__op</code> field). Otherwise replays produce resurrected
+            rows.
+          </aside>
+        </section>
+
+        <section aria-labelledby="observability">
+          <h2 id="observability">Observability: what to track</h2>
+          <ul>
+            <li>Source log lag (bytes/time behind) and slot/binlog growth.</li>
+            <li>Snapshot throughput (rows/s), chunk duration, ETA by table.</li>
+            <li>Sink merge latency and deadlocks.</li>
+            <li>
+              Error budget: % chunks retried; time to resume after failure.
+            </li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="failures">
+          <h2 id="failures">Failure modes → actions</h2>
+          <ul>
+            <li>
+              <strong>Long snapshots block VACUUM/UNDO:</strong> shrink chunk
+              size; run on a replica; pause between chunks.
+            </li>
+            <li>
+              <strong>Log purged mid-snapshot:</strong> restart from last
+              completed chunk; increase retention; consider replica.
+            </li>
+            <li>
+              <strong>No primary key:</strong> define synthetic key or dedupe in
+              sink (hash + latest timestamp).
+            </li>
+            <li>
+              <strong>DDL during snapshot:</strong> retry chunk with stable
+              schema; versioned views; schema-compat rules.
+            </li>
+            <li>
+              <strong>Replica lag:</strong> validate boundary alignment; if
+              laggy, snapshot from primary or temporarily gate OLTP.
+            </li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="lab">
+          <h2 id="lab">Hands-on: prove no gaps/dupes (≈15 min)</h2>
+          <ol>
+            <li>
+              Pick your database and run the “boundary + consistent read”
+              snippet.
+            </li>
+            <li>
+              While snapshot runs, perform writes in a second session: insert
+              (id=3), update (id=2).
+            </li>
+            <li>
+              After handoff, insert (id=4). Verify sink via MERGE and run a dup
+              check.
+            </li>
+          </ol>
+          <details>
+            <summary><strong>Dup check query</strong></summary>
+            <pre><button class="copy-btn" type="button">Copy</button><code>SELECT id, COUNT(*) AS c
+FROM dw.orders
+GROUP BY id
+HAVING COUNT(*) &gt; 1;</code></pre>
+          </details>
+        </section>
+
+        <section aria-labelledby="gotchas">
+          <h2 id="gotchas">Common gotchas</h2>
+          <aside class="callout">
+            <strong>Throughput vs safety:</strong> Aim for 5–30s chunk time;
+            keep txn duration within retention.
+          </aside>
+          <aside class="callout">
+            <strong>LOBs/wide rows:</strong> Exclude heavy columns from initial
+            snapshot; backfill later.
+          </aside>
+          <aside class="callout">
+            <strong>Partitioned tables:</strong> Snapshot partitions in
+            deterministic order; beware partition switches.
+          </aside>
+          <aside class="callout">
+            <strong>Time zones:</strong> Normalize to UTC to prevent
+            duplicate-by-wall-clock.
+          </aside>
+        </section>
+        <!-- SME ADDITIONS END -->
       </article>
       <div class="pagination">
         <a href="intro.html">← Back: Intro to CDC</a>
@@ -444,108 +778,5 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
         }
       });
     </script>
-
-    <!-- SME ADDITIONS START: Patterns, Observability, Lab, Gotchas -->
-    <section aria-labelledby="idempotent">
-      <h2 id="idempotent">Idempotent sink patterns</h2>
-      <p>Use UPSERT/MERGE semantics and explicit delete handling.</p>
-      <details>
-        <summary><strong>Warehouse MERGE example</strong></summary>
-        <pre><button class="copy-btn" type="button">Copy</button><code>MERGE INTO dw.customers AS t
-USING staging.customers AS s
-ON t.customer_id = s.customer_id
-WHEN MATCHED THEN UPDATE SET
-  name = s.name,
-  email = s.email,
-  updated_at = s.updated_at
-WHEN NOT MATCHED THEN INSERT (customer_id, name, email, updated_at)
-VALUES (s.customer_id, s.name, s.email, s.updated_at);</code></pre>
-      </details>
-      <aside aria-label="Gotcha" class="callout">
-        <strong>Gotcha:</strong> Handle deletes explicitly (tombstones or a
-        <code>__op</code> field). Otherwise replays produce resurrected rows.
-      </aside>
-    </section>
-
-    <section aria-labelledby="observability">
-      <h2 id="observability">Observability: what to track</h2>
-      <ul>
-        <li>Source log lag (bytes/time behind) and slot/binlog growth.</li>
-        <li>Snapshot throughput (rows/s), chunk duration, ETA by table.</li>
-        <li>Sink merge latency and deadlocks.</li>
-        <li>Error budget: % chunks retried; time to resume after failure.</li>
-      </ul>
-    </section>
-
-    <section aria-labelledby="failures">
-      <h2 id="failures">Failure modes → actions</h2>
-      <ul>
-        <li>
-          <strong>Long snapshots block VACUUM/UNDO:</strong> shrink chunk size;
-          run on a replica; pause between chunks.
-        </li>
-        <li>
-          <strong>Log purged mid-snapshot:</strong> restart from last completed
-          chunk; increase retention; consider replica.
-        </li>
-        <li>
-          <strong>No primary key:</strong> define synthetic key or dedupe in
-          sink (hash + latest timestamp).
-        </li>
-        <li>
-          <strong>DDL during snapshot:</strong> retry chunk with stable schema;
-          versioned views; schema-compat rules.
-        </li>
-        <li>
-          <strong>Replica lag:</strong> validate boundary alignment; if laggy,
-          snapshot from primary or temporarily gate OLTP.
-        </li>
-      </ul>
-    </section>
-
-    <section aria-labelledby="lab">
-      <h2 id="lab">Hands-on: prove no gaps/dupes (≈15 min)</h2>
-      <ol>
-        <li>
-          Pick your database and run the “boundary + consistent read” snippet.
-        </li>
-        <li>
-          While snapshot runs, perform writes in a second session: insert
-          (id=3), update (id=2).
-        </li>
-        <li>
-          After handoff, insert (id=4). Verify sink via MERGE and run a dup
-          check.
-        </li>
-      </ol>
-      <details>
-        <summary><strong>Dup check query</strong></summary>
-        <pre><button class="copy-btn" type="button">Copy</button><code>SELECT id, COUNT(*) AS c
-FROM dw.orders
-GROUP BY id
-HAVING COUNT(*) &gt; 1;</code></pre>
-      </details>
-    </section>
-
-    <section aria-labelledby="gotchas">
-      <h2 id="gotchas">Common gotchas</h2>
-      <aside class="callout">
-        <strong>Throughput vs safety:</strong> Aim for 5–30s chunk time; keep
-        txn duration within retention.
-      </aside>
-      <aside class="callout">
-        <strong>LOBs/wide rows:</strong> Exclude heavy columns from initial
-        snapshot; backfill later.
-      </aside>
-      <aside class="callout">
-        <strong>Partitioned tables:</strong> Snapshot partitions in
-        deterministic order; beware partition switches.
-      </aside>
-      <aside class="callout">
-        <strong>Time zones:</strong> Normalize to UTC to prevent
-        duplicate-by-wall-clock.
-      </aside>
-    </section>
-    <!-- SME ADDITIONS END -->
   </body>
 </html>
