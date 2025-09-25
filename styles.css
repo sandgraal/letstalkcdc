@@ -278,6 +278,13 @@ body {
   background: var(--accent-hover);
 }
 
+.button[aria-disabled="true"] {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  pointer-events: none;
+}
+
 /* Footer */
 .site-footer {
   background: var(--bg-secondary);
@@ -1358,6 +1365,15 @@ figure[aria-label="CDC high-level flow"] figcaption {
   background-color: #c6f6d5;
 }
 
+.tag-ops {
+  color: #1e3a8a;
+  background-color: #bfdbfe;
+}
+.tag-runbook {
+  color: #065f46;
+  background-color: #d1fae5;
+}
+
 [data-theme="dark"] .tag-tooling {
   color: #feebc8;
   background-color: #652b19;
@@ -1369,6 +1385,15 @@ figure[aria-label="CDC high-level flow"] figcaption {
 [data-theme="dark"] .tag-lab {
   color: #c6f6d5;
   background-color: #1c4532;
+}
+
+:root[data-theme="dark"] .tag-ops {
+  color: #bfdbfe;
+  background-color: #1e3a8a;
+}
+:root[data-theme="dark"] .tag-runbook {
+  color: #d1fae5;
+  background-color: #065f46;
 }
 
 .tag-quickstart {

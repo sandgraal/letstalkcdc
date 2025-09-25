@@ -140,14 +140,21 @@
       <h1>The Pragmatic Reality of Exactly-Once Processing</h1>
       <article class="prose">
         <p>
-          True, end-to-end "exactly-once <em>delivery</em>" across multiple,
-          distinct distributed systems (like a database, Kafka, and a data
-          warehouse) is a theoretical ideal, not a practical reality. The
-          industry has converged on a more robust and achievable pattern:
-          <strong>Exactly-Once <em>Processing</em> (EOP)</strong>. This is
-          accomplished by combining guaranteed
-          <strong>At-Least-Once Delivery</strong> with a consumer that is
-          designed to be <strong>Idempotent</strong>.
+          End-to-end "exactly-once <em>delivery</em>" across <em>heterogeneous</em> systems
+          (DB → Kafka → warehouse/search) is not achievable in general. What we actually ship is
+          <strong>Exactly-Once <em>Processing</em> (EOP)</strong>: combine <strong>At-Least-Once (ALO)</strong>
+          transport with <strong>idempotent</strong> sinks so replays don’t create duplicates.
+        </p>
+        <p>
+          Scope matters:
+          <ul>
+            <li><strong>Source connectors (e.g., Debezium):</strong> ALO into Kafka. They can’t make the
+              external database “transactional” with Kafka.</li>
+            <li><strong>Within Kafka→Kafka topologies:</strong> EOS is possible using Kafka transactions
+              (idempotent producers + transactional offsets), but the scope is limited to Kafka topics.</li>
+            <li><strong>Kafka → external sinks:</strong> Effective EOS comes from <em>idempotent upserts</em>
+              (or staging+MERGE) at the destination, not from transport guarantees alone.</li>
+          </ul>
         </p>
         <p>
           How a CDC pipeline behaves during failures is defined by its data
@@ -172,9 +179,7 @@
             it receives duplicates.
           </li>
         </ul>
-        <h2 id="at-least-once">
-          The Problem: Duplicates in At-Least-Once Systems
-        </h2>
+        <h2 id="at-least-once">The Problem: Duplicates in At-Least-Once Systems</h2>
         <p>
           Imagine a consumer reads an event from a Kafka topic, processes it
           (writes to a database), and then crashes before it can commit the
@@ -225,13 +230,12 @@
             <div class="icon">🎬</div>
             <p class="mt-2 font-semibold">Ready to start</p>
           </div>
-          <button
-            class="button"
-            id="failure-stepper"
-            style="margin-top: 1rem; width: 100%"
-          >
-            Start Animation
-          </button>
+          <div style="display:grid; gap:.5rem; width:100%; margin-top:1rem">
+            <button class="button" id="failure-stepper">Start Failure</button>
+            <button class="button" id="idempotent-stepper" aria-label="Show idempotent handling">
+              Show Idempotent Handling
+            </button>
+          </div>
         </div>
       </div>
 
@@ -268,9 +272,15 @@
                 violation), it knows the event is a duplicate and can be safely
                 ignored.
               </li>
+              <li>
+                <strong>Staging + MERGE:</strong> Land events into a staging table keyed by
+                <code>event_id</code>, then <code>MERGE</code> into the target to make replays safe.
+              </li>
             </ul>
           </li>
         </ol>
+        <p><em>Commit order:</em> write to sink → then commit offsets. If offsets commit first,
+        a crash can drop data; idempotent sinks tolerate replays after restart.</p>
         <div class="code-comparison">
           <div>
             <h4>Naive Consumer</h4>
@@ -294,6 +304,30 @@ for (event of stream) {
   );
   commit_offset();
 }</code></pre>
+          </div>
+        </div>
+        <div class="code-comparison">
+          <div>
+            <h4>Warehouse MERGE (Snowflake-style)</h4>
+<pre><code>MERGE INTO dw.orders AS t
+USING (SELECT :event_id AS event_id, :order_id AS order_id, :payload::variant AS p) s
+ON t.event_id = s.event_id
+WHEN NOT MATCHED THEN
+  INSERT (event_id, order_id, payload) VALUES (s.event_id, s.order_id, s.p)
+WHEN MATCHED THEN
+  UPDATE SET payload = s.p;  -- idempotent overwrite
+</code></pre>
+          </div>
+          <div>
+            <h4>BigQuery MERGE (idempotent)</h4>
+<pre><code>MERGE `dw.orders` t
+USING (SELECT @event_id AS event_id, @order_id AS order_id, @payload AS payload) s
+ON t.event_id = s.event_id
+WHEN NOT MATCHED THEN
+  INSERT (event_id, order_id, payload) VALUES (s.event_id, s.order_id, s.payload)
+WHEN MATCHED THEN
+  UPDATE SET payload = s.payload;
+</code></pre>
           </div>
         </div>
         <h2 id="outbox">
@@ -323,6 +357,11 @@ for (event of stream) {
             database. Data consistency is preserved.
           </li>
         </ol>
+        <p>
+          <strong>Important scope note:</strong> Outbox gives you EOS between the application DB and Kafka
+          (no lost/phantom messages). It does <em>not</em> make your downstream warehouses exactly-once by itself—
+          you still need idempotent consumers at the sinks.
+        </p>
       </article>
 
       <div class="pagination">
@@ -359,6 +398,7 @@ for (event of stream) {
 
       // --- Failure Scenario Stepper ---
       const stepperBtn = document.getElementById("failure-stepper");
+      const idempotentBtn = document.getElementById("idempotent-stepper");
       const steps = [
         { id: "step-1", icon: "📥", text: "1. Consume Message" },
         { id: "step-2", icon: "💾", text: "2. Process & Write" },
@@ -398,6 +438,35 @@ for (event of stream) {
         stepperBtn.textContent =
           currentStep === steps.length - 1 ? "Reset Animation" : "Next Step";
         currentStep++;
+      });
+      // --- Idempotent Handling Demo (no duplicate) ---
+      idempotentBtn?.addEventListener("click", () => {
+        // reset visuals
+        document.querySelectorAll(".step-diagram .step")
+          .forEach((el) => el.classList.remove("active", "completed"));
+        // show compressed, duplicate-safe flow
+        diagramVisual.innerHTML = `
+          <div class="icon">🧮</div>
+          <p>Idempotent upsert: replay is a no-op</p>`;
+        // briefly flash steps 1→2 then “replay no-op”
+        const seq = ["step-1", "step-2"];
+        let i = 0;
+        const tick = () => {
+          if (i < seq.length) {
+            const el = document.getElementById(seq[i]);
+            el.classList.add("active");
+            if (i > 0) document.getElementById(seq[i - 1]).classList.add("completed");
+            i++;
+            setTimeout(tick, 600);
+          } else {
+            const replay = document.getElementById("step-4");
+            replay.classList.add("active");
+            diagramVisual.innerHTML = `
+              <div class="icon">🧊</div>
+              <p>Replay hits same <code>event_id</code> → MERGE matches → 0 rows changed</p>`;
+          }
+        };
+        tick();
       });
     </script>
   </body>

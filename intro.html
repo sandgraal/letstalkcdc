@@ -171,13 +171,12 @@
       <h2 id="cdc-methods">CDC methods</h2>
       <ul>
         <li>
-          <strong>Log-based CDC (The Gold Standard):</strong> This method
-          reads changes directly from the database's internal transaction log
-          (PostgreSQL's WAL, MySQL's binlog). It is completely non-intrusive,
-          having a negligible impact on the source database's performance. It
-          reliably captures all changes, including deletions and schema
-          modifications, making it the most accurate and complete method
-          available. PostgreSQL's Write-Ahead Log (WAL) records all changes to
+          <strong>Log-based CDC (The Gold Standard):</strong> Reads committed changes
+          from the database’s transaction log (<em>PostgreSQL WAL</em>, <em>MySQL binlog</em>,
+          <em>SQL Server transaction log</em>, <em>Oracle redo</em>). It’s <em>low-impact</em> on OLTP,
+          but not free: log retention, I/O, and replication slot/archival settings must be tuned.
+          It reliably captures inserts/updates/deletes in order. <em>DDL capture</em> depends on the
+          database and connector configuration. PostgreSQL's Write-Ahead Log (WAL) records all changes to
           the database before they are applied, ensuring data integrity and
           durability. Log-based CDC leverages this existing, ordered stream of
           changes for efficient replication. MySQL's binary log (binlog)
@@ -186,23 +185,23 @@
           granular, complete change events necessary for CDC.
           <ul>
             <li>
-              <em>Advantage: Minimal Performance Impact.</em> Tails the log
-              with negligible overhead (often 1–3%) and no schema changes.
+              <em>Advantage: Low Performance Impact.</em> Tails existing logs; no source-table scans or triggers.
             </li>
             <li>
               <em>Advantage: High Fidelity.</em> Captures inserts, updates,
               and deletes, preserving order.
             </li>
             <li>
-              <em>Disadvantage: Complexity.</em> Proprietary log parsing;
-              needs specialized tools and elevated permissions.
+              <em>Disadvantage: Complexity.</em> Requires DB-level privileges and correct log retention
+              (<code>wal_keep_size</code> or logical slots in Postgres; binlog purge in MySQL; T-log backups in SQL Server).
             </li>
           </ul>
         </li>
         <li>
-          <strong>Trigger-Based CDC:</strong> A highly flexible method that
-          uses database triggers (ON INSERT, ON UPDATE, ON DELETE) to write
-          change events into a separate 'outbox' or 'shadow' table. While it
+          <strong>Trigger-Based CDC:</strong> Uses database triggers (ON INSERT/UPDATE/DELETE) to
+          write change rows into <em>shadow/audit</em> tables. Sometimes paired with an “outbox”-style table,
+          but the <em>Transactional Outbox</em> pattern can also be implemented without triggers by writing the
+          outbox row <em>in the same application transaction</em>. While it
           is database-agnostic and explicit, this approach adds overhead to
           every transaction, directly impacting the performance of your
           primary application's workload (OLTP).
@@ -223,8 +222,7 @@
           queries source tables for rows that have changed, typically
           identified by a last_updated timestamp. However, it puts a
           significant load on the source database, can miss updates if
-          multiple changes occur between polls, and has no reliable way to
-          capture DELETE operations.
+          multiple changes occur between polls, and cannot observe <em>hard deletes</em> (unless you keep tombstone/soft-delete markers).
           <ul>
             <li>
               <em>Disadvantage: Cannot Capture Deletes.</em> Deleted rows
@@ -419,6 +417,10 @@
           similar) decouples source from consumers.
         </li>
         <li>
+          <strong>Schema Registry:</strong> Manages event schemas (Avro/JSON/Protobuf),
+          enforces compatibility, and protects consumers during evolution.
+        </li>
+        <li>
           <strong>Downstream Consumers:</strong> Warehouse loaders, search
           indexers, caches, apps, etc.
         </li>
@@ -514,8 +516,8 @@
             </li>
             <li>
               <strong>Consume idempotently</strong>
-              Consumers upsert/dedupe → “exactly-once” effect at the
-              destination.
+              Consumers upsert/dedupe so replays are safe—producing an “exactly-once”
+              <em>effect</em> at the sink. EOS scope is per sink/system, not global.
             </li>
           </ol>
           <p class="muted" style="margin: 0.5rem 0 0">
@@ -582,6 +584,18 @@
           </svg>
         </figure>
       </section>
+
+<h2>Operational gotchas (day-one checks)</h2>
+          <ul>
+            <li><strong>Log retention &amp; bloat:</strong> Logical slots (PG) or paused connectors can
+          block log truncation; size WAL/binlog/T-log appropriately and alert on backlog.</li>
+            <li><strong>Privileges &amp; network:</strong> Connectors need replication permissions and
+          stable network paths (no NAT timeouts) to avoid stalls.</li>
+            <li><strong>DDL changes:</strong> Schema changes may need registry rules and phased rollouts to
+          avoid breaking consumers.</li>
+            <li><strong>Sinks are the hard part:</strong> Upsert/delete semantics and idempotency in the
+          warehouse/search system determine data correctness under replay.</li>
+          </ul>
 
       <h2>The CDC Tooling Ecosystem</h2>
       <p>
@@ -732,7 +746,15 @@
         </style>
 
         <h2 id="cdc-vendors-title">CDC platforms</h2>
-
+        <div class="cdc-filter" role="region" aria-label="Filter CDC platforms">
+          <div class="row">
+            <input id="cdc-search" type="search" placeholder="Search platforms..."
+                   aria-label="Search platforms" />
+            <button id="cdc-reset" type="button">Reset</button>
+            <span id="cdc-count" aria-live="polite"></span>
+          </div>
+          <div id="cdc-chips" class="row" role="toolbar" aria-label="Tag filters"></div>
+        </div>
         <div class="cdc-grid" id="cdc-grid" role="list">
           <!-- cards (unchanged) -->
           <article class="cdc-card" data-tags="open source,log-based,DIY ops" role="listitem">
@@ -1061,7 +1083,7 @@
       const datasets = [
         {
           label: "Log-Based",
-          data: [5, 5, 5, 4, 2],
+          data: [5, 5, 5, 4, 2],   // Completeness, Low Impact, Low Latency, Low Maintenance, Ease
           borderColor: teal,
           backgroundColor: hex(teal, 0.15),
           pointBackgroundColor: teal,
@@ -1070,7 +1092,7 @@
         },
         {
           label: "Trigger-Based",
-          data: [4, 3, 4, 2, 3],
+          data: [4, 3, 4, 2, 3],   // maintenance lower due to triggers upkeep
           borderColor: blue,
           backgroundColor: hex(blue, 0.12),
           pointBackgroundColor: blue,
@@ -1079,7 +1101,7 @@
         },
         {
           label: "Query-Based",
-          data: [1, 2, 1, 5, 5],
+          data: [1, 2, 1, 2, 5],   // high maintenance (2), easy to implement (5)
           borderColor: red,
           backgroundColor: hex(red, 0.1),
           pointBackgroundColor: red,

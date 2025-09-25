@@ -328,17 +328,27 @@
             clusters.
           </li>
           <li>
-            Throughput ≈
-            <code>tenants × change_rate × (payload + envelope)</code>; budget
-            egress and quotas.
+            Egress (external) ≈
+            <code>tenants × change_rate × (payload + envelope + overhead)</code
+            >. Broker egress adds replication factor:
+            <code>intra_broker ≈ external × (RF − 1)</code>.
+          </li>
+          <li>
+            Storage at retention ≈
+            <code>egress_bytes_per_s × (86400 × days) ÷ compression</code>.
+          </li>
+          <li>
+            Operational heat: total partitions =
+            <code>topics × partitions_per_topic</code> (impacts rebalances, ISR,
+            & quotas).
           </li>
           <li>
             RBAC/retention easier per-tenant topics; cluster isolation for
             regulators/VIPs.
           </li>
           <li>
-            Guardrails: quotas, DLQ policy, per-tenant error budgets,
-            topic-level ACLs.
+            Guardrails: per-tenant <em>produce/consume</em> quotas, DLQ policy,
+            retention/compaction per topic, and ACLs scoped by tenant namespace.
           </li>
         </ul>
         <details>
@@ -509,6 +519,60 @@
                 >Shared = cheapest; Topics = simpler RBAC; Clusters = strongest
                 isolation.</small
               >
+              <label for="rf">Replication factor (RF)</label>
+              <input
+                id="rf"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="5"
+                step="1"
+                value="3"
+                aria-describedby="rf-val"
+              />
+              <span id="rf-val" class="value-badge" aria-live="polite">3</span>
+
+              <label for="parts">Partitions per topic</label>
+              <input
+                id="parts"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                value="6"
+                aria-describedby="parts-val"
+              />
+              <span id="parts-val" class="value-badge" aria-live="polite"
+                >6</span
+              >
+
+              <label for="retention">Retention (days)</label>
+              <input
+                id="retention"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                value="7"
+                aria-describedby="retention-val"
+              />
+              <span id="retention-val" class="value-badge" aria-live="polite"
+                >7</span
+              >
+
+              <label for="compression">Compression ratio</label>
+              <input
+                id="compression"
+                type="number"
+                inputmode="decimal"
+                min="0.5"
+                step="0.1"
+                value="2.0"
+                aria-describedby="compression-val"
+              />
+              <span id="compression-val" class="value-badge" aria-live="polite"
+                >2.0</span
+              >
             </div>
           </section>
         </div>
@@ -536,9 +600,24 @@
               <p class="muted">Decimal MB (bytes ÷ 1e6).</p>
             </div>
             <div class="kpi">
+              <h3>Broker Egress (MB/s)</h3>
+              <div id="kBrokerEgress" class="val">—</div>
+              <p class="muted">≈ external × (RF − 1).</p>
+            </div>
+            <div class="kpi">
               <h3>Egress (GB/month)</h3>
               <div id="kEgressMonth" class="val">—</div>
               <p class="muted">60×60×24×30 seconds.</p>
+            </div>
+            <div class="kpi">
+              <h3>Total Partitions</h3>
+              <div id="kParts" class="val">—</div>
+              <p class="muted">topics × partitions_per_topic.</p>
+            </div>
+            <div class="kpi">
+              <h3>Storage @ Retention (TB)</h3>
+              <div id="kStorageTB" class="val">—</div>
+              <p class="muted">egress × days ÷ compression (RF included).</p>
             </div>
             <div class="kpi">
               <h3>Connector Footprint</h3>
@@ -570,7 +649,13 @@
             <ul>
               <li>
                 <code>egress_bytes_per_s</code> =
-                <code>tenants × change_rate × (payload + envelope)</code>
+                <code
+                  >tenants × change_rate × (payload + envelope + overhead)</code
+                >
+              </li>
+              <li>
+                <code>broker_egress_bytes_per_s</code> ≈
+                <code>egress_bytes_per_s × (RF − 1)</code>
               </li>
               <li>
                 <code>consumer_groups</code> ≈
@@ -590,6 +675,16 @@
                   </li>
                 </ul>
               </li>
+              <li>
+                <code>total_partitions</code> =
+                <code>topics × partitions_per_topic</code>
+              </li>
+              <li>
+                <code>storage_bytes_at_retention</code> ≈
+                <code
+                  >(egress_bytes_per_s × RF × 86400 × days) ÷ compression</code
+                >
+              </li>
             </ul>
           </details>
 
@@ -605,8 +700,18 @@
                 per-cluster ≈ 1:1.
               </li>
               <li>
-                Envelope defaults for JSON/Avro headers (200–400B typical).
+                Envelope defaults for JSON/Avro headers (200–400B typical) +
+                small per-message overhead.
               </li>
+              <li>
+                If topics are <em>compact</em>, long-term storage is dominated
+                by latest keys; adjust retention math accordingly.
+              </li>
+              <li>
+                Per-tenant quotas should scale with <code>change_rate</code> and
+                protect shared clusters from spikes.
+              </li>
+
               <li>
                 RBAC/retention overhead grows with topic count, not egress.
               </li>
@@ -651,6 +756,24 @@
           <p>
             Typically yes (1:1 footprint), but noisy tenants stop taxing others
             and maintenance windows become tenant-scoped.
+          </p>
+        </details>
+        <details>
+          <summary>
+            Should I use compaction or time retention for per-tenant topics?
+          </summary>
+          <p>
+            Compaction keeps latest value per key (great for upsert sinks); time
+            retention keeps history (needed for replays and backfills). Many
+            teams use <em>compacted + short retention</em> together.
+          </p>
+        </details>
+        <details>
+          <summary>How do I fence noisy tenants?</summary>
+          <p>
+            Apply per-tenant quotas (produce/consume), isolate DLQs per tenant,
+            and consider per-tenant topics or clusters when a tenant’s egress
+            approaches ~10% of fleet.
           </p>
         </details>
       </section>
@@ -715,6 +838,10 @@
         topicsPerTenant: $("#topicsPerTenant"),
         sharedTopics: $("#sharedTopics"),
         isolation: $("#isolation"),
+        rf: $("#rf"),
+        parts: $("#parts"),
+        retention: $("#retention"),
+        compression: $("#compression"),
       };
       const O = {
         tenants: $("#tenants-val"),
@@ -723,18 +850,26 @@
         envelope: $("#envelope-val"),
         topicsPerTenant: $("#topicsPerTenant-val"),
         sharedTopics: $("#sharedTopics-val"),
+        rf: $("#rf-val"),
+        parts: $("#parts-val"),
+        retention: $("#retention-val"),
+        compression: $("#compression-val"),
         kTopics: $("#kTopics"),
         kGroups: $("#kGroups"),
         kEgress: $("#kEgress"),
+        kBrokerEgress: $("#kBrokerEgress"),
         kEgressMonth: $("#kEgressMonth"),
         kConnect: $("#kConnect"),
+        kParts: $("#kParts"),
+        kStorageTB: $("#kStorageTB"),
       };
 
       // Tunables
       const GROUPS_PER_TENANT = 2;
       const CONNECTOR_PER_TENANT = 0.2;
-      const OVERHEAD_PER_MESSAGE = 120; // bytes
+      const OVERHEAD_PER_MESSAGE = 120; // bytes, small headers beyond 'envelope'
       const SEC_PER_MONTH = 60 * 60 * 24 * 30;
+      const SEC_PER_DAY = 86400;
 
       // Reflect UI numbers beside controls
       function reflect() {
@@ -744,6 +879,10 @@
         O.envelope.textContent = I.envelope.value;
         O.topicsPerTenant.textContent = I.topicsPerTenant.value;
         O.sharedTopics.textContent = I.sharedTopics.value;
+        O.rf.textContent = I.rf.value;
+        O.parts.textContent = I.parts.value;
+        O.retention.textContent = I.retention.value;
+        O.compression.textContent = I.compression.value;
       }
 
       // Calc + KPIs
@@ -756,9 +895,13 @@
         const tpt = +I.topicsPerTenant.value;
         const shared = +I.sharedTopics.value;
         const iso = I.isolation.value; // 'shared' | 'perTenantTopics' | 'perTenantClusters'
+        const partsPerTopic = Math.max(1, +I.parts.value);
+        const retentionDays = Math.max(1, +I.retention.value);
+        const compression = Math.max(0.5, +I.compression.value);
 
         // Topics
         const topics = iso === "shared" ? shared : t * tpt;
+        const totalPartitions = topics * partsPerTopic;
 
         // Groups & footprint
         const groups = Math.max(1, Math.round(t * GROUPS_PER_TENANT));
@@ -768,16 +911,25 @@
             : Math.max(1, Math.round(t * CONNECTOR_PER_TENANT));
 
         // Egress
-        const egressBytes = t * r * (s + env + OVERHEAD_PER_MESSAGE);
+        const egressBytes = t * r * (s + env + OVERHEAD_PER_MESSAGE); // external
+        const brokerBytes = egressBytes * Math.max(0, rf - 1); // inter-broker replication
         const egressMBps = egressBytes / 1e6; // decimal MB/s
+        const brokerMBps = brokerBytes / 1e6;
         const egressGBpm = (egressBytes * SEC_PER_MONTH) / 1e9; // decimal GB
+        const storageBytes =
+          (egressBytes * rf * (SEC_PER_DAY * retentionDays)) /
+          Math.max(0.5, compression);
+        const storageTB = storageBytes / 1e12; // decimal TB
 
         // Write KPIs
         O.kTopics.textContent = topics.toLocaleString();
         O.kGroups.textContent = groups.toLocaleString();
         O.kEgress.textContent = egressMBps.toFixed(2);
+        O.kBrokerEgress.textContent = brokerMBps.toFixed(2);
         O.kEgressMonth.textContent = egressGBpm.toFixed(1);
         O.kConnect.textContent = footprint.toLocaleString();
+        O.kParts.textContent = totalPartitions.toLocaleString();
+        O.kStorageTB.textContent = storageTB.toFixed(2);
 
         // Cost/complexity index (illustrative)
         const e0 = egressMBps;
@@ -800,6 +952,10 @@
         "topicsPerTenant",
         "sharedTopics",
         "isolation",
+        "rf",
+        "parts",
+        "retention",
+        "compression",
       ];
 
       function clamp(el, v) {

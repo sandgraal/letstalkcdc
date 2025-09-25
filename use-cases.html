@@ -52,10 +52,49 @@
         border: 1px solid var(--border-color);
         border-radius: 0.5rem;
         padding: 1rem;
-        font-family: var(--font-mono);
-        white-space: pre;
-        overflow-x: auto;
+        font-family: var(--font-sans);
+        white-space: normal; /* normal wrapping */
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        overflow-x: hidden;
         margin: 1.5rem 0;
+      }
+      .flow-steps {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+      .flow-steps li {
+        margin: 0.25rem 0;
+      }
+      /* Sequence grid "actor lanes" */
+      .seq {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem 0.75rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0 2rem;
+      }
+      .seq-head {
+        font-weight: 700;
+        text-align: left;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.25rem;
+      }
+      .seq-cell {
+        text-align: left;
+        padding: 0.25rem 0;
+      }
+      @media (max-width: 700px) {
+        .seq {
+          grid-template-columns: 1fr;
+        }
+        .seq-head {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
       }
     </style>
   </head>
@@ -111,9 +150,16 @@
             operations to efficiently apply these granular changes, keeping
             analytical tables perfectly synchronized with the source.
           </p>
-          <div class="flow-diagram">
-            [OLTP Database] → [Log-Based CDC Agent] → [Kafka Stream] →
-            [Warehouse Connector] → [Data Warehouse]
+          <div class="seq" role="group" aria-label="Warehousing flow">
+            <div class="seq-head">Producer (OLTP/CDC)</div>
+            <div class="seq-head">Streaming Platform</div>
+            <div class="seq-head">Warehouse</div>
+            <div class="seq-cell">CDC tails DB changes</div>
+            <div class="seq-cell">Publish to Kafka topic(s)</div>
+            <div class="seq-cell">Connector reads</div>
+            <div class="seq-cell">—</div>
+            <div class="seq-cell">—</div>
+            <div class="seq-cell"><code>MERGE/UPSERT</code> into models</div>
           </div>
           <p><strong>The Business Impact:</strong></p>
           <ul class="impact-list">
@@ -155,9 +201,16 @@
             topic to receive guaranteed, in-order state changes without ever
             calling the `orders` service directly.
           </p>
-          <div class="flow-diagram">
-            Service A DB → [CDC Agent on Outbox] → [Kafka Topic] → Service B
-            Consumer (Single Txn) → Service C Consumer
+          <div class="seq" role="group" aria-label="Outbox integration flow">
+            <div class="seq-head">Producer (Service A)</div>
+            <div class="seq-head">Kafka</div>
+            <div class="seq-head">Consumers (B/C)</div>
+            <div class="seq-cell">Write business row + outbox (same txn)</div>
+            <div class="seq-cell">CDC publishes outbox events</div>
+            <div class="seq-cell">Subscribe to topic</div>
+            <div class="seq-cell">—</div>
+            <div class="seq-cell">—</div>
+            <div class="seq-cell">Idempotent upserts; no sync coupling</div>
           </div>
           <p><strong>The Business Impact:</strong></p>
           <ul class="impact-list">
@@ -178,7 +231,117 @@
             </li>
           </ul>
         </section>
+        <section class="use-case-section" id="search-indexing">
+          <h3>Use Case 5: Discovery & Search</h3>
+          <h2>Near-Real-Time Full-Text Search Indexing</h2>
+          <p>
+            <strong>The Problem:</strong> Rebuilding a search index from scratch
+            (hourly/daily) is wasteful and makes “search lag” a constant
+            complaint.
+          </p>
+          <p>
+            <strong>The CDC Solution:</strong> Stream row-level changes into a
+            lightweight transformer that denormalizes documents and ships them
+            to Elasticsearch/OpenSearch/Solr. <em>Upsert</em> on create/update;
+            <em>delete</em> on tombstones. Use a deterministic
+            <code>doc_id</code> to make replays idempotent.
+          </p>
+          <div class="seq" role="group" aria-label="Search indexing flow">
+            <div class="seq-head">Source/CDC</div>
+            <div class="seq-head">Doc Builder / Enricher</div>
+            <div class="seq-head">Search Index</div>
+            <div class="seq-cell">Row-level change events</div>
+            <div class="seq-cell">Join/denormalize into documents</div>
+            <div class="seq-cell">Upsert by <code>doc_id</code></div>
+            <div class="seq-cell">Tombstones</div>
+            <div class="seq-cell">Mark as delete</div>
+            <div class="seq-cell">Delete from index</div>
+          </div>
+          <p><strong>The Business Impact:</strong></p>
+          <ul class="impact-list">
+            <li>
+              <strong>Fresh search:</strong> New/edited products, profiles, and
+              content appear within seconds.
+            </li>
+            <li>
+              <strong>Lower cost:</strong> No more full re-index jobs; only
+              incremental updates.
+            </li>
+            <li>
+              <strong>Better relevance:</strong> Can re-score or enrich on the
+              fly during the doc build step.
+            </li>
+          </ul>
+        </section>
 
+        <section class="use-case-section" id="feature-stores">
+          <h3>Use Case 6: Machine Learning</h3>
+          <h2>Real-Time Features & Online/Offline Consistency</h2>
+          <p>
+            <strong>The Problem:</strong> Batch-built features drift from
+            production state; models suffer from “training/serving skew.”
+          </p>
+          <p>
+            <strong>The CDC Solution:</strong> Feed CDC events into a feature
+            pipeline: write <em>offline</em> parquet/Delta/Iceberg tables for
+            training and simultaneously upsert <em>online</em> features
+            (Redis/DynamoDB/Spanner). Use the same <code>event_id</code>
+            and schema contracts so replays are safe and the two stores stay
+            consistent.
+          </p>
+          <div class="seq" role="group" aria-label="Feature store flow">
+            <div class="seq-head">Stream Processor</div>
+            <div class="seq-head">Offline (Lakehouse)</div>
+            <div class="seq-head">Online Feature Store</div>
+            <div class="seq-cell">Ingest CDC events</div>
+            <div class="seq-cell">Write Parquet/Delta/Iceberg</div>
+            <div class="seq-cell">
+              Idempotent upserts by <code>entity_id</code>
+            </div>
+            <div class="seq-cell">Derive features</div>
+            <div class="seq-cell">Training datasets</div>
+            <div class="seq-cell">Serve features to models</div>
+          </div>
+          <p><strong>The Business Impact:</strong></p>
+          <ul class="impact-list">
+            <li>
+              <strong>Fresher predictions:</strong> models see current features,
+              not yesterday’s.
+            </li>
+            <li>
+              <strong>Consistency:</strong> identical events power training and
+              serving paths.
+            </li>
+            <li>
+              <strong>Faster iteration:</strong> add features with
+              schema-checked rollouts.
+            </li>
+          </ul>
+        </section>
+
+        <section class="use-case-section" id="when-not-to-use">
+          <h3>Guardrails</h3>
+          <h2>When <em>Not</em> to Use CDC (or use with caution)</h2>
+          <ul class="impact-list">
+            <li>
+              <strong>Ultra-high fan-out updates</strong> that require global
+              ordering across entities (CDC provides per-key order only).
+            </li>
+            <li>
+              <strong>Compute-heavy transformations</strong> that are cheaper in
+              micro-batches; consider a streaming job with windowing instead of
+              per-row fan-out.
+            </li>
+            <li>
+              <strong>SaaS sources with unreliable webhooks</strong> without
+              replay—buffer behind an Inbox/Outbox queue first.
+            </li>
+            <li>
+              <strong>Hard deletes needed but source lacks tombstones</strong>
+              (polling CDC) → add soft-delete markers or archival tables.
+            </li>
+          </ul>
+        </section>
         <section class="use-case-section" id="auditing">
           <h3>Use Case 3: Security & Compliance</h3>
           <h2>Immutable Auditing and Data Lineage</h2>

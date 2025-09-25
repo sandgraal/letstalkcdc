@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF--8" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>
@@ -203,6 +203,31 @@
           This is the fundamental purpose of a partition key.
         </p>
       </section>
+      <section aria-labelledby="sizing">
+        <h2 id="sizing">Partition sizing (rule-of-thumb)</h2>
+        <p class="muted">
+          Start with a target throughput per partition your consumers can
+          sustain (1–5k events/s).
+        </p>
+        <ul>
+          <li>
+            <strong>Baseline:</strong>
+            <code
+              >partitions ≈ ceil(total_events_per_s ÷
+              target_per_partition)</code
+            >
+          </li>
+          <li>
+            <strong>Include skew headroom:</strong> multiply by 1.5–2× if
+            distribution is Zipf-y or you have hot tenants.
+          </li>
+          <li>
+            <strong>Changing partitions later:</strong> adding partitions
+            <em>does not</em> rehash existing keys; plan key strategy up front
+            or use topic splits.
+          </li>
+        </ul>
+      </section>
 
       <section aria-labelledby="key-choice">
         <h2 id="key-choice">How to Choose a Good Partition Key</h2>
@@ -242,6 +267,26 @@
             All events for a large country would be sent to a single partition,
             creating a massive hot spot (partition skew) and slowing down
             processing for that entire partition.
+          </li>
+        </ul>
+        <h4>Mitigations for hot keys (keep per-entity order)</h4>
+        <ul>
+          <li>
+            <strong>Tenant-scoped keys:</strong>
+            <code>tenant_id || ':' || entity_pk</code> preserves order per
+            entity and spreads large tenants.
+          </li>
+          <li>
+            <strong>Key salting (shards per entity-family):</strong> For
+            <em>families</em> like “all events of a giant tenant,” append a
+            bounded salt:
+            <code>tenant_id || ':' || (hash(entity_pk) % N)</code>. Order is
+            preserved <em>within</em> the salted sub-stream; readers that need
+            global per-tenant order should avoid salting.
+          </li>
+          <li>
+            <strong>Topic split by domain:</strong> Put ultra-hot tenants or
+            tables on their own topic to isolate spikes.
           </li>
         </ul>
       </section>
@@ -333,6 +378,19 @@
               <span id="sCapacityOut" class="value-badge" aria-live="polite"
                 >2000</span
               >
+              <label for="sShards">Shards per hot key (salting)</label>
+              <input
+                id="sShards"
+                type="range"
+                min="1"
+                max="32"
+                step="1"
+                value="1"
+                aria-describedby="sShardsOut"
+              />
+              <span id="sShardsOut" class="value-badge" aria-live="polite"
+                >1</span
+              >
             </div>
           </div>
         </div>
@@ -360,7 +418,7 @@
           <div class="kpi">
             <h3>Ordering guarantee</h3>
             <div id="kOrdering" class="val">Per-key</div>
-            <p class="muted">Global order is not guaranteed.</p>
+            <p class="muted">Global order is not guaranteed (per-key only).</p>
           </div>
         </div>
         <div class="panel" style="margin-top: 0.75rem">
@@ -379,7 +437,9 @@
       </section>
 
       <section aria-labelledby="recon">
-        <h2 id="recon">Making Sinks Bulletproof: The Version Guard Pattern</h2>
+        <h2 id="recon">
+          Making Sinks Bulletproof: Version Guards &amp; Watermarks
+        </h2>
         <p>
           Even with perfect partitioning, network retries or broker failures can
           cause events to arrive out of order. To protect against late-arriving
@@ -405,7 +465,12 @@
             newer than the timestamp already stored.</strong
           >
         </p>
-
+        <p>
+          <strong>Watermark:</strong> if your source timestamps can arrive late,
+          advance a per-table watermark (“safe up to T-Δ”) before finalizing
+          aggregates. Late events ≤ Δ update rows; older ones are quarantined or
+          appended to a corrections table.
+        </p>
         <div class="codebox">
           <h3>Production-Ready Idempotent Sink Pattern (Postgres)</h3>
           <pre><code>-- Assumes target table has a primary key `id` and a column `event_timestamp`
@@ -429,10 +494,45 @@ WHEN NOT MATCHED THEN
   INSERT (id, payload, event_timestamp)
   VALUES (S.id, S.payload, S.ts);</code></pre>
         </div>
+        <div class="codebox">
+          <h3>Tie-break equal timestamps (sequence) — BigQuery example</h3>
+          <pre><code>MERGE `dw.target` T
+USING (SELECT @id AS id, @ts AS ts, @seq AS seq, @payload AS p) S
+ON T.id = S.id
+WHEN MATCHED AND (T.ts &lt; S.ts OR (T.ts = S.ts AND T.seq &lt; S.seq)) THEN
+  UPDATE SET payload = S.p, ts = S.ts, seq = S.seq
+WHEN NOT MATCHED THEN
+  INSERT (id, ts, seq, payload) VALUES (S.id, S.ts, S.seq, S.p);</code></pre>
+        </div>
         <p class="muted">
-          This pattern makes your consumer idempotent and resilient to both
-          duplicate messages and out-of-order (late-arriving) events.
+          Version guards + watermarks make consumers idempotent and resilient to
+          duplicates and late arrivals.
         </p>
+      </section>
+
+      <section aria-labelledby="audit">
+        <h2 id="audit">Audit loops (detect &amp; repair)</h2>
+        <ul>
+          <li>
+            <strong>Windowed row-counts:</strong> compare source vs sink counts
+            over event-time windows ( -minute buckets).
+          </li>
+          <li>
+            <strong>Windowed checksums:</strong> compute hash aggregates (<code
+              >SHA1</code
+            >
+            of concatenated key fields) per window and diff.
+          </li>
+          <li>
+            <strong>Automatic rewind:</strong> on mismatch, rewind the consumer
+            for the affected keys/windows and re-process (idempotent sinks make
+            this safe).
+          </li>
+          <li>
+            <strong>Quarantine queue:</strong> route irreconcilable records to a
+            DLQ with enough context to replay or manually fix.
+          </li>
+        </ul>
       </section>
 
       <div class="pagination">
@@ -479,12 +579,14 @@ WHEN NOT MATCHED THEN
         rate = $("#sRate"),
         dist = $("#sDist"),
         hot = $("#sHot"),
-        cap = $("#sCapacity");
+        cap = $("#sCapacity"),
+        shards = $("#sShards");
       const out = {
         parts: $("#sPartitionsOut"),
         keys: $("#sKeysOut"),
         rate: $("#sRateOut"),
         hot: $("#sHotOut"),
+        shards: $("#sShardsOut"),
         max: $("#kMaxPart"),
         p95: $("#kP95"),
         lag: $("#kLag"),
@@ -498,6 +600,7 @@ WHEN NOT MATCHED THEN
         if (out.rate) out.rate.textContent = rate.value;
         if (out.hot) out.hot.textContent = hot.value + "%";
         if ($("#sCapacityOut")) $("#sCapacityOut").textContent = cap.value;
+        if (out.shards) out.shards.textContent = shards.value;
       }
 
       function hash32(x) {
@@ -513,7 +616,8 @@ WHEN NOT MATCHED THEN
           R = +rate.value,
           C = +cap.value,
           D = dist.value,
-          H = +hot.value / 100;
+          H = +hot.value / 100,
+          S = Math.max(1, +shards.value);
         const weights = new Float64Array(K);
         if (D === "uniform") {
           for (let i = 0; i < K; i++) weights[i] = 1;
@@ -524,6 +628,7 @@ WHEN NOT MATCHED THEN
           for (let r = 1; r <= K; r++)
             weights[r - 1] = (1 / Math.pow(r, s) / Z) * K;
         } else {
+          // "hot" distribution
           weights[0] = Math.max(H, 0);
           const rem = Math.max(1 - H, 0),
             per = rem / Math.max(K - 1, 1);
@@ -533,8 +638,17 @@ WHEN NOT MATCHED THEN
         let sumW = 0;
         for (let i = 0; i < K; i++) sumW += weights[i];
         for (let i = 0; i < K; i++) {
-          const p = hash32(i + 1) % P;
-          partRate[p] += (weights[i] / sumW) * R;
+          const share = (weights[i] / sumW) * R;
+          if (D === "hot" && i === 0 && S > 1) {
+            // split the hot key across S salted sub-keys
+            for (let s = 0; s < S; s++) {
+              const p = hash32(((i + 1) * 2654435761) ^ s) % P;
+              partRate[p] += share / S;
+            }
+          } else {
+            const p = hash32(i + 1) % P;
+            partRate[p] += share;
+          }
         }
         const arr = Array.from(partRate).sort((a, b) => a - b);
         const max = arr[arr.length - 1] || 0;
@@ -570,7 +684,7 @@ WHEN NOT MATCHED THEN
           out.bars.appendChild(wrap);
         });
       }
-      [parts, keys, rate, dist, hot, cap].forEach((el) =>
+      [parts, keys, rate, dist, hot, cap, shards].forEach((el) =>
         el.addEventListener("input", () => {
           reflect();
           simulate();

@@ -69,6 +69,38 @@
           </li>
         </ul>
 
+        <h3>Airbyte (OSS core + Cloud)</h3>
+        <p>
+          Airbyte provides a large connector catalog (including CDC connectors)
+          with an OSS core and a hosted “Cloud” offering. CDC depth varies by
+          source; many pipelines are log-based, others are polling.
+        </p>
+        <ul>
+          <li>
+            <strong>Pros:</strong> Broad connector coverage; easy to get
+            started; active ecosystem.
+          </li>
+          <li>
+            <strong>Cons:</strong> Operational polish and CDC fidelity depend on
+            the specific connector; long-running streaming jobs may need tuning.
+          </li>
+        </ul>
+
+        <h3>Maxwell’s Daemon (MySQL)</h3>
+        <p>
+          A lightweight MySQL binlog tailer that emits JSON change events to
+          Kafka/Kinesis. Simpler than Debezium but focused on MySQL only.
+        </p>
+        <ul>
+          <li>
+            <strong>Pros:</strong> Small footprint, easy to run for MySQL-only
+            stacks.
+          </li>
+          <li>
+            <strong>Cons:</strong> Narrow scope; fewer enterprise features
+            (schema registry integration, snapshots, etc.).
+          </li>
+        </ul>
         <h2 id="managed-cloud">
           Fully Managed Cloud Services: Simplicity and Integration
         </h2>
@@ -99,6 +131,56 @@
           </li>
         </ul>
 
+        <h3>Google Cloud Datastream</h3>
+        <p>
+          Serverless, log-based CDC into Google Cloud (BigQuery, Cloud SQL,
+          GCS). Integrates with Dataflow templates for transformations and
+          Warehouse MERGE patterns.
+        </p>
+        <ul>
+          <li>
+            <strong>Pros:</strong> Low-ops, serverless scale; smooth handoff to
+            BigQuery.
+          </li>
+          <li>
+            <strong>Cons:</strong> Best inside GCP; feature gaps for certain
+            sources/DDL.
+          </li>
+        </ul>
+
+        <h3>Azure (ADF/Synapse) with CDC</h3>
+        <p>
+          Azure Data Factory / Synapse pipelines support change capture for SQL
+          Server/Azure SQL and integration with Event Hubs & Data Lake for
+          downstream processing.
+        </p>
+        <ul>
+          <li>
+            <strong>Pros:</strong> Native Azure integration; quick path to
+            Synapse/Lake.
+          </li>
+          <li>
+            <strong>Cons:</strong> Mixed CDC depth across sources; tuning needed
+            for low-latency needs.
+          </li>
+        </ul>
+
+        <h3>Confluent Cloud (Managed Connect + Debezium)</h3>
+        <p>
+          Managed Kafka Connect with official Debezium-based source connectors
+          and schema registry. Reduces the ops burden of running Connect while
+          keeping the open-source connector model.
+        </p>
+        <ul>
+          <li>
+            <strong>Pros:</strong> Paved-road operations (scaling, monitoring,
+            upgrades) for Connect/Registry.
+          </li>
+          <li>
+            <strong>Cons:</strong> Still requires Kafka mental model; priced as
+            a managed platform.
+          </li>
+        </ul>
         <h2 id="commercial">
           Commercial Enterprise Platforms: Support and Scale
         </h2>
@@ -129,6 +211,11 @@
             enterprise-grade solution known for its broad platform support and
             an intuitive graphical user interface that simplifies replication
             tasks.
+          </li>
+          <li>
+            <strong>Precisely (formerly HVR):</strong> High-performance
+            log-based replication with strong Oracle/SQL Server coverage and
+            enterprise controls.
           </li>
         </ul>
 
@@ -216,6 +303,62 @@
             </tbody>
           </table>
         </div>
+        <h2 id="capabilities">What to check before you choose</h2>
+        <ul>
+          <li>
+            <strong>Source coverage &amp; method:</strong> true log-based vs
+            polling; snapshot modes (initial, incremental, resume).
+          </li>
+          <li>
+            <strong>DDL behavior:</strong> adds/renames/drops; online schema
+            change support; registry compatibility modes.
+          </li>
+          <li>
+            <strong>Delivery semantics:</strong> ALO by default; EOS
+            <em>scope</em> (Kafka-only transactions vs idempotent sinks for
+            external warehouses).
+          </li>
+          <li>
+            <strong>Exactly-once at the sink:</strong> MERGE/UPSERT patterns,
+            staging+MERGE, dedupe tables.
+          </li>
+          <li>
+            <strong>Ops &amp; observability:</strong> lag/backlog metrics, DLQs,
+            replay/rewind, upgrade path.
+          </li>
+          <li>
+            <strong>Multi-tenancy &amp; cost:</strong> topic/partition math,
+            RF/retention, egress/storage pricing, chargeback/quota features.
+          </li>
+          <li>
+            <strong>Security &amp; governance:</strong> PII masking, field-level
+            filters, RBAC/ACLs, encryption, private networking.
+          </li>
+        </ul>
+
+        <h2 id="gotchas">Common gotchas (agnostic to vendor)</h2>
+        <ul>
+          <li>
+            <strong>Log retention bloat:</strong> paused/broken connectors can
+            block WAL/binlog/T-log cleanup—alert on backlog age.
+          </li>
+          <li>
+            <strong>Schema drift:</strong> without a registry + policies,
+            producers break consumers; enforce compatibility.
+          </li>
+          <li>
+            <strong>Polling CDC deletions:</strong> hard deletes aren’t
+            visible—add soft-delete markers or change tables.
+          </li>
+          <li>
+            <strong>Global ordering myths:</strong> CDC preserves per-key order,
+            not cross-entity total order.
+          </li>
+          <li>
+            <strong>Warehouse costs:</strong> too-frequent small MERGEs are
+            expensive—batch micro-windows without violating freshness SLOs.
+          </li>
+        </ul>
       </article>
       <div class="pagination">
         <a href="strategy.html">← Back: Strategic Value</a>
