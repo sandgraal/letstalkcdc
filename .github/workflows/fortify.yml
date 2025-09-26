@@ -18,12 +18,12 @@ name: Fortify AST Scan
 # Customize trigger events based on your DevSecOps process and/or policy
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "main" ]
+    branches: ["main"]
   schedule:
-    - cron: '34 20 * * 5'
+    - cron: "34 20 * * 5"
   workflow_dispatch:
 
 jobs:
@@ -57,18 +57,19 @@ jobs:
         # of this action, allowing your workflows to automatically benefit from any new features and bug fixes.
         uses: fortify/github-action@ef5539bf4bd9c45c0bd971978f635a69eae55297
         with:
-          sast-scan: true          # Run a SAST scan; if not specified or set to false, no SAST scan will be run
-          debricked-sca-scan: true # For FoD, run an open-source scan as part of the SAST scan (ignored if SAST scan
-                                   # is disabled). For SSC, run a Debricked scan and import results into SSC.
+          sast-scan: true # Run a SAST scan; if not specified or set to false, no SAST scan will be run
+          debricked-sca-scan:
+            true # For FoD, run an open-source scan as part of the SAST scan (ignored if SAST scan
+            # is disabled). For SSC, run a Debricked scan and import results into SSC.
         env:
           #############################################################
           ##### Fortify on Demand configuration
           ##### Remove this section if you're integrating with Fortify Hosted/Software Security Center (see below)
           ### Required configuration
-          FOD_URL: https://ams.fortify.com                 # Must be hardcoded or configured through GitHub variable, not secret
-          FOD_TENANT: ${{secrets.FOD_TENANT}}              # Either tenant/user/password or client id/secret are required;
-          FOD_USER: ${{secrets.FOD_USER}}                  # these should be configured through GitHub secrets.
-          FOD_PASSWORD: ${{secrets.FOD_PAT}}
+          FOD_URL: https://ams.fortify.com # Must be hardcoded or configured through GitHub variable, not secret
+          FOD_TENANT: ${{ secrets.FOD_TENANT }} # Either tenant/user/password or client id/secret are required;
+          FOD_USER: ${{ secrets.FOD_USER }} # these should be configured through GitHub secrets.
+          FOD_PASSWORD: ${{ secrets.FOD_PAT }}
           # FOD_CLIENT_ID: ${{secrets.FOD_CLIENT_ID}}
           # FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
           ### Optional configuration
@@ -76,7 +77,7 @@ jobs:
           # FOD_RELEASE: MyApp:MyRelease                   # FoD release name, default: <org>/<repo>:<branch>
           # DO_SETUP: true                                 # Setup FoD application, release & static scan configuration
           # SETUP_ACTION: <URL or file>                    # Customize setup action
-                                                           # Pass extra options to setup action:
+          # Pass extra options to setup action:
           # SETUP_EXTRA_OPTS: --copy-from "${{ github.repository }}:${{ github.event.repository.default_branch }}"
           # PACKAGE_EXTRA_OPTS: -oss -bt mvn               # Extra 'scancentral package' options
           # FOD_SAST_SCAN_EXTRA_OPTS:                      # Extra 'fcli fod sast-scan start' options
@@ -99,11 +100,11 @@ jobs:
           ##### Fortify Hosted / Software Security Center & ScanCentral
           ##### Remove this section if you're integrating with Fortify on Demand (see above)
           ### Required configuration
-          SSC_URL: ${{vars.SSC_URL}}                       # Must be hardcoded or configured through GitHub variable, not secret
-          SSC_TOKEN: ${{secrets.SSC_TOKEN}}                # SSC CIToken; credentials should be configured through GitHub secrets
-          SC_SAST_TOKEN: ${{secrets.SC_CLIENT_AUTH_TOKEN}} # ScanCentral SAST client_auth_token, required if SAST scan is enabled
-          DEBRICKED_TOKEN: ${{secrets.DEBRICKED_TOKEN}}    # Debricked token, required if Debricked scan is enabled
-          SC_SAST_SENSOR_VERSION: 24.4.0                   # Sensor version to use for the scan, required if SAST scan is enabled
+          SSC_URL: ${{ secrets.SSC_URL }} # Must be hardcoded or configured through GitHub secret, not variable
+          SSC_TOKEN: ${{ secrets.SSC_TOKEN }} # SSC CIToken; credentials should be configured through GitHub secrets
+          SC_SAST_TOKEN: ${{ secrets.SC_SAST_TOKEN }} # ScanCentral SAST client_auth_token, required if SAST scan is enabled
+          DEBRICKED_TOKEN: ${{ secrets.DEBRICKED_TOKEN }} # Debricked token, required if Debricked scan is enabled
+          SC_SAST_SENSOR_VERSION: 24.4.0 # Sensor version to use for the scan, required if SAST scan is enabled
           ### Optional configuration
           # SSC_LOGIN_EXTRA_OPTS: --socket-timeout=60s     # Extra 'fcli ssc session login' options
           # SC_SAST_LOGIN_EXTRA_OPTS: --socket-timeout=60s # Extra 'fcli sc-sast session login' options
