@@ -16,32 +16,32 @@ Status: **alpha** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/J
 
 ## Project structure
 
+```text
 letstalkcdc/
-├─ index.html                  # Landing page
-├─ content/                    # Learning modules (md/html) and assets per topic
-│  ├─ overview/
-│  │  ├─ index.md
-│  │  └─ media/
-│  ├─ snapshotting-first-sync/
-│  │  ├─ index.md              # “Snapshotting: The First Sync”
-│  │  └─ media/
-│  ├─ streaming-fundamentals/
-│  ├─ schema-change/
-│  ├─ ordering-replay-recovery/
-│  └─ troubleshooting/
-├─ data/                       # Small demo datasets (CSV/JSON)
-│  ├─ tables/
-│  └─ charts/
-├─ assets/
-│  ├─ css/
-│  │  └─ theme.css             # Color tokens + utilities
-│  ├─ js/
-│  │  ├─ app.js                # Nav, TOC, light interactivity
-│  │  ├─ charts.js             # Chart.js helpers (optional)
-│  │  └─ vendors/              # e.g., Chart.js, treemap plugin (via CDN or vendored)
-│  └─ img/
-├─ scripts/                    # One-off helpers (link check, lint, CSV->JSON)
-├─ .github/
-│  └─ workflows/
-│     └─ linkcheck.yml         # CI link checker (optional)
-└─ README.md
+├── index.html                  # Landing page
+├── content/                    # Learning modules (md/html) and assets per topic
+│   ├── overview/
+│   │   ├── index.md
+│   │   └── media/
+│   ├── snapshotting-first-sync/
+│   │   ├── index.md            # “Snapshotting: The First Sync”
+│   │   └── media/
+│   ├── streaming-fundamentals/
+│   ├── schema-change/
+│   ├── ordering-replay-recovery/
+│   └── troubleshooting/
+├── data/                       # Small demo datasets (CSV/JSON)
+│   ├── tables/
+│   └── charts/
+├── assets/
+│   ├── css/
+│   │   └── theme.css           # Color tokens + utilities
+│   ├── js/
+│   │   ├── app.js              # Nav, TOC, light interactivity
+│   │   ├── charts.js           # Chart.js helpers (optional)
+│   │   └── vendors/            # e.g., Chart.js, treemap plugin (via CDN or vendored)
+│   └── img/
+├── scripts/                    # One-off helpers (link check, lint, CSV->JSON)
+└── README.md
+
+
