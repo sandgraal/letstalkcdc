@@ -3,6 +3,7 @@ module.exports = function (eleventyConfig) {
     "src/assets": "assets"
   });
 
+
   eleventyConfig.addWatchTarget("src/assets/css");
   eleventyConfig.addWatchTarget("src/assets/js");
 
