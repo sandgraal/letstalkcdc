@@ -1,1 +1,6 @@
 *.zip
+node_modules/
+dist/
+styles.pref.css
+styles.min.css
+package-lock.json

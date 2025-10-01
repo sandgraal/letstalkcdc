@@ -1,0 +1,243 @@
+---
+layout: null
+permalink: quickstarts/quickstart-mssql/index.html
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MS SQL Server CDC Quickstart | CDC: The Missing Manual</title>
+    <meta
+      name="description"
+      content="MS SQL Server CDC quickstart: enable CDC, configure SQL Server Agent, set up a connector, verify changes, and roll back safely."
+    />
+    <!-- Corrected path for styles.css -->
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+    <style>
+      /* Minimal local styles for page-specific elements */
+      .box {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background: var(--color-background-soft);
+        margin-bottom: 1.5rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 950px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      pre {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        overflow: auto;
+        background: var(--color-background-soft);
+      }
+      .check {
+        list-style: none;
+        padding: 0;
+        margin: 0.25rem 0 0;
+      }
+      .check li {
+        margin: 0.35rem 0;
+      }
+      .back-link {
+        display: block;
+        margin-bottom: 1rem;
+        font-weight: 500;
+      }
+    </style>
+    <link
+      rel="canonical"
+      href="https://letstalkcdc.nfshost.com/quickstarts/quickstart-mssql/"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"
+          >CDC: The Missing Manual | A Deep Dive into Change Data Capture</a
+        >
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a href="/">Home</a>
+            <a href="/overview/" class="active">The Series</a>
+          </nav>
+          <button
+            aria-label="Toggle dark mode"
+            class="theme-toggle"
+            data-toggle-theme
+            type="button"
+          >
+            🌓
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="prose">
+      <a href="/quickstarts/" class="back-link"
+        >← Back to all Quickstarts</a
+      >
+      <h1>MS SQL Server CDC — Quickstart & Runbook</h1>
+      <p class="muted">
+        Enable database-level CDC, configure the SQL Server Agent, register a
+        connector, and verify change data flow.
+      </p>
+
+      <section class="box">
+        <h2>Prerequisites (DB)</h2>
+        <ul class="check">
+          <li><strong>SQL Server Agent</strong> must be running.</li>
+          <li>
+            Database must be in <strong>Full Recovery Mode</strong> (common
+            practice).
+          </li>
+          <li>
+            User must have <strong>db_owner</strong> fixed database role to
+            enable CDC.
+          </li>
+          <li>Tables must have a stable primary key or a unique index.</li>
+          <li>
+            Sufficient disk space for the transaction log and CDC change tables.
+          </li>
+        </ul>
+        <pre><code>-- Check if SQL Server Agent is running
+EXEC master.dbo.xp_servicecontrol 'QueryState', 'SQLServerAGENT';
+
+-- Check database recovery model
+SELECT name, recovery_model_desc FROM sys.databases WHERE name = 'YourDB';</code></pre>
+      </section>
+
+      <section class="grid">
+        <div class="box">
+          <h2>DB Setup (copy/paste)</h2>
+          <pre><code>-- Enable CDC on the database
+USE YourDB;
+GO
+EXEC sys.sp_cdc_enable_db;
+GO
+
+-- Enable CDC on a specific table
+EXEC sys.sp_cdc_enable_table
+    @source_schema = N'dbo',
+    @source_name   = N'customers',
+    @role_name     = N'cdc_role',
+    @supports_net_changes = 1;
+GO
+
+-- Grant access to the CDC user
+CREATE USER cdc WITHOUT LOGIN;
+GRANT SELECT ON ALL cdc.change_tables TO cdc;</code></pre>
+        </div>
+        <div class="box">
+          <h2>Connector Config (example)</h2>
+          <pre><code>{
+  "name": "mssql-cdc",
+  "config": {
+    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
+    "database.hostname": "mssql",
+    "database.port": "1433",
+    "database.user": "sa",
+    "database.password": "Password!",
+    "database.dbname": "YourDB",
+    "database.server.name": "server1",
+    "table.include.list": "dbo.customers",
+    "database.history.kafka.bootstrap.servers": "kafka:29092",
+    "database.history.kafka.topic": "schema-changes.inventory",
+    "tombstones.on.delete": "false",
+    "snapshot.mode": "initial"
+  }
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="box">
+          <h2>Verify</h2>
+          <pre><code>-- Check that CDC capture jobs are running
+EXEC sys.sp_cdc_help_jobs;
+
+-- Look at the captured changes
+SELECT * FROM cdc.dbo_customers_CT;
+
+-- Generate a change
+UPDATE dbo.customers SET email = 'new.email@example.com' WHERE id = 1;</code></pre>
+          <pre><code># Consume from the topic (adjust name)
+kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic server1.dbo.customers --from-beginning --max-messages 5</code></pre>
+        </div>
+        <div class="box">
+          <h2>Acceptance (target/sink)</h2>
+          <ul class="check">
+            <li>No duplicate PKs after a connector restart.</li>
+            <li>
+              Latest change is correctly reflected in the sink, based on LSN
+              from the `__$start_lsn` field.
+            </li>
+          </ul>
+          <pre><code>-- Check for duplicates in the sink
+SELECT COUNT(*) AS rows, COUNT(DISTINCT id) AS distinct_keys FROM target_customers;</code></pre>
+        </div>
+      </section>
+
+      <section class="box">
+        <h2>Safe Rollback / Cleanup</h2>
+        <pre><code>-- Stop the connector first!
+
+-- Disable CDC on the table
+USE YourDB;
+GO
+EXEC sys.sp_cdc_disable_table
+    @source_schema = N'dbo',
+    @source_name   = N'customers',
+    @capture_instance = N'all';
+GO
+
+-- Disable CDC on the database
+EXEC sys.sp_cdc_disable_db;
+GO</code></pre>
+        <p class="muted">
+          Disabling CDC will remove the associated change tables and cleanup
+          jobs.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        © 2025 Christopher Ennis. A deep dive into the world of Change Data
+        Capture.
+      </p>
+    </footer>
+
+    <script type="module">
+      // Theme toggle script
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("reduce-motion");
+      }
+    </script>
+  </body>
+</html>

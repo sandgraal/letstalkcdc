@@ -1,0 +1,656 @@
+---
+layout: base.njk
+title: "Partitioning & Reconciliation — Keys, Skew, Late Arrivals | CDC: The
+      Missing Manual"
+description: "Learn partitioning and reconciliation for CDC: choosing keys, handling skew, preserving per-key order, and making late arrivals safe with version and watermarks."
+canonicalPath: "/partitioning/"
+head_extra: |
+  <meta
+        name="description"
+        content="Learn partitioning and reconciliation for CDC: choosing keys, handling skew, preserving per-key order, and making late arrivals safe with version and watermarks."
+      />
+      <link
+        rel="canonical"
+        href="https://letstalkcdc.nfshost.com/partitioning/"
+      />
+      <style>
+        /* local helpers (non-invasive) */
+        .muted {
+          opacity: 0.85;
+          font-size: 0.95rem;
+        }
+        .value-badge {
+          min-width: 44px;
+          text-align: center;
+          border: 1px solid var(--border-color);
+          border-radius: 0.375rem;
+          padding: 0.16rem 0.4rem;
+          font-family: var(--font-mono);
+          font-size: 0.9rem;
+        }
+        .panel {
+          border: 1px solid var(--border-color);
+          border-radius: 0.75rem;
+          background: var(--bg-secondary);
+          box-shadow: var(--shadow-soft);
+        }
+        .panel-header {
+          padding: 0.9rem 1rem;
+          border-bottom: 1px solid var(--border-color);
+        }
+        .panel-body {
+          padding: 1rem;
+        }
+        .kv {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 0.5rem 0.75rem;
+          align-items: center;
+        }
+        .kv label {
+          grid-column: 1;
+        }
+        .kv input,
+        .kv select,
+        .kv span {
+          grid-column: 2;
+        }
+        .row {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .pill {
+          border: 1px solid var(--border-color);
+          border-radius: 0.5rem;
+          padding: 0.35rem 0.7rem;
+          background: var(--bg-primary);
+          cursor: pointer;
+        }
+        .pill:focus {
+          outline: 2px solid var(--accent-primary);
+          outline-offset: 2px;
+        }
+        .kpi-grid {
+          display: grid;
+          gap: 1rem;
+          grid-template-columns: 1fr 1fr;
+        }
+        @media (max-width: 800px) {
+          .kpi-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .kpi {
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 0.5rem;
+          padding: 0.75rem;
+        }
+        .kpi h3 {
+          font-size: 0.95rem;
+          font-weight: 600;
+          margin: 0.1rem 0 0.35rem;
+          border: none;
+        }
+        .kpi .val {
+          font-size: 1.8rem;
+          font-weight: 300;
+          color: var(--accent-primary);
+        }
+        .chart {
+          display: grid;
+          gap: 0.35rem;
+        }
+        .bar {
+          height: 18px;
+          border-radius: 6px;
+          background: linear-gradient(
+            90deg,
+            var(--accent-primary),
+            var(--accent-primary)
+          );
+        }
+        .bar-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .bar-label {
+          width: 110px;
+          font-size: 0.9rem;
+          opacity: 0.9;
+        }
+        .codebox pre {
+          border: 1px solid var(--border-color);
+          border-radius: 0.5rem;
+          padding: 0.75rem;
+          overflow: auto;
+        }
+        .faq details {
+          border: 1px solid var(--border-color);
+          border-radius: 0.5rem;
+          padding: 0.6rem 0.75rem;
+          background: var(--bg-primary);
+        }
+        .faq details + details {
+          margin-top: 0.5rem;
+        }
+        .faq summary {
+          font-weight: 600;
+          cursor: pointer;
+        }
+        /* Partitioning simulator layout + density */
+        #sim-wrap {
+          width: clamp(100%, 66rem, 96vw);
+          margin-left: 50%;
+          transform: translateX(-50%);
+        }
+        @media (max-width: 1099px) {
+          #sim-wrap {
+            width: 100%;
+            margin-left: 0;
+            transform: none;
+          }
+        }
+      </style>
+scripts: |
+  <script type="module">
+        // --- THEME TOGGLE SCRIPT (THIS WAS THE MISSING PART) ---
+        const apply = (m) => (document.documentElement.dataset.theme = m);
+        const saved = localStorage.getItem("theme");
+        const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+        apply(saved ?? (prefersDark ? "dark" : "light"));
+
+        document.addEventListener("click", (e) => {
+          if (e.target.matches("[data-toggle-theme]")) {
+            const next =
+              document.documentElement.dataset.theme === "dark"
+                ? "light"
+                : "dark";
+            apply(next);
+            localStorage.setItem("theme", next);
+          }
+        });
+
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          document.documentElement.classList.add("reduce-motion");
+        }
+        // --- END OF THEME TOGGLE SCRIPT ---
+
+        // --- YOUR EXISTING SIMULATOR SCRIPT STARTS HERE ---
+        const $ = (s) => document.querySelector(s);
+        const parts = $("#sPartitions"),
+          keys = $("#sKeys"),
+          rate = $("#sRate"),
+          dist = $("#sDist"),
+          hot = $("#sHot"),
+          cap = $("#sCapacity"),
+          shards = $("#sShards");
+        const out = {
+          parts: $("#sPartitionsOut"),
+          keys: $("#sKeysOut"),
+          rate: $("#sRateOut"),
+          hot: $("#sHotOut"),
+          shards: $("#sShardsOut"),
+          max: $("#kMaxPart"),
+          p95: $("#kP95"),
+          lag: $("#kLag"),
+          bars: $("#bars"),
+          ordering: $("#kOrdering"),
+        };
+
+        function reflect() {
+          if (out.parts) out.parts.textContent = parts.value;
+          if (out.keys) out.keys.textContent = keys.value;
+          if (out.rate) out.rate.textContent = rate.value;
+          if (out.hot) out.hot.textContent = hot.value + "%";
+          if ($("#sCapacityOut")) $("#sCapacityOut").textContent = cap.value;
+          if (out.shards) out.shards.textContent = shards.value;
+        }
+
+        function hash32(x) {
+          x ^= x << 13;
+          x ^= x >>> 17;
+          x ^= x << 5;
+          return x >>> 0;
+        }
+
+        function simulate() {
+          const P = +parts.value,
+            K = +keys.value,
+            R = +rate.value,
+            C = +cap.value,
+            D = dist.value,
+            H = +hot.value / 100,
+            S = Math.max(1, +shards.value);
+          const weights = new Float64Array(K);
+          if (D === "uniform") {
+            for (let i = 0; i < K; i++) weights[i] = 1;
+          } else if (D === "zipf") {
+            const s = 1.2;
+            let Z = 0;
+            for (let r = 1; r <= K; r++) Z += 1 / Math.pow(r, s);
+            for (let r = 1; r <= K; r++)
+              weights[r - 1] = (1 / Math.pow(r, s) / Z) * K;
+          } else {
+            // "hot" distribution
+            weights[0] = Math.max(H, 0);
+            const rem = Math.max(1 - H, 0),
+              per = rem / Math.max(K - 1, 1);
+            for (let i = 1; i < K; i++) weights[i] = per;
+          }
+          const partRate = new Float64Array(P);
+          let sumW = 0;
+          for (let i = 0; i < K; i++) sumW += weights[i];
+          for (let i = 0; i < K; i++) {
+            const share = (weights[i] / sumW) * R;
+            if (D === "hot" && i === 0 && S > 1) {
+              // split the hot key across S salted sub-keys
+              for (let s = 0; s < S; s++) {
+                const p = hash32(((i + 1) * 2654435761) ^ s) % P;
+                partRate[p] += share / S;
+              }
+            } else {
+              const p = hash32(i + 1) % P;
+              partRate[p] += share;
+            }
+          }
+          const arr = Array.from(partRate).sort((a, b) => a - b);
+          const max = arr[arr.length - 1] || 0;
+          const p95 = arr[Math.max(0, Math.floor(0.95 * arr.length) - 1)] || 0;
+          const backlog = Math.max(0, max - C) * 60;
+          const drain = backlog > 0 ? backlog / Math.max(C, 1) : 0;
+          out.max.textContent = Math.round(max).toLocaleString();
+          out.p95.textContent = Math.round(p95).toLocaleString();
+          out.lag.textContent = drain ? drain.toFixed(1) + "s" : "0s";
+          out.ordering.textContent = "Per-key";
+          const maxBar = Math.max(...partRate, 1);
+          out.bars.innerHTML = "";
+          partRate.forEach((v, i) => {
+            const wrap = document.createElement("div");
+            wrap.className = "bar-wrap";
+            const label = document.createElement("div");
+            label.className = "bar-label";
+            label.textContent = `P${i}`;
+            const bar = document.createElement("div");
+            bar.className = "bar";
+            bar.style.width = Math.max(2, (v / maxBar) * 100) + "%";
+            bar.setAttribute("role", "img");
+            bar.setAttribute(
+              "aria-label",
+              `Partition ${i}: ${Math.round(v)} events/sec`
+            );
+            const val = document.createElement("div");
+            val.style.minWidth = "60px";
+            val.style.fontFamily =
+              "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace)";
+            val.textContent = Math.round(v).toLocaleString();
+            wrap.append(label, bar, val);
+            out.bars.appendChild(wrap);
+          });
+        }
+        [parts, keys, rate, dist, hot, cap, shards].forEach((el) =>
+          el.addEventListener("input", () => {
+            reflect();
+            simulate();
+          })
+        );
+        reflect();
+        simulate();
+      </script>
+---
+<h1>Partitioning & Reconciliation</h1>
+
+      <section aria-labelledby="ordering">
+        <h2 id="ordering">The Golden Rule of Kafka Ordering</h2>
+        <p>
+          Kafka guarantees the order of messages
+          <em>within a single partition</em>. It makes no ordering guarantees
+          <em>across</em> different partitions. Therefore, to maintain the
+          correct sequence of changes for any given entity (like a specific
+          customer or a single product),
+          <strong
+            >all changes for that entity must be sent to the same
+            partition.</strong
+          >
+          This is the fundamental purpose of a partition key.
+        </p>
+      </section>
+      <section aria-labelledby="sizing">
+        <h2 id="sizing">Partition sizing (rule-of-thumb)</h2>
+        <p class="muted">
+          Start with a target throughput per partition your consumers can
+          sustain (1–5k events/s).
+        </p>
+        <ul>
+          <li>
+            <strong>Baseline:</strong>
+            <code
+              >partitions ≈ ceil(total_events_per_s ÷
+              target_per_partition)</code
+            >
+          </li>
+          <li>
+            <strong>Include skew headroom:</strong> multiply by 1.5–2× if
+            distribution is Zipf-y or you have hot tenants.
+          </li>
+          <li>
+            <strong>Changing partitions later:</strong> adding partitions
+            <em>does not</em> rehash existing keys; plan key strategy up front
+            or use topic splits.
+          </li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="key-choice">
+        <h2 id="key-choice">How to Choose a Good Partition Key</h2>
+        <p>
+          The quality of your partition key directly impacts both the
+          correctness and performance of your system.
+        </p>
+        <h4>Good Keys (Preserve Order & Distribute Load)</h4>
+        <ul>
+          <li>
+            <strong
+              ><code>customer_id</code>, <code>order_id</code>,
+              <code>product_id</code>:</strong
+            >
+            The primary key of the business entity. This is the most common and
+            effective choice for preserving per-entity order.
+          </li>
+          <li>
+            <strong><code>tenant_id</code> + <code>customer_id</code>:</strong>
+            In a multi-tenant system, a composite key can help distribute load
+            from a single large tenant (the "noisy neighbor" problem) across
+            multiple partitions.
+          </li>
+        </ul>
+        <h4>Bad Keys (Lead to Incorrect Order or Skew)</h4>
+        <ul>
+          <li>
+            <strong><code>event_id</code> (a UUID):</strong> This distributes
+            load perfectly but completely destroys per-entity ordering, as
+            subsequent updates for the same customer will land on different
+            partitions and can be processed out of order.
+          </li>
+          <li>
+            <strong
+              >A low-cardinality field like <code>country_code</code>:</strong
+            >
+            All events for a large country would be sent to a single partition,
+            creating a massive hot spot (partition skew) and slowing down
+            processing for that entire partition.
+          </li>
+        </ul>
+        <h4>Mitigations for hot keys (keep per-entity order)</h4>
+        <ul>
+          <li>
+            <strong>Tenant-scoped keys:</strong>
+            <code>tenant_id || ':' || entity_pk</code> preserves order per
+            entity and spreads large tenants.
+          </li>
+          <li>
+            <strong>Key salting (shards per entity-family):</strong> For
+            <em>families</em> like “all events of a giant tenant,” append a
+            bounded salt:
+            <code>tenant_id || ':' || (hash(entity_pk) % N)</code>. Order is
+            preserved <em>within</em> the salted sub-stream; readers that need
+            global per-tenant order should avoid salting.
+          </li>
+          <li>
+            <strong>Topic split by domain:</strong> Put ultra-hot tenants or
+            tables on their own topic to isolate spikes.
+          </li>
+        </ul>
+      </section>
+
+      <!-- Simulator -->
+      <section aria-labelledby="sim" id="sim-wrap">
+        <h2 id="sim">Partitioning Simulator: The Impact of Key Choice</h2>
+        <div
+          class="panel"
+          role="region"
+          aria-label="Partitioning controls and KPIs"
+        >
+          <div class="panel-header"><strong>Controls</strong></div>
+          <div class="panel-body">
+            <div class="kv">
+              <label for="sPartitions">Partitions</label>
+              <input
+                id="sPartitions"
+                type="range"
+                min="1"
+                max="64"
+                step="1"
+                value="6"
+                aria-describedby="sPartitionsOut"
+              />
+              <span id="sPartitionsOut" class="value-badge" aria-live="polite"
+                >6</span
+              >
+              <label for="sKeys">Distinct keys (entities)</label>
+              <input
+                id="sKeys"
+                type="range"
+                min="1"
+                max="10000"
+                step="1"
+                value="1000"
+                aria-describedby="sKeysOut"
+              />
+              <span id="sKeysOut" class="value-badge" aria-live="polite"
+                >1000</span
+              >
+              <label for="sRate">Events / sec (total)</label>
+              <input
+                id="sRate"
+                type="range"
+                min="1"
+                max="100000"
+                step="10"
+                value="5000"
+                aria-describedby="sRateOut"
+              />
+              <span id="sRateOut" class="value-badge" aria-live="polite"
+                >5000</span
+              >
+              <label for="sDist">Key distribution</label>
+              <select id="sDist" aria-describedby="distHelp">
+                <option value="uniform">Uniform</option>
+                <option value="zipf">Zipf (skewed)</option>
+                <option value="hot">Hot key (x% to 1 key)</option>
+              </select>
+              <small id="distHelp" class="muted"
+                >Skew stresses single partitions.</small
+              >
+              <label for="sHot">If “Hot”: % of traffic to 1 key</label>
+              <input
+                id="sHot"
+                type="range"
+                min="0"
+                max="90"
+                step="5"
+                value="40"
+                aria-describedby="sHotOut"
+              />
+              <span id="sHotOut" class="value-badge" aria-live="polite"
+                >40%</span
+              >
+              <label for="sCapacity"
+                >Consumer capacity per partition (events/s)</label
+              >
+              <input
+                id="sCapacity"
+                type="range"
+                min="10"
+                max="100000"
+                step="10"
+                value="2000"
+                aria-describedby="sCapacityOut"
+              />
+              <span id="sCapacityOut" class="value-badge" aria-live="polite"
+                >2000</span
+              >
+              <label for="sShards">Shards per hot key (salting)</label>
+              <input
+                id="sShards"
+                type="range"
+                min="1"
+                max="32"
+                step="1"
+                value="1"
+                aria-describedby="sShardsOut"
+              />
+              <span id="sShardsOut" class="value-badge" aria-live="polite"
+                >1</span
+              >
+            </div>
+          </div>
+        </div>
+        <div
+          class="kpi-grid"
+          style="margin-top: 0.75rem"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="kpi">
+            <h3>Max partition rate</h3>
+            <div id="kMaxPart" class="val">—</div>
+            <p class="muted">Events/s on the hottest partition.</p>
+          </div>
+          <div class="kpi">
+            <h3>P95 partition rate</h3>
+            <div id="kP95" class="val">—</div>
+            <p class="muted">Load tail—capacity planning.</p>
+          </div>
+          <div class="kpi">
+            <h3>Estimated lag</h3>
+            <div id="kLag" class="val">—</div>
+            <p class="muted">Seconds to drain if max &gt; capacity.</p>
+          </div>
+          <div class="kpi">
+            <h3>Ordering guarantee</h3>
+            <div id="kOrdering" class="val">Per-key</div>
+            <p class="muted">Global order is not guaranteed (per-key only).</p>
+          </div>
+        </div>
+        <div class="panel" style="margin-top: 0.75rem">
+          <div class="panel-header">
+            <strong>Partition load (events/s)</strong>
+          </div>
+          <div class="panel-body">
+            <div id="bars" class="chart" aria-live="polite"></div>
+            <p class="muted">
+              Tip: If one bar dominates, you have partition skew. Consider a
+              better key (include a tenant ID or sharding suffix), or move hot
+              tenants to their own topic/cluster.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="recon">
+        <h2 id="recon">
+          Making Sinks Bulletproof: Version Guards &amp; Watermarks
+        </h2>
+        <p>
+          Even with perfect partitioning, network retries or broker failures can
+          cause events to arrive out of order. To protect against late-arriving
+          events and guarantee correctness, your target table needs two key
+          columns:
+        </p>
+        <ol>
+          <li>
+            <strong><code>id</code>:</strong> The primary key of the entity.
+          </li>
+          <li>
+            <strong><code>event_timestamp</code> (or version number):</strong> A
+            strictly increasing value from the source (a transaction ID or a
+            precise timestamp) that indicates when the change occurred.
+          </li>
+        </ol>
+        <p>
+          The consumer then uses a <code>MERGE</code> (or
+          <code>INSERT...ON CONFLICT</code>) statement with a crucial
+          <code>WHERE</code> clause:
+          <strong
+            >only update the target row if the incoming event's timestamp is
+            newer than the timestamp already stored.</strong
+          >
+        </p>
+        <p>
+          <strong>Watermark:</strong> if your source timestamps can arrive late,
+          advance a per-table watermark (“safe up to T-Δ”) before finalizing
+          aggregates. Late events ≤ Δ update rows; older ones are quarantined or
+          appended to a corrections table.
+        </p>
+        <div class="codebox">
+          <h3>Production-Ready Idempotent Sink Pattern (Postgres)</h3>
+          <pre><code>-- Assumes target table has a primary key `id` and a column `event_timestamp`
+-- This MERGE statement is atomic and safe from race conditions.
+
+MERGE INTO target_table T
+USING (
+  SELECT
+    :entity_id AS id,
+    :payload AS payload,
+    :event_timestamp AS ts
+) AS S
+ON (T.id = S.id)
+WHEN MATCHED AND T.event_timestamp < S.ts THEN
+  -- Only update if the incoming event is newer
+  UPDATE SET
+    payload = S.payload,
+    event_timestamp = S.ts
+WHEN NOT MATCHED THEN
+  -- If the record doesn't exist, create it
+  INSERT (id, payload, event_timestamp)
+  VALUES (S.id, S.payload, S.ts);</code></pre>
+        </div>
+        <div class="codebox">
+          <h3>Tie-break equal timestamps (sequence) — BigQuery example</h3>
+          <pre><code>MERGE `dw.target` T
+USING (SELECT @id AS id, @ts AS ts, @seq AS seq, @payload AS p) S
+ON T.id = S.id
+WHEN MATCHED AND (T.ts &lt; S.ts OR (T.ts = S.ts AND T.seq &lt; S.seq)) THEN
+  UPDATE SET payload = S.p, ts = S.ts, seq = S.seq
+WHEN NOT MATCHED THEN
+  INSERT (id, ts, seq, payload) VALUES (S.id, S.ts, S.seq, S.p);</code></pre>
+        </div>
+        <p class="muted">
+          Version guards + watermarks make consumers idempotent and resilient to
+          duplicates and late arrivals.
+        </p>
+      </section>
+
+      <section aria-labelledby="audit">
+        <h2 id="audit">Audit loops (detect &amp; repair)</h2>
+        <ul>
+          <li>
+            <strong>Windowed row-counts:</strong> compare source vs sink counts
+            over event-time windows ( -minute buckets).
+          </li>
+          <li>
+            <strong>Windowed checksums:</strong> compute hash aggregates (<code
+              >SHA1</code
+            >
+            of concatenated key fields) per window and diff.
+          </li>
+          <li>
+            <strong>Automatic rewind:</strong> on mismatch, rewind the consumer
+            for the affected keys/windows and re-process (idempotent sinks make
+            this safe).
+          </li>
+          <li>
+            <strong>Quarantine queue:</strong> route irreconcilable records to a
+            DLQ with enough context to replay or manually fix.
+          </li>
+        </ul>
+      </section>
+
+      <div class="pagination">
+        <a href="multi-tenancy/">← Back: Multi-Tenancy</a>
+        <a href="schema-evolution/">Next: Schema Evolution →</a>
+      </div>

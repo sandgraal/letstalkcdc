@@ -1,0 +1,1110 @@
+---
+layout: base.njk
+title: "Interactive Introduction to CDC"
+description: "An interactive dashboard covering core CDC concepts, methods, architectures, and the tooling ecosystem."
+canonicalPath: "/intro/"
+head_extra: |
+  <style>
+    /* Module-specific styles */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .info-card {
+      background: var(--bg-secondary);
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .info-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-medium);
+    }
+
+    .info-card h3 {
+      margin-top: 0;
+      border: none;
+    }
+
+    .chart-wrapper {
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      margin: 2rem 0;
+    }
+
+    .chart-container {
+      position: relative;
+      margin: 0 auto;
+      height: clamp(360px, 52vw, 520px);
+      max-width: clamp(640px, 92vw, 900px);
+    }
+
+    .interactive-demo {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      margin: 2rem 0;
+    }
+
+    @media (min-width: 800px) {
+      .interactive-demo {
+        grid-template-columns: 1.5fr 1fr;
+      }
+    }
+
+    .interactive-demo .steps {
+      list-style: none;
+      margin: 0.5rem 0 0;
+      padding: 0;
+    }
+
+    .interactive-demo .steps li {
+      border-left: 4px solid var(--border-color);
+      padding: 0.75rem 0.75rem 0.75rem 1rem;
+      margin: 0.25rem 0;
+      background: var(--bg-primary);
+      border-radius: 0.5rem;
+    }
+
+    .interactive-demo .steps strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4" defer></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "Interactive Introduction to CDC",
+      "description": "Core concepts, methods, architectures, and tools that define modern Change Data Capture.",
+      "url": "https://letstalkcdc.nfshost.com/intro/",
+      "inLanguage": "en",
+      "about": [
+        "Change Data Capture",
+        "CDC",
+        "Transactional Outbox",
+        "Log-based CDC"
+      ]
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Series Overview",
+          "item": "https://letstalkcdc.nfshost.com/overview/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Interactive Introduction to CDC",
+          "item": "https://letstalkcdc.nfshost.com/intro/"
+        }
+      ]
+    }
+  </script>
+scripts: |
+  <script>
+    (function () {
+      const grid = document.getElementById('cdc-grid');
+      if (!grid) return;
+      const cards = Array.from(grid.querySelectorAll('.cdc-card'));
+      const chipsRow = document.getElementById('cdc-chips');
+      const searchInput = document.getElementById('cdc-search');
+      const resetBtn = document.getElementById('cdc-reset');
+      const countEl = document.getElementById('cdc-count');
+
+      const tagSet = new Set();
+      cards.forEach((card) => {
+        const tags = (card.getAttribute('data-tags') || '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        card.dataset.tags = tags.join(',');
+        tags.forEach((t) => tagSet.add(t));
+      });
+
+      const state = { tags: new Set(), q: '' };
+      function makeChip(tag) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cdc-chip';
+        b.textContent = tag;
+        b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', () => {
+          const on = b.getAttribute('aria-pressed') === 'true';
+          b.setAttribute('aria-pressed', on ? 'false' : 'true');
+          if (on) state.tags.delete(tag);
+          else state.tags.add(tag);
+          syncHash();
+          render();
+        });
+        return b;
+      }
+      [...tagSet]
+        .sort()
+        .forEach((t) => chipsRow.appendChild(makeChip(t)));
+
+      function render() {
+        const q = state.q.toLowerCase();
+        let visible = 0;
+        cards.forEach((c) => {
+          const name = c.querySelector('h3')?.textContent.toLowerCase() || '';
+          const body = c.querySelector('p')?.textContent.toLowerCase() || '';
+          const tags = (c.dataset.tags || '').split(',').filter(Boolean);
+          const hasAll = [...state.tags].every((t) => tags.includes(t));
+          const hits = !q || name.includes(q) || body.includes(q);
+          const show = hasAll && hits;
+          c.classList.toggle('cdc-hide', !show);
+          if (show) visible++;
+        });
+        countEl.textContent = `${visible} shown / ${cards.length} total`;
+      }
+
+      searchInput.addEventListener('input', (e) => {
+        state.q = e.target.value.trim();
+        syncHash();
+        render();
+      });
+      resetBtn.addEventListener('click', () => {
+        state.q = '';
+        searchInput.value = '';
+        state.tags.clear();
+        chipsRow
+          .querySelectorAll('.cdc-chip')
+          .forEach((c) => c.setAttribute('aria-pressed', 'false'));
+        syncHash();
+        render();
+      });
+
+      function parseHash() {
+        const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+        const tags = (h.get('cdc') || '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        const q = (h.get('q') || '').trim();
+        state.tags = new Set(tags);
+        state.q = q;
+        chipsRow.querySelectorAll('.cdc-chip').forEach((ch) => {
+          ch.setAttribute(
+            'aria-pressed',
+            state.tags.has(ch.textContent.toLowerCase()) ? 'true' : 'false'
+          );
+        });
+        searchInput.value = state.q;
+      }
+
+      function syncHash() {
+        const h = new URLSearchParams();
+        if (state.tags.size) h.set('cdc', [...state.tags].join(','));
+        if (state.q) h.set('q', state.q);
+        const next = '#' + h.toString();
+        if (location.hash !== next) history.replaceState(null, '', next);
+      }
+
+      window.addEventListener('hashchange', () => {
+        parseHash();
+        render();
+      });
+      parseHash();
+      render();
+    })();
+
+    (function initRadar() {
+      const el = document.getElementById('methodsChart');
+      if (!el) return;
+      if (!window.Chart) {
+        window.addEventListener('load', initRadar);
+        return;
+      }
+
+      const css = getComputedStyle(document.documentElement);
+      const get = (v, fb) => css.getPropertyValue(v).trim() || fb;
+      const cBorder = get('--border-color', '#2a3341');
+      const cText = get('--text-primary', '#e5e7eb');
+      const cText2 = get('--text-secondary', '#94a3b8');
+      const cBack = get('--bg-secondary', 'rgba(15,23,42,.6)');
+      const teal = '#14b8a6';
+      const blue = '#3b82f6';
+      const red = '#ef4444';
+
+      const labels = [
+        'Completeness',
+        'Low Impact',
+        'Low Latency',
+        'Low Maintenance',
+        'Ease of Implementation'
+      ];
+      const datasets = [
+        {
+          label: 'Log-Based',
+          data: [5, 5, 5, 4, 2],
+          borderColor: teal,
+          backgroundColor: hex(teal, 0.15),
+          pointBackgroundColor: teal,
+          pointBorderColor: teal,
+          pointRadius: 3
+        },
+        {
+          label: 'Trigger-Based',
+          data: [4, 3, 4, 2, 3],
+          borderColor: blue,
+          backgroundColor: hex(blue, 0.12),
+          pointBackgroundColor: blue,
+          pointBorderColor: blue,
+          pointRadius: 3
+        },
+        {
+          label: 'Query-Based',
+          data: [1, 2, 1, 2, 5],
+          borderColor: red,
+          backgroundColor: hex(red, 0.1),
+          pointBackgroundColor: red,
+          pointBorderColor: red,
+          pointRadius: 3
+        }
+      ];
+
+      new Chart(el, {
+        type: 'radar',
+        data: { labels, datasets },
+        options: {
+          maintainAspectRatio: false,
+          elements: { line: { borderWidth: 2.25 } },
+          scales: {
+            r: {
+              min: 0,
+              max: 5,
+              ticks: { stepSize: 1, backdropColor: cBack, color: cText2 },
+              grid: { color: cBorder },
+              angleLines: { color: cBorder },
+              pointLabels: { color: cText2, font: { size: 12 } }
+            }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { color: cText } },
+            title: {
+              display: true,
+              text: 'Comparing CDC Approaches',
+              color: cText,
+              font: { size: 18, weight: '700' }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.formattedValue}/5`
+              }
+            }
+          }
+        }
+      });
+
+      function hex(h, a) {
+        const c = h.replace('#', '');
+        const to = (s) => parseInt(s, 16);
+        return c.length === 3
+          ? `rgba(${to(c[0] + c[0])},${to(c[1] + c[1])},${to(c[2] + c[2])},${a})`
+          : `rgba(${to(c.slice(0, 2))},${to(c.slice(2, 4))},${to(c.slice(4, 6))},${a})`;
+      }
+    })();
+  </script>
+---
+<div class="page-wrap prose">
+  <h1>Interactive Introduction to CDC</h1>
+
+  <article class="prose">
+    <p>
+      Change Data Capture (<strong>CDC</strong>) is the discipline of
+      <em>replicating data changes</em> from a source database to downstream
+      systems in near real time—without heavy full refreshes.
+    </p>
+    <p>
+      For decades, moving data between systems meant relying on slow,
+      resource-intensive batch jobs that would run overnight. This approach
+      is no longer viable in a world that demands real-time data. How do you
+      keep disparate systems synchronized instantly without overwhelming
+      your databases? This is the core problem that Change Data Capture
+      (CDC) solves.
+    </p>
+    <h2 id="cdc-methods">CDC methods</h2>
+    <ul>
+      <li>
+        <strong>Log-based CDC (The Gold Standard):</strong> Reads committed changes
+        from the database’s transaction log (<em>PostgreSQL WAL</em>, <em>MySQL binlog</em>,
+        <em>SQL Server transaction log</em>, <em>Oracle redo</em>). It’s <em>low-impact</em> on OLTP,
+        but not free: log retention, I/O, and replication slot/archival settings must be tuned.
+        It reliably captures inserts/updates/deletes in order. <em>DDL capture</em> depends on the
+        database and connector configuration. PostgreSQL's Write-Ahead Log (WAL) records all changes to
+        the database before they are applied, ensuring data integrity and
+        durability. Log-based CDC leverages this existing, ordered stream of
+        changes for efficient replication. MySQL's binary log (binlog)
+        records all data modification statements that change the database
+        state. When configured for row-based logging, it provides the
+        granular, complete change events necessary for CDC.
+        <ul>
+          <li>
+            <em>Advantage: Low Performance Impact.</em> Tails existing logs; no source-table scans or triggers.
+          </li>
+          <li>
+            <em>Advantage: High Fidelity.</em> Captures inserts, updates,
+            and deletes, preserving order.
+          </li>
+          <li>
+            <em>Disadvantage: Complexity.</em> Requires DB-level privileges and correct log retention
+            (<code>wal_keep_size</code> or logical slots in Postgres; binlog purge in MySQL; T-log backups in SQL Server).
+          </li>
+        </ul>
+      </li>
+      <li>
+        <strong>Trigger-Based CDC:</strong> Uses database triggers (ON INSERT/UPDATE/DELETE) to
+        write change rows into <em>shadow/audit</em> tables. Sometimes paired with an “outbox”-style table,
+        but the <em>Transactional Outbox</em> pattern can also be implemented without triggers by writing the
+        outbox row <em>in the same application transaction</em>. While it
+        is database-agnostic and explicit, this approach adds overhead to
+        every transaction, directly impacting the performance of your
+        primary application's workload (OLTP).
+        <ul>
+          <li>
+            <em>Disadvantage: High Performance Impact.</em> Synchronous
+            trigger writes increase latency/lock contention.
+          </li>
+          <li>
+            <em>Disadvantage: Management Complexity.</em> Must maintain
+            triggers per table; brittle with schema drift.
+          </li>
+        </ul>
+      </li>
+      <li>
+        <strong>Query-Based CDC (Polling):</strong> The simplest method to
+        implement, but also the most fragile. This approach repeatedly
+        queries source tables for rows that have changed, typically
+        identified by a last_updated timestamp. However, it puts a
+        significant load on the source database, can miss updates if
+        multiple changes occur between polls, and cannot observe <em>hard deletes</em> (unless you keep tombstone/soft-delete markers).
+        <ul>
+          <li>
+            <em>Disadvantage: Cannot Capture Deletes.</em> Deleted rows
+            aren’t selectable.
+          </li>
+          <li>
+            <em>Disadvantage: High Read Load and Latency.</em> Freshness
+            tied to polling interval.
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2 id="methods-comparison">Methods at a Glance</h2>
+    <div id="methods-table" class="table-container">
+      <style>
+        /* Scoped to this table */
+        #methods-table {
+          width: clamp(100%, 62rem, 88vw);
+          margin-left: 50%;
+          transform: translateX(-50%);
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 0.75rem;
+          box-shadow: var(--shadow-soft);
+          padding: 0.75rem;
+          overflow: auto;
+          margin-top: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        #methods-table>table {
+          width: 100%;
+          min-width: 960px;
+          border-collapse: separate;
+          border-spacing: 0;
+          background: var(--bg-primary);
+          border-radius: 0.5rem;
+        }
+
+        #methods-table thead th {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          text-align: left;
+          font-weight: 700;
+          padding: 0.9rem 0.9rem;
+          border-bottom: 2px solid var(--border-color);
+        }
+
+        #methods-table tbody td {
+          padding: 0.8rem 0.9rem;
+          vertical-align: top;
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        #methods-table th,
+        #methods-table td {
+          border-right: 1px solid var(--border-color);
+        }
+
+        #methods-table th:last-child,
+        #methods-table td:last-child {
+          border-right: none;
+        }
+
+        #methods-table tbody tr:nth-child(odd) td {
+          background: rgba(255, 255, 255, 0.035);
+        }
+
+        :root[data-theme="light"] #methods-table tbody tr:nth-child(odd) td {
+          background: rgba(0, 0, 0, 0.03);
+        }
+
+        #methods-table tbody tr:hover td {
+          background: rgba(13, 148, 136, 0.1);
+        }
+
+        #methods-table td:first-child,
+        #methods-table th:first-child {
+          position: sticky;
+          left: 0;
+          background: inherit;
+          font-weight: 600;
+        }
+
+        #methods-table thead th:first-child {
+          border-top-left-radius: 0.5rem;
+        }
+
+        #methods-table thead th:last-child {
+          border-top-right-radius: 0.5rem;
+        }
+
+        #methods-table tbody tr:last-child td:first-child {
+          border-bottom-left-radius: 0.5rem;
+        }
+
+        #methods-table tbody tr:last-child td:last-child {
+          border-bottom-right-radius: 0.5rem;
+        }
+      </style>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Log-Based CDC</th>
+            <th>Trigger-Based CDC</th>
+            <th>Query-Based CDC (Polling)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Performance Impact</strong></td>
+            <td>
+              Very Low. Minimal overhead as it reads existing transaction
+              logs.
+            </td>
+            <td>High. Adds a synchronous write to every transaction.</td>
+            <td>
+              Medium to High. Heavy repetitive reads on the source DB.
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Reliability</strong></td>
+            <td>
+              Very High. Captures all committed changes, including hard
+              deletes, in order.
+            </td>
+            <td>High. Captures all DML via shadow table.</td>
+            <td>Low. Misses deletes and intermediate updates.</td>
+          </tr>
+          <tr>
+            <td><strong>Data Latency</strong></td>
+            <td>Very Low. Near real-time.</td>
+            <td>Low. Near real-time as changes occur.</td>
+            <td>High. Determined by polling interval.</td>
+          </tr>
+          <tr>
+            <td><strong>Implementation Complexity</strong></td>
+            <td>High. Specialized tools, DB config, elevated perms.</td>
+            <td>Medium. Write/maintain triggers and shadow tables.</td>
+            <td>Low. Straightforward SQL + scheduler.</td>
+          </tr>
+          <tr>
+            <td><strong>Source Schema Impact</strong></td>
+            <td>None. No schema changes.</td>
+            <td>Medium. Shadow/audit tables required.</td>
+            <td>High. Extra columns (timestamp/version/status).</td>
+          </tr>
+          <tr>
+            <td><strong>Best For</strong></td>
+            <td>
+              High-volume, mission-critical systems needing high fidelity +
+              low impact.
+            </td>
+            <td>Lower-volume systems or where log access is impossible.</td>
+            <td>Small, non-critical datasets or absolute last resort.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      This visualization compares the 3 ways to implement CDC to help show why log-based CDC is the gold standard.
+    </p>
+    <div class="chart-wrapper">
+      <h3 style="text-align: center; margin-top: 0">
+        Comparing CDC Approaches
+      </h3>
+      <div class="chart-container"><canvas id="methodsChart"></canvas></div>
+    </div>
+    <h2 id="core-components">Core components</h2>
+    <p>
+      The most common and robust architecture for a modern CDC pipeline
+      combines a log-based capture mechanism with a scalable streaming
+      platform.
+    </p>
+    <ul>
+      <li>
+        <strong>Source Database:</strong> Operational DB whose WAL/redo log
+        records committed changes.
+      </li>
+      <li>
+        <strong>CDC Connector:</strong> Debezium-like agent tails the log
+        and emits structured change events.
+      </li>
+      <li>
+        <strong>Streaming Platform / Message Bus:</strong> Kafka (or
+        similar) decouples source from consumers.
+      </li>
+      <li>
+        <strong>Schema Registry:</strong> Manages event schemas (Avro/JSON/Protobuf),
+        enforces compatibility, and protects consumers during evolution.
+      </li>
+      <li>
+        <strong>Downstream Consumers:</strong> Warehouse loaders, search
+        indexers, caches, apps, etc.
+      </li>
+    </ul>
+
+    <figure aria-label="CDC high-level flow">
+      <svg viewBox="0 0 880 170" width="100%" role="img" aria-labelledby="cdcFlowT cdcFlowD"
+        style="display: block; color: var(--accent-primary)">
+        <title id="cdcFlowT">CDC high-level flow</title>
+        <desc id="cdcFlowD">
+          Source DB → Log Reader/Agent → Broker → sinks (Warehouse,
+          Search/Cache/Apps)
+        </desc>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10"
+            orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+          <style>
+            .node {
+              fill: none;
+              stroke: var(--text-primary);
+              stroke-width: 2.5;
+            }
+
+            .label {
+              fill: var(--text-primary);
+              font: 600 15px/1 system-ui, -apple-system, Segoe UI, Roboto,
+                Inter, Arial, sans-serif;
+            }
+
+            .link {
+              stroke: currentColor;
+              stroke-width: 3;
+              fill: none;
+              marker-end: url(#arrow);
+              stroke-linecap: round;
+            }
+          </style>
+        </defs>
+        <rect class="node" x="30" y="40" width="150" height="70" rx="10" />
+        <text class="label" x="105" y="80" text-anchor="middle">
+          Source DB
+        </text>
+        <rect class="node" x="230" y="40" width="180" height="70" rx="10" />
+        <text class="label" x="320" y="80" text-anchor="middle">
+          Log Reader / Agent
+        </text>
+        <rect class="node" x="470" y="40" width="120" height="70" rx="10" />
+        <text class="label" x="530" y="80" text-anchor="middle">
+          Broker
+        </text>
+        <rect class="node" x="640" y="20" width="200" height="50" rx="10" />
+        <text class="label" x="740" y="50" text-anchor="middle">
+          Warehouse / Lake
+        </text>
+        <rect class="node" x="640" y="90" width="200" height="50" rx="10" />
+        <text class="label" x="740" y="120" text-anchor="middle">
+          Search / Cache / Apps
+        </text>
+        <path class="link" d="M180,75 L230,75" />
+        <path class="link" d="M410,75 L470,75" />
+        <path class="link" d="M590,75 L640,45" />
+        <path class="link" d="M590,75 L640,115" />
+      </svg>
+    </figure>
+
+    <section class="interactive-demo">
+      <div>
+        <h3>How log-based CDC keeps order and consistency</h3>
+        <p>
+          Log tailers capture changes in commit order (per transaction). By
+          streaming these events to a durable bus, you keep a consistent,
+          replayable history that downstream systems can apply idempotently.
+        </p>
+        <ol class="steps">
+          <li>
+            <strong>Capture</strong>
+            Connector reads WAL/binlog entries in commit order, preserving
+            per-key ordering.
+          </li>
+          <li>
+            <strong>Transform</strong>
+            Enrich with metadata (op, LSN/SCN, before/after images) and
+            publish to topics.
+          </li>
+          <li>
+            <strong>Deliver</strong>
+            Topics are partitioned by key for ordering; consumers use MERGE
+            (upsert) semantics to apply changes idempotently.
+          </li>
+        </ol>
+      </div>
+      <div>
+        <h4>Key takeaways</h4>
+        <ul>
+          <li>Log-based CDC minimizes source load and captures all verb types.</li>
+          <li>Downstream systems decide retention (history vs latest state).</li>
+          <li>Replay is built-in: rewind offsets to rebuild a sink.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="outbox">
+      <div class="diagram-text">
+        <h3>Transactional outbox in practice</h3>
+        <p>
+          Pair an application table write with an outbox insert in the same
+          transaction. A relay tails the outbox table and publishes events to
+          a broker topic. Consumers upsert idempotently.
+        </p>
+        <ol>
+          <li>
+            <strong>Write</strong>
+            App writes business row + outbox row within the same database
+            transaction.
+          </li>
+          <li>
+            <strong>Publish</strong>
+            Agent emits an event to the broker/topic reliably (at-least-once).
+          </li>
+          <li>
+            <strong>Consume idempotently</strong>
+            Consumers upsert/dedupe so replays are safe—producing an “exactly-once”
+            <em>effect</em> at the sink. EOS scope is per sink/system, not global.
+          </li>
+        </ol>
+        <p class="muted" style="margin: 0.5rem 0 0">
+          Deep dive:
+          <a href="/exactly-once/">Exactly-Once &amp; the Outbox pattern</a>.
+        </p>
+      </div>
+
+      <figure class="diagram" aria-label="App & DB outbox to broker to consumer">
+        <svg viewBox="0 0 520 180" role="img" style="
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 440px;
+            margin: 0.5rem auto 0;
+            color: var(--accent-primary);
+          ">
+          <defs>
+            <marker id="obArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10"
+              orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+            </marker>
+            <style>
+              .node {
+                fill: none;
+                stroke: var(--text-primary);
+                stroke-width: 2.2;
+              }
+
+              .label {
+                fill: var(--text-primary);
+                font: 600 12px/1 system-ui, -apple-system, Segoe UI, Roboto,
+                  Inter, Arial, sans-serif;
+              }
+
+              .link {
+                stroke: currentColor;
+                stroke-width: 2.4;
+                fill: none;
+                marker-end: url(#obArrow);
+                stroke-linecap: round;
+              }
+            </style>
+          </defs>
+          <rect class="node" x="20" y="30" width="120" height="50" rx="8" />
+          <text class="label" x="80" y="60" text-anchor="middle">
+            App + DB
+          </text>
+          <rect class="node" x="180" y="30" width="120" height="50" rx="8" />
+          <text class="label" x="240" y="60" text-anchor="middle">
+            Outbox table
+          </text>
+          <rect class="node" x="340" y="30" width="150" height="50" rx="8" />
+          <text class="label" x="415" y="60" text-anchor="middle">
+            Broker/Topic
+          </text>
+          <rect class="node" x="340" y="110" width="150" height="50" rx="8" />
+          <text class="label" x="415" y="140" text-anchor="middle">
+            Consumer (UPSERT)
+          </text>
+          <path class="link" d="M140,55 L180,55" />
+          <path class="link" d="M300,55 L340,55" />
+          <path class="link" d="M415,80 L415,110" />
+        </svg>
+      </figure>
+    </section>
+
+    <h2>Operational gotchas (day-one checks)</h2>
+    <ul>
+      <li><strong>Log retention &amp; bloat:</strong> Logical slots (PG) or paused connectors can block log truncation; size WAL/binlog/T-log appropriately and alert on backlog.</li>
+      <li><strong>Privileges &amp; network:</strong> Connectors need replication permissions and stable network paths (no NAT timeouts) to avoid stalls.</li>
+      <li><strong>DDL changes:</strong> Schema changes may need registry rules and phased rollouts to avoid breaking consumers.</li>
+      <li><strong>Sinks are the hard part:</strong> Upsert/delete semantics and idempotency in the warehouse/search system determine data correctness under replay.</li>
+    </ul>
+
+    <h2>The CDC Tooling Ecosystem</h2>
+    <p>
+      Picking CDC tooling is a trade-off across
+      <em>capture method</em> (prefer log-based), <em>ops model</em> (managed
+      vs self-managed), <em>source/target coverage &amp; versions</em>, and
+      <em>exactly-once behavior at the sink</em> (idempotent upserts +
+      replay).
+    </p>
+
+    <section aria-labelledby="cdc-vendors-title" class="cdc-vendors">
+      <style>
+        .cdc-vendors {
+          margin: 1.25rem 0;
+        }
+
+        .cdc-vendors h2 {
+          margin: 0.25rem 0 1rem;
+          font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+        }
+
+        .cdc-vendors .disclosure {
+          font-size: 0.9rem;
+          opacity: 0.85;
+          margin: 0.25rem 0 1rem;
+        }
+
+        .cdc-filter {
+          display: grid;
+          gap: 0.5rem;
+          margin: 0.75rem 0 1rem;
+        }
+
+        .cdc-filter .row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .cdc-chip {
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--text-primary);
+          border-radius: 999px;
+          padding: 0.28rem 0.7rem;
+          font-size: 0.92rem;
+          font-weight: 600;
+          line-height: 1.15;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        :root[data-theme="light"] .cdc-chip {
+          border-color: rgba(0, 0, 0, 0.18);
+          background: rgba(0, 0, 0, 0.04);
+        }
+
+        .cdc-chip:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        :root[data-theme="light"] .cdc-chip:hover {
+          background: rgba(0, 0, 0, 0.07);
+          border-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .cdc-chip[aria-pressed="true"] {
+          background: var(--accent-primary);
+          border-color: var(--accent-primary);
+          color: #fff;
+          box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08) inset;
+        }
+
+        .cdc-chip:focus-visible {
+          outline: 2px solid var(--accent-primary);
+          outline-offset: 2px;
+        }
+
+        #cdc-chips {
+          gap: 0.6rem;
+        }
+
+        .cdc-grid {
+          display: grid;
+          gap: 1rem;
+          grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 820px) {
+          .cdc-grid {
+            grid-template-columns: 1fr 1fr 1fr;
+          }
+        }
+
+        .cdc-card {
+          border: 1px solid var(--border-color, #2a3441);
+          border-radius: 0.75rem;
+          padding: 1rem;
+          background: var(--surface, #0b121d);
+          transition: transform 0.2s ease;
+        }
+
+        :root[data-theme="light"] .cdc-card {
+          background: #f1f5f9;
+          border-color: #e2e8f0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .cdc-card {
+            transition: none;
+          }
+        }
+
+        .cdc-card h3 {
+          margin: 0.2rem 0 0.35rem;
+          font-size: 1.05rem;
+        }
+
+        .cdc-card p {
+          margin: 0 0 0.45rem;
+        }
+
+        .cdc-card .meta {
+          font-size: 0.85rem;
+          opacity: 0.8;
+          margin-top: 0.35rem;
+        }
+
+        .cdc-pill {
+          display: inline-block;
+          font-size: 0.8rem;
+          border: 1px solid var(--border-color, #2a3441);
+          border-radius: 999px;
+          padding: 0.1rem 0.5rem;
+          margin: 0.15rem 0.25rem 0 0;
+          opacity: 0.9;
+        }
+
+        .cdc-hide {
+          display: none !important;
+        }
+      </style>
+
+      <h2 id="cdc-vendors-title">CDC platforms</h2>
+      <div class="cdc-filter" role="region" aria-label="Filter CDC platforms">
+        <div class="row">
+          <input id="cdc-search" type="search" placeholder="Search platforms..."
+                 aria-label="Search platforms" />
+          <button id="cdc-reset" type="button">Reset</button>
+          <span id="cdc-count" aria-live="polite"></span>
+        </div>
+        <div id="cdc-chips" class="row" role="toolbar" aria-label="Tag filters"></div>
+      </div>
+      <div class="cdc-grid" id="cdc-grid" role="list">
+<!-- cards (unchanged) -->
+          <article class="cdc-card" data-tags="open source,log-based,DIY ops" role="listitem">
+            <h3>Debezium + Kafka Connect</h3>
+            <p>
+              Open-source log-based CDC connectors. Flexible; you operate
+              Kafka/Connect or use managed Kafka.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">open source</span><span class="cdc-pill">log-based</span><span class="cdc-pill">DIY
+                ops</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="managed,log-based,ELT + orchestration" role="listitem">
+            <h3>Matillion (Data Loader / Designer)</h3>
+            <p>
+              Wizard-driven CDC into cloud warehouses plus
+              orchestration/transform in one place.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span><span class="cdc-pill">ELT +
+                orchestration</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="managed,log-based" role="listitem">
+            <h3>Fivetran</h3>
+            <p>
+              Managed connectors with log-based CDC options; emphasizes quick
+              setup and hands-off operations.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="enterprise,log-based,heterogeneous" role="listitem">
+            <h3>Precisely (Connect)</h3>
+            <p>
+              Enterprise replication including mainframe/legacy into modern
+              targets.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span><span
+                class="cdc-pill">heterogeneous</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="enterprise,log-based" role="listitem">
+            <h3>Qlik Replicate (Attunity)</h3>
+            <p>
+              UI-driven enterprise CDC across a wide range of sources/targets.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="enterprise,log-based" role="listitem">
+            <h3>Oracle GoldenGate</h3>
+            <p>
+              Oracle’s CDC/replication stack (supports several non-Oracle
+              endpoints) for mission-critical use.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="managed,log-based" role="listitem">
+            <h3>AWS DMS</h3>
+            <p>
+              Managed migrations and ongoing CDC into AWS targets (and beyond
+              via connectors).
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="serverless,log-based" role="listitem">
+            <h3>Google Cloud Datastream</h3>
+            <p>
+              Serverless CDC for MySQL/Postgres/Oracle streaming into
+              BigQuery/Cloud Storage.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">serverless</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="commercial,log-based" role="listitem">
+            <h3>Confluent Commercial Connectors</h3>
+            <p>
+              Kafka Connect ecosystem with additional commercial CDC connectors
+              like Oracle.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">commercial</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="platform,CDC connectors" role="listitem">
+            <h3>StreamSets</h3>
+            <p>
+              Streaming pipelines with CDC connectors into warehouses/lakes.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">platform</span><span class="cdc-pill">CDC connectors</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="platform,CDC + transform" role="listitem">
+            <h3>Striim</h3>
+            <p>
+              CDC + in-flight SQL-like processing for real-time ops analytics.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">platform</span><span class="cdc-pill">CDC + transform</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="enterprise,log-based" role="listitem">
+            <h3>IBM Data Replication</h3>
+            <p>
+              Log-based CDC for Db2 and mixed mainframe/distributed estates.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="SAP,trigger/log" role="listitem">
+            <h3>SAP SLT</h3>
+            <p>
+              Native trigger/log-based replication from SAP ECC/S/4HANA to
+              downstream stores.
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">SAP</span><span class="cdc-pill">trigger/log</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="managed,CDC" role="listitem">
+            <h3>Hevo Data</h3>
+            <p>Managed ELT with CDC support into cloud targets.</p>
+            <div class="meta">
+              <span class="cdc-pill">managed</span><span class="cdc-pill">CDC</span>
+            </div>
+          </article>
+          <article class="cdc-card" data-tags="open source,mixed CDC" role="listitem">
+            <h3>Airbyte</h3>
+            <p>
+              Open-source ELT; CDC varies by connector (check docs for log-based
+              maturity per source).
+            </p>
+            <div class="meta">
+              <span class="cdc-pill">open source</span><span class="cdc-pill">mixed CDC</span>
+            </div>
+          </article>
+      </div>
+    </section>
+
+    <div class="pagination">
+      <a href="/overview/">← Back: Series Overview</a>
+      <a href="/snapshotting/">Next: Snapshotting →</a>
+    </div>
+  </article>
+</div>
