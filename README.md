@@ -27,10 +27,8 @@ letstalkcdc/
 ├── dist/                       # Generated site output (`npm run build`)
 ├── scripts/                    # Build helpers (CSS minification, etc.)
 ├── connectors/                 # Downloadable companion files for guides
-├── app.js                      # Client-side interactions shared sitewide
-├── styles.css                  # Source stylesheet processed by PostCSS
-├── styles.pref.css             # Autoprefixed CSS (build artifact)
-├── styles.min.css              # Minified CSS served in production
+├── src/assets/js/app.js        # Client-side interactions shared sitewide
+├── src/assets/css/styles.css   # Source stylesheet processed by PostCSS
 ├── eleventy.config.cjs         # Eleventy configuration
 ├── postcss.config.js           # PostCSS configuration
 ├── package.json                # Project metadata, scripts, tooling deps

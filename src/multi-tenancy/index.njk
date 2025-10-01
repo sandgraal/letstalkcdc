@@ -383,6 +383,7 @@ scripts: |
           const tpt = +I.topicsPerTenant.value;
           const shared = +I.sharedTopics.value;
           const iso = I.isolation.value; // 'shared' | 'perTenantTopics' | 'perTenantClusters'
+          const rf = Math.max(1, +I.rf.value || 1);
           const partsPerTopic = Math.max(1, +I.parts.value);
           const retentionDays = Math.max(1, +I.retention.value);
           const compression = Math.max(0.5, +I.compression.value);

@@ -4,94 +4,37 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!toggle) return;
 
   const setDepth = (level) => {
-    // buttons
-    toggle.querySelectorAll('.depth-btn').forEach(b => {
-      const on = b.dataset.depth === level;
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    toggle.querySelectorAll('.depth-btn').forEach((button) => {
+      const isActive = button.dataset.depth === level;
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
-    // content blocks
-    document.querySelectorAll('[data-level]').forEach(el => {
+
+    document.querySelectorAll('[data-level]').forEach((el) => {
       el.classList.toggle('is-active', el.dataset.level === level);
     });
-    try { localStorage.setItem('cdcDepth', level); } catch (_) {}
+
+    try {
+      localStorage.setItem('cdcDepth', level);
+    } catch (_) {
+      /* no-op for storage denials */
+    }
   };
 
-  // init: last choice or default "beginner"
-  setDepth((() => {
-    try { return localStorage.getItem('cdcDepth') || 'beginner'; }
-    catch (_) { return 'beginner'; }
-  })());
+  const initial = (() => {
+    try {
+      return localStorage.getItem('cdcDepth') || 'beginner';
+    } catch (_) {
+      return 'beginner';
+    }
+  })();
 
-  toggle.addEventListener('click', (e) => {
-    const btn = e.target.closest('.depth-btn');
-    if (btn) setDepth(btn.dataset.depth);
+  setDepth(initial);
+
+  toggle.addEventListener('click', (event) => {
+    const button = event.target.closest('.depth-btn');
+    if (button) setDepth(button.dataset.depth);
   });
 });
-(function(){
-  const $ = (id) => document.getElementById(id);
-
-  const tenants = $('tenants');
-  const chgRate = $('chgRate');
-  const payload = $('payload');
-  const envelope = $('envelope');
-  const topicsPerTenant = $('topicsPerTenant');
-  const sharedTopics = $('sharedTopics');
-  const isolation = $('isolation');
-
-  const oTen = $('tenants-val');
-  const oChg = $('chgRate-val');
-  const oPay = $('payload-val');
-
-  const fmtInt = (n) => Intl.NumberFormat().format(Math.round(n));
-  const fmtMB  = (n) => (n/ (1024*1024)).toFixed(2);
-
-  function calc(){
-    const T = +tenants.value || 0;
-    const R = +chgRate.value || 0;
-    const P = +payload.value || 0;
-    const E = +envelope.value || 0;
-    const tpt = Math.max(1, +topicsPerTenant.value || 1);
-    const st  = Math.max(1, +sharedTopics.value || 1);
-    const mode = isolation.value;
-
-    // Topics
-    let topics;
-    if (mode === 'shared') topics = st;
-    else topics = T * tpt; // per-tenant topics or clusters (total count across platform)
-
-    // Consumer groups (first-order)
-    const groups = Math.max(1, T); // can refine later per service
-
-    // Egress
-    const egressBps = T * R * (P + E);
-
-    // after computing egress (MB/s), add bytes/s
-    const egressBytes = Math.round(t * r * (s + OVERHEAD_PER_MESSAGE));
-    kEgressBytes.textContent = egressBytes.toLocaleString();
-
-    // more precise MB/s than integer rounding now:
-    const e0 = egressBytes / 1e6; // existing chart uses e0; OK to leave
-    kEgress.textContent = (egressBytes / (1024*1024)).toFixed(2); // MB/s (binary)
-
-    // write
-    $('kpi-topics').textContent = fmtInt(topics);
-    $('kpi-groups').textContent = fmtInt(groups);
-    $('kpi-egress').textContent = fmtInt(egressBps);
-    $('kpi-egress-mb').textContent = fmtMB(egressBps);
-  }
-
-  // reflect slider values
-  function reflect(){
-    oTen.textContent = tenants.value;
-    oChg.textContent = chgRate.value;
-    oPay.textContent = payload.value;
-  }
-
-  [tenants, chgRate, payload].forEach(el => el.addEventListener('input', () => { reflect(); calc(); }));
-  [envelope, topicsPerTenant, sharedTopics, isolation].forEach(el => el.addEventListener('input', calc));
-
-  reflect(); calc();
-})();
 
 
 /* search overlay */
