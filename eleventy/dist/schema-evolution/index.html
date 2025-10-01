@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Schema Evolution | CDC: The Missing Manual | </title>
+    <meta name="description" content="">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="canonical" href="/schema-evolution/">
+    <meta name="theme-color" content="#0f172a">
+    <meta
+      content="Learn how to handle schema drift and evolution in CDC pipelines using a Schema Registry to prevent breakages."
+      name="description"
+    />
+    <link href="styles.css" rel="stylesheet" />
+    <link
+      rel="canonical"
+      href="https://letstalkcdc.nfshost.com/schema-evolution/"
+    />
+    <style>
+      .data-flow-diagram {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        font-family: var(--font-mono);
+        /* legacy box kept for other sections if any */
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        overflow-x: hidden;
+      }
+      /* Sequence grid "actor lanes" */
+      .seq {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem 0.75rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0 2rem;
+      }
+      .seq-head {
+        font-weight: 700;
+        text-align: left;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.25rem;
+      }
+      .seq-cell {
+        text-align: left;
+        padding: 0.25rem 0;
+      }
+      @media (max-width: 700px) {
+        .seq {
+          grid-template-columns: 1fr;
+        }
+        .seq-head {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+      }
+      .compatibility-modes {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin: 2rem 0;
+      }
+      @media (min-width: 768px) {
+        .compatibility-modes {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .mode-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+      }
+      .mode-card h3 {
+        margin-top: 0;
+        border-bottom: 2px solid var(--accent-primary);
+        padding-bottom: 0.5rem;
+      }
+    </style>
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"></a>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+          </nav>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><h1>The Inevitable Problem: Handling Schema Evolution</h1>
+      <article class="prose">
+        <p>
+          Source database schemas are not static. Over the lifecycle of an
+          application, developers will inevitably make changes: adding new
+          columns, removing old ones, or modifying data types. This phenomenon,
+          known as <strong>schema drift</strong> or
+          <strong>schema evolution</strong>, is a primary cause of brittle data
+          pipelines. A pipeline not designed for this will break the moment an
+          incoming change event no longer matches what downstream consumers
+          expect.
+        </p>
+
+        <h2 id="solution">
+          The Solution: The Schema Registry (An API Contract for Your Data)
+        </h2>
+        <p>
+          The industry-standard solution is to treat your data's schema like a
+          formal API contract. This is managed by a
+          <strong>Schema Registry</strong>. Think of it as the 'OpenAPI' or
+          'Swagger' for your event streams. It's a centralized service that
+          ensures all data producers and consumers agree on the 'shape' of the
+          data, even as that shape evolves over time.
+        </p>
+        <p>
+          By using a schema-aware format like Apache Avro or Protobuf, producers
+          and consumers can be decoupled, allowing them to evolve independently
+          without breaking the pipeline.
+        </p>
+
+        <h2 id="compatibility">
+          Choosing Your Contract Strategy: Compatibility Modes
+        </h2>
+        <p>
+          A schema registry isn't just a database of schemas; it actively
+          enforces rules. When a producer tries to register a new schema
+          version, the registry checks it against a configured compatibility
+          mode. Understanding these modes is critical for operations.
+        </p>
+
+        <div class="compatibility-modes">
+          <div class="mode-card">
+            <h3>Backward Compatibility</h3>
+            <p><em>(New schemas can read old data)</em></p>
+            <p>
+              This mode allows you to <strong>delete fields</strong> and
+              <strong>add optional new fields</strong> (with a default value).
+              Consumers can upgrade at their own pace without breaking when they
+              encounter old data.
+            </p>
+            <p>
+              <strong>Use this for most standard use cases.</strong> It offers
+              the most operational flexibility.
+            </p>
+          </div>
+          <div class="mode-card">
+            <h3>Forward Compatibility</h3>
+            <p><em>(Old schemas can read new data)</em></p>
+            <p>
+              This mode allows you to <strong>add new fields</strong> and
+              <strong>delete optional old fields</strong>. This is less common
+              and requires careful coordination, as you must upgrade all
+              consumers <em>before</em> producers start sending data with the
+              new schema.
+            </p>
+          </div>
+          <div class="mode-card">
+            <h3>Full Compatibility</h3>
+            <p><em>(Both backward and forward)</em></p>
+            <p>
+              Ensures old consumers can read new data and new consumers can read
+              old data. Safest—but most restrictive. Good for long-lived topics
+              with many consumers.
+            </p>
+          </div>
+          <div class="mode-card">
+            <h3>Transitive vs Latest</h3>
+            <p>
+              <strong>Transitive</strong> checks a new schema against
+              <em>all</em> previous versions. <strong>Latest</strong> checks
+              only against the most recent version. Prefer transitive for
+              critical topics to avoid “drift over time.”
+            </p>
+          </div>
+        </div>
+        <p>
+          For most CDC pipelines,
+          <strong>start with Backward (often transitive)</strong>. It balances
+          safety with agility, letting consumers upgrade at their own pace while
+          preventing breaking producer changes.
+        </p>
+        <h2 id="subject-naming">Subject naming &amp; scope</h2>
+        <p>
+          Compatibility is enforced per <em>subject</em> (a Registry namespace).
+          Common strategies:
+        </p>
+        <ul>
+          <li>
+            <strong>TopicNameStrategy:</strong>
+            <code>&lt;topic&gt;-value</code> (simple, one record type per
+            topic).
+          </li>
+          <li>
+            <strong>RecordNameStrategy:</strong> record’s full name is the
+            subject (lets multiple record types share a topic).
+          </li>
+          <li>
+            <strong>TopicRecordNameStrategy:</strong> combines both (avoids name
+            clashes across topics).
+          </li>
+        </ul>
+        <p class="muted">
+          Pick once per topic family—changing later is painful.
+        </p>
+
+        <h2 id="flow">The Data Flow in a Schema-Aware Pipeline</h2>
+        <div class="seq" role="group" aria-label="Schema-aware flow">
+          <div class="seq-head">Producer</div>
+          <div class="seq-head">Schema Registry</div>
+          <div class="seq-head">Consumer</div>
+
+          <!-- Row 1 -->
+          <div class="seq-cell">Register <code>user_v1</code></div>
+          <div class="seq-cell">Store &amp; return <code>id=1</code></div>
+          <div class="seq-cell">—</div>
+
+          <!-- Row 2 -->
+          <div class="seq-cell">Serialize with id=1 → publish</div>
+          <div class="seq-cell">—</div>
+          <div class="seq-cell">Read message (id=1)</div>
+
+          <!-- Row 3 -->
+          <div class="seq-cell">—</div>
+          <div class="seq-cell">Return schema 1</div>
+          <div class="seq-cell">
+            If not cached: request id=1 → cache → deserialize
+          </div>
+        </div>
+
+        <h3 id="upgrade">Upgrade to v2</h3>
+        <div class="seq" role="group" aria-label="Upgrade to v2">
+          <div class="seq-head">Producer</div>
+          <div class="seq-head">Schema Registry</div>
+          <div class="seq-head">Consumer</div>
+
+          <div class="seq-cell">Register <code>user_v2</code></div>
+          <div class="seq-cell">Compat check → <code>id=2</code></div>
+          <div class="seq-cell">—</div>
+
+          <div class="seq-cell">Publish id=2</div>
+          <div class="seq-cell">—</div>
+          <div class="seq-cell">
+            If unseen: fetch id=2 → cache → deserialize
+          </div>
+        </div>
+        <p>
+          This flow, mediated by the schema registry, allows a producer to
+          upgrade to a `v2` schema and start sending messages with ID `2`. An
+          old consumer that only knows about ID `1` can either fail gracefully
+          or, if the schemas are compatible, process the new message by ignoring
+          the new fields.
+        </p>
+        <h2 id="examples">Concrete evolution examples</h2>
+        <div class="code-comparison">
+          <div>
+            <h3>Avro (v1 → v2)</h3>
+            <pre><code>// v1
+{ "type":"record","name":"User","namespace":"demo",
+  "fields":[
+    {"name":"id","type":"long"},
+    {"name":"email","type":"string"}
+  ] }
+// v2 (backward-compatible): add optional with default; rename with alias
+{ "type":"record","name":"User","namespace":"demo",
+  "fields":[
+    {"name":"id","type":"long"},
+    {"name":"email","type":"string"},
+    {"name":"full_name","type":["null","string"],"default":null,
+     "aliases":["name"]} ] }</code></pre>
+            <p class="muted">
+              OK under backward/backward_transitive. Dropping a required field
+              would violate it.
+            </p>
+          </div>
+          <div>
+            <h3>Protobuf (field numbers matter)</h3>
+            <pre><code>// v1
+message User { int64 id = 1; string email = 2; }
+// v2 (safe): add new optional field, keep numbers stable
+message User { int64 id = 1; string email = 2; string full_name = 3; }</code></pre>
+            <p class="muted">
+              Never reuse or renumber fields; removing a field keeps the tag
+              reserved.
+            </p>
+          </div>
+        </div>
+        <div class="code-comparison">
+          <div>
+            <h3>JSON Schema (tolerant readers)</h3>
+            <pre><code>{ "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "properties":{
+    "id":{"type":"integer"},
+    "email":{"type":"string"},
+    "full_name":{"type":["string","null"]}
+  },
+  "required":["id","email"],
+  "additionalProperties": true }</code></pre>
+            <p class="muted">
+              Set <code>additionalProperties</code> per policy. Many JSON
+              consumers ignore unknown fields—document the expectation.
+            </p>
+          </div>
+        </div>
+
+        <h2 id="rollouts">Safe rollout playbooks</h2>
+        <ul>
+          <li>
+            <strong>Read-new / Write-old (RN/WO):</strong> upgrade consumers
+            first to tolerate the new schema; then upgrade producers.
+          </li>
+          <li>
+            <strong>Two-phase add:</strong> add optional fields with defaults →
+            backfill downstream → switch producers to start populating.
+          </li>
+          <li>
+            <strong>Type widening:</strong> e.g., <code>int→long</code> or
+            <code>string→[string,null]</code>; avoid narrowing.
+          </li>
+          <li>
+            <strong>Removals:</strong> deprecate → stop usage → drop only if
+            policy allows and all consumers have moved.
+          </li>
+        </ul>
+
+        <h2 id="registry-ops">Registry operations (quick refs)</h2>
+        <pre><code># Set per-subject compatibility (examples)
+curl -X PUT -H "Content-Type: application/json" \
+  --data '{"compatibility":"BACKWARD_TRANSITIVE"}' \
+  $REGISTRY_URL/config/your-subject
+
+# Get the current compatibility
+curl $REGISTRY_URL/config/your-subject
+</code></pre>
+        <p class="muted">
+          Automate these in CI so topics can’t drift to unsafe modes.
+        </p>
+
+        <h2 id="cdc-notes">CDC-specific wrinkles</h2>
+        <ul>
+          <li>
+            <strong>New source columns:</strong> existing rows will emit
+            <code>null</code> until updated or backfilled—plan materialization
+            defaults.
+          </li>
+          <li>
+            <strong>Rename vs drop:</strong> prefer
+            <em>add new + alias</em> (Avro) and keep the old field until
+            consumers migrate.
+          </li>
+          <li>
+            <strong>Envelope stability:</strong> keep event envelope fields
+            (op/ts_ms/transaction/key) stable; evolve payload separately.
+          </li>
+        </ul>
+
+        <h2 id="consumer-defenses">Consumer defenses</h2>
+        <ul>
+          <li>
+            <strong>Ignore unknown fields:</strong> choose deserializers/options
+            that tolerate extras.
+          </li>
+          <li>
+            <strong>Defaulting:</strong> when a field is missing, apply a
+            deterministic default (document it!).
+          </li>
+          <li>
+            <strong>Quarantine on hard breaks:</strong> route to DLQ with schema
+            id and error for later replay.
+          </li>
+        </ul>
+
+        <details>
+          <summary><strong>Audit &amp; test</strong></summary>
+          <ul>
+            <li>
+              Contract tests: validate proposed schemas against real consumer
+              fixtures.
+            </li>
+            <li>
+              Canary topics: mirror a subset of prod through the new schema and
+              compare sink MERGE row counts/checksums.
+            </li>
+          </ul>
+        </details>
+      </article>
+      <div class="pagination">
+        <a href="partitioning/">← Back: Partitioning</a>
+        <a href="use-cases/">Next: Real-World Use Cases →</a>
+      </div>
+</main>
+
+    <script type="module">
+      const applyTheme = (mode) => {
+        document.documentElement.dataset.theme = mode;
+      };
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
+      document.addEventListener('click', (event) => {
+        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(next);
+          localStorage.setItem('theme', next);
+        }
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
+        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        heading.id = slug;
+        const anchor = Object.assign(document.createElement('a'), {
+          href: `#${slug}`,
+          className: 'anchor',
+          ariaLabel: 'Link to section'
+        });
+        heading.appendChild(anchor);
+      });
+      document.querySelectorAll('pre > code').forEach((code) => {
+        const pre = code.parentElement;
+        const button = Object.assign(document.createElement('button'), {
+          textContent: 'Copy',
+          className: 'theme-toggle'
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          button.textContent = 'Copied!';
+          setTimeout(() => (button.textContent = 'Copy'), 1200);
+        });
+      });
+    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module">
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+    </script>
+
+    <footer class="site-footer">
+      <p></p>
+    </footer>
+  </body>
+</html>

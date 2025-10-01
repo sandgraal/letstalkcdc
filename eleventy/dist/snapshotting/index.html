@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Snapshotting (Initial Load) | </title>
+    <meta name="description" content="Learn how to handle the initial data load (snapshotting) in a CDC pipeline consistently and without data loss.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="canonical" href="/snapshotting/">
+    <meta name="theme-color" content="#0f172a">
+    <!-- SME STYLE START -->
+<style>
+      .callout {
+        border-left: 4px solid #6b7280;
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
+        background: #f7f7f7;
+      }
+      .callout strong {
+        color: #111827;
+      }
+      pre {
+        position: relative;
+        overflow: auto;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.4rem;
+        font: inherit;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.5rem;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        cursor: pointer;
+      }
+      code,
+      pre code {
+        white-space: pre-wrap;
+      }
+      section {
+        scroll-margin-top: 5rem;
+      }
+      figure svg {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+<!-- SME STYLE END -->
+<!-- SME SCRIPT START -->
+<!-- SME SCRIPT END -->
+<!-- SME DARK CALLOUT START -->
+<style>
+      /* SME DARK CALLOUT */
+      html[data-theme="dark"] .callout {
+        background: rgba(255, 255, 255, 0.06);
+        border-left-color: #9ca3af;
+      }
+      html[data-theme="light"] .callout {
+        background: #f7f7f7;
+        border-left-color: #6b7280;
+      }
+    </style>
+<!-- SME DARK CALLOUT END -->
+<!-- SME THEME FIXES START -->
+<style>
+      :root {
+        --sme-accent: #22d3ee;
+      } /* teal accent */
+      html[data-theme="dark"] .callout {
+        background: rgba(255, 255, 255, 0.06);
+        border-left-color: var(--sme-accent);
+      }
+      html[data-theme="light"] .callout {
+        background: #f7f7f7;
+        border-left-color: #6b7280;
+      }
+      html[data-theme="dark"] pre {
+        background: #0b1220;
+        border: 1px solid #1f2937;
+      }
+      html[data-theme="dark"] pre code {
+        background: transparent;
+      }
+      html[data-theme="dark"] code {
+        background: rgba(255, 255, 255, 0.06);
+        color: #e5e7eb;
+        border-radius: 4px;
+        padding: 0 0.25rem;
+      }
+      html[data-theme="dark"] kbd {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid #374151;
+        color: #e5e7eb;
+        border-radius: 4px;
+        padding: 0 0.25rem;
+      }
+      html[data-theme="dark"] mark {
+        background: rgba(34, 211, 238, 0.18);
+        color: #e5e7eb;
+      }
+      html[data-theme="dark"] .prose code::before,
+      html[data-theme="dark"] .prose code::after {
+        content: "";
+      }
+      .copy-btn {
+        transition: background 0.15s ease, border-color 0.15s ease,
+          color 0.15s ease;
+      }
+      html[data-theme="dark"] .copy-btn {
+        background: #0b1220;
+        border-color: #374151;
+        color: #e5e7eb;
+      }
+      html[data-theme="dark"] .copy-btn:hover {
+        background: #111827;
+        border-color: #4b5563;
+      }
+      html[data-theme="dark"] details {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid #1f2937;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+      }
+      html[data-theme="dark"] details > summary {
+        cursor: pointer;
+      }
+    </style>
+<!-- SME THEME FIXES END -->
+<!-- SME SNAPSHOT THEME OVERRIDE START -->
+<style>
+      :root {
+        --cdc-bg: #0b1220;
+        --cdc-surface: #0f172a;
+        --cdc-border: #1f2937;
+        --cdc-text: #e5e7eb;
+        --cdc-muted: #9ca3af;
+        --cdc-accent: #22d3ee; /* teal from overview */
+        --cdc-accent-2: #a78bfa; /* purple tags */
+      }
+      /* Handoff stepper (uses your theme tokens) */
+      .handoff {
+        margin: 0.75rem 0 1.25rem;
+      }
+      .handoff-steps {
+        display: grid;
+        grid-auto-flow: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+      @media (max-width: 760px) {
+        .handoff-steps {
+          grid-auto-flow: row;
+        }
+        .handoff .arrow {
+          justify-self: center;
+          transform: rotate(90deg);
+        }
+      }
+      .handoff .stage {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: linear-gradient(
+          180deg,
+          rgba(34, 211, 238, 0.08),
+          rgba(167, 139, 250, 0.06)
+        );
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.7rem;
+        padding: 0.9rem 0.95rem;
+        box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08) inset;
+      }
+      .handoff .stage:hover {
+        border-color: color-mix(
+          in oklab,
+          var(--cdc-accent) 35%,
+          var(--cdc-border)
+        );
+        box-shadow: 0 0 0 1px
+          color-mix(in oklab, var(--cdc-accent) 35%, transparent) inset;
+      }
+      .handoff .num {
+        flex: 0 0 auto;
+        width: 1.8rem;
+        height: 1.8rem;
+        line-height: 1.8rem;
+        text-align: center;
+        font-weight: 700;
+        border-radius: 999px;
+        background: radial-gradient(
+          75% 75% at 30% 30%,
+          var(--cdc-accent),
+          var(--cdc-accent-2)
+        );
+        color: #0b1220; /* high contrast badge text */
+        filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.25));
+      }
+      .handoff .stage-body {
+        display: grid;
+        gap: 0.15rem;
+      }
+      .handoff .stage-title {
+        font-weight: 600;
+        color: var(--cdc-text);
+      }
+      .handoff .stage-sub {
+        font-size: 0.9rem;
+        color: var(--cdc-muted);
+      }
+      .handoff .arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.25rem;
+        color: var(--cdc-muted);
+      }
+      .handoff-cap {
+        color: var(--cdc-muted);
+        margin: 0.5rem 0 0;
+      }
+      html[data-theme="dark"] body {
+        background: var(--cdc-bg);
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .page-wrap.prose {
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .prose {
+        max-width: 70ch;
+      }
+      html[data-theme="dark"] .prose h1,
+      html[data-theme="dark"] .prose h2,
+      html[data-theme="dark"] .prose h3 {
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .prose h2 {
+        border-bottom: 1px solid var(--cdc-border);
+        padding-bottom: 0.25rem;
+        margin-top: 2rem;
+      }
+      html[data-theme="dark"] .prose a {
+        color: var(--cdc-accent);
+      }
+      html[data-theme="dark"] .prose a:hover {
+        text-decoration: underline;
+      }
+      html[data-theme="dark"] .prose ul > li::marker {
+        color: var(--cdc-accent);
+      }
+      html[data-theme="dark"] .prose ol > li::marker {
+        color: var(--cdc-accent-2);
+      }
+      html[data-theme="dark"] .prose li {
+        margin-left: 0.15rem;
+      }
+      html[data-theme="dark"] details {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.6rem;
+        padding: 0.55rem 0.75rem;
+      }
+      html[data-theme="dark"] details > summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--cdc-surface);
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] details[open] > summary {
+        border-color: var(--cdc-accent);
+      }
+      html[data-theme="dark"] .callout {
+        background: rgba(34, 211, 238, 0.06);
+        border-left: 4px solid var(--cdc-accent);
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .callout strong {
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] pre {
+        background: var(--cdc-surface);
+        border: 1px solid var(--cdc-border);
+        border-radius: 0.6rem;
+      }
+      html[data-theme="dark"] code {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--cdc-text);
+        border-radius: 4px;
+        padding: 0 0.25rem;
+      }
+      html[data-theme="dark"] .prose code::before,
+      html[data-theme="dark"] .prose code::after {
+        content: "";
+      }
+      .copy-btn {
+        transition: background 0.15s ease, border-color 0.15s ease,
+          color 0.15s ease;
+      }
+      html[data-theme="dark"] .copy-btn {
+        background: var(--cdc-surface);
+        border-color: var(--cdc-border);
+        color: var(--cdc-text);
+      }
+      html[data-theme="dark"] .copy-btn:hover {
+        background: #111827;
+        border-color: #4b5563;
+      }
+      html[data-theme="dark"] figure figcaption {
+        color: var(--cdc-muted);
+      }
+      html[data-theme="dark"] blockquote {
+        border-left: 3px solid var(--cdc-accent-2);
+        background: rgba(167, 139, 250, 0.06);
+      }
+    </style>
+<!-- SME SNAPSHOT THEME OVERRIDE END -->
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"></a>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+          </nav>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><div class="page-wrap prose">
+<h1>The First Hurdle: Initial Data Load (Snapshotting)</h1>
+
+      <!-- SME ADDITIONS START: Objectives + Preflight + Per-DB -->
+      <section aria-labelledby="obj">
+        <h2 id="obj">What you’ll learn</h2>
+        <ul>
+          <li>Why snapshots need a log high-watermark and idempotent sinks.</li>
+          <li>How to choose snapshot modes (initial vs incremental).</li>
+          <li>How to size chunks and set parallelism safely.</li>
+          <li>How to run a 15-minute lab to prove no gaps/dupes.</li>
+          <li>What to monitor and how to recover failures.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="preflight">
+        <h2 id="preflight">Pre-flight checklist</h2>
+        <ul>
+          <li>
+            Retention window covers full snapshot duration
+            (WAL/binlog/T-log/UNDO).
+          </li>
+          <li>Privileges for log reading/replication are granted.</li>
+          <li>
+            Consistent-read isolation is enabled where applicable ( REPEATABLE
+            READ/SNAPSHOT).
+          </li>
+          <li>
+            Sink MERGE/UPSERT implemented; delete/tombstone semantics defined.
+          </li>
+          <li>Offsets are durable and backed up/versioned.</li>
+          <li>DDL freeze or schema-compatibility policy in place.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="perdb">
+        <h2 id="perdb">Per-DB: boundary + consistent read (snippets)</h2>
+
+        <details>
+          <summary><strong>PostgreSQL</strong></summary>
+          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+ALTER SYSTEM SET wal_level = logical;
+ALTER SYSTEM SET max_replication_slots = 10;  -- adjust
+SELECT pg_reload_conf();
+
+-- Boundary + consistent read (within one tx while snapshotting):
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SELECT pg_current_wal_lsn();  -- record this
+-- Keep transaction open during table scans; Debezium coordinates via logical slot.
+</code></pre>
+        </details>
+
+        <details>
+          <summary><strong>MySQL (InnoDB)</strong></summary>
+          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements:
+-- binlog_format=ROW; binlog_row_image=FULL; GTID (preferred)
+
+-- Boundary + consistent snapshot:
+SHOW MASTER STATUS;                  -- or SELECT @@global.gtid_executed;
+START TRANSACTION WITH CONSISTENT SNAPSHOT;
+-- Read tables in PK order; Debezium avoids FTWRL in OLTP paths.
+</code></pre>
+        </details>
+
+        <details>
+          <summary><strong>SQL Server</strong></summary>
+          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+ALTER DATABASE YourDb SET ALLOW_SNAPSHOT_ISOLATION ON;
+ALTER DATABASE YourDb SET READ_COMMITTED_SNAPSHOT ON;
+EXEC sys.sp_cdc_enable_db;  -- if using native CDC
+
+-- Boundary + snapshot:
+SELECT sys.fn_cdc_get_max_lsn();     -- record
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+BEGIN TRAN;
+-- Read tables; keep tx open during snapshot.
+</code></pre>
+        </details>
+
+        <details>
+          <summary><strong>Oracle</strong></summary>
+          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;  -- minimal or ALL columns for PK-less
+
+-- Boundary:
+SELECT CURRENT_SCN FROM V$DATABASE;        -- record
+-- Consistent reads use UNDO/flashback; ensure UNDO retention covers snapshot.
+</code></pre>
+        </details>
+      </section>
+      <!-- SME ADDITIONS END -->
+
+      <article class="prose">
+        <p>
+          A CDC pipeline is designed to stream ongoing <em>changes</em>, but it
+          must first be initialized with the data that
+          <em>already exists</em> in the source tables. This process of
+          performing an initial, full copy of the data is known as
+          <strong>snapshotting</strong> or the <strong>initial load</strong>.
+        </p>
+
+        <h2 id="challenge">The Challenge: Ensuring Consistency</h2>
+        <p>
+          The central problem of snapshotting is ensuring consistency. How can
+          you take a complete copy of a large, active table while new
+          transactions are constantly modifying it? A naive approach might miss
+          transactions that occur during the snapshot process or, conversely,
+          process them twice, once in the snapshot and again in the change
+          stream, leading to data duplication or loss.
+        </p>
+
+        <h2 id="solution">The Solution: Consistent Snapshots</h2>
+
+        <!-- SME REPLACEMENT START: Snapshot→Stream Stepper -->
+        <section class="handoff" aria-labelledby="handoff-h2">
+          <h3 id="handoff-h2" class="sr-only">
+            High-watermark boundary handoff
+          </h3>
+          <ol class="handoff-steps" role="list">
+            <li class="stage">
+              <span class="num" aria-hidden="true">1</span>
+              <div class="stage-body">
+                <div class="stage-title">Mark high-watermark</div>
+                <div class="stage-sub">Record LSN/SCN (boundary)</div>
+              </div>
+            </li>
+            <li class="arrow" aria-hidden="true">→</li>
+            <li class="stage">
+              <span class="num" aria-hidden="true">2</span>
+              <div class="stage-body">
+                <div class="stage-title">Consistent read</div>
+                <div class="stage-sub">Snapshot tables without gaps</div>
+              </div>
+            </li>
+            <li class="arrow" aria-hidden="true">→</li>
+            <li class="stage">
+              <span class="num" aria-hidden="true">3</span>
+              <div class="stage-body">
+                <div class="stage-title">Stream after boundary</div>
+                <div class="stage-sub">Apply idempotently</div>
+              </div>
+            </li>
+          </ol>
+          <p class="handoff-cap">
+            Snapshot → high-watermark → stream. Preserve per-key order and use
+            idempotent upserts/deletes at the sink.
+          </p>
+        </section>
+        <!-- SME REPLACEMENT END -->
+
+        <p>
+          Modern log-based CDC tools like Debezium coordinate a
+          <em>point-in-time snapshot</em> with the transaction log so the
+          handoff to streaming has no gaps or double-counts. Conceptually:
+        </p>
+        <ol>
+          <li>
+            <strong>Mark a high-watermark in the log.</strong> Read and record
+            the current log position (LSN/SCN). This is the boundary between
+            “history” and “live.”
+          </li>
+          <li>
+            <strong>Take a consistent read of tables.</strong> Use
+            snapshot/consistent-read isolation <em>without</em> long blocking
+            locks (details vary by database).
+          </li>
+          <li>
+            <strong>Stream changes after the high-watermark.</strong> Consume
+            the log from the recorded position; if any changes to rows already
+            snapshotted appear, apply <em>idempotently</em> to avoid
+            duplication.
+          </li>
+          <li>
+            <strong>Handoff complete.</strong> Snapshot → streaming switch keeps
+            per-key order and correctness. Gaps/overlaps are prevented by the
+            high-watermark boundary and idempotent upserts at the sink.
+          </li>
+        </ol>
+        <details>
+          <summary>
+            <strong>How “consistent reads” work (per database)</strong>
+          </summary>
+          <ul>
+            <li>
+              <strong>PostgreSQL:</strong> REPEATABLE READ +
+              <code>pg_export_snapshot()</code>; logical replication slot sets
+              the log boundary. No long blocking table locks, but long snapshots
+              can delay VACUUM cleanup (watch bloat).
+            </li>
+            <li>
+              <strong>MySQL/InnoDB:</strong>
+              <code>START TRANSACTION WITH CONSISTENT SNAPSHOT</code> + binlog
+              position. Debezium avoids
+              <code>FLUSH TABLES WITH READ LOCK</code> for OLTP safety.
+            </li>
+            <li>
+              <strong>SQL Server:</strong> CDC tables / log LSN establish the
+              boundary; snapshot isolation (or read committed snapshot) enables
+              consistent reads.
+            </li>
+            <li>
+              <strong>Oracle:</strong> SCN marks the boundary; read-consistency
+              from UNDO provides the snapshot.
+            </li>
+          </ul>
+        </details>
+
+        <h2 id="modes">Snapshot modes (choose intentionally)</h2>
+        <ul>
+          <li>
+            <strong>initial:</strong> Do a snapshot then continue streaming
+            (default for first run).
+          </li>
+          <li>
+            <strong>initial_only:</strong> One-time bulk load, no streaming
+            (bootstraps batch targets).
+          </li>
+          <li>
+            <strong>schema_only / never:</strong> Skip data snapshot (for
+            pre-seeded targets or special cases).
+          </li>
+          <li>
+            <strong>incremental snapshot:</strong> Chunk tables online (no
+            global pause) using low/high watermarks and primary-key ranges;
+            supports resuming mid-table.
+          </li>
+        </ul>
+
+        <h2 id="chunking">Performance: chunking &amp; throughput</h2>
+        <ul>
+          <li>
+            <strong>Chunking:</strong> Read large tables in PK-ordered chunks
+            (5k–200k rows) to bound memory and reduce long transactions. Prefer
+            monotonic PKs; otherwise use synthetic chunking keys.
+          </li>
+          <li>
+            <strong>Parallelism:</strong> Limit concurrent table snapshots to
+            protect OLTP (1–3 in parallel).
+          </li>
+          <li>
+            <strong>Throttling:</strong> Use fetch size / max rows per poll to
+            keep steady pressure, not bursts.
+          </li>
+          <li>
+            <strong>Replica reads:</strong> For MySQL/PG, consider reading from
+            a replica to offload the primary (ensure replication lag is
+            acceptable and log positions still align).
+          </li>
+        </ul>
+
+        <h2 id="ops">Operational guardrails (day-one checks)</h2>
+        <ul>
+          <li>
+            <strong>Log retention:</strong> Ensure WAL/binlog/T-log won’t be
+            purged before snapshot finishes. Alert on backlog age and size.
+          </li>
+          <li>
+            <strong>Privileges:</strong> Replication/log-read permissions;
+            publication/slot creation where applicable.
+          </li>
+          <li>
+            <strong>DDL during snapshot:</strong> Prefer compatibility rules
+            (schema registry) and deploy windows; avoid table rebuilds that
+            invalidate consistent reads.
+          </li>
+          <li>
+            <strong>Sink idempotency:</strong> Upsert/delete semantics in the
+            warehouse/search index must be idempotent so replays (post-snapshot)
+            don’t duplicate data.
+          </li>
+          <li>
+            <strong>Resume safely:</strong> Snapshots should be restartable:
+            resume from last completed chunk and the recorded high-watermark.
+          </li>
+        </ul>
+        <!-- SME ADDITIONS START: Patterns, Observability, Lab, Gotchas -->
+        <section aria-labelledby="idempotent">
+          <h2 id="idempotent">Idempotent sink patterns</h2>
+          <p>Use UPSERT/MERGE semantics and explicit delete handling.</p>
+          <details>
+            <summary><strong>Warehouse MERGE example</strong></summary>
+            <pre><button class="copy-btn" type="button">Copy</button><code>MERGE INTO dw.customers AS t
+USING staging.customers AS s
+ON t.customer_id = s.customer_id
+WHEN MATCHED THEN UPDATE SET
+  name = s.name,
+  email = s.email,
+  updated_at = s.updated_at
+WHEN NOT MATCHED THEN INSERT (customer_id, name, email, updated_at)
+VALUES (s.customer_id, s.name, s.email, s.updated_at);</code></pre>
+          </details>
+          <aside aria-label="Gotcha" class="callout">
+            <strong>Gotcha:</strong> Handle deletes explicitly (tombstones or a
+            <code>__op</code> field). Otherwise replays produce resurrected
+            rows.
+          </aside>
+        </section>
+
+        <section aria-labelledby="observability">
+          <h2 id="observability">Observability: what to track</h2>
+          <ul>
+            <li>Source log lag (bytes/time behind) and slot/binlog growth.</li>
+            <li>Snapshot throughput (rows/s), chunk duration, ETA by table.</li>
+            <li>Sink merge latency and deadlocks.</li>
+            <li>
+              Error budget: % chunks retried; time to resume after failure.
+            </li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="failures">
+          <h2 id="failures">Failure modes → actions</h2>
+          <ul>
+            <li>
+              <strong>Long snapshots block VACUUM/UNDO:</strong> shrink chunk
+              size; run on a replica; pause between chunks.
+            </li>
+            <li>
+              <strong>Log purged mid-snapshot:</strong> restart from last
+              completed chunk; increase retention; consider replica.
+            </li>
+            <li>
+              <strong>No primary key:</strong> define synthetic key or dedupe in
+              sink (hash + latest timestamp).
+            </li>
+            <li>
+              <strong>DDL during snapshot:</strong> retry chunk with stable
+              schema; versioned views; schema-compat rules.
+            </li>
+            <li>
+              <strong>Replica lag:</strong> validate boundary alignment; if
+              laggy, snapshot from primary or temporarily gate OLTP.
+            </li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="lab">
+          <h2 id="lab">Hands-on: prove no gaps/dupes (≈15 min)</h2>
+          <ol>
+            <li>
+              Pick your database and run the “boundary + consistent read”
+              snippet.
+            </li>
+            <li>
+              While snapshot runs, perform writes in a second session: insert
+              (id=3), update (id=2).
+            </li>
+            <li>
+              After handoff, insert (id=4). Verify sink via MERGE and run a dup
+              check.
+            </li>
+          </ol>
+          <details>
+            <summary><strong>Dup check query</strong></summary>
+            <pre><button class="copy-btn" type="button">Copy</button><code>SELECT id, COUNT(*) AS c
+FROM dw.orders
+GROUP BY id
+HAVING COUNT(*) &gt; 1;</code></pre>
+          </details>
+        </section>
+
+        <section aria-labelledby="gotchas">
+          <h2 id="gotchas">Common gotchas</h2>
+          <aside class="callout">
+            <strong>Throughput vs safety:</strong> Aim for 5–30s chunk time;
+            keep txn duration within retention.
+          </aside>
+          <aside class="callout">
+            <strong>LOBs/wide rows:</strong> Exclude heavy columns from initial
+            snapshot; backfill later.
+          </aside>
+          <aside class="callout">
+            <strong>Partitioned tables:</strong> Snapshot partitions in
+            deterministic order; beware partition switches.
+          </aside>
+          <aside class="callout">
+            <strong>Time zones:</strong> Normalize to UTC to prevent
+            duplicate-by-wall-clock.
+          </aside>
+        </section>
+        <!-- SME ADDITIONS END -->
+      </article>
+      <div class="pagination">
+        <a href="/intro/">← Back: Intro to CDC</a>
+        <a href="/exactly-once/">Next: Exactly-Once →</a>
+      </div>
+</div></main>
+
+    <script type="module">
+      const applyTheme = (mode) => {
+        document.documentElement.dataset.theme = mode;
+      };
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
+      document.addEventListener('click', (event) => {
+        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(next);
+          localStorage.setItem('theme', next);
+        }
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
+        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        heading.id = slug;
+        const anchor = Object.assign(document.createElement('a'), {
+          href: `#${slug}`,
+          className: 'anchor',
+          ariaLabel: 'Link to section'
+        });
+        heading.appendChild(anchor);
+      });
+      document.querySelectorAll('pre > code').forEach((code) => {
+        const pre = code.parentElement;
+        const button = Object.assign(document.createElement('button'), {
+          textContent: 'Copy',
+          className: 'theme-toggle'
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          button.textContent = 'Copied!';
+          setTimeout(() => (button.textContent = 'Copy'), 1200);
+        });
+      });
+    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script>
+  document.addEventListener(
+          "click",
+          function (e) {
+            if (e.target && e.target.classList.contains("copy-btn")) {
+              const pre = e.target.closest("pre");
+              if (!pre) return;
+              const code = pre.querySelector("code");
+              const text = code ? code.innerText : pre.innerText;
+              navigator.clipboard.writeText(text).then(() => {
+                const old = e.target.textContent;
+                e.target.textContent = "Copied";
+                setTimeout(() => {
+                  e.target.textContent = old;
+                }, 1200);
+              });
+            }
+          },
+          false
+        );
+</script>
+
+    <footer class="site-footer">
+      <p></p>
+    </footer>
+  </body>
+</html>

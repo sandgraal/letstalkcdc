@@ -1,0 +1,230 @@
+---
+layout: base.njk
+title: "Series Overview"
+description: "Series hub for advanced CDC patterns. Exactly-once semantics, multi-tenancy, partitioning, and reconciliation."
+canonicalPath: "/overview/"
+head_extra: |
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "CDC Learning Series",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "https://letstalkcdc.nfshost.com/intro/"},
+        {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "https://letstalkcdc.nfshost.com/exactly-once/"},
+        {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "https://letstalkcdc.nfshost.com/multi-tenancy/"},
+        {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "https://letstalkcdc.nfshost.com/lab-kafka-debezium/"}
+      ]
+    }
+  </script>
+---
+<section class="hero-section">
+  <div class="prose">
+    <h1>Series Overview</h1>
+    <p class="text-xl text-slate-600">
+      Change Data Capture marks a fundamental evolution in data integration, moving away from the latent, resource-intensive world of batch processing and into the dynamic paradigm of real-time streaming. By capturing individual data changes as they occur, CDC provides a mechanism to keep disparate systems synchronized with minimal impact and sub-second latency. This technology is a strategic enabler, unlocking real-time analytics and forming the backbone of resilient, modern data architectures.
+    </p>
+    <p class="text-xl text-slate-600">
+      Start with the fundamentals. Understand what Change Data Capture is and why it's a cornerstone of modern data architecture through real-world use cases.
+    </p>
+  </div>
+</section>
+<section class="series-card-grid">
+  <article class="series-card is-recommended">
+    <div class="card-meta">
+      <div class="badge recommended">Start Here</div>
+      <div class="card-tags">
+        <span class="tag tag-concept">Core Concept</span>
+      </div>
+    </div>
+    <h3 class="card-title">Interactive Introduction to CDC</h3>
+    <p class="card-description">
+      An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.
+    </p>
+    <p>
+      <a class="button" href="/intro/" aria-label="Read: Interactive Introduction to CDC">
+        Dive In!
+      </a>
+    </p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-concept">Core Concept</span></div>
+    </div>
+    <h3 class="card-title">Event Envelope &amp; Delivery Guarantees</h3>
+    <p class="card-description">Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.</p>
+    <p><a class="button" aria-disabled="true">Coming Soon</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-concept">Core Concept</span></div>
+    </div>
+    <h3 class="card-title">Materialization 101 (Upsert/Delete)</h3>
+    <p class="card-description">Practical MERGE patterns for upserts &amp; deletes; compaction vs history tables; late-arrivals 101.</p>
+    <p><a class="button" aria-disabled="true">Coming Soon</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-concept">Core Concept</span>
+      </div>
+    </div>
+    <h3 class="card-title">Snapshotting: The First Sync</h3>
+    <p class="card-description">
+      Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.
+    </p>
+    <p><a class="button" href="/snapshotting/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Exactly‑Once Semantics</h3>
+    <p class="card-description">
+      Visual walkthrough of ALO vs EOS + transactional outbox.
+    </p>
+    <p><a class="button" href="/exactly-once/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Multi‑Tenancy</h3>
+    <p class="card-description">
+      Isolation patterns, topic math, and rough egress estimates.
+    </p>
+    <p><a class="button" href="/multi-tenancy/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Partitioning</h3>
+    <p class="card-description">
+      Partition keys, skew, late‑arrivals, and audit loops.
+    </p>
+    <p><a class="button" href="/partitioning/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-pattern">Advanced Pattern</span>
+      </div>
+    </div>
+    <h3 class="card-title">Schema Evolution</h3>
+    <p class="card-description">
+      Handle schema changes gracefully with forward/backward compatibility and schema registries.
+    </p>
+    <p><a class="button" href="/schema-evolution/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-ops">Ops</span></div>
+    </div>
+    <h3 class="card-title">Ops: Offsets &amp; Replays</h3>
+    <p class="card-description">Offset stores, safe rewind, idempotency, and resync drills when things go sideways.</p>
+    <p><a class="button" aria-disabled="true">Coming Soon</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-ops">Ops</span></div>
+    </div>
+    <h3 class="card-title">Observability Basics</h3>
+    <p class="card-description">Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.</p>
+    <p><a class="button" aria-disabled="true">Coming Soon</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-concept">Core Concept</span>
+      </div>
+    </div>
+    <h3 class="card-title">Real-World Use Cases</h3>
+    <p class="card-description">
+      Explore practical applications of CDC, from real-time analytics to cache invalidation.
+    </p>
+    <p><a class="button" href="/use-cases/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-strategy">Strategy</span>
+      </div>
+    </div>
+    <h3 class="card-title">The Strategic Value of CDC</h3>
+    <p class="card-description">
+      Understand the business case and philosophical shift behind adopting an event-driven data culture.
+    </p>
+    <p><a class="button" href="/strategy/">Dive In!</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-tooling">Tooling</span>
+      </div>
+    </div>
+    <h3 class="card-title">The CDC Ecosystem</h3>
+    <p class="card-description">
+      A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).
+    </p>
+    <p><a class="button" href="/tooling/">Discover the Tools</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags">
+        <span class="tag tag-tooling">Tooling</span>
+      </div>
+    </div>
+    <h3 class="card-title">Connector Config Builder</h3>
+    <p class="card-description">
+      Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.
+    </p>
+    <p><a class="button" href="/connector-builder/">Launch the Builder</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-extras">Extras</span></div>
+    </div>
+    <h3 class="card-title">DLQ Triage Assistant</h3>
+    <p class="card-description">
+      Guided commands and playbooks for decoding and re-driving Kafka DLQ events.
+    </p>
+    <p><a class="button" href="/dlq-triage/">Try the Assistant</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-extras">Extras</span></div>
+    </div>
+    <h3 class="card-title">Debezium Event Decoder</h3>
+    <p class="card-description">
+      Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.
+    </p>
+    <p><a class="button" href="/debezium-decoder/">Decode an Event</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-labs">Lab</span></div>
+    </div>
+    <h3 class="card-title">Hands-On Lab: Kafka + Debezium</h3>
+    <p class="card-description">
+      Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.
+    </p>
+    <p><a class="button" href="/lab-kafka-debezium/">Start the Lab</a></p>
+  </article>
+  <article class="series-card">
+    <div class="card-meta">
+      <div class="card-tags"><span class="tag tag-labs">Lab</span></div>
+    </div>
+    <h3 class="card-title">Quickstarts</h3>
+    <p class="card-description">
+      Pick your source database and follow a 10–20 minute setup with checks and commands.
+    </p>
+    <p><a class="button" href="/quickstarts/">View Quickstarts</a></p>
+  </article>
+</section>

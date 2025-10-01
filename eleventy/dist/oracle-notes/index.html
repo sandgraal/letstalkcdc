@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vendor Nuances — Oracle CDC | CDC: The Missing Manual | </title>
+    <meta name="description" content="Oracle Change Data Capture: prerequisites, quick checks, performance knobs, and troubleshooting playbook for log-based CDC (LogMiner/replication readers).">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="canonical" href="/oracle-notes/">
+    <meta name="theme-color" content="#0f172a">
+    <meta
+      name="description"
+      content="Oracle Change Data Capture: prerequisites, quick checks, performance knobs, and troubleshooting playbook for log-based CDC (LogMiner/replication readers)."
+    />
+    <style>
+      /* Minimal local styles for page-specific elements */
+      .box {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background: var(--color-background-soft);
+        margin-bottom: 1.5rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      pre {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        overflow: auto;
+        background: var(--color-background-soft);
+      }
+      .callout {
+        border-left: 0.35rem solid #10b981;
+        background: #f0fdf4;
+      }
+      .callout.warn {
+        border-left-color: #ef4444;
+        background: #fef2f2;
+      }
+      [data-theme="dark"] .callout {
+        background: #162421;
+      }
+      [data-theme="dark"] .callout.warn {
+        background: #2d1e1e;
+      }
+      .checklist {
+        list-style: none;
+        padding: 0;
+        margin: 0.25rem 0 0;
+      }
+      .checklist li {
+        margin: 0.35rem 0;
+      }
+    </style>
+    <link
+      rel="canonical"
+      href="https://letstalkcdc.nfshost.com/oracle-notes/"
+    />
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"></a>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+          </nav>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><!-- The .prose class now wraps only the introductory text -->
+      <div class="prose">
+        <a href="quickstarts/" class="back-link">← Back to Quickstarts</a>
+        <h1>Vendor Nuances — Oracle (Log-Based CDC)</h1>
+        <p class="muted">
+          Practical prerequisites, quick checks, performance knobs, and a
+          “first-aid” section for common failures.
+        </p>
+      </div>
+
+      <!-- The multi-column sections are now outside the .prose wrapper -->
+      <section class="box callout">
+        <h2>What you must have before turning on CDC</h2>
+        <ul class="checklist">
+          <li>
+            <strong>Database in ARCHIVELOG</strong> mode (recommended for CDC
+            resiliency).
+          </li>
+          <li>
+            <strong>Supplemental logging</strong> enabled (database-level
+            minimal; table-level as needed for keys/columns used in merges).
+          </li>
+          <li>
+            <strong>Privileges</strong>: read data dictionary views,
+            redo/archive logs, target tables; ability to create log groups if
+            required.
+          </li>
+          <li>
+            <strong>Redo retention</strong> sized for snapshot + catch-up window
+            (avoid log switch storms during backfills).
+          </li>
+          <li>
+            <strong>Stable primary keys</strong> (or explicit “replica identity
+            full” equivalents via table log groups for keyless tables).
+          </li>
+        </ul>
+      </section>
+
+      <section class="grid">
+        <div class="box">
+          <h2>Quick Health Checks (copy/paste)</h2>
+          <h3>Archivelog & Redo Status</h3>
+          <pre><code>SELECT log_mode FROM v$database;
+SELECT sequence#, bytes/1024/1024 MB, archived, status
+FROM v$log ORDER BY first_time DESC FETCH FIRST 10 ROWS ONLY;</code></pre>
+          <h3>Supplemental Logging</h3>
+          <pre><code>-- database-wide
+SELECT supplemental_log_data_min, supplemental_log_data_all FROM v$database;
+
+-- table-level (confirm keys/columns logged for merges on keyless tables)
+SELECT owner, table_name, log_group_name, always, log_group_type
+FROM dba_log_groups
+ORDER BY owner, table_name;</code></pre>
+          <h3>Current Redo Pressure</h3>
+          <pre><code>SELECT TO_CHAR(first_time,'YYYY-MM-DD HH24:MI') AS first_time,
+       COUNT(*) AS switches
+FROM v$log_history
+WHERE first_time > SYSDATE - 1/24   -- last hour
+GROUP BY TO_CHAR(first_time,'YYYY-MM-DD HH24:MI')
+ORDER BY 1 DESC;</code></pre>
+        </div>
+        <div class="box">
+          <h2>Connector Snapshot Sanity</h2>
+          <ul class="checklist">
+            <li>Scope restricted: include only necessary schemas/tables.</li>
+            <li>
+              Long-running transactions identified (they can stall snapshot
+              start).
+            </li>
+            <li>Redo retention ≥ expected snapshot duration.</li>
+            <li>
+              If tables lack PKs, ensure table-level log groups capture enough
+              columns for deterministic merges.
+            </li>
+          </ul>
+          <h3>Nice-to-have SQL for big snapshots</h3>
+          <pre><code>-- largest tables by size
+SELECT owner, segment_name, bytes/1024/1024 MB
+FROM dba_segments
+WHERE segment_type='TABLE'
+ORDER BY bytes DESC FETCH FIRST 20 ROWS ONLY;</code></pre>
+        </div>
+      </section>
+
+      <section class="box">
+        <h2>Performance Knobs (choose carefully, measure after each change)</h2>
+        <ul>
+          <li>
+            <strong>Redo log size & count:</strong> larger logs reduce switch
+            frequency during snapshots; too large can delay archiving.
+          </li>
+          <li>
+            <strong>Filter scope:</strong> narrow includes to reduce LogMiner
+            workload and topic chatter.
+          </li>
+          <li>
+            <strong>Task/worker parallelism:</strong> increase only if the
+            source and sink can keep up; watch redo/CPU.
+          </li>
+          <li>
+            <strong>Batch/fetch sizing:</strong> tune connector fetch/commit
+            sizes to match sink merge throughput.
+          </li>
+          <li>
+            <strong>LOB handling:</strong> consider excluding or routing large
+            LOB tables to a separate flow; they dominate redo and bandwidth.
+          </li>
+        </ul>
+      </section>
+
+      <section class="grid">
+        <div class="box">
+          <h2>Common Failure → First Aid</h2>
+          <ul>
+            <li>
+              <em>Duplicates after restarts:</em> switch the sink to
+              <strong>idempotent</strong> <code>MERGE/UPSERT</code> keyed by a
+              stable id + version/op_ts; then replay last N events.
+            </li>
+            <li>
+              <em>Missed updates:</em> enable table-level supplemental logging
+              for key columns (or all columns for keyless) and re-snapshot.
+            </li>
+            <li>
+              <em>Dictionary mismatch / DDL errors:</em> pause, capture the DDL,
+              align connector schema evolution settings, then resume from a safe
+              SCN.
+            </li>
+            <li>
+              <em>Redo switch storm:</em> reduce snapshot scope or increase redo
+              log size; avoid concurrent heavy maintenance jobs.
+            </li>
+            <li>
+              <em>SCN gaps / “log not found”:</em> extend archive retention; if
+              a gap exists, plan a clean re-snapshot of affected tables.
+            </li>
+          </ul>
+        </div>
+        <div class="box">
+          <h2>Observability</h2>
+          <ul class="checklist">
+            <li>
+              Expose SCN / commit timestamp per event (headers/columns) all the
+              way to the sink.
+            </li>
+            <li>
+              Emit connector task metrics (lag, batches/sec, records/sec) and
+              alert on flatlining progress.
+            </li>
+            <li>
+              Dead-letter queue (DLQ) enabled with payload + error string for
+              triage.
+            </li>
+          </ul>
+          <h3>Duplicate / Latest-wins Checks (sink)</h3>
+          <pre><code>-- generic duplicate check (replace target & pk)
+SELECT COUNT(*) AS rows, COUNT(DISTINCT pk) AS distinct_keys FROM target;
+
+-- latest-wins (replace names)
+SELECT business_id, MAX(op_ts) AS last_seen, COUNT(*) AS events
+FROM history_or_stage GROUP BY business_id;</code></pre>
+        </div>
+      </section>
+
+      <section class="box callout warn">
+        <h2>Upgrade Checklist</h2>
+        <ul class="checklist">
+          <li>
+            Read the connector release notes for breaking changes (catalog
+            strategies, snapshot defaults, DDL handling).
+          </li>
+          <li>
+            Test on a staging database with archived logs; verify no duplicate
+            PKs after a controlled restart.
+          </li>
+          <li>
+            Capture before/after redo switch rates and connector lag to spot
+            regressions early.
+          </li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <h2>Acceptance Criteria</h2>
+        <ul class="checklist">
+          <li>
+            <input type="checkbox" /> Database in <code>ARCHIVELOG</code>;
+            supplemental logging verified at DB and required tables
+          </li>
+          <li>
+            <input type="checkbox" /> Snapshot finishes without schema
+            conflicts; archived logs cover entire snapshot window
+          </li>
+          <li>
+            <input type="checkbox" /> Controlled connector restart produces
+            <strong>no duplicate PKs</strong> in the sink
+          </li>
+          <li>
+            <input type="checkbox" /> Steady-state redo switch rate and
+            connector lag are within SLOs
+          </li>
+          <li>
+            <input type="checkbox" /> DLQ empty (or only known test errors) for
+            30 minutes
+          </li>
+        </ul>
+      </section>
+</main>
+
+    <script type="module">
+      const applyTheme = (mode) => {
+        document.documentElement.dataset.theme = mode;
+      };
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
+      document.addEventListener('click', (event) => {
+        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(next);
+          localStorage.setItem('theme', next);
+        }
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
+        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        heading.id = slug;
+        const anchor = Object.assign(document.createElement('a'), {
+          href: `#${slug}`,
+          className: 'anchor',
+          ariaLabel: 'Link to section'
+        });
+        heading.appendChild(anchor);
+      });
+      document.querySelectorAll('pre > code').forEach((code) => {
+        const pre = code.parentElement;
+        const button = Object.assign(document.createElement('button'), {
+          textContent: 'Copy',
+          className: 'theme-toggle'
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          button.textContent = 'Copied!';
+          setTimeout(() => (button.textContent = 'Copy'), 1200);
+        });
+      });
+    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module">
+      // Theme toggle script
+      const apply = (m) => (document.documentElement.dataset.theme = m);
+      const saved = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      apply(saved ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          apply(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("reduce-motion");
+      }
+    </script>
+
+    <footer class="site-footer">
+      <p></p>
+    </footer>
+  </body>
+</html>

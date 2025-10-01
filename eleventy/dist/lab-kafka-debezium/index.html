@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hands-On Lab: CDC with Kafka, Debezium, and Postgres | CDC: The Missing Manual | </title>
+    <meta name="description" content="A step-by-step guide to building a real-time Change Data Capture pipeline using Docker, Postgres, Kafka, and Debezium.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="canonical" href="/lab-kafka-debezium/">
+    <meta name="theme-color" content="#0f172a">
+    <style>
+        /* Minimal local styles for lab-specific elements */
+        .lab-steps ol {
+            list-style: none;
+            counter-reset: step-counter;
+            padding-left: 0;
+        }
+        .lab-steps li {
+            counter-increment: step-counter;
+            margin-bottom: 2rem;
+            position: relative;
+            padding-left: 3rem;
+        }
+        .lab-steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            width: 2.25rem;
+            height: 2.25rem;
+            line-height: 2.25rem;
+            text-align: center;
+            border-radius: 50%;
+            background-color: var(--color-primary-soft);
+            color: var(--color-primary);
+        }
+    </style>
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"></a>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+          </nav>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><h1>Hands-On Lab: Kafka + Debezium + Postgres</h1>
+        <p class="text-xl text-slate-600">
+            In this lab, you'll build a complete, end-to-end Change Data Capture (CDC) pipeline from scratch. We'll use Docker Compose to orchestrate a Postgres database, Kafka, and the Debezium Postgres connector to stream row-level changes in real time.
+        </p>
+
+        <section aria-labelledby="prereqs" class="lab-steps">
+            <h2 id="prereqs">Prerequisites</h2>
+            <ul>
+                <li><strong>Docker and Docker Compose:</strong> Ensure they are installed and running on your machine.</li>
+                <li><strong>A terminal or command prompt:</strong> Basic familiarity with shell commands.</li>
+                <li><strong>cURL or a similar tool:</strong> For interacting with the Kafka Connect REST API.</li>
+            </ul>
+
+            <h2 id="setup">Lab Setup</h2>
+            <ol>
+                <li>
+                    <h3>Create Project Directory</h3>
+                    <p>Start by creating a new folder for your lab project and navigate into it.</p>
+                    <pre><code>mkdir cdc-lab && cd cdc-lab</code></pre>
+                </li>
+                <li>
+                    <h3>Create `docker-compose.yml`</h3>
+                    <p>Create a file named <code>docker-compose.yml</code> and paste the following configuration. This file defines all the services we need: Zookeeper, Kafka, Postgres, and Debezium/Connect.</p>
+                    <pre><code># docker-compose.yml
+version: '3.7'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  postgres:
+    image: debezium/postgres:14
+    hostname: postgres
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=start_data_engineer
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=inventory
+
+  connect:
+    image: debezium/connect:2.1
+    hostname: connect
+    container_name: connect
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      BOOTSTRAP_SERVERS: 'kafka:29092'
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+                    </code></pre>
+                </li>
+                <li>
+                    <h3>Start the Services</h3>
+                    <p>Open your terminal in the project directory and run the following command to start all the containers.</p>
+                    <pre><code>docker-compose up -d</code></pre>
+                    <p>It might take a few minutes for all services to become fully operational.</p>
+                </li>
+                 <li>
+                    <h3>Register the Postgres Connector</h3>
+                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the Kafka Connect REST API. Create a file named <code>register-postgres.json</code>:</p>
+                    <pre><code>{
+  "name": "inventory-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "start_data_engineer",
+    "database.password": "password",
+    "database.dbname": "inventory",
+    "database.server.name": "dbserver1",
+    "table.include.list": "public.products",
+    "plugin.name": "pgoutput"
+  }
+}</code></pre>
+                    <p>Now, post this configuration using cURL:</p>
+                    <pre><code>curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @register-postgres.json</code></pre>
+                    <p>You should receive an HTTP 201 response, indicating success.</p>
+                </li>
+                 <li>
+                    <h3>Create a Table and Insert Data</h3>
+                    <p>Let's connect to the Postgres database and create the `products` table that our connector is configured to watch.</p>
+                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "CREATE TABLE products (id SERIAL PRIMARY KEY, name VARCHAR(255), description VARCHAR(512), weight FLOAT);"</code></pre>
+                    <p>Now, insert a row:</p>
+                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "INSERT INTO products (name, description, weight) VALUES ('Laptop', 'A powerful laptop', 1.5);"</code></pre>
+                </li>
+                 <li>
+                    <h3>Observe the Change Event in Kafka</h3>
+                    <p>Finally, let's consume from the Kafka topic to see the change event that Debezium generated. The topic name is based on the `database.server.name` and the table name (`dbserver1.public.products`).</p>
+                    <pre><code>docker-compose exec kafka kafka-console-consumer --bootstrap-server kafka:29092 --topic dbserver1.public.products --from-beginning --property print.key=true</code></pre>
+                    <p>You will see a detailed JSON payload representing the `INSERT` operation you just performed. Congratulations, you've built a working CDC pipeline!</p>
+                </li>
+            </ol>
+        </section>
+         <div class="pagination">
+        <a href="troubleshooting/">← Back: Troubleshooting</a>
+        <a href="quickstarts/">Next: Quick-Start Guides →</a>
+      </div>
+</main>
+
+    <script type="module">
+      const applyTheme = (mode) => {
+        document.documentElement.dataset.theme = mode;
+      };
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
+      document.addEventListener('click', (event) => {
+        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(next);
+          localStorage.setItem('theme', next);
+        }
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
+        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        heading.id = slug;
+        const anchor = Object.assign(document.createElement('a'), {
+          href: `#${slug}`,
+          className: 'anchor',
+          ariaLabel: 'Link to section'
+        });
+        heading.appendChild(anchor);
+      });
+      document.querySelectorAll('pre > code').forEach((code) => {
+        const pre = code.parentElement;
+        const button = Object.assign(document.createElement('button'), {
+          textContent: 'Copy',
+          className: 'theme-toggle'
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          button.textContent = 'Copied!';
+          setTimeout(() => (button.textContent = 'Copy'), 1200);
+        });
+      });
+    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module">
+        // Theme toggle script
+        const apply = (m) => (document.documentElement.dataset.theme = m);
+        const saved = localStorage.getItem("theme");
+        const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+        apply(saved ?? (prefersDark ? "dark" : "light"));
+        document.addEventListener("click", (e) => {
+            if (e.target.matches("[data-toggle-theme]")) {
+                const next =
+                    document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+                apply(next);
+                localStorage.setItem("theme", next);
+            }
+        });
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            document.documentElement.classList.add("reduce-motion");
+        }
+    </script>
+
+    <footer class="site-footer">
+      <p></p>
+    </footer>
+  </body>
+</html>

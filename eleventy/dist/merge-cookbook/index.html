@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>merge / upsert cookbook — sinks for CDC | </title>
+    <meta name="description" content="">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="canonical" href="/merge-cookbook/">
+    <meta name="theme-color" content="#0f172a">
+    <meta content="battle-tested merge/upsert templates for Snowflake, BigQuery, Databricks Delta, Postgres, MySQL, and Redshift. handles dupes, late events, and deletes." name="description"/>
+<link href="styles.css" rel="stylesheet"/>
+<style>
+    :root{--border:#e5e7eb;--muted:#6b7280}
+    body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; color:#111827; margin:0}
+    header,main{max-width:1100px; margin:0 auto; padding:0 1rem}
+    header{padding:1rem 0; border-bottom:1px solid var(--border)}
+    header a{color:#2563eb; text-decoration:none}
+    h1{font-size:clamp(1.6rem,3vw,2.2rem); margin:.4rem 0 .25rem}
+    h2{margin:1.8rem 0 .6rem} h3{margin:1.1rem 0 .35rem}
+    .muted{color:var(--muted)}
+    .grid{display:grid; gap:1rem; grid-template-columns:1fr}
+    @media(min-width:950px){ .grid{grid-template-columns:1fr 1fr} }
+    .box{border:1px solid var(--border); border-radius:.6rem; padding:1rem; background:#fff}
+    pre{border:1px solid var(--border); border-radius:.6rem; padding:.75rem; overflow:auto; background:#fff}
+    code{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .pill{display:inline-block; padding:.1rem .5rem; border:1px solid var(--border); border-radius:999px; font-size:.75rem; background:#fff; color:#374151}
+    .list{margin:.35rem 0 0 1rem}
+    .callout{border-left:.35rem solid #10b981; background:#f3fdf8}
+    .warn{border-left-color:#ef4444; background:#fff7f7}
+  </style>
+<link href="https://letstalkcdc.nfshost.com/merge-cookbook/" rel="canonical"/>
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"></a>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+          </nav>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><section class="box callout">
+<h2>shared assumptions (adapt to your schema)</h2>
+<ul class="list">
+<li>staging table: <code>STG_CUSTOMERS</code> (raw CDC) with columns <code>ID</code>, <code>EMAIL</code>, <code>OP</code> (c/u/d), <code>OP_TS</code> (event time), optional <code>VERSION</code> or <code>LSN/GTID/SCN</code>.</li>
+<li>target table: <code>TARGET_CUSTOMERS</code> (latest state).</li>
+<li>business key: <code>ID</code>. replace with your key columns as needed.</li>
+<li>late events: we accept an incoming row if its <code>OP_TS</code> ≥ current target <code>OP_TS</code>.</li>
+<li>soft deletes: either actually delete or set a <code>IS_DELETED</code> flag.</li>
+</ul>
+<p class="muted">if your source doesn’t emit <code>OP_TS</code>, use commit LSN/GTID/SCN as the ordering surrogate.</p>
+</section>
+<section class="grid">
+<article class="box">
+<h2>snowflake</h2>
+<pre><code>MERGE INTO TARGET_CUSTOMERS t
+USING (
+  SELECT ID, EMAIL, OP, OP_TS FROM STG_CUSTOMERS
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+) s
+ON t.ID = s.ID
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
+  DELETE
+WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS THEN
+  UPDATE SET EMAIL = s.EMAIL, OP_TS = s.OP_TS
+WHEN NOT MATCHED AND s.OP &lt;&gt; 'd' THEN
+  INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
+<p class="muted">dedup in the <code>USING</code> subquery protects against duplicate events in staging.</p>
+</article>
+<article class="box">
+<h2>bigquery</h2>
+<pre><code>MERGE `dataset.TARGET_CUSTOMERS` t
+USING (
+  SELECT ID, EMAIL, OP, OP_TS FROM `dataset.STG_CUSTOMERS`
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+) s
+ON t.ID = s.ID
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
+  DELETE
+WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS THEN
+  UPDATE SET EMAIL = s.EMAIL, OP_TS = s.OP_TS
+WHEN NOT MATCHED AND s.OP != 'd' THEN
+  INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
+<p class="muted">consider partitioning <code>TARGET_CUSTOMERS</code> by <code>DATE(OP_TS)</code> and clustering by <code>ID</code> for merge performance.</p>
+</article>
+<article class="box">
+<h2>databricks delta</h2>
+<pre><code>MERGE INTO target_customers AS t
+USING (
+  SELECT ID, EMAIL, OP, OP_TS
+  FROM   stg_customers
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+) AS s
+ON t.ID = s.ID
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN DELETE
+WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS
+  THEN UPDATE SET t.EMAIL = s.EMAIL, t.OP_TS = s.OP_TS
+WHEN NOT MATCHED AND s.OP &lt;&gt; 'd'
+  THEN INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
+<p class="muted">enable <code>OPTIMIZE</code> + <code>ZORDER BY (ID)</code> on large tables to keep merge fast.</p>
+</article>
+<article class="box">
+<h2>postgres</h2>
+<pre><code>-- ensure pk
+ALTER TABLE target_customers ADD PRIMARY KEY (id);
+
+-- idempotent upsert with latest-wins
+INSERT INTO target_customers (id, email, op_ts)
+SELECT id, email, op_ts
+FROM (
+  SELECT id, email, op, op_ts,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) AS rn
+  FROM stg_customers
+) s
+WHERE s.rn = 1 AND s.op &lt;&gt; 'd'
+ON CONFLICT (id) DO UPDATE
+SET email = EXCLUDED.email,
+    op_ts = GREATEST(target_customers.op_ts, EXCLUDED.op_ts);
+
+-- deletes
+DELETE FROM target_customers t
+USING (
+  SELECT id, MAX(op_ts) AS op_ts
+  FROM stg_customers WHERE op = 'd'
+  GROUP BY id
+) d
+WHERE t.id = d.id AND d.op_ts &gt;= t.op_ts;</code></pre>
+<p class="muted">two-step approach (upsert then delete) is simple and fast; wrap in a transaction.</p>
+</article>
+<article class="box">
+<h2>mysql</h2>
+<pre><code>-- latest non-delete per id into a temp table
+CREATE TEMPORARY TABLE tmp_latest AS
+SELECT id, email, op, op_ts
+FROM (
+  SELECT id, email, op, op_ts,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) rn
+  FROM stg_customers
+) x WHERE rn = 1;
+
+-- upsert
+INSERT INTO target_customers (id, email, op_ts)
+SELECT id, email, op_ts FROM tmp_latest WHERE op &lt;&gt; 'd'
+ON DUPLICATE KEY UPDATE
+  email = VALUES(email),
+  op_ts = GREATEST(target_customers.op_ts, VALUES(op_ts));
+
+-- delete
+DELETE t FROM target_customers t
+JOIN tmp_latest d ON d.id = t.id AND d.op = 'd' AND d.op_ts &gt;= t.op_ts;</code></pre>
+<p class="muted">ensure an index/PK on <code>target_customers(id)</code>. MySQL 8+ window functions simplify the dedupe step.</p>
+</article>
+<article class="box">
+<h2>redshift</h2>
+<pre><code>-- staging dedupe (late-events safe)
+CREATE TEMP TABLE stg_dedup DISTKEY(id) SORTKEY(id) AS
+SELECT id, email, op, op_ts
+FROM (
+  SELECT id, email, op, op_ts,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) rn
+  FROM stg_customers
+) s WHERE rn = 1;
+
+-- deletes first (to avoid extra writes)
+DELETE FROM target_customers t
+USING stg_dedup d
+WHERE d.op = 'd' AND t.id = d.id AND d.op_ts &gt;= t.op_ts;
+
+-- upsert via MERGE (supported)
+MERGE INTO target_customers t
+USING stg_dedup s
+ON t.id = s.id
+WHEN MATCHED AND s.op &lt;&gt; 'd' AND s.op_ts &gt;= t.op_ts THEN
+  UPDATE SET email = s.email, op_ts = s.op_ts
+WHEN NOT MATCHED AND s.op &lt;&gt; 'd' THEN
+  INSERT (id, email, op_ts) VALUES (s.id, s.email, s.op_ts);</code></pre>
+<p class="muted">consider <code>VACUUM</code> / <code>ANALYZE</code> schedules on heavy churn tables.</p>
+</article>
+</section>
+<section class="box">
+<h2>handling hard parts</h2>
+<h3>1) replays after a crash</h3>
+<pre><code>-- safe replay: re-run the last N minutes of staging
+DELETE FROM target_customers
+WHERE (id, op_ts) IN (
+  SELECT id, op_ts FROM stg_customers WHERE op_ts &gt;= NOW() - INTERVAL '10 minutes'
+);
+-- re-run the regular upsert + delete logic</code></pre>
+<h3>2) keyless tables</h3>
+<p>avoid “replica identity full” targets. pick a **natural business key** or synthesize one (hash of stable columns). worst case, land to a history table only.</p>
+<h3>3) soft deletes vs hard deletes</h3>
+<pre><code>-- soft delete variant (Snowflake example)
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
+  UPDATE SET IS_DELETED = TRUE, OP_TS = s.OP_TS</code></pre>
+<h3>4) schema evolution</h3>
+<p>additive columns are easiest: default target to <code>NULL</code> and include them in the <code>UPDATE SET</code>. for type changes, land to a compatible staging column and cast during merge.</p>
+</section>
+<section class="box">
+<h2>acceptance checks (copy/paste)</h2>
+<pre><code>-- duplicates: expect 0 difference
+SELECT COUNT(*) AS rows, COUNT(DISTINCT id) AS keys FROM target_customers;
+
+-- latest-wins: target should reflect max OP_TS per id (expect 0 stale)
+WITH last AS (SELECT id, MAX(op_ts) AS last_ts FROM stg_customers GROUP BY id)
+SELECT COUNT(*) FROM target_customers t JOIN last l USING(id)
+WHERE t.op_ts &lt; l.last_ts;
+
+-- delete sanity (expect 0)
+SELECT COUNT(*) FROM target_customers t
+JOIN (
+  SELECT id, MAX(op_ts) op_ts FROM stg_customers WHERE op='d' GROUP BY id
+) d USING(id)
+WHERE t.op_ts &lt; d.op_ts;</code></pre>
+</section>
+</main>
+
+    <script type="module">
+      const applyTheme = (mode) => {
+        document.documentElement.dataset.theme = mode;
+      };
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
+      document.addEventListener('click', (event) => {
+        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(next);
+          localStorage.setItem('theme', next);
+        }
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
+        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        heading.id = slug;
+        const anchor = Object.assign(document.createElement('a'), {
+          href: `#${slug}`,
+          className: 'anchor',
+          ariaLabel: 'Link to section'
+        });
+        heading.appendChild(anchor);
+      });
+      document.querySelectorAll('pre > code').forEach((code) => {
+        const pre = code.parentElement;
+        const button = Object.assign(document.createElement('button'), {
+          textContent: 'Copy',
+          className: 'theme-toggle'
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          button.textContent = 'Copied!';
+          setTimeout(() => (button.textContent = 'Copy'), 1200);
+        });
+      });
+    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    
+    <footer class="site-footer">
+      <p></p>
+    </footer>
+  </body>
+</html>

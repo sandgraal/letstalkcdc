@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Multi-Tenancy — Isolation vs Cost | CDC: The Missing Manual | </title>
+    <meta name="description" content="Interactive explorer for multi-tenant CDC: isolation levels, topic strategy, consumer groups, and egress sizing with shareable presets.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="canonical" href="/multi-tenancy/">
+    <meta name="theme-color" content="#0f172a">
+    <meta
+      name="description"
+      content="Interactive explorer for multi-tenant CDC: isolation levels, topic strategy, consumer groups, and egress sizing with shareable presets."
+    />
+    <link
+      rel="canonical"
+      href="https://letstalkcdc.nfshost.com/multi-tenancy/"
+    />
+    <!-- Defer Chart.js + fallback to a local copy if CDN is blocked -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4"
+      defer
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      // If Chart.js didn't load from CDN by the time the page finishes loading, pull a local copy.
+      window.addEventListener("load", () => {
+        if (!window.Chart) {
+          const s = document.createElement("script");
+          s.src = "/assets/chart.4.x.min.js"; // place a pinned copy here if you want offline resilience
+          s.defer = true;
+          document.head.appendChild(s);
+        }
+      });
+    </script>
+    <style>
+      /* layout & components */
+      .control-panel {
+        display: grid;
+        grid-template-columns: 1fr 1.25fr;
+        gap: 1.25rem;
+        padding: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-soft);
+      }
+      @media (max-width: 900px) {
+        .control-panel {
+          grid-template-columns: 1fr;
+        }
+      }
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.5rem 0.75rem;
+        align-items: center;
+      }
+      .kv label {
+        grid-column: 1 / span 1;
+      }
+      .kv input,
+      .kv select,
+      .kv span {
+        grid-column: 2 / span 1;
+      }
+      .slider-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .value-badge {
+        min-width: 44px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        padding: 0.2rem 0.4rem;
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+      }
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      @media (max-width: 720px) {
+        .kpi-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .kpi {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+      }
+      .kpi h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin: 0.1rem 0 0.35rem;
+        color: var(--text-primary);
+        border: none;
+      }
+      .kpi .val {
+        font-size: 1.8rem;
+        font-weight: 300;
+        color: var(--accent-primary);
+      }
+      .chart-container {
+        margin-top: 1rem;
+      }
+      .segmented-control {
+        display: flex;
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+      .segmented-control input[type="radio"] {
+        display: none;
+      }
+      .segmented-control label {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        user-select: none;
+      }
+      .segmented-control label:not(:last-child) {
+        border-right: 1px solid var(--border-color);
+      }
+      .segmented-control input[type="radio"]:checked + label {
+        background: var(--accent-primary);
+        color: #fff;
+        font-weight: 600;
+      }
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .pill {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.35rem 0.7rem;
+        background: var(--bg-primary);
+        cursor: pointer;
+      }
+      .muted {
+        opacity: 0.85;
+      }
+      .faq details {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        background: var(--bg-primary);
+      }
+      .faq details + details {
+        margin-top: 0.5rem;
+      }
+      .faq summary {
+        font-weight: 600;
+        cursor: pointer;
+      }
+      @media print {
+        .control-panel,
+        .theme-toggle {
+          display: none !important;
+        }
+        .kpi {
+          break-inside: avoid;
+        }
+        a::after {
+          content: " (" attr(href) ")";
+          font-size: 0.9em;
+        }
+      }
+      .pill:focus {
+        outline: 2px solid var(--accent-primary);
+        outline-offset: 2px;
+      }
+      /* Break the control panel out of the narrow prose column */
+      .control-panel {
+        /* grow beyond text width, but keep sane margins */
+        width: clamp(100%, 68rem, 96vw);
+        margin-left: 50%;
+        transform: translateX(-50%);
+        /* keep existing look */
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-soft);
+        padding: 1rem;
+        /* just in case inner content wants more room */
+        overflow: visible;
+      }
+      /* On smaller viewports, snap back to normal width */
+      @media (max-width: 1024px) {
+        .control-panel {
+          width: 100%;
+          margin-left: 0;
+          transform: none;
+        }
+      }
+      /* Ensure the chart area can expand within the wider panel */
+      .control-panel .chart-container {
+        max-width: none; /* don't cap it at a small width */
+      }
+      /* Slightly rebalance the columns on wider screens */
+      @media (min-width: 1025px) {
+        .control-panel {
+          display: grid;
+          grid-template-columns: 1.1fr 1.6fr; /* a bit more space for KPIs + chart */
+          gap: 1.25rem;
+        }
+      }
+    </style>
+    <!-- Structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Multi-Tenancy: Cost vs Isolation",
+        "description": "Isolation models, throughput math, topic strategy, and operational guardrails for multi-tenant CDC.",
+        "url": "https://letstalkcdc.nfshost.com/multi-tenancy/",
+        "inLanguage": "en",
+        "about": [
+          "Multi-Tenancy",
+          "Kafka Topics",
+          "Isolation",
+          "Throughput",
+          "RBAC"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Series Overview",
+            "item": "https://letstalkcdc.nfshost.com/overview/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Multi-Tenancy: Cost vs Isolation",
+            "item": "https://letstalkcdc.nfshost.com/multi-tenancy/"
+          }
+        ]
+      }
+    </script>
+    <!-- FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Do per-tenant topics improve security?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "RBAC is simpler and audits map to tenants, but cost/metadata overhead rises; cluster boundaries may be required for regulated data."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Will per-tenant clusters always cost more?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "They usually increase footprint, but contain blast radius and enable tenant-scoped ops; worth it for VIPs, noisy tenants, or compliance."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/"></a>
+        <div class="nav-right">
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+          </nav>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><h1>Multi-Tenancy: Cost vs Isolation</h1>
+      <section aria-labelledby="mt-primer">
+        <h2 id="mt-primer">Primer: Why multi-tenancy matters for CDC</h2>
+        <p>
+          Sharing infrastructure saves money but couples tenants together. More
+          isolation (per-tenant topics or clusters) reduces blast radius and
+          gives clearer SLAs, but increases cost and operational load.
+        </p>
+        <ul>
+          <li>
+            Isolation ladder: shared topics → per-tenant topics → per-tenant
+            clusters.
+          </li>
+          <li>
+            Egress (external) ≈
+            <code>tenants × change_rate × (payload + envelope + overhead)</code
+            >. Broker egress adds replication factor:
+            <code>intra_broker ≈ external × (RF − 1)</code>.
+          </li>
+          <li>
+            Storage at retention ≈
+            <code>egress_bytes_per_s × (86400 × days) ÷ compression</code>.
+          </li>
+          <li>
+            Operational heat: total partitions =
+            <code>topics × partitions_per_topic</code> (impacts rebalances, ISR,
+            & quotas).
+          </li>
+          <li>
+            RBAC/retention easier per-tenant topics; cluster isolation for
+            regulators/VIPs.
+          </li>
+          <li>
+            Guardrails: per-tenant <em>produce/consume</em> quotas, DLQ policy,
+            retention/compaction per topic, and ACLs scoped by tenant namespace.
+          </li>
+        </ul>
+        <details>
+          <summary><strong>Rule-of-thumb cutovers</strong></summary>
+          <ul>
+            <li>
+              ↑ tenants &amp; low compliance ⇒ shared topics until ops pain
+              shows.
+            </li>
+            <li>↑ compliance / RBAC / per-tenant SLAs ⇒ per-tenant topics.</li>
+            <li>
+              Regulatory isolation / VIPs / heavy tenants ⇒ per-tenant clusters.
+            </li>
+          </ul>
+        </details>
+      </section>
+      <p class="layer-all">
+        Use the controls to explore topic counts, consumer groups, egress, and
+        agent footprint.
+      </p>
+
+      <div
+        class="control-panel layer-all"
+        role="region"
+        aria-label="Scenario controls and KPIs"
+      >
+        <!-- Left: Controls -->
+        <div>
+          <h3>1. Adjust Your Scenario</h3>
+
+          <!-- Presets -->
+          <div class="row" style="margin: 0.25rem 0 0.75rem">
+            <button class="pill" type="button" data-preset="startup">
+              Preset: Startup
+            </button>
+            <button class="pill" type="button" data-preset="regulated">
+              Preset: Regulated Enterprise
+            </button>
+            <button class="pill" type="button" data-preset="noisy">
+              Preset: Noisy Neighbor
+            </button>
+            <button
+              class="pill"
+              type="button"
+              id="shareLink"
+              title="Copy link to this scenario"
+            >
+              Copy link
+            </button>
+          </div>
+
+          <section aria-labelledby="mt-controls">
+            <h2 id="mt-controls">Controls</h2>
+            <div class="kv">
+              <label for="tenants">Tenants</label>
+              <input
+                id="tenants"
+                type="range"
+                min="1"
+                max="200"
+                value="10"
+                aria-describedby="tenants-val tenants-help"
+              />
+              <span id="tenants-val" aria-live="polite" class="value-badge"
+                >10</span
+              >
+              <small id="tenants-help" class="muted"
+                >Independent customers served.</small
+              >
+
+              <label for="chgRate">Change rate (events/s/tenant)</label>
+              <input
+                id="chgRate"
+                type="range"
+                min="0"
+                max="2000"
+                step="10"
+                value="100"
+                aria-describedby="chgRate-val"
+              />
+              <span id="chgRate-val" aria-live="polite" class="value-badge"
+                >100</span
+              >
+
+              <label for="payload">Avg payload (bytes)</label>
+              <input
+                id="payload"
+                type="range"
+                min="50"
+                max="10000"
+                step="50"
+                value="500"
+                aria-describedby="payload-val"
+              />
+              <span id="payload-val" aria-live="polite" class="value-badge"
+                >500</span
+              >
+
+              <label for="envelope"
+                >Envelope overhead (bytes)
+                <span class="tooltip"
+                  ><span class="help" tabindex="0">?</span>
+                  <span class="tip"
+                    >Headers, schema IDs, metadata. Typical 200–400B for
+                    JSON/Avro.</span
+                  >
+                </span>
+              </label>
+              <input
+                id="envelope"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="10"
+                value="300"
+                aria-describedby="envelope-val"
+              />
+              <span class="value-badge" id="envelope-val" aria-live="polite"
+                >300</span
+              >
+
+              <label for="topicsPerTenant"
+                >Topics per tenant (per service)
+                <span class="tooltip"
+                  ><span class="help" tabindex="0">?</span>
+                  <span class="tip"
+                    >outbox, status, DLQ, metadata… Adjust to your design.</span
+                  >
+                </span>
+              </label>
+              <input
+                id="topicsPerTenant"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                value="6"
+                aria-describedby="topicsPerTenant-val"
+              />
+              <span
+                class="value-badge"
+                id="topicsPerTenant-val"
+                aria-live="polite"
+                >6</span
+              >
+
+              <label for="sharedTopics">Shared topics (if shared mode)</label>
+              <input
+                id="sharedTopics"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                value="6"
+                aria-describedby="sharedTopics-val"
+              />
+              <span class="value-badge" id="sharedTopics-val" aria-live="polite"
+                >6</span
+              >
+
+              <label for="isolation">Isolation model</label>
+              <select id="isolation" aria-describedby="iso-help">
+                <option value="shared">Shared topics</option>
+                <option value="perTenantTopics">Per-tenant topics</option>
+                <option value="perTenantClusters">Per-tenant clusters</option>
+              </select>
+              <small id="iso-help" class="muted"
+                >Shared = cheapest; Topics = simpler RBAC; Clusters = strongest
+                isolation.</small
+              >
+              <label for="rf">Replication factor (RF)</label>
+              <input
+                id="rf"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="5"
+                step="1"
+                value="3"
+                aria-describedby="rf-val"
+              />
+              <span id="rf-val" class="value-badge" aria-live="polite">3</span>
+
+              <label for="parts">Partitions per topic</label>
+              <input
+                id="parts"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                value="6"
+                aria-describedby="parts-val"
+              />
+              <span id="parts-val" class="value-badge" aria-live="polite"
+                >6</span
+              >
+
+              <label for="retention">Retention (days)</label>
+              <input
+                id="retention"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                value="7"
+                aria-describedby="retention-val"
+              />
+              <span id="retention-val" class="value-badge" aria-live="polite"
+                >7</span
+              >
+
+              <label for="compression">Compression ratio</label>
+              <input
+                id="compression"
+                type="number"
+                inputmode="decimal"
+                min="0.5"
+                step="0.1"
+                value="2.0"
+                aria-describedby="compression-val"
+              />
+              <span id="compression-val" class="value-badge" aria-live="polite"
+                >2.0</span
+              >
+            </div>
+          </section>
+        </div>
+
+        <!-- Right: KPIs + chart -->
+        <div>
+          <h3>2. See the Impact</h3>
+          <div id="kpis" class="kpi-grid" role="status" aria-live="polite">
+            <div class="kpi">
+              <h3>Total Topics</h3>
+              <div id="kTopics" class="val">—</div>
+              <p class="muted">
+                Shared: fixed; per-tenant:
+                <code>tenants × topics_per_tenant</code>.
+              </p>
+            </div>
+            <div class="kpi">
+              <h3>Consumer Groups</h3>
+              <div id="kGroups" class="val">—</div>
+              <p class="muted">≈ tenants × <code>GROUPS_PER_TENANT</code>.</p>
+            </div>
+            <div class="kpi">
+              <h3>Egress (MB/s)</h3>
+              <div id="kEgress" class="val">—</div>
+              <p class="muted">Decimal MB (bytes ÷ 1e6).</p>
+            </div>
+            <div class="kpi">
+              <h3>Broker Egress (MB/s)</h3>
+              <div id="kBrokerEgress" class="val">—</div>
+              <p class="muted">≈ external × (RF − 1).</p>
+            </div>
+            <div class="kpi">
+              <h3>Egress (GB/month)</h3>
+              <div id="kEgressMonth" class="val">—</div>
+              <p class="muted">60×60×24×30 seconds.</p>
+            </div>
+            <div class="kpi">
+              <h3>Total Partitions</h3>
+              <div id="kParts" class="val">—</div>
+              <p class="muted">topics × partitions_per_topic.</p>
+            </div>
+            <div class="kpi">
+              <h3>Storage @ Retention (TB)</h3>
+              <div id="kStorageTB" class="val">—</div>
+              <p class="muted">egress × days ÷ compression (RF included).</p>
+            </div>
+            <div class="kpi">
+              <h3>Connector Footprint</h3>
+              <div id="kConnect" class="val">—</div>
+              <p class="muted">Per-cluster ≈ 1:1; others scale with tenants.</p>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <canvas
+              id="costChart"
+              aria-label="Illustrative cost & complexity index across isolation models"
+              role="img"
+            ></canvas>
+            <noscript>
+              <p class="muted">
+                Enable JavaScript to view the cost/complexity chart.
+              </p>
+            </noscript>
+            <p class="muted">
+              This index is a first-order illustration:
+              <em>egress (MB/s) + connector footprint (+ topic management)</em>.
+              Tune constants to your platform.
+            </p>
+          </div>
+
+          <details>
+            <summary><strong>How we estimate</strong></summary>
+            <ul>
+              <li>
+                <code>egress_bytes_per_s</code> =
+                <code
+                  >tenants × change_rate × (payload + envelope + overhead)</code
+                >
+              </li>
+              <li>
+                <code>broker_egress_bytes_per_s</code> ≈
+                <code>egress_bytes_per_s × (RF − 1)</code>
+              </li>
+              <li>
+                <code>consumer_groups</code> ≈
+                <code>tenants × GROUPS_PER_TENANT</code>
+              </li>
+              <li>
+                Topics:
+                <ul>
+                  <li><em>Shared</em>: <code>shared_topics</code></li>
+                  <li>
+                    <em>Per-tenant topics</em>:
+                    <code>tenants × topics_per_tenant</code>
+                  </li>
+                  <li>
+                    <em>Per-tenant clusters</em>: total topics =
+                    <code>tenants × topics_per_tenant</code>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <code>total_partitions</code> =
+                <code>topics × partitions_per_topic</code>
+              </li>
+              <li>
+                <code>storage_bytes_at_retention</code> ≈
+                <code
+                  >(egress_bytes_per_s × RF × 86400 × days) ÷ compression</code
+                >
+              </li>
+            </ul>
+          </details>
+
+          <details>
+            <summary><strong>Assumptions &amp; levers</strong></summary>
+            <ul>
+              <li>
+                Consumer groups factor <code>GROUPS_PER_TENANT</code> (default
+                2).
+              </li>
+              <li>
+                Connector footprint: shared/per-topic ≈ tenants × 0.2;
+                per-cluster ≈ 1:1.
+              </li>
+              <li>
+                Envelope defaults for JSON/Avro headers (200–400B typical) +
+                small per-message overhead.
+              </li>
+              <li>
+                If topics are <em>compact</em>, long-term storage is dominated
+                by latest keys; adjust retention math accordingly.
+              </li>
+              <li>
+                Per-tenant quotas should scale with <code>change_rate</code> and
+                protect shared clusters from spikes.
+              </li>
+
+              <li>
+                RBAC/retention overhead grows with topic count, not egress.
+              </li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>
+              <strong>Decision helper (rule-of-thumb thresholds)</strong>
+            </summary>
+            <ul>
+              <li>
+                <em>Shared topics</em> until: topics ≤ ~50, low compliance,
+                dup-tolerant consumers.
+              </li>
+              <li>
+                <em>Per-tenant topics</em> when: per-tenant RBAC/retention, &gt;
+                ~50 topics total, noisy neighbors.
+              </li>
+              <li>
+                <em>Per-tenant clusters</em> when: regulated isolation, VIPs, or
+                tenant egress ≥ ~10% of fleet.
+              </li>
+            </ul>
+            <p class="muted">Heuristics; validate with SRE/Compliance.</p>
+          </details>
+        </div>
+      </div>
+
+      <section class="faq" aria-labelledby="mt-faq" style="margin-top: 1rem">
+        <h2 id="mt-faq">FAQ — multi-tenant CDC</h2>
+        <details>
+          <summary>Do per-tenant topics improve security?</summary>
+          <p>
+            Yes—RBAC is simpler and audits map to tenants, but cost/metadata
+            overhead rises. If regulators require isolation, consider cluster
+            boundaries.
+          </p>
+        </details>
+        <details>
+          <summary>Will per-tenant clusters always cost more?</summary>
+          <p>
+            Typically yes (1:1 footprint), but noisy tenants stop taxing others
+            and maintenance windows become tenant-scoped.
+          </p>
+        </details>
+        <details>
+          <summary>
+            Should I use compaction or time retention for per-tenant topics?
+          </summary>
+          <p>
+            Compaction keeps latest value per key (great for upsert sinks); time
+            retention keeps history (needed for replays and backfills). Many
+            teams use <em>compacted + short retention</em> together.
+          </p>
+        </details>
+        <details>
+          <summary>How do I fence noisy tenants?</summary>
+          <p>
+            Apply per-tenant quotas (produce/consume), isolate DLQs per tenant,
+            and consider per-tenant topics or clusters when a tenant’s egress
+            approaches ~10% of fleet.
+          </p>
+        </details>
+      </section>
+
+      <div class="pagination" style="margin-top: 1rem">
+        <a href="exactly-once/">← Back: Exactly-Once</a>
+        <a href="partitioning/">Next: Partitioning →</a>
+      </div>
+</main>
+
+    <script type="module">
+      const applyTheme = (mode) => {
+        document.documentElement.dataset.theme = mode;
+      };
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
+      document.addEventListener('click', (event) => {
+        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(next);
+          localStorage.setItem('theme', next);
+        }
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
+        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        heading.id = slug;
+        const anchor = Object.assign(document.createElement('a'), {
+          href: `#${slug}`,
+          className: 'anchor',
+          ariaLabel: 'Link to section'
+        });
+        heading.appendChild(anchor);
+      });
+      document.querySelectorAll('pre > code').forEach((code) => {
+        const pre = code.parentElement;
+        const button = Object.assign(document.createElement('button'), {
+          textContent: 'Copy',
+          className: 'theme-toggle'
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(code.innerText);
+          button.textContent = 'Copied!';
+          setTimeout(() => (button.textContent = 'Copy'), 1200);
+        });
+      });
+    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module">
+      // ---- Theme bootstrap (keep consistent site-wide)
+      const applyTheme = (m) => (document.documentElement.dataset.theme = m);
+      const savedTheme = localStorage.getItem("theme");
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(savedTheme ?? (prefersDark ? "dark" : "light"));
+      document.addEventListener("click", (e) => {
+        if (e.target.matches("[data-toggle-theme]")) {
+          const next =
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+          applyTheme(next);
+          localStorage.setItem("theme", next);
+        }
+      });
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("reduce-motion");
+      }
+
+      // ---- Depth preference
+      const DEPTH_KEY = "depth";
+      function setDepth(d) {
+        document.documentElement.dataset.depth = d;
+        localStorage.setItem(DEPTH_KEY, d);
+        document
+          .querySelectorAll(".depth-btn")
+          .forEach((btn) =>
+            btn.setAttribute("aria-pressed", String(btn.dataset.depth === d))
+          );
+      }
+      setDepth(localStorage.getItem(DEPTH_KEY) || "beginner");
+      document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".depth-btn");
+        if (btn && btn.dataset.depth) setDepth(btn.dataset.depth);
+      });
+
+      // ---- Controls
+      const $ = (sel) => document.querySelector(sel);
+      const I = {
+        tenants: $("#tenants"),
+        chgRate: $("#chgRate"),
+        payload: $("#payload"),
+        envelope: $("#envelope"),
+        topicsPerTenant: $("#topicsPerTenant"),
+        sharedTopics: $("#sharedTopics"),
+        isolation: $("#isolation"),
+        rf: $("#rf"),
+        parts: $("#parts"),
+        retention: $("#retention"),
+        compression: $("#compression"),
+      };
+      const O = {
+        tenants: $("#tenants-val"),
+        chgRate: $("#chgRate-val"),
+        payload: $("#payload-val"),
+        envelope: $("#envelope-val"),
+        topicsPerTenant: $("#topicsPerTenant-val"),
+        sharedTopics: $("#sharedTopics-val"),
+        rf: $("#rf-val"),
+        parts: $("#parts-val"),
+        retention: $("#retention-val"),
+        compression: $("#compression-val"),
+        kTopics: $("#kTopics"),
+        kGroups: $("#kGroups"),
+        kEgress: $("#kEgress"),
+        kBrokerEgress: $("#kBrokerEgress"),
+        kEgressMonth: $("#kEgressMonth"),
+        kConnect: $("#kConnect"),
+        kParts: $("#kParts"),
+        kStorageTB: $("#kStorageTB"),
+      };
+
+      // Tunables
+      const GROUPS_PER_TENANT = 2;
+      const CONNECTOR_PER_TENANT = 0.2;
+      const OVERHEAD_PER_MESSAGE = 120; // bytes, small headers beyond 'envelope'
+      const SEC_PER_MONTH = 60 * 60 * 24 * 30;
+      const SEC_PER_DAY = 86400;
+
+      // Reflect UI numbers beside controls
+      function reflect() {
+        O.tenants.textContent = I.tenants.value;
+        O.chgRate.textContent = I.chgRate.value;
+        O.payload.textContent = I.payload.value;
+        O.envelope.textContent = I.envelope.value;
+        O.topicsPerTenant.textContent = I.topicsPerTenant.value;
+        O.sharedTopics.textContent = I.sharedTopics.value;
+        O.rf.textContent = I.rf.value;
+        O.parts.textContent = I.parts.value;
+        O.retention.textContent = I.retention.value;
+        O.compression.textContent = I.compression.value;
+      }
+
+      // Calc + KPIs
+      let chart; // lazy-init
+      function calc() {
+        const t = +I.tenants.value;
+        const r = +I.chgRate.value;
+        const s = +I.payload.value;
+        const env = +I.envelope.value;
+        const tpt = +I.topicsPerTenant.value;
+        const shared = +I.sharedTopics.value;
+        const iso = I.isolation.value; // 'shared' | 'perTenantTopics' | 'perTenantClusters'
+        const partsPerTopic = Math.max(1, +I.parts.value);
+        const retentionDays = Math.max(1, +I.retention.value);
+        const compression = Math.max(0.5, +I.compression.value);
+
+        // Topics
+        const topics = iso === "shared" ? shared : t * tpt;
+        const totalPartitions = topics * partsPerTopic;
+
+        // Groups & footprint
+        const groups = Math.max(1, Math.round(t * GROUPS_PER_TENANT));
+        const footprint =
+          iso === "perTenantClusters"
+            ? t
+            : Math.max(1, Math.round(t * CONNECTOR_PER_TENANT));
+
+        // Egress
+        const egressBytes = t * r * (s + env + OVERHEAD_PER_MESSAGE); // external
+        const brokerBytes = egressBytes * Math.max(0, rf - 1); // inter-broker replication
+        const egressMBps = egressBytes / 1e6; // decimal MB/s
+        const brokerMBps = brokerBytes / 1e6;
+        const egressGBpm = (egressBytes * SEC_PER_MONTH) / 1e9; // decimal GB
+        const storageBytes =
+          (egressBytes * rf * (SEC_PER_DAY * retentionDays)) /
+          Math.max(0.5, compression);
+        const storageTB = storageBytes / 1e12; // decimal TB
+
+        // Write KPIs
+        O.kTopics.textContent = topics.toLocaleString();
+        O.kGroups.textContent = groups.toLocaleString();
+        O.kEgress.textContent = egressMBps.toFixed(2);
+        O.kBrokerEgress.textContent = brokerMBps.toFixed(2);
+        O.kEgressMonth.textContent = egressGBpm.toFixed(1);
+        O.kConnect.textContent = footprint.toLocaleString();
+        O.kParts.textContent = totalPartitions.toLocaleString();
+        O.kStorageTB.textContent = storageTB.toFixed(2);
+
+        // Cost/complexity index (illustrative)
+        const e0 = egressMBps;
+        const f0 = footprint;
+        const c0 = e0 + f0; // shared topics
+        const c1 = e0 + f0 + t * 0.5; // per-tenant topics adds mgmt overhead
+        const c2 = e0 + t; // per-tenant clusters ≈ 1:1 footprint
+        if (chart) {
+          chart.data.datasets[0].data = [c0, c1, c2];
+          chart.update();
+        }
+      }
+
+      // --- URL/localStorage state: sanitize incoming values
+      const PARAMS = [
+        "tenants",
+        "chgRate",
+        "payload",
+        "envelope",
+        "topicsPerTenant",
+        "sharedTopics",
+        "isolation",
+        "rf",
+        "parts",
+        "retention",
+        "compression",
+      ];
+
+      function clamp(el, v) {
+        if (!el) return v;
+        // range/number: numeric clamp
+        if (el.type === "range" || el.type === "number") {
+          const n = Number(v);
+          if (Number.isFinite(n)) {
+            const min = el.min !== "" ? Number(el.min) : -Infinity;
+            const max = el.max !== "" ? Number(el.max) : Infinity;
+            return String(Math.min(Math.max(n, min), max));
+          }
+          return el.value; // ignore non-numeric
+        }
+        // select: whitelist options
+        if (el.tagName === "SELECT") {
+          return [...el.options].some((o) => o.value === v) ? v : el.value;
+        }
+        return v;
+      }
+
+      function readParams() {
+        const url = new URL(location.href);
+        for (const k of PARAMS) {
+          const el = I[k];
+          if (!el) continue;
+          const raw = url.searchParams.get(k) ?? localStorage.getItem(k);
+          if (raw != null) el.value = clamp(el, raw);
+        }
+      }
+
+      function writeParams(push = false) {
+        const url = new URL(location.href);
+        for (const k of PARAMS) {
+          const el = I[k];
+          if (!el) continue;
+          url.searchParams.set(k, el.value);
+          try {
+            localStorage.setItem(k, el.value);
+          } catch {}
+        }
+        history[push ? "pushState" : "replaceState"](null, "", url);
+      }
+
+      $("#shareLink")?.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(location.href);
+        } catch {}
+      });
+
+      // Presets
+      const presets = {
+        startup: {
+          tenants: 8,
+          chgRate: 40,
+          payload: 700,
+          envelope: 300,
+          topicsPerTenant: 4,
+          sharedTopics: 6,
+          isolation: "shared",
+        },
+        regulated: {
+          tenants: 40,
+          chgRate: 120,
+          payload: 900,
+          envelope: 350,
+          topicsPerTenant: 8,
+          sharedTopics: 8,
+          isolation: "perTenantTopics",
+        },
+        noisy: {
+          tenants: 25,
+          chgRate: 600,
+          payload: 1200,
+          envelope: 350,
+          topicsPerTenant: 6,
+          sharedTopics: 6,
+          isolation: "perTenantClusters",
+        },
+      };
+      document.addEventListener("click", (e) => {
+        const p = e.target?.dataset?.preset;
+        if (!p || !presets[p]) return;
+        for (const [k, v] of Object.entries(presets[p])) {
+          if (I[k]) I[k].value = v;
+        }
+        reflect();
+        calc();
+        writeParams(false);
+      });
+
+      // Input events
+      document.addEventListener("input", (e) => {
+        if (!e.target) return;
+        if (PARAMS.includes(e.target.id)) {
+          reflect();
+          calc();
+          writeParams(false);
+        }
+      });
+      I.isolation.addEventListener("change", () => {
+        reflect();
+        calc();
+        writeParams(false);
+      });
+
+      // Lazy-init chart for perf; wait until Chart.js is ready
+      function initChart() {
+        if (!window.Chart) return; // guard: wait until available
+        const ctx = $("#costChart").getContext("2d");
+        chart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: [
+              "Shared Topics",
+              "Per-Tenant Topics",
+              "Per-Tenant Cluster",
+            ],
+            datasets: [
+              {
+                label: "Cost/Complexity Index (illustrative)",
+                data: [0, 0, 0],
+                backgroundColor: [
+                  "rgba(54, 162, 235, 0.6)",
+                  "rgba(255, 206, 86, 0.6)",
+                  "rgba(255, 99, 132, 0.6)",
+                ],
+                borderColor: [
+                  "rgba(54, 162, 235, 1)",
+                  "rgba(255, 206, 86, 1)",
+                  "rgba(255, 99, 132, 1)",
+                ],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            animation: { duration: 300 },
+            plugins: {
+              legend: { display: false },
+              title: {
+                display: true,
+                text: "Illustrative Cost/Complexity by Isolation Model",
+              },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) =>
+                    `Index: ${ctx.formattedValue} (egress + footprint + mgmt)`,
+                },
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: "Index (unitless)" },
+              },
+            },
+          },
+        });
+      }
+
+      // Poll until Chart is ready after we observe the canvas
+      function whenChartReady(cb) {
+        if (window.Chart) return cb();
+        let tries = 0;
+        const iv = setInterval(() => {
+          if (window.Chart || tries++ > 200) {
+            // ~5s
+            clearInterval(iv);
+            if (window.Chart) cb();
+          }
+        }, 25);
+      }
+
+      new IntersectionObserver((entries, obs) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          whenChartReady(() => {
+            if (!chart) initChart();
+            calc();
+          });
+          obs.disconnect();
+        }
+      }).observe($("#costChart"));
+
+      // Bootstrap
+      readParams();
+      reflect();
+      calc();
+      writeParams(true);
+    </script>
+
+    <footer class="site-footer">
+      <p></p>
+    </footer>
+  </body>
+</html>
