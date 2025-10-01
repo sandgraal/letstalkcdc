@@ -18,30 +18,22 @@ Status: **alpha** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/J
 
 ```text
 letstalkcdc/
-├── index.html                  # Landing page
-├── content/                    # Learning modules (md/html) and assets per topic
-│   ├── overview/
-│   │   ├── index.md
-│   │   └── media/
-│   ├── snapshotting-first-sync/
-│   │   ├── index.md            # “Snapshotting: The First Sync”
-│   │   └── media/
-│   ├── streaming-fundamentals/
-│   ├── schema-change/
-│   ├── ordering-replay-recovery/
-│   └── troubleshooting/
-├── data/                       # Small demo datasets (CSV/JSON)
-│   ├── tables/
-│   └── charts/
-├── assets/
-│   ├── css/
-│   │   └── theme.css           # Color tokens + utilities
-│   ├── js/
-│   │   ├── app.js              # Nav, TOC, light interactivity
-│   │   ├── charts.js           # Chart.js helpers (optional)
-│   │   └── vendors/            # e.g., Chart.js, treemap plugin (via CDN or vendored)
-│   └── img/
-├── scripts/                    # One-off helpers (link check, lint, CSV->JSON)
+├── src/                        # Eleventy source files (layouts, data, content sections)
+│   ├── _data/                   # Dataset files exposed to templates
+│   ├── _includes/               # Layouts and shared partials
+│   ├── assets/                  # CSS/JS copied straight through to the build
+│   ├── index.njk                # Home page template
+│   └── …                        # Content directories (quickstarts, labs, guides, etc.)
+├── dist/                       # Generated site output (`npm run build`)
+├── scripts/                    # Build helpers (CSS minification, etc.)
+├── connectors/                 # Downloadable companion files for guides
+├── app.js                      # Client-side interactions shared sitewide
+├── styles.css                  # Source stylesheet processed by PostCSS
+├── styles.pref.css             # Autoprefixed CSS (build artifact)
+├── styles.min.css              # Minified CSS served in production
+├── eleventy.config.cjs         # Eleventy configuration
+├── postcss.config.js           # PostCSS configuration
+├── package.json                # Project metadata, scripts, tooling deps
+├── package-lock.json
 └── README.md
-
-
+```

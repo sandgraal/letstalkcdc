@@ -39,7 +39,7 @@ _No bug bounty at this time; we credit researchers unless you request anonymity.
 **In scope (examples)**
 - XSS or HTML injection via Markdown rendering or query params.
 - Unsafe client-side Markdown → HTML (e.g., missing sanitization).
-- Supply-chain issues in vendored/linked scripts under `assets/js/vendors/`.
+- Supply-chain issues in client-side dependencies (CDN scripts or files under `src/assets/js/`).
 - Leaked secrets committed to the repo (tokens, API keys, credentials).
 - Insecure CSP/SRI configuration or missing integrity attributes for CDN scripts.
 - Mixed content issues that downgrade security.
@@ -58,3 +58,4 @@ _No bug bounty at this time; we credit researchers unless you request anonymity.
 - **Content Security Policy (CSP):** Prefer headers on your host. Example baseline:
   ```text
   Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  ```
