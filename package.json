@@ -4,7 +4,7 @@
   "scripts": {
     "clean": "rimraf dist styles.pref.css styles.min.css",
     "build:css": "postcss styles.css -o styles.pref.css",
-    "minify:css": "csso styles.pref.css --output styles.min.css",
+    "minify:css": "node scripts/minify-css.js styles.pref.css styles.min.css",
     "build": "npm run build:css && npm run minify:css && eleventy --config=eleventy.config.cjs",
     "serve": "eleventy --config=eleventy.config.cjs --serve",
     "a11y": "pa11y-ci"
@@ -12,8 +12,8 @@
   "devDependencies": {
     "@11ty/eleventy": "^2.0.1",
     "autoprefixer": "^10.4.20",
-    "csso": "^6.0.1",
-    "pa11y-ci": "^3.2.0",
+    "csso": "^5.0.5",
+    "pa11y-ci": "^3.1.0",
     "postcss": "^8.4.41",
     "postcss-cli": "^11.0.0",
     "rimraf": "^5.0.5"
