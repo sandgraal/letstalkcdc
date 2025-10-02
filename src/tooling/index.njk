@@ -8,23 +8,7 @@ head_extra: |
         name="description"
       />
       <link href="/assets/css/styles.css" rel="stylesheet" />
-scripts: |
-  <script type="module">
-        const apply = (m) => (document.documentElement.dataset.theme = m);
-        const saved = localStorage.getItem("theme");
-        const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
-        apply(saved ?? (prefersDark ? "dark" : "light"));
-        document.addEventListener("click", (e) => {
-          if (e.target.matches("[data-toggle-theme]")) {
-            const next =
-              document.documentElement.dataset.theme === "dark"
-                ? "light"
-                : "dark";
-            apply(next);
-            localStorage.setItem("theme", next);
-          }
-        });
-      </script>
+
 ---
 <h1>The Modern CDC Toolkit: A Platform Comparison</h1>
       <article class="prose">

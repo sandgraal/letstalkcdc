@@ -8,9 +8,6 @@
     <meta name="robots" content="index,follow,max-image-preview:large">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="canonical" href="{{ site.host }}{{ canonicalPath | default(page.url) }}">
     <meta name="theme-color" content="#0f172a">
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
@@ -33,50 +30,12 @@
 
     <main id="main">{{ content | safe }}</main>
 
-    <script type="module">
-      const applyTheme = (mode) => {
-        document.documentElement.dataset.theme = mode;
-      };
-      const savedTheme = localStorage.getItem('theme');
-      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
-      applyTheme(savedTheme ?? (prefersDark ? 'dark' : 'light'));
-      document.addEventListener('click', (event) => {
-        if (event.target.matches('[data-toggle-theme]') || event.target.closest('[data-toggle-theme]')) {
-          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-          applyTheme(next);
-          localStorage.setItem('theme', next);
-        }
-      });
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.documentElement.classList.add('reduce-motion');
-      }
-      document.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
-        const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
-        heading.id = slug;
-        const anchor = Object.assign(document.createElement('a'), {
-          href: `#${slug}`,
-          className: 'anchor',
-          ariaLabel: 'Link to section'
-        });
-        heading.appendChild(anchor);
-      });
-      document.querySelectorAll('pre > code').forEach((code) => {
-        const pre = code.parentElement;
-        const button = Object.assign(document.createElement('button'), {
-          textContent: 'Copy',
-          className: 'theme-toggle'
-        });
-        pre.style.position = 'relative';
-        pre.appendChild(button);
-        button.addEventListener('click', async () => {
-          await navigator.clipboard.writeText(code.innerText);
-          button.textContent = 'Copied!';
-          setTimeout(() => (button.textContent = 'Copy'), 1200);
-        });
-      });
-    </script>
     <script type="module" src="/assets/js/app.js"></script>
-    {% if scripts %}{{ scripts | safe }}{% endif %}
+    {% if scripts %}
+      {% for script in scripts %}
+        <script type="module" src="{{ script }}"></script>
+      {% endfor %}
+    {% endif %}
     <footer class="site-footer">
       <p>{{ site.copyright }}</p>
     </footer>

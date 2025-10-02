@@ -103,81 +103,9 @@ head_extra: |
           ]
         }
       </script>
-scripts: |
-  <script>
-    // --- Failure Scenario Stepper ---
-    const stepperBtn = document.getElementById("failure-stepper");
-    const idempotentBtn = document.getElementById("idempotent-stepper");
-    const steps = [
-    { id: "step-1", icon: "📥", text: "1. Consume Message" },
-    { id: "step-2", icon: "💾", text: "2. Process & Write" },
-    { id: "step-3", icon: "💥", text: "3. CRASH!" },
-    {
-    id: "step-4",
-    icon: "🔄",
-    text: "4. Restart & Re-process (Duplicate!)",
-    },
-    ];
-    const diagramVisual = document.getElementById("diagram-visual");
-    let currentStep = 0;
-    stepperBtn.addEventListener("click", () => {
-    const allStepElements = document.querySelectorAll(
-    ".step-diagram .step"
-    );
-    if (currentStep >= steps.length) {
-    currentStep = 0;
-    allStepElements.forEach((el) =>
-    el.classList.remove("active", "completed")
-    );
-    diagramVisual.innerHTML = `<div class="icon">🎬</div><p>Ready to start</p>`;
-    stepperBtn.textContent = "Start Animation";
-    return;
-    }
-    if (currentStep > 0) {
-    document
-    .getElementById(steps[currentStep - 1].id)
-    .classList.add("completed");
-    }
-    const currentStepElement = document.getElementById(
-    steps[currentStep].id
-    );
-    currentStepElement.classList.add("active");
-    currentStepElement.classList.remove("completed");
-    diagramVisual.innerHTML = `<div class="icon">${steps[currentStep].icon}</div><p>${steps[currentStep].text}</p>`;
-    stepperBtn.textContent =
-    currentStep === steps.length - 1 ? "Reset Animation" : "Next Step";
-    currentStep++;
-    });
-    // --- Idempotent Handling Demo (no duplicate) ---
-    idempotentBtn?.addEventListener("click", () => {
-    // reset visuals
-    document.querySelectorAll(".step-diagram .step")
-    .forEach((el) => el.classList.remove("active", "completed"));
-    // show compressed, duplicate-safe flow
-    diagramVisual.innerHTML = `
-    <div class="icon">🧮</div>
-    <p>Idempotent upsert: replay is a no-op</p>`;
-    // briefly flash steps 1→2 then “replay no-op”
-    const seq = ["step-1", "step-2"];
-    let i = 0;
-    const tick = () => {
-    if (i < seq.length) {
-    const el = document.getElementById(seq[i]);
-    el.classList.add("active");
-    if (i > 0) document.getElementById(seq[i - 1]).classList.add("completed");
-    i++;
-    setTimeout(tick, 600);
-    } else {
-    const replay = document.getElementById("step-4");
-    replay.classList.add("active");
-    diagramVisual.innerHTML = `
-    <div class="icon">🧊</div>
-    <p>Replay hits same <code>event_id</code> → MERGE matches → 0 rows changed</p>`;
-    }
-    };
-    tick();
-    });
-  </script>
+scripts:
+  - "/assets/js/pages/exactly-once.js"
+
 ---
 <div class="page-wrap prose">
 <h1>The Pragmatic Reality of Exactly-Once Processing</h1>

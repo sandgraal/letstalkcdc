@@ -211,25 +211,6 @@ SELECT pg_drop_replication_slot('cdc_slot');</code></pre>
       </p>
     </footer>
 
-    <script type="module">
-      // Theme toggle script
-      const apply = (m) => (document.documentElement.dataset.theme = m);
-      const saved = localStorage.getItem("theme");
-      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
-      apply(saved ?? (prefersDark ? "dark" : "light"));
-      document.addEventListener("click", (e) => {
-        if (e.target.matches("[data-toggle-theme]")) {
-          const next =
-            document.documentElement.dataset.theme === "dark"
-              ? "light"
-              : "dark";
-          apply(next);
-          localStorage.setItem("theme", next);
-        }
-      });
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        document.documentElement.classList.add("reduce-motion");
-      }
-    </script>
+    <script type="module" src="/assets/js/app.js"></script>
   </body>
 </html>

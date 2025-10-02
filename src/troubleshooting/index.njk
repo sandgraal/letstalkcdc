@@ -7,7 +7,7 @@ head_extra: |
         content="A repeatable first-15-minutes playbook to triage change data capture incidents across Postgres, MySQL, Oracle, Kafka/Debezium, and common sinks."
         name="description"
       />
-      <link href="styles.css" rel="stylesheet" />
+      <link href="/assets/css/styles.css" rel="stylesheet" />
       <style>
         /* minimal local styles so this page works even if styles.css is bare */
         :root {
@@ -117,53 +117,7 @@ head_extra: |
         href="https://letstalkcdc.nfshost.com/troubleshooting/"
         rel="canonical"
       />
-scripts: |
-  <script type="module">
-        const apply = (m) => (document.documentElement.dataset.theme = m);
-        const saved = localStorage.getItem("theme");
-        const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
-        apply(saved ?? (prefersDark ? "dark" : "light"));
-        document.addEventListener("click", (e) => {
-          if (e.target.matches("[data-toggle-theme]")) {
-            const next =
-              document.documentElement.dataset.theme === "dark"
-                ? "light"
-                : "dark";
-            apply(next);
-            localStorage.setItem("theme", next);
-          }
-        });
-        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          document.documentElement.classList.add("reduce-motion");
-        }
-        document.querySelectorAll("pre").forEach((pre) => {
-          const btn = pre.querySelector("button.copy");
-          if (!btn) return;
-          btn.addEventListener("click", async () => {
-            const text = pre.querySelector("code")?.innerText || "";
-            try {
-              if (navigator.clipboard && window.isSecureContext)
-                await navigator.clipboard.writeText(text);
-              else {
-                const ta = document.createElement("textarea");
-                ta.value = text;
-                ta.style.position = "fixed";
-                ta.style.left = "-9999px";
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
-                document.execCommand("copy");
-                ta.remove();
-              }
-              btn.textContent = "Copied!";
-              setTimeout(() => (btn.textContent = "copy"), 1200);
-            } catch (e) {
-              btn.textContent = "Error";
-              setTimeout(() => (btn.textContent = "copy"), 1500);
-            }
-          });
-        });
-      </script>
+
 ---
 <!-- The .prose class now wraps only the introductory text -->
       <div class="prose">

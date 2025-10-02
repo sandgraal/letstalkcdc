@@ -61,27 +61,7 @@ head_extra: |
         rel="canonical"
         href="https://letstalkcdc.nfshost.com/oracle-notes/"
       />
-scripts: |
-  <script type="module">
-        // Theme toggle script
-        const apply = (m) => (document.documentElement.dataset.theme = m);
-        const saved = localStorage.getItem("theme");
-        const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
-        apply(saved ?? (prefersDark ? "dark" : "light"));
-        document.addEventListener("click", (e) => {
-          if (e.target.matches("[data-toggle-theme]")) {
-            const next =
-              document.documentElement.dataset.theme === "dark"
-                ? "light"
-                : "dark";
-            apply(next);
-            localStorage.setItem("theme", next);
-          }
-        });
-        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          document.documentElement.classList.add("reduce-motion");
-        }
-      </script>
+
 ---
 <!-- The .prose class now wraps only the introductory text -->
       <div class="prose">

@@ -136,20 +136,8 @@ permalink: 404.html
         </div>
       </div>
     </main>
-    <script>
-      (function () {
-        const p = (location.pathname || "").toLowerCase();
-        const map = {
-          "/quickstart-postgres": "/quickstarts/quickstart-postgres/",
-          "/quickstart-mysql": "/quickstarts/quickstart-mysql/",
-          "/quickstart-oracle": "/quickstarts/quickstart-oracle/",
-          "/oracle": "/oracle-notes/",
-          "/quickstarts": "/everything-else/"
-        };
-        if (map[p]) {
-          location.replace(map[p]);
-        }
-      })();
-    </script>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module" src="/assets/js/pages/not-found.js"></script>
+
   </body>
 </html>

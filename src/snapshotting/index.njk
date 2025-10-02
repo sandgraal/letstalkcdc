@@ -314,28 +314,7 @@ head_extra: |
         }
       </style>
   <!-- SME SNAPSHOT THEME OVERRIDE END -->
-scripts: |
-  <script>
-    document.addEventListener(
-            "click",
-            function (e) {
-              if (e.target && e.target.classList.contains("copy-btn")) {
-                const pre = e.target.closest("pre");
-                if (!pre) return;
-                const code = pre.querySelector("code");
-                const text = code ? code.innerText : pre.innerText;
-                navigator.clipboard.writeText(text).then(() => {
-                  const old = e.target.textContent;
-                  e.target.textContent = "Copied";
-                  setTimeout(() => {
-                    e.target.textContent = old;
-                  }, 1200);
-                });
-              }
-            },
-            false
-          );
-  </script>
+
 ---
 <div class="page-wrap prose">
 <h1>The First Hurdle: Initial Data Load (Snapshotting)</h1>
