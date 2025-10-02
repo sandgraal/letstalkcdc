@@ -8,42 +8,130 @@ const onReady = (cb) => {
   }
 };
 
-const loadScript = (src) => (
-  new Promise((resolve, reject) => {
-    const existing = [...doc.scripts].find((s) => s.src === src);
-    if (existing) {
-      if (existing.dataset.loaded === 'true') {
-        resolve();
-      } else {
-        existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
-      }
-      return;
-    }
-    const script = doc.createElement('script');
-    script.src = src;
-    script.defer = true;
-    script.crossOrigin = 'anonymous';
-    script.addEventListener('load', () => {
-      script.dataset.loaded = 'true';
-      resolve();
-    });
-    script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)));
-    doc.head.appendChild(script);
-  })
-);
+const prepareCanvas = (canvas, height = 420) => {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || canvas.parentElement?.clientWidth || 640;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  return { ctx, width, height };
+};
 
-const ensureChart = async () => {
-  if (window.Chart) return window.Chart;
-  const cdn = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.js';
-  try {
-    await loadScript(cdn);
-    if (window.Chart) return window.Chart;
-  } catch (_) {
-    /* ignore */
+const toRgba = (hex, alpha) => {
+  const value = hex.replace('#', '').trim();
+  const expand = value.length === 3
+    ? value.split('').map((ch) => ch + ch).join('')
+    : value;
+  const r = parseInt(expand.slice(0, 2), 16);
+  const g = parseInt(expand.slice(2, 4), 16);
+  const b = parseInt(expand.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const paddingLeft = (width) => Math.max(32, width * 0.1);
+
+const drawRadarChart = (canvas, { labels, datasets, palette }) => {
+  const { ctx, width, height } = prepareCanvas(canvas, 420);
+  const centerX = width / 2;
+  const topPadding = 36;
+  const radius = Math.min(width, height - 90) / 2 - topPadding;
+  const axes = labels.length;
+  const steps = 5;
+
+  ctx.strokeStyle = palette.grid;
+  ctx.lineWidth = 1;
+  ctx.font = '500 13px var(--font-sans, system-ui)';
+  ctx.fillStyle = palette.text;
+
+  for (let step = 1; step <= steps; step += 1) {
+    const stepRadius = (radius * step) / steps;
+    ctx.beginPath();
+    for (let i = 0; i < axes; i += 1) {
+      const angle = (Math.PI * 2 * i) / axes - Math.PI / 2;
+      const x = centerX + Math.cos(angle) * stepRadius;
+      const y = topPadding + radius + Math.sin(angle) * stepRadius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.globalAlpha = 0.4;
+    ctx.stroke();
   }
-  await loadScript('/assets/js/vendor/chart.umd.js');
-  return window.Chart;
+  ctx.globalAlpha = 1;
+
+  for (let i = 0; i < axes; i += 1) {
+    const angle = (Math.PI * 2 * i) / axes - Math.PI / 2;
+    const x = centerX + Math.cos(angle) * radius;
+    const y = topPadding + radius + Math.sin(angle) * radius;
+    ctx.beginPath();
+    ctx.moveTo(centerX, topPadding + radius);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = palette.axis;
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = angle > Math.PI / 2 || angle < -Math.PI / 2 ? 'bottom' : 'top';
+    ctx.fillStyle = palette.text;
+    ctx.font = '600 13px var(--font-sans, system-ui)';
+    ctx.fillText(labels[i], 0, angle > Math.PI / 2 || angle < -Math.PI / 2 ? -12 : 12);
+    ctx.restore();
+  }
+
+  datasets.forEach((dataset) => {
+    ctx.beginPath();
+    dataset.data.forEach((value, index) => {
+      const angle = (Math.PI * 2 * index) / axes - Math.PI / 2;
+      const distance = (Math.max(0, Math.min(5, value)) / 5) * radius;
+      const x = centerX + Math.cos(angle) * distance;
+      const y = topPadding + radius + Math.sin(angle) * distance;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = toRgba(dataset.color, dataset.fillAlpha);
+    ctx.strokeStyle = dataset.color;
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+
+    dataset.data.forEach((value, index) => {
+      const angle = (Math.PI * 2 * index) / axes - Math.PI / 2;
+      const distance = (Math.max(0, Math.min(5, value)) / 5) * radius;
+      const x = centerX + Math.cos(angle) * distance;
+      const y = topPadding + radius + Math.sin(angle) * distance;
+      ctx.beginPath();
+      ctx.fillStyle = palette.background;
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = dataset.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  });
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.font = '500 13px var(--font-sans, system-ui)';
+  ctx.fillStyle = palette.text;
+
+  const legendX = paddingLeft(width);
+  const legendYStart = height - 60;
+  const legendGap = 20;
+
+  datasets.forEach((dataset, index) => {
+    const y = legendYStart + index * legendGap;
+    ctx.fillStyle = toRgba(dataset.color, dataset.fillAlpha);
+    ctx.fillRect(legendX, y - 6, 18, 18);
+    ctx.strokeStyle = dataset.color;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(legendX, y - 6, 18, 18);
+    ctx.fillStyle = palette.text;
+    ctx.fillText(dataset.label, legendX + 28, y + 3);
+  });
 };
 
 onReady(() => {
@@ -101,11 +189,8 @@ onReady(() => {
     button.addEventListener('click', () => {
       const isActive = button.getAttribute('aria-pressed') === 'true';
       button.setAttribute('aria-pressed', isActive ? 'false' : 'true');
-      if (isActive) {
-        state.tags.delete(tag);
-      } else {
-        state.tags.add(tag);
-      }
+      if (isActive) state.tags.delete(tag);
+      else state.tags.add(tag);
       syncHash();
       render();
     });
@@ -153,92 +238,34 @@ onReady(() => {
   render();
 });
 
-onReady(async () => {
+onReady(() => {
   const canvas = doc.getElementById('methodsChart');
   if (!canvas) return;
-  const ChartModule = await ensureChart();
-  if (!ChartModule) return;
 
   const css = getComputedStyle(doc.documentElement);
-  const getToken = (token, fallback) => css.getPropertyValue(token).trim() || fallback;
-  const cBorder = getToken('--border-color', '#2a3341');
-  const cText = getToken('--text-primary', '#e5e7eb');
-  const cText2 = getToken('--text-secondary', '#94a3b8');
-  const cBack = getToken('--bg-secondary', 'rgba(15,23,42,.6)');
-  const teal = '#14b8a6';
-  const blue = '#3b82f6';
-  const red = '#ef4444';
-
-  const hex = (hexValue, alpha) => {
-    const h = hexValue.replace('#', '');
-    const to = (value) => parseInt(value, 16);
-    if (h.length === 3) {
-      return `rgba(${to(h[0] + h[0])},${to(h[1] + h[1])},${to(h[2] + h[2])},${alpha})`;
-    }
-    return `rgba(${to(h.slice(0, 2))},${to(h.slice(2, 4))},${to(h.slice(4, 6))},${alpha})`;
+  const palette = {
+    axis: css.getPropertyValue('--border-color').trim() || 'rgba(51, 65, 85, 0.7)',
+    grid: 'rgba(148, 163, 184, 0.25)',
+    text: css.getPropertyValue('--text-secondary').trim() || '#94a3b8',
+    background: css.getPropertyValue('--bg-primary').trim() || '#ffffff'
   };
 
-  new Chart(canvas, {
-    type: 'radar',
-    data: {
-      labels: ['Completeness', 'Low Impact', 'Low Latency', 'Low Maintenance', 'Ease of Implementation'],
-      datasets: [
-        {
-          label: 'Log-Based',
-          data: [5, 5, 5, 4, 2],
-          borderColor: teal,
-          backgroundColor: hex(teal, 0.15),
-          pointBackgroundColor: teal,
-          pointBorderColor: teal,
-          pointRadius: 3
-        },
-        {
-          label: 'Trigger-Based',
-          data: [4, 3, 4, 2, 3],
-          borderColor: blue,
-          backgroundColor: hex(blue, 0.12),
-          pointBackgroundColor: blue,
-          pointBorderColor: blue,
-          pointRadius: 3
-        },
-        {
-          label: 'Query-Based',
-          data: [1, 2, 1, 2, 5],
-          borderColor: red,
-          backgroundColor: hex(red, 0.1),
-          pointBackgroundColor: red,
-          pointBorderColor: red,
-          pointRadius: 3
-        }
-      ]
-    },
-    options: {
-      maintainAspectRatio: false,
-      elements: { line: { borderWidth: 2.25 } },
-      scales: {
-        r: {
-          min: 0,
-          max: 5,
-          ticks: { stepSize: 1, backdropColor: cBack, color: cText2 },
-          grid: { color: cBorder },
-          angleLines: { color: cBorder },
-          pointLabels: { color: cText2, font: { size: 12 } }
-        }
-      },
-      plugins: {
-        legend: { position: 'top', labels: { color: cText } },
-        title: {
-          display: true,
-          text: 'Comparing CDC Approaches',
-          color: cText,
-          font: { size: 18, weight: '700' }
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${ctx.formattedValue}/5`
-          }
-        }
-      }
-    }
-  });
+  const datasets = [
+    { label: 'Log-Based', data: [5, 5, 5, 4, 2], color: '#14b8a6', fillAlpha: 0.18 },
+    { label: 'Trigger-Based', data: [4, 3, 4, 2, 3], color: '#3b82f6', fillAlpha: 0.14 },
+    { label: 'Query-Based', data: [1, 2, 1, 2, 5], color: '#ef4444', fillAlpha: 0.12 }
+  ];
+
+  const labels = [
+    'Completeness',
+    'Low Impact',
+    'Low Latency',
+    'Low Maintenance',
+    'Ease of Implementation'
+  ];
+
+  const render = () => drawRadarChart(canvas, { labels, datasets, palette });
+
+  render();
+  window.addEventListener('resize', render);
 });

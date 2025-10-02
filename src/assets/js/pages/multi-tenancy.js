@@ -8,45 +8,102 @@ const onReady = (cb) => {
   }
 };
 
-const loadScript = (src) => (
-  new Promise((resolve, reject) => {
-    const existing = [...doc.scripts].find((s) => s.src === src);
-    if (existing) {
-      if (existing.dataset.loaded === 'true') {
-        resolve();
-      } else {
-        existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
-      }
-      return;
-    }
-    const script = doc.createElement('script');
-    script.src = src;
-    script.defer = true;
-    script.crossOrigin = 'anonymous';
-    script.addEventListener('load', () => {
-      script.dataset.loaded = 'true';
-      resolve();
-    });
-    script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)));
-    doc.head.appendChild(script);
-  })
-);
-
-const ensureChart = async () => {
-  if (window.Chart) return window.Chart;
-  const cdn = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.js';
-  try {
-    await loadScript(cdn);
-    if (window.Chart) return window.Chart;
-  } catch (_) {
-    /* fall through to local */
-  }
-  await loadScript('/assets/js/vendor/chart.umd.js');
-  return window.Chart;
+const prepareCanvas = (canvas, height = 280) => {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || canvas.parentElement?.clientWidth || 640;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  return { ctx, width, height };
 };
 
-onReady(async () => {
+const drawRoundedRect = (ctx, x, y, width, height, radius) => {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+};
+
+const drawBarChart = (canvas, values, labels, palette) => {
+  const { ctx, width, height } = prepareCanvas(canvas);
+  const padding = 32;
+  const barGap = 24;
+  const axisY = height - padding;
+  const chartHeight = axisY - padding;
+
+  const maxValue = Math.max(...values, 1);
+  const count = values.length;
+  const totalGap = barGap * (count - 1);
+  const barWidth = Math.max(24, (width - padding * 2 - totalGap) / count);
+
+  // Axes
+  ctx.strokeStyle = palette.axis;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding, axisY + 0.5);
+  ctx.lineTo(width - padding + 0.5, axisY + 0.5);
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = palette.text;
+  ctx.font = '600 13px var(--font-sans, system-ui)';
+
+  values.forEach((value, index) => {
+    const x = padding + index * (barWidth + barGap);
+    const barHeight = (value / maxValue) * chartHeight;
+    const y = axisY - barHeight;
+
+    const gradient = ctx.createLinearGradient(0, y, 0, axisY);
+    gradient.addColorStop(0, palette.bars[index].strong);
+    gradient.addColorStop(1, palette.bars[index].soft);
+
+    ctx.fillStyle = gradient;
+    drawRoundedRect(ctx, x, y, barWidth, barHeight, 8);
+    ctx.fill();
+
+    ctx.fillStyle = palette.textStrong;
+    ctx.font = '600 14px var(--font-sans, system-ui)';
+    ctx.fillText(Math.round(value), x + barWidth / 2, y - 22);
+
+    ctx.fillStyle = palette.text;
+    ctx.font = '500 13px var(--font-sans, system-ui)';
+    ctx.fillText(labels[index], x + barWidth / 2, axisY + 8);
+  });
+
+  // Tick marks
+  ctx.fillStyle = palette.textMuted;
+  ctx.font = '500 12px var(--font-sans, system-ui)';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  const steps = 4;
+  for (let i = 0; i <= steps; i += 1) {
+    const value = (maxValue / steps) * i;
+    const y = axisY - (value / maxValue) * chartHeight;
+    ctx.beginPath();
+    ctx.strokeStyle = palette.grid;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.moveTo(padding, y + 0.5);
+    ctx.lineTo(width - padding, y + 0.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText(Math.round(value), padding - 10, y);
+  }
+};
+
+onReady(() => {
   const $ = (sel) => doc.querySelector(sel);
   const I = {
     tenants: $('#tenants'),
@@ -89,6 +146,19 @@ onReady(async () => {
   const SEC_PER_MONTH = 60 * 60 * 24 * 30;
   const SEC_PER_DAY = 86400;
 
+  const palette = {
+    axis: '#334155',
+    grid: 'rgba(148, 163, 184, 0.35)',
+    text: 'var(--text-secondary, #64748b)',
+    textMuted: 'var(--text-muted, #94a3b8)',
+    textStrong: 'var(--text-primary, #0f172a)',
+    bars: [
+      { soft: 'rgba(14, 165, 233, 0.35)', strong: 'rgba(14, 165, 233, 0.95)' },
+      { soft: 'rgba(250, 204, 21, 0.35)', strong: 'rgba(250, 204, 21, 0.95)' },
+      { soft: 'rgba(248, 113, 113, 0.35)', strong: 'rgba(248, 113, 113, 0.95)' }
+    ]
+  };
+
   const reflect = () => {
     O.tenants.textContent = I.tenants.value;
     O.chgRate.textContent = I.chgRate.value;
@@ -102,7 +172,19 @@ onReady(async () => {
     O.compression.textContent = I.compression.value;
   };
 
-  let chart;
+  const chartCanvas = $('#costChart');
+  let chartValues = [0, 0, 0];
+
+  const updateChart = () => {
+    if (!chartCanvas) return;
+    drawBarChart(
+      chartCanvas,
+      chartValues,
+      ['Shared Topics', 'Per-Tenant Topics', 'Per-Tenant Clusters'],
+      palette
+    );
+  };
+
   const calc = () => {
     const t = +I.tenants.value;
     const r = +I.chgRate.value;
@@ -146,10 +228,8 @@ onReady(async () => {
     const c0 = e0 + f0;
     const c1 = e0 + f0 + t * 0.5;
     const c2 = e0 + t;
-    if (chart) {
-      chart.data.datasets[0].data = [c0, c1, c2];
-      chart.update();
-    }
+    chartValues = [c0, c1, c2];
+    updateChart();
   };
 
   const PARAMS = [
@@ -178,7 +258,7 @@ onReady(async () => {
       return el.value;
     }
     if (el.tagName === 'SELECT') {
-      return [...el.options].some((o) => o.value === value) ? value : el.value;
+      return [...el.options].some((option) => option.value === value) ? value : el.value;
     }
     return value;
   };
@@ -282,71 +362,24 @@ onReady(async () => {
     writeParams(false);
   });
 
-  let observerActivated = false;
-  const initChart = async () => {
-    if (observerActivated) return;
-    observerActivated = true;
-    const ChartModule = await ensureChart();
-    if (!ChartModule) return;
-    const ctx = $('#costChart')?.getContext('2d');
-    if (!ctx) return;
-    chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Shared Topics', 'Per-Tenant Topics', 'Per-Tenant Cluster'],
-        datasets: [
-          {
-            label: 'Cost/Complexity Index (illustrative)',
-            data: [0, 0, 0],
-            backgroundColor: [
-              'rgba(54, 162, 235, 0.6)',
-              'rgba(255, 206, 86, 0.6)',
-              'rgba(255, 99, 132, 0.6)'
-            ],
-            borderColor: [
-              'rgba(54, 162, 235, 1)',
-              'rgba(255, 206, 86, 1)',
-              'rgba(255, 99, 132, 1)'
-            ],
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        animation: { duration: 300 },
-        plugins: {
-          legend: { display: false },
-          title: {
-            display: true,
-            text: 'Illustrative Cost/Complexity by Isolation Model'
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `Index: ${ctx.formattedValue} (egress + footprint + mgmt)`
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: 'Index (unitless)' }
-          }
+  const observer = chartCanvas
+    ? new IntersectionObserver((entries, obs) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          updateChart();
+          obs.disconnect();
         }
-      }
-    });
-    calc();
-  };
+      })
+    : null;
 
-  const chartCanvas = $('#costChart');
-  if (chartCanvas) {
-    new IntersectionObserver((entries, observer) => {
-      if (entries.some((entry) => entry.isIntersecting)) {
-        initChart();
-        observer.disconnect();
-      }
-    }).observe(chartCanvas);
+  if (observer && chartCanvas) {
+    observer.observe(chartCanvas);
   }
+
+  window.addEventListener('resize', () => {
+    if (chartCanvas && chartValues.some((v) => v > 0)) {
+      updateChart();
+    }
+  });
 
   readParams();
   reflect();
