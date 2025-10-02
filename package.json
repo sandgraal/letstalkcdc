@@ -6,7 +6,7 @@
     "build:css": "postcss src/assets/css/styles.css -o src/assets/css/styles.pref.css",
     "minify:css": "node scripts/minify-css.js src/assets/css/styles.pref.css src/assets/css/styles.min.css",
     "build": "npm run build:css && npm run minify:css && eleventy --config=eleventy.config.cjs",
-    "smoke": "node scripts/smoke.js",
+    "smoke": "node scripts/smoke.js && node scripts/visual-smoke.mjs",
     "serve": "eleventy --config=eleventy.config.cjs --serve",
     "a11y": "pa11y-ci"
   },

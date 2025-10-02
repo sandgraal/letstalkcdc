@@ -1,3 +1,5 @@
+import { drawBarChart } from '../lib/charts.js';
+
 const doc = document;
 
 const onReady = (cb) => {
@@ -5,101 +7,6 @@ const onReady = (cb) => {
     doc.addEventListener('DOMContentLoaded', cb, { once: true });
   } else {
     cb();
-  }
-};
-
-const prepareCanvas = (canvas, height = 280) => {
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const width = canvas.clientWidth || canvas.parentElement?.clientWidth || 640;
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, width, height);
-  return { ctx, width, height };
-};
-
-const drawRoundedRect = (ctx, x, y, width, height, radius) => {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-};
-
-const drawBarChart = (canvas, values, labels, palette) => {
-  const { ctx, width, height } = prepareCanvas(canvas);
-  const padding = 32;
-  const barGap = 24;
-  const axisY = height - padding;
-  const chartHeight = axisY - padding;
-
-  const maxValue = Math.max(...values, 1);
-  const count = values.length;
-  const totalGap = barGap * (count - 1);
-  const barWidth = Math.max(24, (width - padding * 2 - totalGap) / count);
-
-  // Axes
-  ctx.strokeStyle = palette.axis;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padding, axisY + 0.5);
-  ctx.lineTo(width - padding + 0.5, axisY + 0.5);
-  ctx.stroke();
-
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = palette.text;
-  ctx.font = '600 13px var(--font-sans, system-ui)';
-
-  values.forEach((value, index) => {
-    const x = padding + index * (barWidth + barGap);
-    const barHeight = (value / maxValue) * chartHeight;
-    const y = axisY - barHeight;
-
-    const gradient = ctx.createLinearGradient(0, y, 0, axisY);
-    gradient.addColorStop(0, palette.bars[index].strong);
-    gradient.addColorStop(1, palette.bars[index].soft);
-
-    ctx.fillStyle = gradient;
-    drawRoundedRect(ctx, x, y, barWidth, barHeight, 8);
-    ctx.fill();
-
-    ctx.fillStyle = palette.textStrong;
-    ctx.font = '600 14px var(--font-sans, system-ui)';
-    ctx.fillText(Math.round(value), x + barWidth / 2, y - 22);
-
-    ctx.fillStyle = palette.text;
-    ctx.font = '500 13px var(--font-sans, system-ui)';
-    ctx.fillText(labels[index], x + barWidth / 2, axisY + 8);
-  });
-
-  // Tick marks
-  ctx.fillStyle = palette.textMuted;
-  ctx.font = '500 12px var(--font-sans, system-ui)';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-
-  const steps = 4;
-  for (let i = 0; i <= steps; i += 1) {
-    const value = (maxValue / steps) * i;
-    const y = axisY - (value / maxValue) * chartHeight;
-    ctx.beginPath();
-    ctx.strokeStyle = palette.grid;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
-    ctx.moveTo(padding, y + 0.5);
-    ctx.lineTo(width - padding, y + 0.5);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillText(Math.round(value), padding - 10, y);
   }
 };
 
