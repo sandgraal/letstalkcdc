@@ -29,5 +29,8 @@ jobs:
       - name: Build site
         run: npm run build
 
+      - name: Smoke tests
+        run: npm run smoke
+
       - name: Security audit
         run: npm audit --production

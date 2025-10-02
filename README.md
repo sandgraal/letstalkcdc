@@ -1,6 +1,6 @@
 # Let’s Talk CDC — README
 
-_A lightweight, open learning project for Change Data Capture (CDC) and streaming. Built as a static site so anyone can clone, run locally, and contribute._
+_A lightweight, open learning project for Change Data Capture (CDC) and streaming. Built with Eleventy as a static site (all HTML/CSS/JS generated at build time) so anyone can clone, run locally, and contribute._
 
 Status: **alpha** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/JS + CSV/JSON content**
 
