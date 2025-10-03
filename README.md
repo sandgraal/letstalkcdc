@@ -22,11 +22,13 @@ letstalkcdc/
 │   ├── _data/                   # Dataset files exposed to templates
 │   ├── _includes/               # Layouts and shared partials
 │   ├── assets/                  # CSS/JS copied straight through to the build
+│   ├── resources/               # Downloadable helpers (connector configs, scripts) → `/downloads/`
+│   ├── sitemap.11ty.cjs         # Dynamic sitemap generator
+│   ├── search-index.11ty.cjs    # JSON feed used by local search
 │   ├── index.njk                # Home page template
 │   └── …                        # Content directories (quickstarts, labs, guides, etc.)
 ├── dist/                       # Generated site output (`npm run build`)
 ├── scripts/                    # Build helpers (CSS minification, etc.)
-├── connectors/                 # Downloadable companion files for guides
 ├── src/assets/js/app.js        # Client-side interactions shared sitewide
 ├── src/assets/css/styles.css   # Source stylesheet processed by PostCSS
 ├── eleventy.config.cjs         # Eleventy configuration
