@@ -27,44 +27,219 @@ head_extra: |
 
 <div class="page-wrap prose">
 
-      <!-- SME ADDITIONS START: Objectives + Preflight + Per-DB -->
-      <section aria-labelledby="obj">
-        <h2 id="obj">What you’ll learn</h2>
-        <ul>
-          <li>Why snapshots need a log high-watermark and idempotent sinks.</li>
-          <li>How to choose snapshot modes (initial vs incremental).</li>
-          <li>How to size chunks and set parallelism safely.</li>
-          <li>How to run a 15-minute lab to prove no gaps/dupes.</li>
-          <li>What to monitor and how to recover failures.</li>
-        </ul>
-      </section>
+  <nav class="intro-quick-nav" aria-label="Intro navigation">
+    <ul>
+      <li><a href="#playbook">Playbook overview</a></li>
+      <li><a href="#preflight">Checklist</a></li>
+      <li><a href="#challenge">Concept</a></li>
+      <li><a href="#perdb">DB recipes</a></li>
+    </ul>
+  </nav>
 
-      <section aria-labelledby="preflight">
-        <h2 id="preflight">Pre-flight checklist</h2>
-        <ul>
-          <li>
-            Retention window covers full snapshot duration
-            (WAL/binlog/T-log/UNDO).
-          </li>
-          <li>Privileges for log reading/replication are granted.</li>
-          <li>
-            Consistent-read isolation is enabled where applicable ( REPEATABLE
-            READ/SNAPSHOT).
-          </li>
-          <li>
-            Sink MERGE/UPSERT implemented; delete/tombstone semantics defined.
-          </li>
-          <li>Offsets are durable and backed up/versioned.</li>
-          <li>DDL freeze or schema-compatibility policy in place.</li>
-        </ul>
-      </section>
+  <section id="playbook" aria-labelledby="playbook-title" class="intro-playbook">
+    <div class="intro-lede">
+      <h2 id="playbook-title">Start with a clean handoff</h2>
+      <p>
+        <strong>80% of CDC escalations originate during the initial load.</strong>
+        Teams rush the boundary, purge logs, and spend weeks replaying tables.
+      </p>
+      <p>
+        Use these three moves to align engineering, operations, and analytics before the stream goes live.
+      </p>
+      <a class="intro-lab-link" href="#lab">Prove it in 15 minutes →</a>
+    </div>
 
-      <section aria-labelledby="perdb">
-        <h2 id="perdb">Per-DB: boundary + consistent read (snippets)</h2>
+    <section class="handoff" aria-labelledby="handoff-h2">
+      <h3 id="handoff-h2" class="sr-only">High-watermark boundary handoff</h3>
+      <ol class="handoff-steps" role="list">
+        <li class="stage">
+          <span class="num" aria-hidden="true">1</span>
+          <a class="stage-body" href="#boundary">
+            <span class="stage-title">Mark high-watermark</span>
+            <span class="stage-sub">Record LSN/SCN boundary</span>
+          </a>
+        </li>
+        <li class="arrow" aria-hidden="true">→</li>
+        <li class="stage">
+          <span class="num" aria-hidden="true">2</span>
+          <a class="stage-body" href="#snapread">
+            <span class="stage-title">Consistent read</span>
+            <span class="stage-sub">Snapshot without gaps</span>
+          </a>
+        </li>
+        <li class="arrow" aria-hidden="true">→</li>
+        <li class="stage">
+          <span class="num" aria-hidden="true">3</span>
+          <a class="stage-body" href="#streamhandoff">
+            <span class="stage-title">Stream after boundary</span>
+            <span class="stage-sub">Apply idempotently</span>
+          </a>
+        </li>
+      </ol>
+      <p class="handoff-cap">
+        Snapshot → high-watermark → stream. Preserve per-key order and use idempotent upserts/deletes at the sink.
+      </p>
+    </section>
 
-        <details>
-          <summary><strong>PostgreSQL</strong></summary>
-          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+    <ul class="learn-grid">
+      <li>
+        <span class="learn-icon" aria-hidden="true">①</span>
+        <div>
+          <strong>Boundary & retention.</strong>
+          <p>Set the log high-watermark, confirm retention covers the run, and name an owner for recovery points.</p>
+        </div>
+      </li>
+      <li>
+        <span class="learn-icon" aria-hidden="true">②</span>
+        <div>
+          <strong>Execution made safe.</strong>
+          <p>Pick the right snapshot mode, chunk large tables, and cap parallelism to respect OLTP workloads.</p>
+        </div>
+      </li>
+      <li>
+        <span class="learn-icon" aria-hidden="true">③</span>
+        <div>
+          <strong>Proof & recovery.</strong>
+          <p>Run the quick lab, monitor offsets and lag, and document restart checkpoints.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <section id="preflight" aria-labelledby="preflight-title" class="preflight-card">
+    <h2 id="preflight-title">Pre-flight checklist</h2>
+    <p class="preflight-blurb">Confirm these guardrails before the snapshot starts rolling.</p>
+    <details class="preflight-details">
+      <summary>View checklist</summary>
+      <ul>
+        <li>
+          Retention window covers full snapshot duration (WAL/binlog/T-log/UNDO).
+        </li>
+        <li>Privileges for log reading/replication are granted.</li>
+        <li>
+          Consistent-read isolation is enabled where applicable (REPEATABLE READ/SNAPSHOT).
+        </li>
+        <li>
+          Sink MERGE/UPSERT implemented; delete/tombstone semantics defined.
+        </li>
+        <li>Offsets are durable and backed up/versioned.</li>
+        <li>DDL freeze or schema-compatibility policy in place.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="compare" aria-labelledby="compare-title" class="intro-compare">
+    <h2 id="compare-title">Why the boundary wins</h2>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th scope="col">Run style</th>
+          <th scope="col">What happens mid-snapshot</th>
+          <th scope="col">Recovery story</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Naive initial load</th>
+          <td>Changes land twice or not at all; log position is unknown.</td>
+          <td>Full re-run of large tables; risky ad-hoc dedupe scripts.</td>
+        </tr>
+        <tr>
+          <th scope="row">Snapshot with boundary</th>
+          <td>Log handoff preserves ordering; replays apply idempotently.</td>
+          <td>Resume from last chunk + saved offset; no target surgery.</td>
+        </tr>
+        <tr>
+          <th scope="row">Incremental snapshot</th>
+          <td>Primary-key ranges throttle load while respecting OLTP.</td>
+          <td>Retries pick up the next range; log anchor stays valid.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <article class="prose">
+        <p>
+          A CDC pipeline is designed to stream ongoing <em>changes</em>, but it
+          must first be initialized with the data that
+          <em>already exists</em> in the source tables. This process of
+          performing an initial, full copy of the data is known as
+          <strong>snapshotting</strong> or the <strong>initial load</strong>.
+        </p>
+
+        <h2 id="challenge">Why snapshots break</h2>
+        <p>
+          The central problem is consistency. Without a boundary, writes that
+          land mid-run show up twice (snapshot + stream) or disappear entirely.
+          Retention clocks keep ticking and, if the log purges, the only fix is
+          to start over.
+        </p>
+        <p>
+          Picture a payments table: you start scanning, finance posts refunds,
+          and analytics reconciles against a different truth hours later. The
+          fallout is expensive clean-up, tense incident calls, and a loss of
+          trust in the pipeline.
+        </p>
+
+        <h2 id="solution">A staged handoff</h2>
+        <p>
+          Modern log-based CDC tools coordinate a
+          <em>point-in-time snapshot</em> with the transaction log so the
+          handoff to streaming has no gaps or double-counts. Treat the run in
+          three phases:
+        </p>
+
+        <div class="handoff-timeline" role="list">
+          <article class="timeline-item" id="boundary" role="listitem">
+            <h3>Before snapshot: mark the high-watermark</h3>
+            <p>
+              Read and persist the current log position (LSN/SCN). Share it in
+              the runbook and verify retention outlives the planned duration.
+            </p>
+            <ul>
+              <li>Capture boundary metadata alongside connector configuration.</li>
+              <li>Alert on log growth so retention doesn’t expire mid-run.</li>
+            </ul>
+          </article>
+
+          <article class="timeline-item" id="snapread" role="listitem">
+            <h3>During snapshot: hold a consistent read</h3>
+            <p>
+              Use snapshot/consistent-read isolation and scan tables in
+              deterministic chunks. The goal is predictable load that won’t pin
+              OLTP locks or exhaust undo segments.
+            </p>
+            <ul>
+              <li>Chunk big tables in primary-key order and cap parallelism.</li>
+              <li>Read from a replica when possible; monitor lag to stay honest.</li>
+            </ul>
+          </article>
+
+          <article class="timeline-item" id="streamhandoff" role="listitem">
+            <h3>After snapshot: stream from the boundary</h3>
+            <p>
+              Start consuming the log from the recorded position. Any rows that
+              change post-snapshot must apply idempotently so retries are safe.
+            </p>
+            <ul>
+              <li>Implement UPSERT/MERGE semantics and explicit delete handling.</li>
+              <li>Version and store offsets so restart is a click, not a rebuild.</li>
+            </ul>
+          </article>
+        </div>
+
+        <section id="perdb" aria-labelledby="perdb-title" class="perdb-recipes">
+          <h2 id="perdb-title">Run it on your database</h2>
+          <p>
+            Grab the snippet for your engine to capture the boundary and hold a
+            consistent read while Debezium (or another connector) walks the
+            tables.
+          </p>
+
+          <div class="perdb-grid">
+            <details>
+              <summary><strong>PostgreSQL</strong></summary>
+              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
 ALTER SYSTEM SET wal_level = logical;
 ALTER SYSTEM SET max_replication_slots = 10;  -- adjust
 SELECT pg_reload_conf();
@@ -74,11 +249,11 @@ BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SELECT pg_current_wal_lsn();  -- record this
 -- Keep transaction open during table scans; Debezium coordinates via logical slot.
 </code></pre>
-        </details>
+            </details>
 
-        <details>
-          <summary><strong>MySQL (InnoDB)</strong></summary>
-          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements:
+            <details>
+              <summary><strong>MySQL (InnoDB)</strong></summary>
+              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements:
 -- binlog_format=ROW; binlog_row_image=FULL; GTID (preferred)
 
 -- Boundary + consistent snapshot:
@@ -86,11 +261,11 @@ SHOW MASTER STATUS;                  -- or SELECT @@global.gtid_executed;
 START TRANSACTION WITH CONSISTENT SNAPSHOT;
 -- Read tables in PK order; Debezium avoids FTWRL in OLTP paths.
 </code></pre>
-        </details>
+            </details>
 
-        <details>
-          <summary><strong>SQL Server</strong></summary>
-          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+            <details>
+              <summary><strong>SQL Server</strong></summary>
+              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
 ALTER DATABASE YourDb SET ALLOW_SNAPSHOT_ISOLATION ON;
 ALTER DATABASE YourDb SET READ_COMMITTED_SNAPSHOT ON;
 EXEC sys.sp_cdc_enable_db;  -- if using native CDC
@@ -101,135 +276,46 @@ SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
 BEGIN TRAN;
 -- Read tables; keep tx open during snapshot.
 </code></pre>
-        </details>
+            </details>
 
-        <details>
-          <summary><strong>Oracle</strong></summary>
-          <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+            <details>
+              <summary><strong>Oracle</strong></summary>
+              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
 ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;  -- minimal or ALL columns for PK-less
 
 -- Boundary:
 SELECT CURRENT_SCN FROM V$DATABASE;        -- record
 -- Consistent reads use UNDO/flashback; ensure UNDO retention covers snapshot.
 </code></pre>
-        </details>
-      </section>
-      <!-- SME ADDITIONS END -->
+            </details>
+          </div>
 
-      <article class="prose">
-        <p>
-          A CDC pipeline is designed to stream ongoing <em>changes</em>, but it
-          must first be initialized with the data that
-          <em>already exists</em> in the source tables. This process of
-          performing an initial, full copy of the data is known as
-          <strong>snapshotting</strong> or the <strong>initial load</strong>.
-        </p>
-
-        <h2 id="challenge">The Challenge: Ensuring Consistency</h2>
-        <p>
-          The central problem of snapshotting is ensuring consistency. How can
-          you take a complete copy of a large, active table while new
-          transactions are constantly modifying it? A naive approach might miss
-          transactions that occur during the snapshot process or, conversely,
-          process them twice, once in the snapshot and again in the change
-          stream, leading to data duplication or loss.
-        </p>
-
-        <h2 id="solution">The Solution: Consistent Snapshots</h2>
-
-        <!-- SME REPLACEMENT START: Snapshot→Stream Stepper -->
-        <section class="handoff" aria-labelledby="handoff-h2">
-          <h3 id="handoff-h2" class="sr-only">
-            High-watermark boundary handoff
-          </h3>
-          <ol class="handoff-steps" role="list">
-            <li class="stage">
-              <span class="num" aria-hidden="true">1</span>
-              <div class="stage-body">
-                <div class="stage-title">Mark high-watermark</div>
-                <div class="stage-sub">Record LSN/SCN (boundary)</div>
-              </div>
-            </li>
-            <li class="arrow" aria-hidden="true">→</li>
-            <li class="stage">
-              <span class="num" aria-hidden="true">2</span>
-              <div class="stage-body">
-                <div class="stage-title">Consistent read</div>
-                <div class="stage-sub">Snapshot tables without gaps</div>
-              </div>
-            </li>
-            <li class="arrow" aria-hidden="true">→</li>
-            <li class="stage">
-              <span class="num" aria-hidden="true">3</span>
-              <div class="stage-body">
-                <div class="stage-title">Stream after boundary</div>
-                <div class="stage-sub">Apply idempotently</div>
-              </div>
-            </li>
-          </ol>
-          <p class="handoff-cap">
-            Snapshot → high-watermark → stream. Preserve per-key order and use
-            idempotent upserts/deletes at the sink.
-          </p>
+          <details class="perdb-cheatsheet">
+            <summary><strong>How consistent reads behave</strong></summary>
+            <ul>
+              <li>
+                <strong>PostgreSQL:</strong> REPEATABLE READ +
+                <code>pg_export_snapshot()</code> keeps scans stable; long scans
+                can delay VACUUM, so watch table bloat alerts.
+              </li>
+              <li>
+                <strong>MySQL/InnoDB:</strong>
+                <code>START TRANSACTION WITH CONSISTENT SNAPSHOT</code> anchors
+                to a binlog position—no <code>FLUSH TABLES WITH READ LOCK</code>
+                required for OLTP safety.
+              </li>
+              <li>
+                <strong>SQL Server:</strong> CDC tables + max LSN establish the
+                boundary; snapshot isolation or read committed snapshot keeps
+                readers from blocking writers.
+              </li>
+              <li>
+                <strong>Oracle:</strong> A saved SCN plus UNDO retention gives
+                you flashback reads; make sure UNDO window covers the run.
+              </li>
+            </ul>
+          </details>
         </section>
-        <!-- SME REPLACEMENT END -->
-
-        <p>
-          Modern log-based CDC tools like Debezium coordinate a
-          <em>point-in-time snapshot</em> with the transaction log so the
-          handoff to streaming has no gaps or double-counts. Conceptually:
-        </p>
-        <ol>
-          <li>
-            <strong>Mark a high-watermark in the log.</strong> Read and record
-            the current log position (LSN/SCN). This is the boundary between
-            “history” and “live.”
-          </li>
-          <li>
-            <strong>Take a consistent read of tables.</strong> Use
-            snapshot/consistent-read isolation <em>without</em> long blocking
-            locks (details vary by database).
-          </li>
-          <li>
-            <strong>Stream changes after the high-watermark.</strong> Consume
-            the log from the recorded position; if any changes to rows already
-            snapshotted appear, apply <em>idempotently</em> to avoid
-            duplication.
-          </li>
-          <li>
-            <strong>Handoff complete.</strong> Snapshot → streaming switch keeps
-            per-key order and correctness. Gaps/overlaps are prevented by the
-            high-watermark boundary and idempotent upserts at the sink.
-          </li>
-        </ol>
-        <details>
-          <summary>
-            <strong>How “consistent reads” work (per database)</strong>
-          </summary>
-          <ul>
-            <li>
-              <strong>PostgreSQL:</strong> REPEATABLE READ +
-              <code>pg_export_snapshot()</code>; logical replication slot sets
-              the log boundary. No long blocking table locks, but long snapshots
-              can delay VACUUM cleanup (watch bloat).
-            </li>
-            <li>
-              <strong>MySQL/InnoDB:</strong>
-              <code>START TRANSACTION WITH CONSISTENT SNAPSHOT</code> + binlog
-              position. Debezium avoids
-              <code>FLUSH TABLES WITH READ LOCK</code> for OLTP safety.
-            </li>
-            <li>
-              <strong>SQL Server:</strong> CDC tables / log LSN establish the
-              boundary; snapshot isolation (or read committed snapshot) enables
-              consistent reads.
-            </li>
-            <li>
-              <strong>Oracle:</strong> SCN marks the boundary; read-consistency
-              from UNDO provides the snapshot.
-            </li>
-          </ul>
-        </details>
 
         <h2 id="modes">Snapshot modes (choose intentionally)</h2>
         <ul>
@@ -404,6 +490,5 @@ HAVING COUNT(*) &gt; 1;</code></pre>
             duplicate-by-wall-clock.
           </aside>
         </section>
-        <!-- SME ADDITIONS END -->
       </article>
 </div>

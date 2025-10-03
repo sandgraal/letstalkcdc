@@ -2,11 +2,12 @@ module.exports = {
   seriesKey: 'snapshotting',
   heroConfig: {
     title: 'The First Hurdle: Snapshotting',
-    description: '<p>Prep your CDC pipeline for the initial full load. Learn how to capture a consistent snapshot, keep the log window open, and merge streaming changes without gaps.</p>',
+    description:
+      '<p>Initial loads are where most CDC rollouts stumble. Follow this guided playbook to capture a consistent snapshot, hold the boundary, and merge the stream without gaps.</p>',
     align: 'center',
     actions: [
-      { href: '#obj', label: 'What You’ll Learn' },
-      { href: '#preflight', label: 'Run the Checklist', variant: 'ghost' }
+      { href: '#playbook', label: 'Start the Playbook', variant: 'primary' },
+      { href: '#perdb', label: 'Skip to DB Recipes', variant: 'ghost' }
     ]
   }
 };
