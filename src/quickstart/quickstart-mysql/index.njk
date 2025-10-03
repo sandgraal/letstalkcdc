@@ -56,7 +56,7 @@ permalink: quickstarts/quickstart-mysql/index.html
 
       <section class="box">
         <h2>Prerequisites (DB)</h2>
-        <ul class="check">
+        <ul class="checklist">
           <li>
             <strong>binlog_format=ROW</strong>,
             <strong>binlog_row_image</strong> FULL or MINIMAL per connector
@@ -70,7 +70,7 @@ permalink: quickstarts/quickstart-mysql/index.html
           </li>
         </ul>
 
-        <ul class="check">
+        <ul class="checklist">
           <li>
             binlog_format=ROW ensures that individual row changes, not just SQL
             statements, are logged, which is crucial for high-fidelity CDC.
@@ -140,7 +140,7 @@ SHOW MASTER STATUS;
         </div>
         <div class="box">
           <h2>Acceptance (target/sink)</h2>
-          <ul class="check">
+          <ul class="checklist">
             <li>No duplicate PKs after connector restart</li>
             <li>Latest-wins per key using <code>op_ts/version</code></li>
           </ul>

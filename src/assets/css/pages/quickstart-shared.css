@@ -1,10 +1,4 @@
-.box {
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  background: var(--color-background-soft);
-  margin-bottom: 1.5rem;
-}
+@import url("../components/panels.css");
 
 .grid {
   display: grid;
@@ -24,20 +18,4 @@ pre {
   padding: 0.75rem;
   overflow: auto;
   background: var(--color-background-soft);
-}
-
-.check {
-  list-style: none;
-  padding: 0;
-  margin: 0.25rem 0 0;
-}
-
-.check li {
-  margin: 0.35rem 0;
-}
-
-.back-link {
-  display: block;
-  margin-bottom: 1rem;
-  font-weight: 500;
 }

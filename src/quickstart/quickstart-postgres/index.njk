@@ -56,7 +56,7 @@ permalink: quickstarts/quickstart-postgres/index.html
 
       <section class="box">
         <h2>Prerequisites (DB)</h2>
-        <ul class="check">
+        <ul class="checklist">
           <li>
             <strong>wal_level=logical</strong>, slots allowed, publication
             permissions. This setting enables logical decoding, which allows
@@ -141,7 +141,7 @@ kafka-console-consumer --bootstrap-server localhost:29092 \
         </div>
         <div class="box">
           <h2>Acceptance (target/sink)</h2>
-          <ul class="check">
+          <ul class="checklist">
             <li>No duplicate PKs after a connector restart</li>
             <li>
               Per key, the row reflects the greatest <code>op_ts/version</code>
