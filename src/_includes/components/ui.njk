@@ -40,7 +40,10 @@
 {% macro series_card(card) -%}
   {% set state = card.state | default('default') %}
   {% set isDisabled = state == 'disabled' %}
-  <article class="series-card{% if card.isRecommended %} is-recommended{% endif %}{% if card.variant %} {{ card.variant }}{% endif %}{% if isDisabled %} is-disabled{% endif %}">
+  <article
+    class="series-card{% if card.isRecommended %} is-recommended{% endif %}{% if card.variant %} {{ card.variant }}{% endif %}{% if isDisabled %} is-disabled{% endif %}"
+    {% if card.key %}id="series-{{ card.key }}" data-series-key="{{ card.key }}"{% endif %}
+  >
     {% if card.badge or (card.tags and card.tags | length) %}
       <div class="card-meta">
         {% if card.badge %}

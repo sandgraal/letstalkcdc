@@ -1,4 +1,5 @@
 module.exports = {
+  seriesKey: 'quickstarts',
   heroConfig: {
     title: 'CDC Quickstart Guides',
     description: '<p>Bring your first change data capture pipeline online fast. Choose your source database and follow a copy-paste friendly walkthrough with checkpoints and sanity checks.</p>',

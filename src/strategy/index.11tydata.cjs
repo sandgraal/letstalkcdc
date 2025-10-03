@@ -1,4 +1,5 @@
 module.exports = {
+  seriesKey: 'strategy',
   heroConfig: {
     title: 'The Strategic Advantage of CDC',
     description: '<p>Shift from slow, state-based data thinking to an event-driven culture. Learn how continuous change streams unlock new revenue, retire tech debt, and reduce operational risk.</p>',

@@ -1,4 +1,5 @@
 module.exports = {
+  seriesKey: 'errata',
   heroConfig: {
     title: 'CDC Nuances & Errata',
     description: '<p>Bookmark the gotchas: delivery guarantees, snapshots, and backfills all hide sharp edges. Use this checklist before declaring “exactly once.”</p>',

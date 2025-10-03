@@ -1,4 +1,5 @@
 module.exports = {
+  seriesKey: 'exactly-once',
   heroConfig: {
     title: 'Exactly-Once Processing, For Real',
     description: '<p>Cut through marketing myths and learn how to deliver CDC pipelines that behave idempotently under failure, even when end-to-end EOS is impossible.</p>',

@@ -8,54 +8,47 @@
         --warn: #f59e0b;
         --err: #ef4444;
       }
-      body {
-        margin: 0;
+.decoder-app {
         background: var(--bg);
         color: #e6eef7;
         font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial,
           sans-serif;
+        padding-bottom: 2.5rem;
       }
-      header,
-      main {
+      .decoder-app__back,
+      .decoder-app__content {
         max-width: 1100px;
         margin: 0 auto;
         padding: 0 1rem;
       }
-      header {
-        padding: 1rem 0;
+      .decoder-app__back {
+        padding-bottom: 1rem;
         border-bottom: 1px solid var(--border);
       }
-      a {
+      .decoder-app a {
         color: inherit;
       }
-      h1 {
-        font-size: clamp(1.5rem, 3vw, 2.2rem);
-        margin: 0.35rem 0;
-      }
-      .lede {
-        opacity: 0.9;
-        margin: 0 0 1rem;
-      }
-      .wrap {
+      .decoder-app .wrap {
         display: grid;
         gap: 1rem;
         grid-template-columns: 1fr;
       }
       @media (min-width: 1080px) {
-        .wrap {
+        .decoder-app .wrap {
           grid-template-columns: 1.05fr 1fr;
         }
       }
-      .panel {
+      .decoder-app .panel {
         border: 1px solid var(--border);
         border-radius: 0.75rem;
         background: var(--surface);
         padding: 1rem;
+        margin: 0;
       }
-      .muted {
+      .decoder-app .muted {
         color: var(--muted);
       }
-      textarea {
+      .decoder-app textarea {
         width: 100%;
         min-height: 220px;
         color: #e6eef7;
@@ -65,14 +58,14 @@
         padding: 0.75rem;
         font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
-      .row {
+      .decoder-app .row {
         display: flex;
         gap: 0.5rem;
         flex-wrap: wrap;
         align-items: center;
         margin: 0.5rem 0;
       }
-      .btn {
+      .decoder-app .btn {
         display: inline-block;
         border: 1px solid var(--border);
         border-radius: 0.5rem;
@@ -82,31 +75,31 @@
         text-decoration: none;
         cursor: pointer;
       }
-      .btn:hover,
-      .btn:focus {
+      .decoder-app .btn:hover,
+      .decoder-app .btn:focus {
         background: rgba(255, 255, 255, 0.06);
         outline: none;
       }
-      .small {
+      .decoder-app .small {
         font-size: 0.9rem;
       }
-      .grid {
+      .decoder-app .grid {
         display: grid;
         gap: 0.75rem;
       }
-      .card {
+      .decoder-app .card {
         border: 1px solid var(--border);
         border-radius: 0.6rem;
         padding: 0.8rem;
         background: var(--surface2);
       }
-      .kvs {
+      .decoder-app .kvs {
         display: grid;
         grid-template-columns: 160px 1fr;
         gap: 0.3rem 0.6rem;
         font-size: 0.95rem;
       }
-      .pill {
+      .decoder-app .pill {
         display: inline-block;
         border: 1px solid var(--border);
         border-radius: 999px;
@@ -122,7 +115,7 @@
       .err {
         color: var(--err);
       }
-      pre {
+      .decoder-app pre {
         margin: 0.4rem 0 0;
         border: 1px solid var(--border);
         border-radius: 0.5rem;
@@ -130,40 +123,40 @@
         padding: 0.65rem;
         overflow: auto;
       }
-      code {
+      .decoder-app code {
         font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
-      table.diff {
+      .decoder-app table.diff {
         width: 100%;
         border-collapse: collapse;
         font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
-      table.diff th,
-      table.diff td {
+      .decoder-app table.diff th,
+      .decoder-app table.diff td {
         border: 1px solid var(--border);
         padding: 0.35rem 0.45rem;
         vertical-align: top;
       }
-      table.diff th {
+      .decoder-app table.diff th {
         background: #0f1a2e;
         text-align: left;
       }
-      tr.add td {
+      .decoder-app tr.add td {
         background: rgba(34, 197, 94, 0.12);
       }
-      tr.del td {
+      .decoder-app tr.del td {
         background: rgba(239, 68, 68, 0.12);
       }
-      tr.mod td {
+      .decoder-app tr.mod td {
         background: rgba(234, 179, 8, 0.12);
       }
-      .tabs {
+      .decoder-app .tabs {
         display: flex;
         gap: 0.5rem;
         flex-wrap: wrap;
         margin: 0.5rem 0;
       }
-      .tabs button {
+      .decoder-app .tabs button {
         border: 1px solid var(--border);
         background: transparent;
         color: inherit;
@@ -171,55 +164,55 @@
         padding: 0.35rem 0.6rem;
         cursor: pointer;
       }
-      .tabs button.active {
+      .decoder-app .tabs button.active {
         background: rgba(255, 255, 255, 0.06);
         font-weight: 600;
       }
-      .copy {
+      .decoder-app .copy {
         float: right;
       }
-      .foot {
+      .decoder-app .foot {
         margin-top: 0.75rem;
         color: var(--muted);
         font-size: 0.85rem;
       }
-      details {
+      .decoder-app details {
         border: 1px solid var(--border);
         border-radius: 0.5rem;
         padding: 0.5rem 0.6rem;
         background: var(--surface);
         margin-top: 0.5rem;
       }
-      details summary {
+      .decoder-app details summary {
         cursor: pointer;
         font-weight: 600;
       }
-      table.headers {
+      .decoder-app table.headers {
         width: 100%;
         border-collapse: collapse;
         margin-top: 0.4rem;
       }
-      table.headers th,
-      table.headers td {
+      .decoder-app table.headers th,
+      .decoder-app table.headers td {
         border: 1px solid var(--border);
         padding: 0.25rem 0.4rem;
         font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
-      table.headers th {
+      .decoder-app table.headers th {
         background: #0f1a2e;
         text-align: left;
       }
-      .hint {
+      .decoder-app .hint {
         border-left: 4px solid #2563eb;
         background: #071427;
         padding: 0.6rem;
         border-radius: 0.25rem;
         margin: 0.5rem 0;
       }
-      .hint code {
+      .decoder-app .hint code {
         background: transparent;
       }
-      .kbd {
+      .decoder-app .kbd {
         font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         background: #101a2d;
         padding: 0.05rem 0.3rem;

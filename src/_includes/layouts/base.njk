@@ -79,6 +79,10 @@
 
     <main id="main">{{ content | safe }}</main>
 
+    {% if seriesKey %}
+      {% include "components/series-nav.njk" %}
+    {% endif %}
+
     <script type="module" src="/assets/js/app.js"></script>
     {% if scripts %}
       {% for script in scripts %}
