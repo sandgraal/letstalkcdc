@@ -14,7 +14,10 @@ head_extra: |
   <link rel="stylesheet" href="/assets/css/pages/use-cases.css">
 
 ---
-<h1>CDC in the Wild: Real-World Applications</h1>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
       <article class="prose">
         <p>
           Beyond the theory, Change Data Capture enables a diverse set of

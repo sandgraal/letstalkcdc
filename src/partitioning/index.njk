@@ -18,7 +18,9 @@ scripts:
   - "/assets/js/pages/partitioning.js"
 
 ---
-<h1>Partitioning & Reconciliation</h1>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
 
       <section aria-labelledby="ordering">
         <h2 id="ordering">The Golden Rule of Kafka Ordering</h2>

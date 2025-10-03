@@ -14,7 +14,10 @@ head_extra: |
       <link rel="stylesheet" href="/assets/css/pages/schema-evolution.css">
 
 ---
-<h1>The Inevitable Problem: Handling Schema Evolution</h1>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
       <article class="prose">
         <p>
           Source database schemas are not static. Over the lifecycle of an

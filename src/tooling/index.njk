@@ -10,7 +10,10 @@ head_extra: |
       <link href="/assets/css/styles.css" rel="stylesheet" />
 
 ---
-<h1>The Modern CDC Toolkit: A Platform Comparison</h1>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
       <article class="prose">
         <p>
           The market for Change Data Capture tools has matured significantly,

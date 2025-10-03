@@ -46,8 +46,11 @@ scripts:
   - "/assets/js/pages/exactly-once.js"
 
 ---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
 <div class="page-wrap prose">
-<h1>The Pragmatic Reality of Exactly-Once Processing</h1>
       <article class="prose">
         <p>
           End-to-end "exactly-once <em>delivery</em>" across <em>heterogeneous</em> systems
@@ -99,7 +102,7 @@ scripts:
         </p>
       </article>
 
-      <div class="interactive-demo">
+      <div class="interactive-demo" id="demo">
         <div class="step-diagram">
           <div class="step" id="step-1">
             <h4>1. Consume Message</h4>

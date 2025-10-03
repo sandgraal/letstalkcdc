@@ -6,13 +6,11 @@ canonicalPath: "/quickstarts/"
 head_extra: |
   <link rel="stylesheet" href="/assets/css/pages/quickstarts.css">
 ---
-<div class="prose">
-  <h1>Quickstart Guides</h1>
-  <p class="text-xl text-slate-600">
-    Get a production-ready Change Data Capture pipeline running in minutes with these practical, step-by-step guides for the most common databases.
-  </p>
-</div>
-<div class="qs-grid">
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="qs-grid" id="quickstart-grid">
   <a class="qs-card" href="/quickstarts/quickstart-postgres/">
     <div>
       <h2>Postgres</h2>

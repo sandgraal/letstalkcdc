@@ -13,8 +13,11 @@ head_extra: |
       />
 
 ---
-<h1>The Strategic Advantage: Embracing an Event-Driven Future</h1>
-      <article class="prose">
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<article class="prose">
         <p>
           Change Data Capture is more than a technical pattern; it is a
           strategic enabler that translates directly into tangible business

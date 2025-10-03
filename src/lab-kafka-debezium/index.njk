@@ -4,10 +4,13 @@ title: "Hands-On Lab: CDC with Kafka, Debezium, and Postgres | CDC: The Missing 
 description: "A step-by-step guide to building a real-time Change Data Capture pipeline using Docker, Postgres, Kafka, and Debezium."
 canonicalPath: "/lab-kafka-debezium/"
 head_extra: |
-  <link rel="stylesheet" href="/assets/css/pages/lab-kafka-debezium.css"">
+  <link rel="stylesheet" href="/assets/css/pages/lab-kafka-debezium.css">
 
 ---
-<h1>Hands-On Lab: Kafka + Debezium + Postgres</h1>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
         <p class="text-xl text-slate-600">
             In this lab, you'll build a complete, end-to-end Change Data Capture (CDC) pipeline from scratch. We'll use Docker Compose to orchestrate a Postgres database, Kafka, and the Debezium Postgres connector to stream row-level changes in real time.
         </p>

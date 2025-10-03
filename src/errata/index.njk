@@ -9,7 +9,9 @@ head_extra: |
         content="Corrections, caveats, and sharp edges in CDC systems."
       />
 ---
-<h1>Nuances & Errata</h1>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
       <p class="lede">
         A living list of precise clarifications, corrections, and “gotchas”.
         Treat this as pre‑flight checks before promising
@@ -17,7 +19,7 @@ head_extra: |
       </p>
 
       <section class="panel">
-        <h2>End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em></h2>
+        <h2 id="exactly-once">End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em></h2>
         <ul>
           <li>
             <strong>Source connectors are at‑least‑once</strong> in practice.
@@ -39,7 +41,7 @@ head_extra: |
       </section>
 
       <section class="panel">
-        <h2>Snapshots, backfills, and replays</h2>
+        <h2 id="snapshots">Snapshots, backfills, and replays</h2>
         <ul>
           <li>
             <strong>Initial snapshots</strong> can interleave with live changes;

@@ -21,8 +21,11 @@ head_extra: |
   <!-- SME SNAPSHOT THEME OVERRIDE END -->
 
 ---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
 <div class="page-wrap prose">
-<h1>The First Hurdle: Initial Data Load (Snapshotting)</h1>
 
       <!-- SME ADDITIONS START: Objectives + Preflight + Per-DB -->
       <section aria-labelledby="obj">
