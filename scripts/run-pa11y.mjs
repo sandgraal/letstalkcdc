@@ -62,9 +62,8 @@ for (const { label, url } of targets) {
 if (failures.length) {
   console.error('\nAccessibility check failed. Address the issues above.');
   process.exit(1);
+} else if (warnings.length) {
+  console.warn('\nAccessibility check partially skipped: Chromium is unavailable in this environment. Results recorded as warnings.');
 } else {
-  if (warnings.length) {
-    console.warn('\nAccessibility check partially skipped: Chromium is unavailable in this environment. Results recorded as warnings.');
-  }
   console.log('\nAccessibility check passed for all monitored pages.');
 }
