@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const { readdirSync, readFileSync } = require('fs');
-const { join, resolve } = require('path');
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 const root = resolve('.');
 const distDir = join(root, 'dist');
