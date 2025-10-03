@@ -106,26 +106,6 @@ h1 {
   margin-top: 0.35rem;
 }
 
-.links {
-  display: flex;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-  margin: 1rem 0 0;
-}
-
-.links a {
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.35rem 0.6rem;
-  text-decoration: none;
-  color: inherit;
-}
-
-.links a:hover,
-.links a:focus {
-  background: rgba(255, 255, 255, 0.06);
-}
-
 pre {
   border: 1px solid var(--border);
   border-radius: 0.6rem;

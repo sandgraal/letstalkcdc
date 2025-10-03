@@ -40,6 +40,13 @@ module.exports = {
       meta: '~15–20 min'
     }
   ],
+  acceptanceLinks: [
+    {
+      href: '/tests/',
+      label: 'open test guide',
+      description: 'Shell walkthrough for verifying the lab stack end-to-end.'
+    }
+  ],
   toolCards: [
     {
       icon: '🧩',

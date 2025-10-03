@@ -22,11 +22,9 @@ head_extra: |
 <section aria-label="acceptance tests" class="section">
 <h2>acceptance tests (shell)</h2>
 <p class="muted">prove your lab is healthy with one-liners. these run on your machine (or CI) and check: stack up, connector running, events flowing, and (optional) offsets after restart.</p>
-<div class="links">
-<a href="tests/">open test guide</a>
-<!-- if you published the zip, uncomment next line -->
-<!-- <a href="assets/cdc-lab-tests.zip" download>download scripts (zip)</a> -->
-</div>
+{% if acceptanceLinks %}
+  {{ ui.download_links(acceptanceLinks, 'acceptance test resources') }}
+{% endif %}
 <pre><code>chmod +x scripts/*.sh
 bash scripts/test_stack.sh
 bash scripts/test_connector.sh
