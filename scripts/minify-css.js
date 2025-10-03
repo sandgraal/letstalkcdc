@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-const csso = require('csso');
+import fs from 'node:fs';
+import path from 'node:path';
+import { minify } from 'csso';
 
 const [, , inputPath, outputPath] = process.argv;
 
@@ -12,7 +12,7 @@ if (!inputPath || !outputPath) {
 
 try {
   const source = fs.readFileSync(inputPath, 'utf8');
-  const result = csso.minify(source);
+  const result = minify(source);
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, result.css, 'utf8');
 } catch (error) {

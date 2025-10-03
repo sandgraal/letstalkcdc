@@ -6,8 +6,9 @@
     <title>{% if title %}{{ title }} | {{ site.title }}{% else %}{{ site.seoTitle }}{% endif %}</title>
     <meta name="description" content="{{ description | default(site.description) }}">
     <meta name="robots" content="index,follow,max-image-preview:large">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico">
     <link rel="canonical" href="{{ site.host }}{{ canonicalPath | default(page.url) }}">
     <meta name="theme-color" content="#0f172a">
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
@@ -18,12 +19,60 @@
     <header class="global-header">
       <div class="nav-container">
         <a class="site-title" href="/">{{ site.seoTitle }}</a>
-        <div class="nav-right">
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primaryNav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="nav-right" id="primaryNav" data-nav-panel>
           <nav aria-label="Primary" class="nav-links">
             <a class="{% if page.url == '/' %}active{% endif %}" href="/">Home</a>
             <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="/overview/">The Series</a>
+            <a class="{% if page.url | startsWith('/design-system') %}active{% endif %}" href="/design-system/">Design System</a>
           </nav>
-          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
+          <div class="nav-utilities">
+            <button
+              aria-label="Toggle dark mode"
+              class="theme-toggle"
+              data-toggle-theme
+              type="button"
+              aria-pressed="false"
+            >
+              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  fill="none"
+                />
+              </svg>
+              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="sr-only">Toggle theme</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>

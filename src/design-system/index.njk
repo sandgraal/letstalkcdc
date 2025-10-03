@@ -1,0 +1,111 @@
+---
+layout: base.njk
+title: "Design System"
+description: "Tokens, components, and interaction guidelines for Let’s Talk CDC."
+canonicalPath: "/design-system/"
+head_extra: |
+  <link rel="stylesheet" href="/assets/css/pages/style-guide.css">
+---
+<section class="hero-section">
+  <div class="prose">
+    <p class="type-title text-muted">Design Language</p>
+    <h1 class="type-display">CDC Manual Design System</h1>
+    <p class="intro">
+      Shared tokens and interaction patterns power a consistent, accessible experience across the CDC learning series.
+      Use this page as the source of truth when building new pages, illustrations, or interactive labs.
+    </p>
+  </div>
+</section>
+
+<section class="page-style-guide container">
+  <div class="intro">
+    <h2 class="type-title">Foundations</h2>
+    <p>
+      Core decisions for typography, color, and spacing. Tokens live in <code>src/assets/css/styles.css</code> and cascade across light and dark themes.
+    </p>
+  </div>
+
+  <div class="tokens-grid" aria-label="Color Tokens">
+    {% set colors = [
+      { name: 'Accent / Primary', token: '--accent-primary' },
+      { name: 'Accent / Hover', token: '--accent-hover' },
+      { name: 'Surface / Base', token: '--bg-primary' },
+      { name: 'Surface / Secondary', token: '--bg-secondary' },
+      { name: 'Text / Primary', token: '--text-primary' },
+      { name: 'Text / Secondary', token: '--text-secondary' },
+      { name: 'Border', token: '--border-color' },
+      { name: 'Success', token: '--success-color' },
+      { name: 'Warning', token: '--warning-color' },
+      { name: 'Danger', token: '--danger-color' }
+    ] %}
+    {% for color in colors %}
+      <article class="token-card" aria-label="{{ color.name }}">
+        <div class="token-sample">
+          <strong>{{ color.name }}</strong>
+          <span>var({{ color.token }})</span>
+        </div>
+        <div class="color-swatch" style="background: var({{ color.token }});"></div>
+      </article>
+    {% endfor %}
+  </div>
+
+  <div class="typography-list" aria-label="Typography Scale">
+    {% set typeRamp = [
+      { label: 'Display', class: 'type-display', token: '--type-display', sample: 'Reliable CDC pipelines begin with clarity.' },
+      { label: 'Hero', class: 'type-hero', token: '--type-hero', sample: 'Bring change data capture to production.' },
+      { label: 'Title', class: 'type-title', token: '--type-title', sample: 'Exactly-once semantics' },
+      { label: 'Heading', class: 'type-heading', token: '--type-heading', sample: 'Snapshot checklists' },
+      { label: 'Body', class: '', token: '--type-body', sample: 'CDC enables real-time data movement with minimal source impact.' },
+      { label: 'Small', class: '', token: '--type-sm', sample: 'Used for meta text, captions, and data labels.' }
+    ] %}
+    {% for item in typeRamp %}
+      <article class="typography-item">
+        <p class="{{ item.class }}">{{ item.sample }}</p>
+        <code>{{ item.label }} · var({{ item.token }})</code>
+      </article>
+    {% endfor %}
+  </div>
+
+  <div class="utility-grid">
+    <section class="utility-card" aria-labelledby="layout-tokens">
+      <h3 id="layout-tokens" class="type-heading">Spacing & Radius</h3>
+      <p class="text-muted">Spacing tokens scale layouts without hard-coded pixels.</p>
+      <ul class="checklist">
+        <li>var(--space-xs) → micro gutters</li>
+        <li>var(--space-md) → block padding</li>
+        <li>var(--space-2xl) → hero bands</li>
+      </ul>
+      <p class="text-muted">Use radius tokens for components:<br>--radius-sm, --radius-md, --radius-lg, --radius-full.</p>
+    </section>
+
+    <section class="utility-card" aria-labelledby="button-styles">
+      <h3 id="button-styles" class="type-heading">Button States</h3>
+      <div class="sample-button-row">
+        <a class="button" href="#">Primary</a>
+        <a class="button secondary" href="#">Secondary</a>
+        <a class="button ghost" href="#">Ghost</a>
+      </div>
+      <p class="text-muted">Primary buttons carry the main action per view. Secondary and ghost styles support ancillary actions.</p>
+    </section>
+
+    <section class="utility-card" aria-labelledby="chips">
+      <h3 id="chips" class="type-heading">Pills & Chips</h3>
+      <div class="utility-chip-row">
+        <button class="pill" type="button">Beginner</button>
+        <button class="pill" type="button">Practitioner</button>
+        <button class="pill" aria-pressed="true" type="button">Deep Dive</button>
+      </div>
+      <p class="text-muted">Use pills to filter content or denote states. Remember to set <code>aria-pressed</code> when toggled.</p>
+    </section>
+  </div>
+
+  <section class="utility-card" aria-labelledby="accessibility">
+    <h3 id="accessibility" class="type-heading">Accessibility Checklist</h3>
+    <ul class="checklist">
+      <li>Maintain 4.5:1 contrast for body text in both themes.</li>
+      <li>Use <code>focus-visible</code> outlines that meet WCAG sizing.</li>
+      <li>Respect reduced motion via the <code>.reduce-motion</code> utility.</li>
+      <li>Prefer semantic HTML and landmark roles for layout.</li>
+    </ul>
+  </section>
+</section>
