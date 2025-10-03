@@ -512,6 +512,34 @@ body.nav-open {
   justify-content: flex-start;
 }
 
+.panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary);
+  padding: var(--space-lg);
+  margin: var(--space-lg) 0;
+  box-shadow: var(--shadow-soft);
+}
+
+.panel__head {
+  margin-bottom: var(--space-sm);
+}
+
+.panel__title {
+  margin: 0;
+  font-size: var(--type-heading);
+}
+
+.panel__meta {
+  margin-top: var(--space-xs);
+  color: var(--text-muted);
+  font-size: var(--type-sm);
+}
+
+.panel__body > :last-child {
+  margin-bottom: 0;
+}
+
 .hero-section .prose {
   margin: 0 auto;
 }

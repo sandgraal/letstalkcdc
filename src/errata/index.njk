@@ -18,8 +18,7 @@ head_extra: |
         <em>exactly‑once</em> or “zero data loss.”
       </p>
 
-      <section class="panel">
-        <h2 id="exactly-once">End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em></h2>
+      {% call ui.panel({ id: 'exactly-once', titleId: 'exactly-once', title: 'End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em>' }) %}
         <ul>
           <li>
             <strong>Source connectors are at‑least‑once</strong> in practice.
@@ -38,10 +37,9 @@ head_extra: |
             is not guaranteed and shouldn’t be relied upon.
           </li>
         </ul>
-      </section>
+      {% endcall %}
 
-      <section class="panel">
-        <h2 id="snapshots">Snapshots, backfills, and replays</h2>
+      {% call ui.panel({ id: 'snapshots', titleId: 'snapshots', title: 'Snapshots, backfills, and replays' }) %}
         <ul>
           <li>
             <strong>Initial snapshots</strong> can interleave with live changes;
@@ -58,10 +56,9 @@ head_extra: |
             (topics/headers) to avoid double‑counting.
           </li>
         </ul>
-      </section>
+      {% endcall %}
 
-      <section class="panel">
-        <h2>Tombstones, compaction, and deletions</h2>
+      {% call ui.panel({ title: 'Tombstones, compaction, and deletions' }) %}
         <ul>
           <li>
             <strong>Tombstones</strong> are required for compaction to fully
@@ -73,10 +70,9 @@ head_extra: |
             retention strategy in the sink to avoid data resurrection.
           </li>
         </ul>
-      </section>
+      {% endcall %}
 
-      <section class="panel">
-        <h2>Schema evolution</h2>
+      {% call ui.panel({ title: 'Schema evolution' }) %}
         <ul>
           <li>
             Always version <em>payload schemas</em> and keep consumers tolerant
@@ -88,10 +84,9 @@ head_extra: |
             “poison” events.
           </li>
         </ul>
-      </section>
+      {% endcall %}
 
-      <section class="panel">
-        <h2>Operational guardrails</h2>
+      {% call ui.panel({ title: 'Operational guardrails' }) %}
         <ul>
           <li>
             Watch lag/throughput and <code>max.queue.size</code>,
@@ -108,10 +103,9 @@ head_extra: |
             differ; otherwise group by SLA and update cadence.
           </li>
         </ul>
-      </section>
+      {% endcall %}
 
-      <section class="panel">
-        <h2>Recommended dedup ledger</h2>
+      {% call ui.panel({ title: 'Recommended dedup ledger', wrapBody: false }) %}
         <pre><code>-- event_id is a stable UUID in headers or payload
 create table if not exists dw.processed_event(
   event_id text primary key,
@@ -121,7 +115,7 @@ create table if not exists dw.processed_event(
         <pre><code>insert into dw.processed_event(event_id)
 values (:event_id)
 on conflict do nothing;</code></pre>
-      </section>
+      {% endcall %}
 
       <div class="links" aria-label="useful extras">
         <a href="compose.yaml" download>compose.yaml</a>

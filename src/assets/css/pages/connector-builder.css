@@ -5,7 +5,7 @@
 .builder-app a{color:inherit}
 .builder-app .wrap{display:grid;gap:1rem;grid-template-columns:1fr}
 @media(min-width:1100px){.builder-app .wrap{grid-template-columns:1.1fr 1fr}}
-.builder-app .panel{border:1px solid var(--border);border-radius:.75rem;background:var(--surface);padding:1rem}
+.builder-app .panel{border:1px solid var(--border);border-radius:.75rem;background:var(--surface);padding:1rem;margin:0}
 .builder-app .muted{color:var(--muted)}
 .builder-app .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
 .builder-app label{font-size:.92rem}

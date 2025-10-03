@@ -70,3 +70,37 @@
     </p>
   </article>
 {%- endmacro %}
+
+{% macro panel(config, content='') -%}
+  {% set classes = ['panel'] %}
+  {% if config.variant %}
+    {% set _ = classes.append('panel--' ~ config.variant) %}
+  {% endif %}
+  {% if config.classes %}
+    {% for cls in config.classes %}
+      {% set _ = classes.append(cls) %}
+    {% endfor %}
+  {% endif %}
+  {% set body = caller() if caller is defined else content %}
+  <section
+    class="{{ classes | join(' ') }}"
+    {% if config.id %}id="{{ config.id }}"{% endif %}
+    {% if config.ariaLabelledby %}aria-labelledby="{{ config.ariaLabelledby }}"{% endif %}
+  >
+    {% if config.title %}
+      <header class="panel__head"{% if config.titleId %} id="{{ config.titleId }}"{% endif %}>
+        <h2 class="panel__title">{{ config.title | safe }}</h2>
+        {% if config.meta %}
+          <p class="panel__meta">{{ config.meta | safe }}</p>
+        {% endif %}
+      </header>
+    {% endif %}
+    {% if config.wrapBody is defined and not config.wrapBody %}
+      {{ body | safe }}
+    {% else %}
+      <div class="panel__body">
+        {{ body | safe }}
+      </div>
+    {% endif %}
+  </section>
+{%- endmacro %}

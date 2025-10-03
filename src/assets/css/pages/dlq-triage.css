@@ -57,6 +57,7 @@ h1 {
   border-radius: 0.75rem;
   background: var(--surface);
   padding: 1rem;
+  margin: 0;
 }
 
 .dlq-app .muted {
