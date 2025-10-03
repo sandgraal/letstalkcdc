@@ -20,6 +20,8 @@ head_extra: |
 ---
 {% import "components/ui.njk" as ui %}
 
+{# Debug hero config #}
+{# {{ heroConfig | dump }} #}
 {{ ui.hero(heroConfig) | safe }}
 
 <section class="series-card-grid">

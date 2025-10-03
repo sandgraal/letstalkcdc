@@ -463,8 +463,21 @@ body.nav-open {
   padding: var(--space-2xl) var(--space-md);
 }
 
+.hero-section .prose {
+  margin: 0 auto;
+}
+
+.hero-section .hero-container {
+  display: flex;
+  justify-content: center;
+}
+
 .hero-section.hero-align-left {
   text-align: left;
+}
+
+.hero-section.hero-align-left .hero-container {
+  justify-content: flex-start;
 }
 
 .hero-section.hero-align-left .prose {

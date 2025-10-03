@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   heroConfig: {
     title: 'Why Change Data Capture Still Breaks, and How To Get It Right.',
     description: 'Build production-grade CDC pipelines, understand why they fail, and learn how to design resilient, real-time data architectures.',

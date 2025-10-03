@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   title: "CDC: The Missing Manual",
   tagline: "A Deep Dive into Change Data Capture",
   seoTitle: "CDC: The Missing Manual | A Deep Dive into Change Data Capture",

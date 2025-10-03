@@ -1,21 +1,23 @@
 {% macro hero(config) -%}
   {% set align = config.align | default('center') %}
   <section class="hero-section hero-align-{{ align }}">
-    <div class="prose">
-      {% if config.kicker %}
-        <p class="type-title text-muted hero-kicker">{{ config.kicker }}</p>
-      {% endif %}
-      <h1 class="{{ 'type-display' if align == 'center' else 'type-hero' }}">{{ config.title }}</h1>
-      {% if config.description %}
-        <div class="hero-lede">{{ config.description | safe }}</div>
-      {% endif %}
-      {% if config.actions %}
-        <div class="hero-actions">
-          {% for action in config.actions %}
-            <a class="button {{ action.variant | default('') }}" href="{{ action.href }}">{{ action.label }}</a>
-          {% endfor %}
-        </div>
-      {% endif %}
+    <div class="hero-container container">
+      <div class="prose">
+        {% if config.kicker %}
+          <p class="type-title text-muted hero-kicker">{{ config.kicker }}</p>
+        {% endif %}
+        <h1 class="{{ 'type-display' if align == 'center' else 'type-hero' }}">{{ config.title }}</h1>
+        {% if config.description %}
+          <div class="hero-lede">{{ config.description | safe }}</div>
+        {% endif %}
+        {% if config.actions %}
+          <div class="hero-actions">
+            {% for action in config.actions %}
+              <a class="button {{ action.variant | default('') }}" href="{{ action.href }}">{{ action.label }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
     </div>
   </section>
 {%- endmacro %}
