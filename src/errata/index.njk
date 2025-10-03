@@ -117,12 +117,6 @@ values (:event_id)
 on conflict do nothing;</code></pre>
       {% endcall %}
 
-      <div class="links" aria-label="useful extras">
-        <a href="compose.yaml" download>compose.yaml</a>
-        <a href="connectors/postgres-inventory.json" download
-          >postgres sample connector</a
-        >
-        <a href="scripts/register_connector.sh" download
-          >register connector script</a
-        >
-      </div>
+      {% if resourceLinks %}
+        {{ ui.download_links(resourceLinks, 'useful extras') }}
+      {% endif %}
