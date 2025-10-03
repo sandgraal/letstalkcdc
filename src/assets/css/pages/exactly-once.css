@@ -1,0 +1,69 @@
+/* Module-specific styles for Exactly-Once article */
+.interactive-demo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  margin: 2rem 0;
+}
+
+@media (min-width: 800px) {
+  .interactive-demo {
+    grid-template-columns: 1.5fr 1fr;
+  }
+}
+
+.step-diagram .step {
+  padding: 1rem;
+  border-left: 4px solid var(--border-color);
+  opacity: 0.4;
+  transition: opacity 0.3s, background-color 0.3s;
+}
+
+.step-diagram .step.active {
+  opacity: 1;
+  border-left-color: var(--accent-primary);
+  background-color: var(--bg-primary);
+}
+
+.step-diagram .step.completed {
+  opacity: 0.6;
+  border-left-color: var(--text-muted);
+}
+
+.diagram-visual-panel {
+  background: var(--bg-primary);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 200px;
+}
+
+.diagram-visual-panel .icon {
+  font-size: 3rem;
+}
+
+.code-comparison {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+@media (min-width: 768px) {
+  .code-comparison {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.code-comparison h4 {
+  margin-top: 0;
+  text-align: center;
+}

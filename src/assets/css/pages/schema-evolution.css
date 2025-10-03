@@ -1,0 +1,72 @@
+.data-flow-diagram {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  font-family: var(--font-mono);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: hidden;
+}
+
+.seq {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.seq-head {
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.25rem;
+}
+
+.seq-cell {
+  text-align: left;
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 700px) {
+  .seq {
+    grid-template-columns: 1fr;
+  }
+
+  .seq-head {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.compatibility-modes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+@media (min-width: 768px) {
+  .compatibility-modes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.mode-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.mode-card h3 {
+  margin-top: 0;
+  border-bottom: 2px solid var(--accent-primary);
+  padding-bottom: 0.5rem;
+}

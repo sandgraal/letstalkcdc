@@ -8,67 +8,7 @@ head_extra: |
         name="description"
         content="Run acceptance tests for the Kafka + Debezium lab: stack up, connector healthy, topic has change events, and (optional) chaos smoke."
       />
-      <style>
-        /* Minimal local styles for page-specific elements */
-        .box {
-          border: 1px solid var(--border-color);
-          border-radius: 0.5rem;
-          padding: 1rem;
-          background: var(--color-background-soft);
-          margin-bottom: 1.5rem;
-        }
-        .grid {
-          display: grid;
-          gap: 1.5rem;
-          grid-template-columns: 1fr;
-        }
-        @media (min-width: 950px) {
-          .grid {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
-        pre {
-          border: 1px solid var(--border-color);
-          border-radius: 0.5rem;
-          padding: 0.75rem;
-          overflow: auto;
-          background: var(--color-background-soft);
-        }
-        .callout {
-          border-left: 0.35rem solid #10b981;
-          background: #f0fdf4;
-        }
-        .callout.warn {
-          border-left-color: #ef4444;
-          background: #fef2f2;
-        }
-        [data-theme="dark"] .callout {
-          background: #162421;
-        }
-        [data-theme="dark"] .callout.warn {
-          background: #2d1e1e;
-        }
-        .filelist {
-          font-family: var(--font-mono);
-          font-size: 0.9rem;
-          list-style: none;
-          padding: 0;
-        }
-        .filelist li {
-          margin: 0.25rem 0;
-        }
-        .ok {
-          color: #16a34a;
-        }
-        .no {
-          color: #ef4444;
-        }
-        .back-link {
-          display: block;
-          margin-bottom: 1rem;
-          font-weight: 500;
-        }
-      </style>
+      <link rel="stylesheet" href="/assets/css/pages/tests.css">
 
 ---
 <a href="quickstarts/" class="back-link">← Back to Quickstarts</a>

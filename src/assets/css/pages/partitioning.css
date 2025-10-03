@@ -1,0 +1,159 @@
+.muted {
+  opacity: 0.85;
+  font-size: 0.95rem;
+}
+
+.value-badge {
+  min-width: 44px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  padding: 0.16rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.panel {
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+.panel-header {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-body {
+  padding: 1rem;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.kv label {
+  grid-column: 1;
+}
+
+.kv input,
+.kv select,
+.kv span {
+  grid-column: 2;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pill {
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--bg-primary);
+  cursor: pointer;
+}
+
+.pill:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.kpi-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 800px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpi {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.kpi h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.1rem 0 0.35rem;
+  border: none;
+}
+
+.kpi .val {
+  font-size: 1.8rem;
+  font-weight: 300;
+  color: var(--accent-primary);
+}
+
+.chart {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.bar {
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-primary));
+}
+
+.bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bar-label {
+  width: 110px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.codebox pre {
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.faq details {
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-primary);
+}
+
+.faq details + details {
+  margin-top: 0.5rem;
+}
+
+.faq summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#sim-wrap {
+  width: clamp(100%, 66rem, 96vw);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 1099px) {
+  #sim-wrap {
+    width: 100%;
+    margin-left: 0;
+    transform: none;
+  }
+}
