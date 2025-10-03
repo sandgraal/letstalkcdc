@@ -134,6 +134,14 @@ module.exports = [
     tags: [ { label: 'Lab', variant: 'tag-labs' } ]
   },
   {
+    key: 'tests',
+    title: 'Acceptance Tests',
+    description: 'Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.',
+    href: '/tests/',
+    ctaLabel: 'Verify Your Stack',
+    tags: [ { label: 'Lab', variant: 'tag-labs' } ]
+  },
+  {
     key: 'errata',
     title: 'Nuances & Errata',
     description: 'Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.',

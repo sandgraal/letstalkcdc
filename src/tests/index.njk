@@ -3,6 +3,7 @@ layout: base.njk
 title: "Acceptance Tests — Kafka + Debezium Lab | CDC: The Missing Manual"
 description: "Run acceptance tests for the Kafka + Debezium lab: stack up, connector healthy, topic has change events, and (optional) chaos smoke."
 canonicalPath: "/tests/"
+seriesKey: 'tests'
 head_extra: |
   <meta
         name="description"
@@ -11,13 +12,16 @@ head_extra: |
       <link rel="stylesheet" href="/assets/css/pages/tests.css">
 
 ---
-<a href="quickstarts/" class="back-link">← Back to Quickstarts</a>
-      <h1>Acceptance Tests — Kafka + Debezium Lab</h1>
-      <p class="muted">
-        These tests run on <em>your machine</em> to prove the lab works:
-        containers up, connector healthy, topic has change events, and
-        (optionally) offsets advance across a restart.
-      </p>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: 'Acceptance Tests — Kafka + Debezium Lab',
+  description: '<p>Run copy/paste scripts on your machine to prove the lab stack is healthy: containers up, connector RUNNING, topics streaming events, and restarts staying idempotent.</p>',
+  align: 'left',
+  actions: [
+    { href: '/quickstarts/', label: 'Back to Quickstarts', variant: 'ghost' }
+  ]
+}) | safe }}
 
       <section class="box">
         <h2>What You’ll Run</h2>

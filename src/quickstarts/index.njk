@@ -101,7 +101,7 @@ head_extra: |
           {% if card.actions %}
             <div class="qs-detail-actions">
               {% for action in card.actions %}
-                <a class="button ghost" href="{{ action.href }}">{{ action.label }}</a>
+                <a class="button{% if action.variant %} {{ action.variant }}{% endif %}" href="{{ action.href }}">{{ action.label }}</a>
               {% endfor %}
             </div>
           {% endif %}
@@ -110,3 +110,13 @@ head_extra: |
     </div>
   </section>
 {% endif %}
+
+<section class="qs-verify" aria-labelledby="qs-verify-heading">
+  <div class="qs-verify__inner">
+    <div>
+      <h2 id="qs-verify-heading">Verify your stack</h2>
+      <p>After you run a quickstart, execute the acceptance tests to prove containers are healthy, events are flowing, and restarts stay idempotent.</p>
+    </div>
+    <a class="button" href="/tests/">Run acceptance tests</a>
+  </div>
+</section>
