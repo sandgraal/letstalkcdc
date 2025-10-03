@@ -22,11 +22,9 @@ head_extra: |
     }
   </script>
 ---
-<section class="hero-section">
-  <div class="prose">
-    <h1>Why Change Data Capture Still Breaks, and How To Get It Right.</h1>
-  </div>
-</section>
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
 <section aria-labelledby="cdc-101" class="prose">
   <p>
     <strong>In the modern data landscape</strong>, the value of information is intrinsically linked to its timeliness. Decisions made on outdated data can lead to missed opportunities, inefficient operations, and a diminished competitive edge. This reality has exposed the limitations of traditional data integration methods like nightly batch jobs and paved the way for a more dynamic, real-time approach. This series shows you how to build production-grade CDC pipelines that deliver on the promise of real-time data.
@@ -96,48 +94,9 @@ head_extra: |
       Follow our structured learning path to build a comprehensive understanding of Change Data Capture, from core concepts to advanced, real-world implementation.
     </p>
     <div class="learning-modules">
-      <div class="module-card">
-        <h3>1. Interactive Introduction to CDC</h3>
-        <p>
-          This interactive introduction is the central starting point for your CDC journey. Get a firm grasp on the core concepts, methods, and tooling, then choose the path that fits your needs—from beginner fundamentals to advanced production patterns.
-        </p>
-        <a href="/overview/" class="cta-button">Choose what to Read</a>
-      </div>
-      <div class="module-card">
-        <h3>2. Core Concepts and Mechanics</h3>
-        <p>
-          Dive into the mechanics. Learn about the transaction log, change tables, and the essential metadata that powers CDC from the ground up.
-        </p>
-        <a href="/intro/" class="cta-button">Learn the Concepts</a>
-      </div>
-      <div class="module-card">
-        <h3>3. The Three Pillars of CDC (The Patterns)</h3>
-        <p>
-          Compare the primary implementation patterns: Log-based, Trigger-based, and Timestamp-based. Understand the pros and cons of each.
-        </p>
-        <a href="/strategy/" class="cta-button">Explore the Patterns</a>
-      </div>
-      <div class="module-card">
-        <h3>4. Implementation and The Data Pipeline</h3>
-        <p>
-          Put theory into practice. See how CDC fits into modern ETL/ELT pipelines and integrates with streaming platforms like Apache Kafka.
-        </p>
-        <a href="/quickstarts/" class="cta-button">View Implementations</a>
-      </div>
-      <div class="module-card">
-        <h3>5. Advanced Topics</h3>
-        <p>
-          Level up your knowledge. Tackle complex challenges like handling Slowly Changing Dimensions (SCD) and managing schema drift in production systems.
-        </p>
-        <a href="/schema-evolution/" class="cta-button">Go Advanced</a>
-      </div>
-      <div class="module-card">
-        <h3>6. The Ecosystem</h3>
-        <p>
-          Explore the landscape of CDC technologies. Get a curated overview of the most popular open-source and commercial tools in the ecosystem.
-        </p>
-        <a href="/tooling/" class="cta-button">Discover the Tools</a>
-      </div>
+      {% for module in learningModules %}
+        {{ ui.module_card(module) | safe }}
+      {% endfor %}
     </div>
   </section>
 </section>

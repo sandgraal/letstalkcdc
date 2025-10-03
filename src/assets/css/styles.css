@@ -463,6 +463,42 @@ body.nav-open {
   padding: var(--space-2xl) var(--space-md);
 }
 
+.hero-section.hero-align-left {
+  text-align: left;
+}
+
+.hero-section.hero-align-left .prose {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.hero-kicker {
+  margin-bottom: var(--space-xs);
+}
+
+.hero-lede {
+  margin: var(--space-md) auto 0;
+  color: var(--text-secondary);
+  font-size: var(--type-body);
+}
+
+.hero-section.hero-align-left .hero-lede {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.hero-actions {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+.hero-section.hero-align-left .hero-actions {
+  justify-content: flex-start;
+}
+
 .hero-section .prose {
   margin: 0 auto;
 }
@@ -499,7 +535,7 @@ body.nav-open {
   box-shadow: var(--shadow-soft);
   transform: translateY(-2px);
 }
-.series-card.disabled {
+.series-card.is-disabled {
   background: var(--bg-secondary);
   opacity: 0.7;
   cursor: not-allowed;
@@ -1401,6 +1437,15 @@ figure[aria-label="CDC high-level flow"] figcaption {
   color: var(--text-secondary);
   line-height: 1.6;
   font-size: 1rem;
+}
+
+.module-card .module-kicker {
+  font-size: var(--type-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-primary);
+  margin-bottom: var(--space-xs);
 }
 
 /* CTA button */

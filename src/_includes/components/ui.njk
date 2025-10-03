@@ -1,0 +1,70 @@
+{% macro hero(config) -%}
+  {% set align = config.align | default('center') %}
+  <section class="hero-section hero-align-{{ align }}">
+    <div class="prose">
+      {% if config.kicker %}
+        <p class="type-title text-muted hero-kicker">{{ config.kicker }}</p>
+      {% endif %}
+      <h1 class="{{ 'type-display' if align == 'center' else 'type-hero' }}">{{ config.title }}</h1>
+      {% if config.description %}
+        <div class="hero-lede">{{ config.description | safe }}</div>
+      {% endif %}
+      {% if config.actions %}
+        <div class="hero-actions">
+          {% for action in config.actions %}
+            <a class="button {{ action.variant | default('') }}" href="{{ action.href }}">{{ action.label }}</a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{%- endmacro %}
+
+{% macro module_card(card) -%}
+  <article class="module-card">
+    {% if card.kicker %}
+      <div class="module-kicker">{{ card.kicker }}</div>
+    {% endif %}
+    <h3>{{ card.title }}</h3>
+    <p>{{ card.description }}</p>
+    {% if card.href %}
+      <a href="{{ card.href }}" class="cta-button">{{ card.ctaLabel | default('Explore') }}</a>
+    {% else %}
+      <a class="cta-button" aria-disabled="true">{{ card.ctaLabel | default('Coming Soon') }}</a>
+    {% endif %}
+  </article>
+{%- endmacro %}
+
+{% macro series_card(card) -%}
+  {% set state = card.state | default('default') %}
+  {% set isDisabled = state == 'disabled' %}
+  <article class="series-card{% if card.isRecommended %} is-recommended{% endif %}{% if card.variant %} {{ card.variant }}{% endif %}{% if isDisabled %} is-disabled{% endif %}">
+    {% if card.badge or (card.tags and card.tags | length) %}
+      <div class="card-meta">
+        {% if card.badge %}
+          <div class="badge {{ card.badge.variant | default('recommended') }}">{{ card.badge.label }}</div>
+        {% endif %}
+        {% if card.tags and card.tags | length %}
+          <div class="card-tags">
+            {% for tag in card.tags %}
+              {% if tag is string %}
+                <span class="tag">{{ tag }}</span>
+              {% else %}
+                <span class="tag{% if tag.variant %} {{ tag.variant }}{% endif %}">{{ tag.label }}</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+    <h3 class="card-title">{{ card.title }}</h3>
+    <p class="card-description">{{ card.description }}</p>
+    <p>
+      {% if isDisabled %}
+        <a class="button" aria-disabled="true">{{ card.ctaLabel | default('Coming Soon') }}</a>
+      {% else %}
+        <a class="button" href="{{ card.href }}" aria-label="{{ card.ariaLabel | default('Read: ' ~ card.title) }}">{{ card.ctaLabel | default('Dive In!') }}</a>
+      {% endif %}
+    </p>
+  </article>
+{%- endmacro %}
