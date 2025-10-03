@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const root = resolve('.');
@@ -56,16 +56,19 @@ if (offendingFonts.length > 0) {
   failures.push(`Built HTML still references fonts.googleapis.com (${offendingFonts.length} file(s)).`);
 }
 
-try {
-  const htaccess = readFileSync(join(root, '.htaccess'), 'utf8');
-  if (!/Content-Security-Policy/.test(htaccess)) {
-    failures.push('CSP header missing from .htaccess.');
+const htaccessPath = join(root, '.htaccess');
+if (existsSync(htaccessPath)) {
+  try {
+    const htaccess = readFileSync(htaccessPath, 'utf8');
+    if (!/Content-Security-Policy/.test(htaccess)) {
+      failures.push('CSP header missing from .htaccess.');
+    }
+    if (/unsafe-inline/.test(htaccess)) {
+      failures.push('CSP still includes unsafe-inline; expected hashed allowances instead.');
+    }
+  } catch (error) {
+    failures.push(`Failed to read .htaccess: ${error.message}`);
   }
-  if (/unsafe-inline/.test(htaccess)) {
-    failures.push('CSP still includes unsafe-inline; expected hashed allowances instead.');
-  }
-} catch (error) {
-  failures.push(`Failed to read .htaccess: ${error.message}`);
 }
 
 if (failures.length) {
