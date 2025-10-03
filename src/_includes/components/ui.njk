@@ -104,3 +104,40 @@
     {% endif %}
   </section>
 {%- endmacro %}
+
+{% macro catalog_card(card) -%}
+  {% set classes = ['card'] %}
+  {% if card.classes %}
+    {% for cls in card.classes %}
+      {% set _ = classes.append(cls) %}
+    {% endfor %}
+  {% endif %}
+  <article class="{{ classes | join(' ') }}">
+    {% if card.icon %}
+      <div aria-hidden="true" class="icon">{{ card.icon | safe }}</div>
+    {% endif %}
+    {% if card.title %}
+      <h2>{{ card.title | safe }}</h2>
+    {% endif %}
+    {% if card.description %}
+      <p>{{ card.description | safe }}</p>
+    {% endif %}
+    {% if card.list %}
+      <ul class="list">
+        {% for item in card.list %}
+          <li>{{ item | safe }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if card.actions %}
+      {% for action in card.actions %}
+        <a class="btn {{ action.variant | default('') }}" href="{{ action.href }}">{{ action.label }}</a>
+      {% endfor %}
+    {% elif card.href %}
+      <a class="btn" href="{{ card.href }}">{{ card.ctaLabel | default('Open') }}</a>
+    {% endif %}
+    {% if card.meta %}
+      <div class="meta">{{ card.meta | safe }}</div>
+    {% endif %}
+  </article>
+{%- endmacro %}

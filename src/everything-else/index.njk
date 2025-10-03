@@ -7,43 +7,15 @@ head_extra: |
   <link rel="stylesheet" href="/assets/css/pages/everything-else.css">
   <link href="https://letstalkcdc.nfshost.com/everything-else/" rel="canonical"/>
 ---
+{% import "components/ui.njk" as ui %}
+
 <!-- QUICKSTARTS -->
 <section aria-label="quickstarts" class="section">
 <h2>quickstarts</h2>
 <div class="grid">
-<article class="card">
-<div aria-hidden="true" class="icon">🐘</div>
-<h2>postgres</h2>
-<p>enable logical decoding, register Debezium, verify change events end-to-end.</p>
-<ul class="list">
-<li><code>wal_level=logical</code>, slots allowed</li>
-<li>PKs or <code>REPLICA IDENTITY FULL</code></li>
-</ul>
-<a class="btn" href="quickstart/quickstart-postgres/">open postgres quickstart</a>
-<div class="meta">~10–15 min</div>
-</article>
-<article class="card">
-<div aria-hidden="true" class="icon">🐬</div>
-<h2>mysql</h2>
-<p>binlog in row mode, narrow includes, confirm topics receive events.</p>
-<ul class="list">
-<li><code>binlog_format=ROW</code></li>
-<li><code>gtid_mode=ON</code> preferred</li>
-</ul>
-<a class="btn" href="quickstart/quickstart-mysql/">open mysql quickstart</a>
-<div class="meta">~10–15 min</div>
-</article>
-<article class="card">
-<div aria-hidden="true" class="icon">🟠</div>
-<h2>oracle</h2>
-<p>check ARCHIVELOG + supplemental logging, verify redo and events.</p>
-<ul class="list">
-<li>ARCHIVELOG mode</li>
-<li>DB + table supplemental logging</li>
-</ul>
-<a class="btn" href="quickstart/quickstart-oracle/">open oracle quickstart</a>
-<div class="meta">~15–20 min</div>
-</article>
+{% for card in quickstartCards %}
+  {{ ui.catalog_card(card) | safe }}
+{% endfor %}
 </div>
 </section>
 <!-- SCRIPTED ACCEPTANCE TESTS -->
@@ -107,67 +79,8 @@ docker exec -it broker kafka-run-class kafka.tools.GetOffsetShell \
 <section aria-label="tools and notes" class="section">
 <h2>tools &amp; vendor notes</h2>
 <div class="grid">
-<article class="card">
-<div aria-hidden="true" class="icon">🧩</div>
-    <h2>mermaid diagram sandbox</h2>
-      <p>sketch CDC dataflows, failure paths, and recovery playbooks right in the browser.</p>
-      <a class="btn" href="mermaid-sandbox/">open mermaid sandbox</a>
-      <div class="meta">great for sharing designs</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">📒</div>
-    <h2>oracle notes</h2>
-      <p>prereqs, quick checks, performance knobs, and first-aid for Oracle log-based CDC.</p>
-      <a class="btn" href="oracle-notes/">open oracle notes</a>
-      <div class="meta">single-page runbook</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">🧪</div>
-    <h2>troubleshooting</h2>
-      <p>the first 15 minutes: stabilize incidents fast with copy/paste diagnostics.</p>
-      <a class="btn" href="troubleshooting/">open troubleshooting</a>
-      <div class="meta">postgres • mysql • oracle • kafka</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">🧰</div>
-    <h2>merge / upsert cookbook</h2>
-      <p>copy-paste templates for Snowflake, BigQuery, Delta, Postgres, MySQL, and Redshift. handles dupes, late events, and deletes safely.</p>
-      <a class="btn" href="merge-cookbook/">open merge cookbook</a>
-      <div class="meta">latest-wins &amp; delete-safe</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">🧰</div>
-    <h2>hands-on lab</h2>
-      <p>copy-paste templates for Snowflake, BigQuery, Delta, Postgres, MySQL, and Redshift. handles dupes, late events, and deletes safely.</p>
-      <a class="btn" href="lab-kafka-debezium/">open lab</a>
-      <div class="meta">latest-wins &amp; delete-safe</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">🧮</div>
-    <h2>debezium event decoder</h2>
-      <p>paste a Kafka record; get op/source, before/after diff, and ready-to-tweak MERGE SQL.</p>
-      <a class="btn" href="debezium-decoder/">open decoder</a>
-      <div class="meta">local only • no upload</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">🩺</div>
-    <h2>DLQ triage assistant</h2>
-      <p>enumerate, peek headers, decode original payload, and map errors to fixes.</p>
-      <a class="btn" href="dlq-triage/">open DLQ triage</a>
-      <div class="meta">safe commands • copy-ready</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">⚙️</div>
-    <h2>connector config builder</h2>
-      <p>fill a form → get valid Debezium JSON + ready-to-run curl for Connect.</p>
-      <a class="btn" href="connector-builder/">open builder</a>
-      <div class="meta">postgres • mysql • oracle • 2.x/1.x</div>
-      </article>
-      <article class="card">
-      <div aria-hidden="true" class="icon">⚙️</div>
-    <h2>nuances & errata</h2>
-      <p>Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.</p>
-      <a class="btn" href="errata/">see nuances</a>
-      </article>
+{% for card in toolCards %}
+  {{ ui.catalog_card(card) | safe }}
+{% endfor %}
 </div>
 </section>
