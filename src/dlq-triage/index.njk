@@ -1,41 +1,38 @@
 ---
-layout: null
-permalink: dlq-triage/index.html
+layout: base.njk
+title: "DLQ Triage Assistant — find, explain, fix"
+description: "Guided DLQ troubleshooting for Kafka Connect/Debezium: list DLQ messages, inspect headers, decode payloads, and map errors to fixes."
+canonicalPath: "/dlq-triage/"
+head_extra: |
+  <link rel="stylesheet" href="/assets/css/pages/dlq-triage.css">
+scripts:
+  - "/assets/js/pages/dlq-triage.js"
 ---
-<!DOCTYPE html>
+{% import "components/ui.njk" as ui %}
 
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<title>DLQ triage assistant — find, explain, fix</title>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<meta content="Guided DLQ troubleshooting for Kafka Connect/Debezium: list DLQ, peek headers, decode original payload, and map errors to fixes." name="description"/>
-<link rel="stylesheet" href="/assets/css/pages/dlq-triage.css"/>
-<link href="https://letstalkcdc.nfshost.com/dlq-triage.html" rel="canonical"/></head>
-<body><a class="skip-link" href="#main">Skip to content</a>
-<header>
-<a href="/everything-else/">← extras</a>
-<h1>DLQ triage assistant</h1>
-<p class="lede">point this at your DLQ topic and connector name. we’ll generate safe commands to inspect headers &amp; payloads, and map common errors to fixes.</p>
-</header>
-<main class="wrap">
-<section class="panel">
-<h2>1) inputs</h2>
-<div class="row">
-<label>bootstrap:</label>
-<input id="bootstrap" type="text" value="localhost:29092"/>
-<label>dlq topic:</label>
-<input id="dlq" type="text" value="dlq.inventory"/>
-</div>
-<div class="row">
-<label>connector name:</label>
-<input id="connector" type="text" value="inventory-connector"/>
-<label>consumer group (sink):</label>
-<input id="group" type="text" value="my-sink"/>
-</div>
-<h2 style="margin-top:.6rem">2) enumerate &amp; peek</h2>
-<button class="btn copy" id="copy1">copy</button>
-<pre><code id="cmd1"># count a sample &amp; show latest offsets
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="dlq-app">
+  <div class="dlq-app__back"><a href="/everything-else/">← extras</a></div>
+  <div class="dlq-app__content">
+    <div class="wrap">
+      <section aria-labelledby="dlq-inputs" class="panel">
+        <h2 id="dlq-inputs">1) inputs</h2>
+        <div class="row">
+          <label for="bootstrap">bootstrap:</label>
+          <input id="bootstrap" type="text" value="localhost:29092">
+          <label for="dlq">dlq topic:</label>
+          <input id="dlq" type="text" value="dlq.inventory">
+        </div>
+        <div class="row">
+          <label for="connector">connector name:</label>
+          <input id="connector" type="text" value="inventory-connector">
+          <label for="group">consumer group (sink):</label>
+          <input id="group" type="text" value="my-sink">
+        </div>
+        <h2 style="margin-top:0.6rem">2) enumerate &amp; peek</h2>
+        <button class="btn copy" id="copy1">copy</button>
+        <pre><code id="cmd1"># count a sample &amp; show latest offsets
 kafka-run-class kafka.tools.GetOffsetShell \
   --broker-list localhost:29092 --topic dlq.inventory --time -1
 
@@ -43,10 +40,10 @@ kafka-run-class kafka.tools.GetOffsetShell \
 kafka-console-consumer --bootstrap-server localhost:29092 \
   --topic dlq.inventory --from-beginning --timeout-ms 4000 \
   --max-messages 5 | jq -C .</code></pre>
-<details>
-<summary>show headers &amp; decode original value</summary>
-<button class="btn copy" id="copy2">copy</button>
-<pre><code id="cmd2"># show headers (kafka cli shows headers only with Kafkacat or kcat)
+        <details>
+          <summary>show headers &amp; decode original value</summary>
+          <button class="btn copy" id="copy2">copy</button>
+          <pre><code id="cmd2"># show headers (kafka cli shows headers only with Kafkacat or kcat)
 # try kcat if available (brew install kcat)
 kcat -b localhost:29092 -t dlq.inventory -C -J -c 5 | jq -C .
 
@@ -55,60 +52,58 @@ kafka-console-consumer --bootstrap-server localhost:29092 \
   --topic dlq.inventory --from-beginning --timeout-ms 4000 --max-messages 5 \
   | jq -r '.original.value // .record.value // .value // .payload.original.value // .payload.record.value // empty' \
   | jq -C .</code></pre>
-</details>
-<details>
-<summary>connector status &amp; restart</summary>
-<button class="btn copy" id="copy3">copy</button>
-<pre><code id="cmd3">curl -s http://localhost:8083/connectors | jq
+        </details>
+        <details>
+          <summary>connector status &amp; restart</summary>
+          <button class="btn copy" id="copy3">copy</button>
+          <pre><code id="cmd3">curl -s http://localhost:8083/connectors | jq
 curl -s http://localhost:8083/connectors/inventory-connector/status | jq
 # restart connector (use sparingly)
 curl -s -X POST http://localhost:8083/connectors/inventory-connector/restart</code></pre>
-</details>
-<details>
-<summary>sink lag (is the consumer stuck?)</summary>
-<button class="btn copy" id="copy4">copy</button>
-<pre><code id="cmd4">kafka-consumer-groups --bootstrap-server localhost:29092 \
+        </details>
+        <details>
+          <summary>sink lag (is the consumer stuck?)</summary>
+          <button class="btn copy" id="copy4">copy</button>
+          <pre><code id="cmd4">kafka-consumer-groups --bootstrap-server localhost:29092 \
   --describe --group my-sink</code></pre>
-</details>
-</section>
-<aside class="panel right">
-<section class="card">
-<h2>common DLQ causes → fixes</h2>
-<div class="kvs">
-<div><span class="pill err">java.sql.SQLException</span></div>
-<div>sink rejected a row (PK/unique violation, type mismatch). ➜ check target PK &amp; datatypes; use <a href="merge-cookbook.html">merge/upsert</a> patterns.</div>
-<div><span class="pill warn">org.apache.kafka.common.errors.SerializationException</span></div>
-<div>value/headers not parseable (schema mismatch). ➜ align converters (schemas.enable), topic routing, or use schema registry where required.</div>
-<div><span class="pill warn">org.apache.kafka.connect.errors.ConnectException</span></div>
-<div>connector task error; check Connect logs; the DLQ record will carry context in headers.</div>
-<div><span class="pill ok">key not set / null key</span></div>
-<div>sink requires a key but topic lacks one. ➜ set proper key.converter/key.field or route to a history table, then collapse by key at sink.</div>
-</div>
-</section>
-<section class="card">
-<h2>decode a DLQ record locally</h2>
-<p class="muted small">paste a DLQ JSON line below and we’ll unwrap the original event. nothing is uploaded.</p>
-<textarea id="one" placeholder='{"original":{"value":"{\"before\":...,\"after\":...,\"op\":\"u\"}"}, "error":{"message":"..."} }' style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:.5rem;background:var(--surface2);color:#e6eef7;padding:.6rem;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"></textarea>
-<div class="row">
-<button class="btn" id="btnDecode">decode</button>
-<a class="btn" href="/debezium-decoder/">open full decoder →</a>
-</div>
-<pre id="decoded" style="display:none"><code></code></pre>
-</section>
-<section class="card">
-<h2>safe re-drive (optional)</h2>
-<p class="muted small">once the root cause is fixed, re-drive a few DLQ records into a <em>sandbox</em> topic first.</p>
-<button class="btn copy" id="copy5">copy</button>
-<pre><code id="cmd5"># re-drive DLQ values into a sandbox topic (no headers preserved)
+        </details>
+      </section>
+      <aside class="panel right">
+        <section class="card" aria-labelledby="dlq-causes">
+          <h2 id="dlq-causes">common DLQ causes → fixes</h2>
+          <div class="kvs">
+            <div><span class="pill err">java.sql.SQLException</span></div>
+            <div>sink rejected a row (PK/unique violation, type mismatch). ➜ check target PK &amp; datatypes; use <a href="/merge-cookbook/">merge/upsert</a> patterns.</div>
+            <div><span class="pill warn">org.apache.kafka.common.errors.SerializationException</span></div>
+            <div>value/headers not parseable (schema mismatch). ➜ align converters (schemas.enable), topic routing, or use schema registry where required.</div>
+            <div><span class="pill warn">org.apache.kafka.connect.errors.ConnectException</span></div>
+            <div>connector task error; check Connect logs; the DLQ record will carry context in headers.</div>
+            <div><span class="pill ok">key not set / null key</span></div>
+            <div>sink requires a key but topic lacks one. ➜ set proper key.converter/key.field or route to a history table, then collapse by key at sink.</div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="dlq-decode">
+          <h2 id="dlq-decode">decode a DLQ record locally</h2>
+          <p class="muted small">paste a DLQ JSON line below and we’ll unwrap the original event. nothing is uploaded.</p>
+          <textarea id="one" placeholder='{"original":{"value":"{\"before\":...,\"after\":...,\"op\":\"u\"}"}, "error":{"message":"..."} }' style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:.5rem;background:var(--surface2);color:#e6eef7;padding:.6rem;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"></textarea>
+          <div class="row">
+            <button class="btn" id="btnDecode">decode</button>
+            <a class="btn" href="/debezium-decoder/">open full decoder →</a>
+          </div>
+          <pre id="decoded" style="display:none"><code></code></pre>
+        </section>
+        <section class="card" aria-labelledby="dlq-redrive">
+          <h2 id="dlq-redrive">safe re-drive (optional)</h2>
+          <p class="muted small">once the root cause is fixed, re-drive a few DLQ records into a <em>sandbox</em> topic first.</p>
+          <button class="btn copy" id="copy5">copy</button>
+          <pre><code id="cmd5"># re-drive DLQ values into a sandbox topic (no headers preserved)
 kafka-console-consumer --bootstrap-server localhost:29092 \
   --topic dlq.inventory --from-beginning --max-messages 100 \
   | jq -r '.original.value // .record.value // .value // .payload.original.value // .payload.record.value // empty' \
   | kafka-console-producer --bootstrap-server localhost:29092 --topic sandbox.replay</code></pre>
-<p class="muted small">verify sink behavior on <code>sandbox.replay</code> before touching the original topic.</p>
-</section>
-</aside>
-</main>
-<script type="module" src="/assets/js/app.js"></script>
-<script type="module" src="/assets/js/pages/dlq-triage.js"></script>
-</body>
-</html>
+          <p class="muted small">verify sink behavior on <code>sandbox.replay</code> before touching the original topic.</p>
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
