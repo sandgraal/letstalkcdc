@@ -45,8 +45,11 @@ scripts:
   - "/assets/js/pages/intro.js"
 
 ---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
 <div class="page-wrap prose">
-  <h1>Interactive Introduction to CDC</h1>
 
   <article class="prose">
     <p>
