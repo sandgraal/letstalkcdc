@@ -1,5 +1,3 @@
-import { drawRadarChart } from '../lib/charts.js';
-
 const doc = document;
 
 const onReady = (cb) => {
@@ -115,33 +113,121 @@ onReady(() => {
 });
 
 onReady(() => {
-  const canvas = doc.getElementById('methodsChart');
-  if (!canvas) return;
+  const chooser = doc.getElementById('priority-chooser');
+  if (chooser) {
+    const buttons = Array.from(chooser.querySelectorAll('.priority-btn'));
+    const result = chooser.querySelector('.priority-result');
+    const resultHeading = chooser.querySelector('#priority-method');
+    const resultSummary = chooser.querySelector('#priority-summary');
 
-  const css = getComputedStyle(doc.documentElement);
-  const palette = {
-    axis: css.getPropertyValue('--border-color').trim() || 'rgba(51, 65, 85, 0.7)',
-    grid: 'rgba(148, 163, 184, 0.25)',
-    text: css.getPropertyValue('--text-secondary').trim() || '#94a3b8',
-    background: css.getPropertyValue('--bg-primary').trim() || '#ffffff'
-  };
+    const cards = {
+      log: doc.getElementById('method-log'),
+      trigger: doc.getElementById('method-trigger'),
+      polling: doc.getElementById('method-polling')
+    };
 
-  const datasets = [
-    { label: 'Log-Based', data: [5, 5, 5, 4, 2], color: '#14b8a6', fillAlpha: 0.18 },
-    { label: 'Trigger-Based', data: [4, 3, 4, 2, 3], color: '#3b82f6', fillAlpha: 0.14 },
-    { label: 'Query-Based', data: [1, 2, 1, 2, 5], color: '#ef4444', fillAlpha: 0.12 }
-  ];
+    const activate = (button) => {
+      if (!button) return;
+      const method = button.dataset.method;
+      buttons.forEach((btn) => {
+        const isActive = btn === button;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      if (result) {
+        result.setAttribute('aria-labelledby', button.id);
+        result.dataset.selected = method;
+      }
+      Object.entries(cards).forEach(([key, card]) => {
+        if (!card) return;
+        card.classList.toggle('is-highlighted', key === method);
+      });
+      const label = cards[method]?.querySelector('h3')?.textContent || button.textContent.trim();
+      if (resultHeading) resultHeading.textContent = label;
+      if (resultSummary) resultSummary.textContent = button.dataset.summary || '';
+    };
 
-  const labels = [
-    'Completeness',
-    'Low Impact',
-    'Low Latency',
-    'Low Maintenance',
-    'Ease of Implementation'
-  ];
+    const rotate = (index) => {
+      if (!buttons.length) return;
+      const next = (index + buttons.length) % buttons.length;
+      const target = buttons[next];
+      target.focus();
+      activate(target);
+    };
 
-  const render = () => drawRadarChart(canvas, { labels, datasets, palette });
+    buttons.forEach((button, index) => {
+      button.addEventListener('click', () => activate(button));
+      button.addEventListener('keydown', (event) => {
+        switch (event.key) {
+          case 'ArrowRight':
+          case 'ArrowDown':
+            event.preventDefault();
+            rotate(index + 1);
+            break;
+          case 'ArrowLeft':
+          case 'ArrowUp':
+            event.preventDefault();
+            rotate(index - 1);
+            break;
+          case 'Home':
+            event.preventDefault();
+            rotate(0);
+            break;
+          case 'End':
+            event.preventDefault();
+            rotate(buttons.length - 1);
+            break;
+          default:
+            break;
+        }
+      });
+    });
 
-  render();
-  window.addEventListener('resize', render);
+    activate(buttons.find((btn) => btn.classList.contains('is-active')) || buttons[0]);
+  }
+
+  const nav = doc.querySelector('.sticky-subnav');
+  if (nav) {
+    const links = Array.from(nav.querySelectorAll('a[href^="#"]'));
+    const sections = links
+      .map((link) => {
+        const id = link.getAttribute('href')?.slice(1);
+        const section = id ? doc.getElementById(id) : null;
+        return section ? { link, section } : null;
+      })
+      .filter(Boolean);
+
+    const setActiveLink = (id) => {
+      links.forEach((link) => {
+        const isActive = link.getAttribute('href') === `#${id}`;
+        link.classList.toggle('is-active', isActive);
+        if (isActive) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      });
+    };
+
+    if (sections.length) {
+      const observer = new IntersectionObserver((entries) => {
+        entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+          .slice(0, 1)
+          .forEach((entry) => setActiveLink(entry.target.id));
+      }, {
+        root: null,
+        rootMargin: '-55% 0px -35% 0px',
+        threshold: [0.1, 0.25, 0.5, 0.75, 1]
+      });
+
+      sections.forEach(({ section }) => observer.observe(section));
+      setActiveLink(sections[0].section.id);
+    }
+
+    links.forEach((link) => {
+      link.addEventListener('click', () => {
+        const id = link.getAttribute('href')?.slice(1);
+        if (id) setActiveLink(id);
+      });
+    });
+  }
 });
