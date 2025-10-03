@@ -69,3 +69,44 @@ head_extra: |
     </svg>
   </a>
 </div>
+
+{% if quickstartDetails %}
+  <section class="qs-detail-section" aria-labelledby="qs-detail-heading">
+    <h2 id="qs-detail-heading">Quickstart cheat sheet</h2>
+    <p class="muted">Prep each environment fast with prerequisites, time estimates, and direct links to the walkthroughs.</p>
+    <div class="qs-detail-grid">
+      {% for card in quickstartDetails %}
+        <article class="qs-detail-card">
+          <header class="qs-detail-head">
+            {% if card.icon %}
+              <span class="qs-detail-icon" aria-hidden="true">{{ card.icon }}</span>
+            {% endif %}
+            <div>
+              <h3>{{ card.title }}</h3>
+              {% if card.meta %}
+                <p class="qs-detail-meta">{{ card.meta }}</p>
+              {% endif %}
+            </div>
+          </header>
+          {% if card.description %}
+            <p class="qs-detail-description">{{ card.description | safe }}</p>
+          {% endif %}
+          {% if card.list %}
+            <ul class="qs-detail-list">
+              {% for item in card.list %}
+                <li>{{ item | safe }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          {% if card.actions %}
+            <div class="qs-detail-actions">
+              {% for action in card.actions %}
+                <a class="button ghost" href="{{ action.href }}">{{ action.label }}</a>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}

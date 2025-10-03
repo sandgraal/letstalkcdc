@@ -79,6 +79,48 @@ bash scripts/test_chaos_smoke.sh</code></pre>
         </div>
       </section>
 
+      <section class="manual-tests" aria-labelledby="manual-tests">
+        <h2 id="manual-tests">Manual Data Checks &amp; Ops Tests</h2>
+        <p class="muted">Quick sanity checks that aren’t scripted but catch the common footguns before you ship.</p>
+        <div class="grid manual-tests__grid">
+          <div class="box">
+            <h3>Duplicate primary keys (generic SQL)</h3>
+            <pre><code>-- replace table/pk
+SELECT COUNT(*) AS rows, COUNT(DISTINCT pk) AS distinct_keys
+FROM target_table;  -- expect rows == distinct_keys</code></pre>
+            <h3>Latest-wins check (history vs target)</h3>
+            <pre><code>-- adapt names: business key + timestamp/version
+WITH last AS (
+  SELECT key_col, MAX(op_ts) AS last_ts
+  FROM history_table
+  GROUP BY key_col
+)
+SELECT COUNT(*) AS stale
+FROM target_table t
+JOIN last l ON t.key_col = l.key_col
+WHERE t.op_ts &lt; l.last_ts;   -- expect 0</code></pre>
+            <h3>Dead-letter queue sanity (Kafka)</h3>
+            <pre><code># adjust topic; e.g. "dlq.inventory"
+kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic dlq.inventory --from-beginning --timeout-ms 4000 \
+  --max-messages 10 | jq -C .</code></pre>
+          </div>
+          <div class="box">
+            <h3>Connector status (Kafka Connect REST)</h3>
+            <pre><code>curl -s http://localhost:8083/connectors | jq
+curl -s http://localhost:8083/connectors/&lt;name&gt;/status | jq</code></pre>
+            <h3>Consumer lag (sink group)</h3>
+            <pre><code>kafka-consumer-groups --bootstrap-server localhost:29092 \
+  --describe --group &lt;your-sink-group&gt;</code></pre>
+            <h3>Topic offsets (sum across partitions)</h3>
+            <pre><code># inside the broker container (or use PLAINTEXT_HOST localhost:29092 externally)
+docker exec -it broker kafka-run-class kafka.tools.GetOffsetShell \
+  --broker-list localhost:9092 --topic &lt;topic&gt; --time -1</code></pre>
+          </div>
+        </div>
+        <p class="muted small">Tip: run these after a controlled connector restart to confirm idempotency — no dupes, no stale rows, offsets advancing.</p>
+      </section>
+
       <section class="box callout">
         <h2>Customizing (if your names differ)</h2>
         <p>Override env vars inline:</p>

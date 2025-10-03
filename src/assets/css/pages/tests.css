@@ -6,6 +6,14 @@
   grid-template-columns: 1fr;
 }
 
+.manual-tests {
+  margin: 3rem 0;
+}
+
+.manual-tests__grid .box {
+  height: 100%;
+}
+
 @media (min-width: 950px) {
   .grid {
     grid-template-columns: 1fr 1fr;
