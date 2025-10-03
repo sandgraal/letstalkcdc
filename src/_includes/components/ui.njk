@@ -147,9 +147,10 @@
 
 {% macro download_links(links, ariaLabel='Helpful downloads') -%}
   {% if links and (links | length) > 0 %}
-    <div class="links" aria-label="{{ ariaLabel }}">
+    <div class="download-links" aria-label="{{ ariaLabel }}">
       {% for link in links %}
         <a
+          class="download-link"
           href="{{ link.href }}"
           {% if link.download %}download{% endif %}
           {% if link.description %}title="{{ link.description }}"{% endif %}
