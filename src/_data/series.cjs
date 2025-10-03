@@ -94,30 +94,6 @@ module.exports = [
     tags: [ { label: 'Tooling', variant: 'tag-tooling' } ]
   },
   {
-    key: 'connector-builder',
-    title: 'Connector Config Builder',
-    description: 'Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.',
-    href: '/connector-builder/',
-    ctaLabel: 'Launch the Builder',
-    tags: [ { label: 'Tooling', variant: 'tag-tooling' } ]
-  },
-  {
-    key: 'dlq-triage',
-    title: 'DLQ Triage Assistant',
-    description: 'Guided commands and playbooks for decoding and re-driving Kafka DLQ events.',
-    href: '/dlq-triage/',
-    ctaLabel: 'Try the Assistant',
-    tags: [ { label: 'Extras', variant: 'tag-extras' } ]
-  },
-  {
-    key: 'debezium-decoder',
-    title: 'Debezium Event Decoder',
-    description: 'Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.',
-    href: '/debezium-decoder/',
-    ctaLabel: 'Decode an Event',
-    tags: [ { label: 'Extras', variant: 'tag-extras' } ]
-  },
-  {
     key: 'lab-kafka-debezium',
     title: 'Hands-On Lab: Kafka + Debezium',
     description: 'Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.',
@@ -140,6 +116,30 @@ module.exports = [
     href: '/tests/',
     ctaLabel: 'Verify Your Stack',
     tags: [ { label: 'Lab', variant: 'tag-labs' } ]
+  },
+  {
+    key: 'connector-builder',
+    title: 'Connector Config Builder',
+    description: 'Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.',
+    href: '/connector-builder/',
+    ctaLabel: 'Launch the Builder',
+    tags: [ { label: 'Tooling', variant: 'tag-tooling' } ]
+  },
+  {
+    key: 'dlq-triage',
+    title: 'DLQ Triage Assistant',
+    description: 'Guided commands and playbooks for decoding and re-driving Kafka DLQ events.',
+    href: '/dlq-triage/',
+    ctaLabel: 'Try the Assistant',
+    tags: [ { label: 'Extras', variant: 'tag-extras' } ]
+  },
+  {
+    key: 'debezium-decoder',
+    title: 'Debezium Event Decoder',
+    description: 'Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.',
+    href: '/debezium-decoder/',
+    ctaLabel: 'Decode an Event',
+    tags: [ { label: 'Extras', variant: 'tag-extras' } ]
   },
   {
     key: 'errata',
