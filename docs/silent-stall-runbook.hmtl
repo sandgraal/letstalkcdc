@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Silent Stall Detection & Resolution Runbook (Generic Debezium‑based CDC)</title>
+<style>
+  :root{
+    --brand:#2563eb; /* neutral blue for generic doc */
+    --ink:#0f172a;
+    --muted:#475569;
+    --bg:#ffffff;
+    --panel:#f8fafc;
+    --border:#e2e8f0;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Helvetica,Arial,sans-serif;line-height:1.6;}
+  .container{max-width:1000px;margin:0 auto;padding:2rem 1.25rem 4rem;}
+  h1{font-size:2rem;line-height:1.25;margin:0 0 0.5rem}
+  h2{font-size:1.35rem;margin:2rem 0 0.75rem}
+  h3{font-size:1.1rem;margin:1.25rem 0 0.5rem}
+  p{margin:0.5rem 0}
+  .meta, .summary-card{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--brand);padding:1rem;border-radius:10px;margin:1rem 0;}
+  .table{width:100%;border-collapse:collapse;border:1px solid var(--border);margin:0.5rem 0 1rem}
+  .table th,.table td{border:1px solid var(--border);padding:0.5rem;text-align:left;vertical-align:top}
+  code, pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  pre{background:#0b1220;color:#e2e8f0;border-radius:8px;padding:0.85rem;overflow:auto;border:1px solid #0b1220;margin:0.5rem 0 1rem}
+  pre code{color:inherit}
+  .callout{background:#eff6ff;border-left:4px solid var(--brand);padding:0.75rem 1rem;border-radius:8px;border:1px solid #dbeafe;margin:1rem 0}
+  .hr{height:1px;background:var(--border);margin:1.25rem 0}
+  .header{display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem}
+  .logo{width:28px;height:28px;background:var(--brand);border-radius:6px;display:inline-block}
+  .sub{color:var(--muted);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>Silent Stall Detection & Resolution Runbook</h1>
+        <div class="sub">Generic guidance for Debezium‑based Change Data Capture (CDC) pipelines</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <strong>About this document</strong>
+      <div>Audience: Data Engineers, SRE/Platform, Support Engineers • Last Updated: October 2025</div>
+    </div>
+
+    <div class="summary-card">
+      <strong>Executive Summary</strong>
+      <p>A <em>Silent Stall</em> is when a CDC pipeline looks alive (heartbeats/lag move) but <strong>no new records land downstream</strong>. The usual root cause is a <strong>transaction gap</strong> (binlog or WAL/LSN) created by a long‑running or out‑of‑order commit, replica visibility delays, or schema locks. This runbook gives a concise, vendor‑neutral process to detect, diagnose, and resolve these stalls quickly.</p>
+    </div>
+
+    <div class="hr"></div>
+
+    <h2>1) Symptoms</h2>
+    <ul>
+      <li>Consumer/target insert rate = 0 while connector metrics still tick (heartbeats, lag wobble).</li>
+      <li>Source DB continues to receive writes.</li>
+      <li>No hard errors in logs; repetitive “waiting” or idle polling messages.</li>
+    </ul>
+
+    <h2>2) Fast Diagnosis</h2>
+    <h3>Step A — Verify the stall</h3>
+    <ul>
+      <li>Check <strong>sink insert rate</strong> (topic, table, or object store) — flat for N minutes.</li>
+      <li>Confirm **source writes ongoing** (see SQL below).</li>
+    </ul>
+
+    <h3>Step B — Enable temporary TRACE/DEBUG logging</h3>
+    <p>Increase log level for the Debezium connector/agent components only; capture a short window.</p>
+    <pre><code>// Example (Kafka Connect - Debezium scoped loggers)
+log.level.io.debezium.connector.mysql=TRACE
+log.level.io.debezium.pipeline=TRACE
+log.level.io.debezium.relational=TRACE</code></pre>
+
+    <h3>Step C — Look for the pattern</h3>
+    <ul>
+      <li>Repeated messages like: <code>waiting for transaction</code>, <code>next event not yet available</code>, or unchanged <code>binlog file:pos / LSN</code>.</li>
+      <li>Task/partition not advancing offsets despite heartbeats.</li>
+    </ul>
+
+    <h3>Step D — Confirm at the database</h3>
+    <p><strong>MySQL/MariaDB</strong></p>
+    <pre><code>SHOW PROCESSLIST;
+SELECT trx_id, trx_started, trx_state, trx_query
+FROM information_schema.innodb_trx
+ORDER BY trx_started ASC
+LIMIT 10;</code></pre>
+    <p><strong>PostgreSQL</strong></p>
+    <pre><code>SELECT pid, xact_start, state, query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start ASC
+LIMIT 10;
+
+SELECT now(), pg_current_wal_lsn();</code></pre>
+
+    <h2>3) Root Causes</h2>
+    <table class="table">
+      <thead><tr><th>Cause</th><th>Description</th><th>Signals</th></tr></thead>
+      <tbody>
+        <tr><td>Long‑running transaction</td><td>Old TXN opened early, commits late; connector waits for missing next TXN/LSN.</td><td>Very old <code>xact_start</code> / <code>innodb_trx</code>; TRACE shows repeated wait.</td></tr>
+        <tr><td>Replica lag / visibility</td><td>Event present on primary, not yet visible on replica source.</td><td>Primary vs. replica status mismatch; advancing heartbeats without new DML.</td></tr>
+        <tr><td>Task/offset dependency</td><td>One partition blocked; offset can’t advance.</td><td>One task frozen while others tick; restart unblocks.</td></tr>
+        <tr><td>Schema lock / DDL</td><td>Snapshot or DDL holds locks; stream waits.</td><td>Lock waits in DB activity views; DDL in progress.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4) Remediation Playbook</h2>
+    <ol>
+      <li><strong>Resolve the blocking transaction</strong> (coordinate with app owners; commit/kill as appropriate).</li>
+      <li><strong>Validate replication health</strong> (replica caught up, slots healthy).</li>
+      <li><strong>Restart the affected connector/task</strong> only after confirming offsets and replication are stable.</li>
+      <li><strong>Tune connector parameters</strong> for throughput and resilience:
+        <ul>
+          <li><code>max.batch.size</code> (balance latency vs. throughput)</li>
+          <li><code>max.queue.size</code> (≈ 3× batch)</li>
+          <li><code>event.processing.failure.handling.mode=warn</code> (avoid crash on edge events)</li>
+        </ul>
+      </li>
+      <li><strong>Schedule schema changes</strong> outside peak write windows.</li>
+    </ol>
+
+    <h2>5) Observability</h2>
+    <ul>
+      <li><strong>Oldest transaction age</strong> &amp; <strong>open transaction count</strong></li>
+      <li><strong>Connector last committed XID/LSN</strong> vs. DB current position</li>
+      <li><strong>Per‑table event rate</strong> and <strong>sink insert rate</strong></li>
+    </ul>
+    <div class="callout">
+      <strong>Alert suggestion:</strong>
+      <pre><code>IF sink_insert_rate = 0 AND connector_heartbeat = OK AND db_writes &gt; 0 FOR &gt; 5 minutes
+THEN raise &quot;Silent Stall suspected&quot;</code></pre>
+    </div>
+
+    <h2>6) Post‑Recovery Validation</h2>
+    <ul>
+      <li>Row counts &amp; latest timestamps align source→target</li>
+      <li>Offsets advance; logs show resumed commits</li>
+      <li>Revert logging to INFO/DEBUG</li>
+      <li>Record root cause &amp; corrective action</li>
+    </ul>
+
+    <div class="hr"></div>
+    <h2>Appendix: Handy Queries</h2>
+    <h3>MySQL/MariaDB</h3>
+    <pre><code>SHOW MASTER STATUS;
+SHOW BINARY LOGS;
+SHOW ENGINE INNODB STATUS;</code></pre>
+    <h3>PostgreSQL</h3>
+    <pre><code>SELECT pg_current_wal_lsn(), now();
+SELECT * FROM pg_replication_slots;</code></pre>
+
+    <div class="hr"></div>
+    <p style="color:#64748b">© 2025. Generic reference for Debezium‑based CDC troubleshooting. Vendor neutral.</p>
+  </div>
+</body>
+</html>
