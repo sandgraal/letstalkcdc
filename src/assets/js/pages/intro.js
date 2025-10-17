@@ -1,4 +1,11 @@
+import { drawRadarChart } from '../lib/charts.js';
+
 const doc = document;
+
+const getCssVar = (name, fallback) => {
+  const value = getComputedStyle(doc.documentElement).getPropertyValue(name);
+  return value ? value.trim() : fallback;
+};
 
 const onReady = (cb) => {
   if (doc.readyState === 'loading') {
@@ -229,5 +236,104 @@ onReady(() => {
         if (id) setActiveLink(id);
       });
     });
+  }
+});
+
+onReady(() => {
+  const canvas = doc.getElementById('methodsChart');
+  if (!canvas) return;
+
+  const labels = [
+    'Data Fidelity',
+    'Source Impact',
+    'Freshness',
+    'Operational Overhead (lower is better)',
+    'Time to Implement'
+  ];
+
+  const scorecard = {
+    log: [5, 5, 5, 4, 2],
+    trigger: [4, 3, 4, 2, 3],
+    polling: [2, 2, 2, 1, 5]
+  };
+
+  const getPalette = () => {
+    const theme = doc.documentElement.dataset.theme;
+    const isDark = theme === 'dark';
+    const axisFallback = isDark ? '#c3cbe0' : '#2a3341';
+    const textFallback = isDark ? '#c3cbe0' : '#94a3b8';
+    const gridAlpha = isDark ? 0.32 : 0.22;
+    return {
+      axis: getCssVar('--text-secondary', axisFallback),
+      grid: `rgba(148, 163, 184, ${gridAlpha})`,
+      text: getCssVar('--text-muted', textFallback),
+      background: getCssVar('--bg-primary', isDark ? '#0b1220' : '#ffffff')
+    };
+  };
+
+  const getDatasets = () => [
+    {
+      label: 'Log-Based CDC',
+      data: scorecard.log,
+      color: getCssVar('--accent-primary', '#14b8a6'),
+      fillAlpha: 0.18
+    },
+    {
+      label: 'Trigger-Based CDC',
+      data: scorecard.trigger,
+      color: getCssVar('--focus', '#3b82f6'),
+      fillAlpha: 0.16
+    },
+    {
+      label: 'Query-Based CDC (Polling)',
+      data: scorecard.polling,
+      color: getCssVar('--danger-color', '#ef4444'),
+      fillAlpha: 0.14
+    }
+  ];
+
+  let hasRendered = false;
+  let rafId = null;
+
+  const draw = () => {
+    drawRadarChart(canvas, {
+      labels,
+      datasets: getDatasets(),
+      palette: getPalette(),
+      height: 420
+    });
+    hasRendered = true;
+  };
+
+  const scheduleDraw = () => {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(draw);
+  };
+
+  const redrawIfReady = () => {
+    if (hasRendered) scheduleDraw();
+  };
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries, obs) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        scheduleDraw();
+        obs.disconnect();
+      }
+    });
+    observer.observe(canvas);
+  } else {
+    scheduleDraw();
+  }
+
+  window.addEventListener('resize', redrawIfReady);
+
+  if (typeof MutationObserver !== 'undefined') {
+    const themeObserver = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => mutation.attributeName === 'data-theme')) {
+        redrawIfReady();
+      }
+    });
+    themeObserver.observe(doc.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 });
