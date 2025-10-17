@@ -30,6 +30,10 @@ jobs:
   Fortify-AST-Scan:
     # Use the appropriate runner for building your source code. Ensure dev tools required to build your code are present and configured appropriately (MSBuild, Python, etc).
     runs-on: ubuntu-latest
+    env:
+      HAS_FOD_USER: ${{ secrets.FOD_TENANT != '' && secrets.FOD_USER != '' && secrets.FOD_PAT != '' }}
+      HAS_FOD_CLIENT: ${{ secrets.FOD_TENANT != '' && secrets.FOD_CLIENT_ID != '' && secrets.FOD_CLIENT_SECRET != '' }}
+      HAS_SSC: ${{ secrets.SSC_URL != '' && secrets.SSC_TOKEN != '' && secrets.SC_SAST_TOKEN != '' }}
     permissions:
       actions: read
       contents: read
@@ -41,6 +45,30 @@ jobs:
       - name: Check Out Source Code
         uses: actions/checkout@v4
 
+      - name: Determine Fortify configuration
+        id: fortify-config
+        shell: bash
+        run: |
+          has_fod=false
+          if [[ "${HAS_FOD_USER}" == 'true' || "${HAS_FOD_CLIENT}" == 'true' ]]; then
+            has_fod=true
+          fi
+
+          has_ssc=false
+          if [[ "${HAS_SSC}" == 'true' ]]; then
+            has_ssc=true
+          fi
+
+          if [[ "$has_fod" == false && "$has_ssc" == false ]]; then
+            echo "Fortify credentials not configured; skipping Fortify scan."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "fod=$has_fod" >> "$GITHUB_OUTPUT"
+          echo "ssc=$has_ssc" >> "$GITHUB_OUTPUT"
+
       # Perform SAST and/or SCA scan via Fortify on Demand/Fortify Hosted/ScanCentral SAST/Debricked. Based on
       # configuration, the Fortify GitHub Action can optionally set up the application version/release, generate
       # job summaries and Pull Request comments, and/or export SAST results to the GitHub code scanning dashboard.
@@ -50,6 +78,7 @@ jobs:
       # documentation at https://github.com/fortify/github-action#readme for more information on the various
       # configuration options and available sub-actions.
       - name: Run Fortify Scan
+        if: ${{ steps.fortify-config.outputs.skip != 'true' }}
         # Specify Fortify GitHub Action version to run. As per GitHub starter workflow requirements, this example
         # uses the commit id corresponding to version 1.6.2. It is recommended to check whether any later releases
         # are available at https://github.com/fortify/github-action/releases. Depending on the amount of stability
