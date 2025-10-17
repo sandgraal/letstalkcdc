@@ -232,6 +232,24 @@ scripts:
       </article>
     </div>
 
+    <section class="chart-wrapper" aria-labelledby="methods-chart-title">
+      <h2 id="methods-chart-title">Visualize the trade-offs</h2>
+      <p class="intro-muted">
+        Scores range from 1 (weak fit) to 5 (excellent fit) across the priorities teams
+        weigh when evaluating CDC approaches.
+      </p>
+      <div class="chart-container">
+        <canvas
+          id="methodsChart"
+          role="img"
+          aria-label="Radar comparison of log-based, trigger-based, and polling CDC across fidelity, source impact, freshness, operational overhead, and implementation speed"
+        ></canvas>
+      </div>
+      <noscript>
+        <p class="intro-muted">Enable JavaScript to view the radar comparison.</p>
+      </noscript>
+    </section>
+
     <h2 id="methods-comparison">Methods at a Glance</h2>
     <p class="table-intro">Use the scorecard to choose the default (log-based) and spot when alternatives make sense.</p>
     <div id="methods-table" class="table-container">
