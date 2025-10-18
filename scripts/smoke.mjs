@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 
 const root = resolve('.');
@@ -7,7 +8,26 @@ const distDir = join(root, 'dist');
 
 const read = (relativePath) => readFileSync(join(distDir, relativePath), 'utf8');
 
+const ensureDist = () => {
+  if (existsSync(distDir)) {
+    return;
+  }
+
+  console.log('dist directory missing; running "npm run build" to generate site…');
+  const { status } = spawnSync('npm', ['run', 'build'], {
+    stdio: 'inherit',
+    shell: process.platform === 'win32'
+  });
+
+  if (status !== 0) {
+    console.error('Unable to build the site; aborting smoke test.');
+    process.exit(status ?? 1);
+  }
+};
+
 const failures = [];
+
+ensureDist();
 
 const walkHtml = (() => {
   const walk = (dir) => {
