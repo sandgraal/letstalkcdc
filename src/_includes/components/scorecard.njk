@@ -1,0 +1,148 @@
+{% macro render(key, caption, items, options = {}) %}
+  {% set groupKey = options.group or null %}
+  {% set summaryLabel = options.summaryLabel or caption %}
+  {% set resetLabel = options.resetLabel or 'Reset progress' %}
+  {% set copyLabel = options.copyLabel or 'Copy progress' %}
+  {% set copySuccessLabel = options.copySuccessLabel or 'Progress copied!' %}
+  {% set copyErrorLabel = options.copyErrorLabel or 'Copy failed' %}
+  {% set filterLabel = options.filterLabel or 'Show incomplete only' %}
+  {% set filterClearLabel = options.filterClearLabel or 'Show all items' %}
+  {% set emptyLabel = options.emptyLabel or 'All capabilities are ready. Toggle to see everything or reset to start over.' %}
+  {% set capabilityHeading = options.capabilityHeading or 'Capability' %}
+  {% set readyHeading = options.readyHeading or 'Ready when…' %}
+  {% set actionHeading = options.actionHeading or 'If not, do this' %}
+  {% set total = items | length %}
+  <div
+    class="scorecard"
+    data-scorecard="{{ key }}"
+    {% if groupKey %}data-scorecard-group="{{ groupKey }}"{% endif %}
+    {% if summaryLabel %}data-scorecard-summary-label="{{ summaryLabel | escape }}"{% endif %}
+  >
+    <div class="scorecard-meta">
+      <p class="scorecard-progress" data-scorecard-progress aria-live="polite">
+        0 of {{ total }} ready (0%)
+      </p>
+      <div class="scorecard-controls" data-scorecard-controls>
+        <button
+          type="button"
+          class="scorecard-action scorecard-filter"
+          data-scorecard-filter
+          data-label-incomplete="{{ filterLabel | escape }}"
+          data-label-all="{{ filterClearLabel | escape }}"
+          aria-pressed="false"
+        >
+          {{ filterLabel }}
+        </button>
+        <button
+          type="button"
+          class="scorecard-action scorecard-copy"
+          data-scorecard-copy
+          data-label-default="{{ copyLabel | escape }}"
+          data-label-success="{{ copySuccessLabel | escape }}"
+          data-label-error="{{ copyErrorLabel | escape }}"
+        >
+          {{ copyLabel }}
+        </button>
+        <button type="button" class="scorecard-action scorecard-reset" data-scorecard-reset>
+          {{ resetLabel }}
+        </button>
+      </div>
+    </div>
+    <table class="scorecard-table">
+      <caption>{{ caption }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{ capabilityHeading }}</th>
+          <th scope="col">{{ readyHeading }}</th>
+          <th scope="col">{{ actionHeading }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          {% set inputId = 'scorecard-' ~ key ~ '-' ~ item.id %}
+          <tr data-scorecard-item="{{ item.id }}">
+            <th scope="row">
+              <label class="scorecard-label" for="{{ inputId }}">
+                <input
+                  id="{{ inputId }}"
+                  type="checkbox"
+                  value="{{ item.id }}"
+                  data-scorecard-control
+                  data-scorecard-item="{{ item.id }}"
+                />
+                <span>{{ item.title | safe }}</span>
+              </label>
+            </th>
+            <td data-heading="{{ readyHeading }}">{{ item.ready | safe }}</td>
+            <td data-heading="{{ actionHeading }}">{{ item.action | safe }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="scorecard-empty" data-scorecard-empty hidden role="status" aria-live="polite">
+      {{ emptyLabel }}
+    </p>
+  </div>
+{% endmacro %}
+
+{% macro summary(groupKey, options = {}) %}
+  {% set resolvedGroup = groupKey or 'default' %}
+  {% set sectionId = options.sectionId %}
+  {% if not sectionId %}
+    {% if groupKey %}
+      {% set sectionId = groupKey ~ '-tracker' %}
+    {% else %}
+      {% set sectionId = 'readiness-tracker' %}
+    {% endif %}
+  {% endif %}
+  {% set title = options.title or 'Readiness tracker' %}
+  {% set titleId = options.titleId or sectionId ~ '-title' %}
+  {% set description = options.description or '' %}
+  {% set resetLabel = options.resetLabel %}
+  {% set emptyLabel = options.emptyLabel or 'No readiness checklists available yet.' %}
+  {% set meterLabel = options.meterLabel or 'Readiness progress' %}
+  <section id="{{ sectionId }}" aria-labelledby="{{ titleId }}" class="scorecard-summary-section">
+    <div class="scorecard-summary" data-scorecard-summary="{{ resolvedGroup }}">
+      <header class="scorecard-summary-header">
+        <div class="scorecard-summary-text">
+          <h2 class="scorecard-summary-title" id="{{ titleId }}">{{ title }}</h2>
+          {% if description %}
+            <p class="scorecard-summary-description">{{ description }}</p>
+          {% endif %}
+        </div>
+        <div class="scorecard-summary-progress-group">
+          <p
+            class="scorecard-summary-progress"
+            data-scorecard-summary-progress
+            role="status"
+            aria-live="polite"
+          >
+            0 of 0 readiness checks complete (0%)
+          </p>
+          <div
+            class="scorecard-summary-meter"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+            aria-label="{{ meterLabel }}"
+            data-scorecard-summary-meter
+          >
+            <span class="scorecard-summary-meter-fill" data-scorecard-summary-meter-fill style="width: 0%"></span>
+          </div>
+        </div>
+      </header>
+      <div class="scorecard-summary-body">
+        <ul class="scorecard-summary-list" data-scorecard-summary-list></ul>
+        <p class="scorecard-summary-empty" data-scorecard-summary-empty hidden>{{ emptyLabel }}</p>
+      </div>
+      {% if resetLabel is not sameas(false) %}
+        <div class="scorecard-summary-actions">
+          <button type="button" class="scorecard-summary-reset" data-scorecard-summary-reset>
+            {{ resetLabel or 'Reset all progress' }}
+          </button>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endmacro %}
