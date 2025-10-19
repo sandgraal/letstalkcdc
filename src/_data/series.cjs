@@ -13,14 +13,14 @@ module.exports = [
     key: 'event-envelope',
     title: 'Event Envelope & Delivery Guarantees',
     description: 'Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.',
-    state: 'disabled',
+    href: '/event-envelope/',
     tags: [ { label: 'Core Concept', variant: 'tag-concept' } ]
   },
   {
     key: 'materialization',
     title: 'Materialization 101 (Upsert/Delete)',
     description: 'Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.',
-    state: 'disabled',
+    href: '/materialization/',
     tags: [ { label: 'Core Concept', variant: 'tag-concept' } ]
   },
   {
@@ -62,14 +62,14 @@ module.exports = [
     key: 'ops-offsets',
     title: 'Ops: Offsets & Replays',
     description: 'Offset stores, safe rewind, idempotency, and resync drills when things go sideways.',
-    state: 'disabled',
+    href: '/ops-offsets/',
     tags: [ { label: 'Ops', variant: 'tag-ops' } ]
   },
   {
     key: 'observability',
     title: 'Observability Basics',
     description: 'Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.',
-    state: 'disabled',
+    href: '/observability/',
     tags: [ { label: 'Ops', variant: 'tag-ops' } ]
   },
   {
