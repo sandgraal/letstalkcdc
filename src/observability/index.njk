@@ -1,0 +1,170 @@
+---
+layout: base.njk
+title: "Observability Basics"
+description: "Monitor CDC connectors with golden signals, actionable dashboards, and alerting policies that keep downstream consumers safe."
+canonicalPath: "/observability/"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quick-nav.njk" as quickNav %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  {{ quickNav.render('Observability quick nav', [
+    { id: 'signals', label: 'Golden signals' },
+    { id: 'dashboards', label: 'Dashboards' },
+    { id: 'alerts', label: 'Alert policy' },
+    { id: 'slo', label: 'SLOs' },
+    { id: 'tracing', label: 'Tracing & logs' },
+    { id: 'handbook', label: 'Runbook hygiene' },
+    { id: 'reviews', label: 'Post-incident reviews' },
+    { id: 'resources', label: 'Further resources' }
+  ]) | safe }}
+
+  <section id="signals" aria-labelledby="signals-title">
+    <h2 id="signals-title">Golden signals for CDC</h2>
+    <p>
+      Borrow the SRE playbook—latency, traffic, errors, and saturation—but map
+      each to a CDC-specific metric.
+    </p>
+    <table>
+      <caption>Lag your north star</caption>
+      <thead>
+        <tr>
+          <th scope="col">Signal</th>
+          <th scope="col">CDC metric</th>
+          <th scope="col">Why it matters</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Latency</th>
+          <td>End-to-end lag (source commit to sink ingest).</td>
+          <td>Shows whether consumers see fresh data.</td>
+        </tr>
+        <tr>
+          <th scope="row">Traffic</th>
+          <td>Events per second per connector.</td>
+          <td>Highlights surges or drops in change volume.</td>
+        </tr>
+        <tr>
+          <th scope="row">Errors</th>
+          <td>Failed batches / DLQ counts.</td>
+          <td>Detects poison pills or downstream outages.</td>
+        </tr>
+        <tr>
+          <th scope="row">Saturation</th>
+          <td>Connector CPU, thread pool usage, or sink credits consumed.</td>
+          <td>Warns you before throttling kicks in.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Instrument producers and consumers with a shared tagging scheme
+      (<code>connector</code>, <code>source</code>, <code>target</code>) so
+      dashboards can drill from fleet-wide to single-table views without
+      manual filtering.
+    </p>
+  </section>
+
+  <section id="dashboards" aria-labelledby="dashboards-title">
+    <h2 id="dashboards-title">Dashboards that reduce pager noise</h2>
+    <ul>
+      <li>
+        <strong>Connector overview.</strong> Lag histogram, throughput trend,
+        restart count, and DLQ volume in one view.
+      </li>
+      <li>
+        <strong>Source health.</strong> Log retention, replication slot usage,
+        and database write rates to understand back pressure risk.
+      </li>
+      <li>
+        <strong>Sink success.</strong> Merge duration, rows touched, and error
+        codes broken down by target system.
+      </li>
+    </ul>
+    <p class="callout">Link each graph to the precise runbook step. Analysts
+      on-call should not have to guess which knob to turn.</p>
+  </section>
+
+  <section id="alerts" aria-labelledby="alerts-title">
+    <h2 id="alerts-title">Alert policy that respects sleep</h2>
+    <details open>
+      <summary>Primary alerts</summary>
+      <ul>
+        <li>Lag exceeds threshold for N minutes.</li>
+        <li>No offset commits in last 5 minutes while events continue arriving.</li>
+        <li>DLQ growth rate breaches baseline.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Warning alerts</summary>
+      <ul>
+        <li>Source log retention below replay budget.</li>
+        <li>Connector restart count above expected range.</li>
+      </ul>
+    </details>
+    <p class="callout">Route primary alerts to the on-call rotation and copy product stakeholders only for customer-visible impact.</p>
+  </section>
+
+  <section id="slo" aria-labelledby="slo-title">
+    <h2 id="slo-title">Set service-level objectives</h2>
+    <ul>
+      <li><strong>Freshness SLO:</strong> 99% of events land in the warehouse within 5 minutes of source commit.</li>
+      <li><strong>Availability SLO:</strong> Change stream downtime &lt; 15 minutes per 30-day window.</li>
+      <li><strong>Data completeness:</strong> 99.99% of source transactions represented in the target within 1 hour.</li>
+    </ul>
+    <p>
+      Track error budgets alongside incident counts. When the budget is nearly
+      spent, freeze risky changes and prioritize stability work.
+    </p>
+  </section>
+
+  <section id="tracing" aria-labelledby="tracing-title">
+    <h2 id="tracing-title">Tracing & logs</h2>
+    <p>
+      Enrich logs with correlation identifiers: connector name, partition,
+      offset, and source transaction id. Forward them to a central log store
+      with retained searches for the last 30 days.
+    </p>
+    <p>
+      For custom processors, propagate trace headers from ingestion through to
+      sinks so you can follow a change end-to-end.
+    </p>
+    <ul>
+      <li>Emit structured logs (JSON) so search queries do not rely on fragile parsing.</li>
+      <li>Tag spans with <code>op</code> (`c`, `u`, `d`) to correlate deletes with downstream compaction.</li>
+    </ul>
+  </section>
+
+  <section id="handbook" aria-labelledby="handbook-title">
+    <h2 id="handbook-title">Runbook hygiene</h2>
+    <ol>
+      <li>Keep runbooks in version control; update them after every incident.</li>
+      <li>Link dashboards, alert names, and remediation scripts directly in the doc.</li>
+      <li>Review and rehearse quarterly with the on-call crew.</li>
+    </ol>
+  </section>
+
+  <section id="reviews" aria-labelledby="reviews-title">
+    <h2 id="reviews-title">Post-incident reviews that stick</h2>
+    <ol>
+      <li>Capture customer impact, timeline, and contributing factors within 24 hours.</li>
+      <li>Assign action items that tie back to SLO breaches (instrumentation gaps, runbook fixes).</li>
+      <li>Close the loop by demoing fixes during the next reliability review.</li>
+    </ol>
+    <p>
+      Sharing the review with data consumers builds trust and keeps shadow
+      monitoring from proliferating across teams.
+    </p>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="/ops-offsets/">Offsets &amp; replays</a> for the operational drills your alerts should trigger.</li>
+      <li><a href="/event-envelope/">Event envelope</a> to align telemetry with payload contracts.</li>
+      <li><a href="/materialization/">Materialization 101</a> to ensure observed freshness ties to downstream SLAs.</li>
+    </ul>
+  </section>
+</div>

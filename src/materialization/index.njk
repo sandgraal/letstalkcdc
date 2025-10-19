@@ -1,0 +1,237 @@
+---
+layout: base.njk
+title: "Materialization 101"
+description: "Translate CDC change events into reliable warehouse tables with upsert, delete, and history-friendly patterns."
+canonicalPath: "/materialization/"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quick-nav.njk" as quickNav %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  {{ quickNav.render('Materialization quick nav', [
+    { id: 'patterns', label: 'Materialization patterns' },
+    { id: 'merge', label: 'Idempotent merge logic' },
+    { id: 'sql', label: 'SQL templates' },
+    { id: 'history', label: 'Maintaining history' },
+    { id: 'late-arrivals', label: 'Late arrivals' },
+    { id: 'ops', label: 'Operational guardrails' },
+    { id: 'quality', label: 'Data quality checks' },
+    { id: 'verification', label: 'Verification playbooks' },
+    { id: 'resources', label: 'Further resources' }
+  ]) | safe }}
+
+  <section id="patterns" aria-labelledby="patterns-title">
+    <h2 id="patterns-title">Choose the right pattern for the job</h2>
+    <table>
+      <caption>Materialization strategies compared</caption>
+      <thead>
+        <tr>
+          <th scope="col">Pattern</th>
+          <th scope="col">How it works</th>
+          <th scope="col">Best for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Mutable table (upsert/delete)</th>
+          <td>Apply change events directly to a target table using merge logic.</td>
+          <td>Serving layer caches, feature stores, operational analytics.</td>
+        </tr>
+        <tr>
+          <th scope="row">Streaming merge</th>
+          <td>Continuous ingestion job (dbt incremental, Snowpipe, Flink) performs row-level MERGE as events arrive.</td>
+          <td>Low-latency marts where freshness is minutes, not hours.</td>
+        </tr>
+        <tr>
+          <th scope="row">Append-only with views</th>
+          <td>Store each event as a row, surface latest state via window functions.</td>
+          <td>Auditable fact tables, debugging, ad-hoc comparisons.</td>
+        </tr>
+        <tr>
+          <th scope="row">Incremental batch</th>
+          <td>Land CDC events in stages, then run scheduled merge statements.</td>
+          <td>Warehouses that favor batch execution or have strict cost controls.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="merge" aria-labelledby="merge-title">
+    <h2 id="merge-title">Build idempotent merge logic</h2>
+    <ol>
+      <li>Stage events in a temporary table keyed by primary key and log position.</li>
+      <li>Deduplicate by picking the highest <code>ts_ms</code> (or change version) per key.</li>
+      <li>Merge updates and inserts using the latest event per key.</li>
+      <li>Apply deletes as tombstones that remove or flag the row.</li>
+      <li>Record the processed offset so restarts can resume safely.</li>
+      <li>Publish metrics: rows inserted, updated, deleted, skipped duplicates.</li>
+    </ol>
+    <p class="callout">
+      When duplicates land, the <em>last change wins</em> rule keeps results stable. Do not rely on arrival order; rely on source
+      timestamps or change versions.
+    </p>
+    <p>
+      Capture merge SQL in version control and tag it with the connector
+      version it expects. This makes rollbacks trivial when envelope changes
+      introduce new columns.
+    </p>
+  </section>
+
+  <section id="sql" aria-labelledby="sql-title">
+    <h2 id="sql-title">SQL templates you can adapt</h2>
+    <details open>
+      <summary>Snowflake MERGE</summary>
+      <pre><code class="language-sql">MERGE INTO analytics.orders tgt
+USING staging.orders_src src
+  ON tgt.order_id = src.order_id
+WHEN MATCHED AND src.op = 'd' THEN DELETE
+WHEN MATCHED THEN UPDATE SET
+  amount = src.amount,
+  status = src.status,
+  updated_at = src.ts_ms
+WHEN NOT MATCHED AND src.op IN ('c', 'u') THEN
+  INSERT (order_id, amount, status, updated_at)
+  VALUES (src.order_id, src.amount, src.status, src.ts_ms);
+</code></pre>
+    </details>
+    <details>
+      <summary>BigQuery change-applier</summary>
+      <pre><code class="language-sql">CREATE OR REPLACE TABLE analytics.orders AS
+SELECT AS VALUE latest.*
+FROM (
+  SELECT *,
+         ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ts_ms DESC) AS rnk
+  FROM staging.orders_src
+)
+WHERE rnk = 1 AND op != 'd';
+</code></pre>
+    </details>
+    <details>
+      <summary>dbt incremental model</summary>
+      {% raw %}
+      <pre><code class="language-sql">{{
+  config(
+    materialized='incremental',
+    unique_key='order_id'
+  )
+}}
+
+with ranked as (
+  select *,
+         row_number() over (
+           partition by order_id
+           order by ts_ms desc
+         ) as rnk
+  from {{ source('cdc', 'orders') }}
+)
+
+select * except(rnk)
+from ranked
+where rnk = 1 and op != 'd';
+</code></pre>
+      {% endraw %}
+    </details>
+  </section>
+
+  <section id="history" aria-labelledby="history-title">
+    <h2 id="history-title">Keep history when you need it</h2>
+    <ul>
+      <li>Add <code>valid_from</code> and <code>valid_to</code> columns around each change.</li>
+      <li>Close the previous version when a new update arrives.</li>
+      <li>Expose current rows via a view that filters on <code>valid_to IS NULL</code>.</li>
+    </ul>
+    <p>
+      This pattern powers <abbr title="slowly changing dimension">SCD</abbr> Type 2 tables without losing the benefits of CDC
+      freshness.
+    </p>
+  </section>
+
+  <section id="late-arrivals" aria-labelledby="late-arrivals-title">
+    <h2 id="late-arrivals-title">Handle late-arriving and out-of-order events</h2>
+    <ul>
+      <li>Track a <em>watermark</em> timestamp in your staging table and ignore events older than your replay budget.</li>
+      <li>Store raw envelopes for N days so you can reprocess with updated merge logic.</li>
+      <li>Document how to reconcile when the source database is manually patched (backfills, deletes).</li>
+    </ul>
+    <p class="callout">Late arrivals are usually replayed by ops teams—make the procedure idempotent so you can run it twice without fear.</p>
+  </section>
+
+  <section id="ops" aria-labelledby="ops-title">
+    <h2 id="ops-title">Operational guardrails</h2>
+    <details>
+      <summary>Validate inputs</summary>
+      <ul>
+        <li>Reject events that miss primary keys or required columns.</li>
+        <li>Track schema version and fail fast on incompatible changes.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Observe merge latency</summary>
+      <ul>
+        <li>Alert when staging tables age beyond the expected SLA.</li>
+        <li>Keep a backlog gauge so you know when to scale compute.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Disaster recovery</summary>
+      <ul>
+        <li>Retain staging data long enough to replay the last full window.</li>
+        <li>Store checkpoints (offset, batch id, timestamps) beside the target table.</li>
+      </ul>
+    </details>
+    <p>
+      Combine these runbooks with automated smoke tests that upsert and delete
+      a synthetic record daily. The job should fail if materialization drifts.
+    </p>
+  </section>
+
+  <section id="quality" aria-labelledby="quality-title">
+    <h2 id="quality-title">Data quality checks before publishing</h2>
+    <ol>
+      <li>Compare row counts between source and target using time-bounded windows.</li>
+      <li>Verify key uniqueness and detect primary-key churn with a duplicate audit query.</li>
+      <li>Validate soft deletes by ensuring tombstones propagate to downstream marts within SLA.</li>
+    </ol>
+    <p>
+      Embed these checks in orchestration (Airflow, Dagster, dbt) so they run
+      on every deploy and after infrastructure maintenance.
+    </p>
+  </section>
+
+  <section id="verification" aria-labelledby="verification-title">
+    <h2 id="verification-title">Verification playbooks</h2>
+    <div class="grid">
+      <article>
+        <h3>Pre-prod regression</h3>
+        <ul>
+          <li>Run fixtures that upsert, delete, and reinsert entities to validate merge branches.</li>
+          <li>Backfill a 1-hour slice from production CDC into staging and diff row-level hashes.</li>
+          <li>Exercise late-arrival and out-of-order scenarios before promoting SQL changes.</li>
+        </ul>
+      </article>
+      <article>
+        <h3>Production spot checks</h3>
+        <ul>
+          <li>Schedule canary merges on synthetic ids with deterministic payloads.</li>
+          <li>Export change event samples weekly and replay them against a shadow environment.</li>
+          <li>Rotate on-call owners through a monthly verification drill to keep docs fresh.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="callout">
+      Treat verification as part of the deployment pipeline—pair SQL reviews with a matching verification checklist so no
+      merge ships without evidence that the materialized view still behaves.
+    </p>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="/event-envelope/">Event envelope</a> for envelope field semantics feeding your merges.</li>
+      <li><a href="/ops-offsets/">Offsets &amp; replays</a> to keep staging tables consistent during rewinds.</li>
+      <li><a href="/observability/">Observability basics</a> to monitor merge throughput, freshness, and failure rates.</li>
+    </ul>
+  </section>
+</div>

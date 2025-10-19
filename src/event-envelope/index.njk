@@ -1,0 +1,318 @@
+---
+layout: base.njk
+title: "Event Envelope & Delivery Guarantees"
+description: "Break down the structure of CDC change events and learn how at-least-once or exactly-once delivery affects consumers."
+canonicalPath: "/event-envelope/"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quick-nav.njk" as quickNav %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  {{ quickNav.render('Event envelope quick nav', [
+    { id: 'anatomy', label: 'Event anatomy' },
+    { id: 'images', label: 'Before/after images' },
+    { id: 'delivery', label: 'Delivery guarantees' },
+    { id: 'ordering', label: 'Ordering implications' },
+    { id: 'schema', label: 'Schema contracts' },
+    { id: 'connectors', label: 'Connector crosswalk' },
+    { id: 'playbooks', label: 'Playbooks' },
+    { id: 'validation', label: 'Validation' },
+    { id: 'monitoring', label: 'Monitoring & guardrails' },
+    { id: 'resources', label: 'Further resources' }
+  ]) | safe }}
+
+  <section id="anatomy" aria-labelledby="anatomy-title">
+    <h2 id="anatomy-title">What lives inside the envelope</h2>
+    <p>
+      Change events are more than a JSON blob. Every field exists to keep
+      data, ordering, and metadata aligned across services. Ground your
+      consumers in the same vocabulary so investigations stay fast.
+    </p>
+    <pre><code class="language-json">{
+  "op": "u",
+  "ts_ms": 1712857612456,
+  "source": {
+    "db": "app",
+    "table": "orders",
+    "lsn": 368592330
+  },
+  "transaction": {
+    "id": "4.25.901",
+    "total_order": 442,
+    "event_count": 2
+  },
+  "before": { "order_id": 42, "status": "processing" },
+  "after": { "order_id": 42, "status": "shipped" },
+  "key": { "order_id": 42 }
+}</code></pre>
+    <table>
+      <caption>Essential envelope fields</caption>
+      <thead>
+        <tr>
+          <th scope="col">Field</th>
+          <th scope="col">Purpose</th>
+          <th scope="col">Questions it answers</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>op</code> / action</th>
+          <td>Signals whether the change was an insert, update, or delete.</td>
+          <td>Should I upsert or tombstone this record?</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>ts_ms</code> / source time</th>
+          <td>The source commit timestamp or log position.</td>
+          <td>Was this change applied before or after another event?</td>
+        </tr>
+        <tr>
+          <th scope="row">Transaction identifiers</th>
+          <td>Log sequence numbers, SCNs, or offsets for recovery.</td>
+          <td>Where do I resume when reprocessing?</td>
+        </tr>
+        <tr>
+          <th scope="row">Primary key</th>
+          <td>The stable identifier for idempotent upserts.</td>
+          <td>Which entity does this change belong to?</td>
+        </tr>
+        <tr>
+          <th scope="row">Before/after payloads</th>
+          <td>Snapshots of column values at either side of the change.</td>
+          <td>How do I compute diffs or rollbacks?</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="images" aria-labelledby="images-title">
+    <h2 id="images-title">Why before/after images matter</h2>
+    <p>
+      Many downstream jobs need both the new values and the previous state.
+      Audit pipelines, SCD Type 2 tables, and cache invalidation logic all
+      break without the <em>before</em> image.
+    </p>
+    <ul>
+      <li>
+        <strong>Deduplication.</strong> With the prior primary-key hash you
+        can detect replays without touching the target system.
+      </li>
+      <li>
+        <strong>Reversible operations.</strong> Rollbacks and compensation
+        workflows replay the <em>before</em> payload to undo a change.
+      </li>
+      <li>
+        <strong>Selective projections.</strong> Consumers can skip heavy
+        fields in the after image while still verifying that critical
+        columns changed.
+      </li>
+    </ul>
+    <p class="callout">
+      Treat optional images as a contract. If you turn them off for
+      throughput, publish the policy and add guards to your materialization
+      layer.
+    </p>
+  </section>
+
+  <section id="delivery" aria-labelledby="delivery-title">
+    <h2 id="delivery-title">Delivery guarantees set your expectations</h2>
+    <p>
+      CDC stacks normally promise <strong>at-least-once (ALO)</strong>
+      delivery; <strong>exactly-once (EOS)</strong> is a design you layer on
+      top with idempotency and transactional sinks.
+    </p>
+    <div class="grid">
+      <article>
+        <h3>At-least-once</h3>
+        <ul>
+          <li>Replays or connector restarts may emit duplicate events.</li>
+          <li>Design consumers to be idempotent: upsert by key, avoid
+            increment-only writes.</li>
+          <li>Lag metrics and DLQ hygiene keep ALO predictable.</li>
+        </ul>
+      </article>
+      <article>
+        <h3>Exactly-once patterns</h3>
+        <ul>
+          <li>Persist offsets in the same transaction as your target writes.</li>
+          <li>Use sink-side dedupe keys (primary-key + log position).</li>
+          <li>Recover by rewinding to the last committed offset checkpoint.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section id="ordering" aria-labelledby="ordering-title">
+    <h2 id="ordering-title">Ordering and compaction</h2>
+    <p>
+      Per-key ordering is preserved within a partition, but cross-partition
+      sequencing is best-effort. Design your envelope so downstream jobs can
+      stitch history back together.
+    </p>
+    <ol>
+      <li>
+        Include a monotonically increasing per-key version or change number.
+      </li>
+      <li>
+        Store soft deletes as explicit tombstones; compaction depends on it.
+      </li>
+      <li>
+        Make idempotent materialization the default so out-of-order updates
+        resolve deterministically.
+      </li>
+    </ol>
+  </section>
+
+  <section id="schema" aria-labelledby="schema-title">
+    <h2 id="schema-title">Schema contracts and validation</h2>
+    <ul>
+      <li>
+        Version the payload schema and publish compatibility rules. Schema
+        Registry, EventSchema, or protobuf descriptors make evolution visible.
+      </li>
+      <li>
+        Declare nullability explicitly. Optional before-images should use
+        <code>before: null</code>, not a missing field, so consumers can detect
+        configuration drift.
+      </li>
+      <li>
+        Emit consistent casing and data types. Normalize booleans and numbers
+        so typed sinks (Snowflake, BigQuery) avoid coercion surprises.
+      </li>
+    </ul>
+    <p class="callout">
+      Build a contract test that fetches a production envelope, validates it
+      against the schema, and asserts critical fields are non-null. Run it in
+      CI before promoting connector changes.
+    </p>
+  </section>
+
+  <section id="connectors" aria-labelledby="connectors-title">
+    <h2 id="connectors-title">Connector field crosswalk</h2>
+    <table>
+      <caption>Map envelope terminology across platforms</caption>
+      <thead>
+        <tr>
+          <th scope="col">Concept</th>
+          <th scope="col">Debezium</th>
+          <th scope="col">Fivetran</th>
+          <th scope="col">Custom/Kafka Streams</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Operation</th>
+          <td><code>op</code> (`c`, `u`, `d`, `r`)</td>
+          <td><code>op</code> (`INSERT`, `UPDATE`, `DELETE`)</td>
+          <td>Explicit `action` field or topic naming</td>
+        </tr>
+        <tr>
+          <th scope="row">Source position</th>
+          <td><code>source.lsn</code> / <code>source.ts_ms</code></td>
+          <td><code>source_lsn</code> / <code>source_commit</code></td>
+          <td>High-water mark stored beside offsets</td>
+        </tr>
+        <tr>
+          <th scope="row">Transaction envelope</th>
+          <td><code>transaction.id</code>, <code>total_order</code></td>
+          <td><code>txn_id</code> (when available)</td>
+          <td>Custom headers (`x-tx-id`)</td>
+        </tr>
+        <tr>
+          <th scope="row">Before image</th>
+          <td><code>before</code></td>
+          <td><code>before</code></td>
+          <td>Previous state cached in state store</td>
+        </tr>
+        <tr>
+          <th scope="row">Metadata</th>
+          <td><code>source.db</code>, <code>schema</code>, <code>table</code></td>
+          <td><code>source_table</code>, <code>source_schema</code></td>
+          <td>Headers + payload wrapper object</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Align on vocabulary in your runbooks. Analysts should not have to learn
+      a different event shape per connector.
+    </p>
+  </section>
+
+  <section id="playbooks" aria-labelledby="playbooks-title">
+    <h2 id="playbooks-title">Implementation playbooks</h2>
+    <p>Use these checklists when reviewing connector configs or consumer code.</p>
+    <details>
+      <summary>Connector configuration review</summary>
+      <ul>
+        <li>Emit both before and after images for update operations.</li>
+        <li>Include metadata fields: transaction id, source host, schema.</li>
+        <li>Normalize column names and data types in the envelope schema.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Consumer hardening</summary>
+      <ul>
+        <li>Guard against duplicate keys and out-of-order events.</li>
+        <li>Track the last processed offset per partition.</li>
+        <li>Alert on missing tombstones or schema drift.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Schema migration rollout</summary>
+      <ul>
+        <li>Backfill new columns in the source before enabling them in CDC.</li>
+        <li>Verify downstream code tolerates nullable fields during rollout.</li>
+        <li>Advance schema version numbers atomically with deploys.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="validation" aria-labelledby="validation-title">
+    <h2 id="validation-title">Validate envelopes continuously</h2>
+    <ol>
+      <li>Stream envelopes into a contract test that checks required fields and value ranges.</li>
+      <li>Sample production events hourly and diff them against materialized tables.</li>
+      <li>Alert if optional sections (before image, transaction id) disappear unexpectedly.</li>
+    </ol>
+    <p>
+      These guardrails keep consumers from silently degrading when connector
+      upgrades or config toggles change the envelope shape.
+    </p>
+  </section>
+
+  <section id="monitoring" aria-labelledby="monitoring-title">
+    <h2 id="monitoring-title">Monitor drift and data contract guardrails</h2>
+    <div class="grid">
+      <article>
+        <h3>Real-time monitors</h3>
+        <ul>
+          <li>Lag freshness checks for each topic partition and consumer group.</li>
+          <li>Contract-based anomaly detection on payload nullability and enum values.</li>
+          <li>Connector task health alerts tied to restart runbooks.</li>
+        </ul>
+      </article>
+      <article>
+        <h3>Weekly governance loops</h3>
+        <ul>
+          <li>Review schema diff reports for new fields, renamed columns, or deleted metadata.</li>
+          <li>Spot check downstream warehouses for late-arrival reconciliation accuracy.</li>
+          <li>Capture breaking change proposals in an RFC log with owner sign-off.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="callout">
+      Tie monitors back to owners: every alert should have a responder rotation, a playbook link, and a communication
+      channel to pause downstream consumers if contract drift is detected.
+    </p>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="/schema-evolution/">Schema evolution</a> for versioning and registry workflows.</li>
+      <li><a href="/ops-offsets/">Ops: Offsets &amp; Replays</a> for rewind-and-replay recovery drills.</li>
+      <li><a href="/observability/">Observability basics</a> to wire the envelope monitors you designed.</li>
+    </ul>
+  </section>
+</div>
