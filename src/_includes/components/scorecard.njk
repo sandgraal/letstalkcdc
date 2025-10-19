@@ -1,0 +1,48 @@
+{% macro render(key, caption, items, options = {}) %}
+  {% set resetLabel = options.resetLabel or 'Reset progress' %}
+  {% set capabilityHeading = options.capabilityHeading or 'Capability' %}
+  {% set readyHeading = options.readyHeading or 'Ready when…' %}
+  {% set actionHeading = options.actionHeading or 'If not, do this' %}
+  {% set total = items | length %}
+  <div class="scorecard" data-scorecard="{{ key }}">
+    <div class="scorecard-meta">
+      <p class="scorecard-progress" data-scorecard-progress aria-live="polite">
+        0 of {{ total }} ready (0%)
+      </p>
+      <button type="button" class="scorecard-reset" data-scorecard-reset>
+        {{ resetLabel }}
+      </button>
+    </div>
+    <table class="scorecard-table">
+      <caption>{{ caption }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{ capabilityHeading }}</th>
+          <th scope="col">{{ readyHeading }}</th>
+          <th scope="col">{{ actionHeading }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          {% set inputId = 'scorecard-' ~ key ~ '-' ~ item.id %}
+          <tr data-scorecard-item="{{ item.id }}">
+            <th scope="row">
+              <label class="scorecard-label" for="{{ inputId }}">
+                <input
+                  id="{{ inputId }}"
+                  type="checkbox"
+                  value="{{ item.id }}"
+                  data-scorecard-control
+                  data-scorecard-item="{{ item.id }}"
+                />
+                <span>{{ item.title | safe }}</span>
+              </label>
+            </th>
+            <td data-heading="{{ readyHeading }}">{{ item.ready | safe }}</td>
+            <td data-heading="{{ actionHeading }}">{{ item.action | safe }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}

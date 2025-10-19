@@ -305,3 +305,229 @@ onReady(() => {
     utilities.appendChild(trigger);
   }
 });
+
+onReady(() => {
+  const quickNavs = doc.querySelectorAll('.intro-quick-nav');
+  if (!quickNavs.length) return;
+
+  const hasObserver = typeof window.IntersectionObserver === 'function';
+
+  const getHashId = () => {
+    const raw = window.location.hash.replace(/^#/, '');
+    if (!raw) return '';
+    try {
+      return decodeURIComponent(raw);
+    } catch (_) {
+      return raw;
+    }
+  };
+
+  quickNavs.forEach((nav) => {
+    const links = Array.from(nav.querySelectorAll('a[href]'));
+    if (!links.length) return;
+
+    const decodeId = (value) => {
+      if (!value) return '';
+      try {
+        return decodeURIComponent(value);
+      } catch (_) {
+        return value;
+      }
+    };
+
+    const targets = links
+      .map((link) => {
+        const href = link.getAttribute('href');
+        if (!href || !href.startsWith('#')) return null;
+        const id = decodeId(href.slice(1));
+        if (!id) return null;
+        const section = doc.getElementById(id);
+        if (!section) return null;
+        section.dataset.quickNavVisible = '0';
+        return { link, id, section };
+      })
+      .filter(Boolean);
+
+    if (!targets.length) return;
+
+    const applyActive = (targetId) => {
+      let matched = false;
+      targets.forEach(({ link, id }) => {
+        const isActive = Boolean(targetId) && id === targetId;
+        if (isActive) matched = true;
+        if (isActive) {
+          link.setAttribute('aria-current', 'true');
+          link.classList.add('is-active');
+        } else {
+          link.removeAttribute('aria-current');
+          link.classList.remove('is-active');
+        }
+      });
+      return matched;
+    };
+
+    const ensureActive = (id) => {
+      if (id && applyActive(id)) return;
+      applyActive(targets[0].id);
+    };
+
+    nav.addEventListener('click', (event) => {
+      const link = event.target.closest('a[href^="#"]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      const id = decodeId(href ? href.slice(1) : '');
+      ensureActive(id);
+    });
+
+    window.addEventListener('hashchange', () => {
+      ensureActive(getHashId());
+    });
+
+    ensureActive(getHashId());
+
+    if (!hasObserver) {
+      return;
+    }
+
+    let currentId = getHashId() || targets[0].id;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.dataset.quickNavVisible = entry.isIntersecting ? '1' : '0';
+        });
+        const visible = targets
+          .filter(({ section }) => section.dataset.quickNavVisible === '1')
+          .sort((a, b) => a.section.offsetTop - b.section.offsetTop);
+        const candidate = visible.length ? visible[visible.length - 1] : null;
+        const nextId = candidate?.id;
+        if (nextId && nextId !== currentId) {
+          currentId = nextId;
+          applyActive(nextId);
+        } else if (!nextId) {
+          const fallback = targets
+            .find(({ section }) => {
+              const rect = section.getBoundingClientRect();
+              return rect.top >= 0 && rect.top < window.innerHeight * 0.6;
+            })?.id;
+          if (fallback && fallback !== currentId) {
+            currentId = fallback;
+            applyActive(fallback);
+          }
+        }
+      },
+      { rootMargin: '-45% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    targets.forEach(({ section }) => observer.observe(section));
+  });
+});
+
+onReady(() => {
+  const cards = doc.querySelectorAll('[data-scorecard]');
+  if (!cards.length) return;
+
+  const storage = (() => {
+    try {
+      const probe = '__scorecard_probe__';
+      localStorage.setItem(probe, '1');
+      localStorage.removeItem(probe);
+      return {
+        get: (key) => {
+          try {
+            const value = localStorage.getItem(key);
+            if (!value) return [];
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (_) {
+            return [];
+          }
+        },
+        set: (key, value) => {
+          try {
+            localStorage.setItem(key, JSON.stringify(value));
+          } catch (_) {
+            /* ignore */
+          }
+        },
+        remove: (key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      };
+    } catch (_) {
+      return {
+        get: () => [],
+        set: () => {},
+        remove: () => {}
+      };
+    }
+  })();
+
+  cards.forEach((card) => {
+    const key = card.getAttribute('data-scorecard');
+    if (!key) return;
+
+    const checkboxes = Array.from(card.querySelectorAll('input[data-scorecard-control]'));
+    if (!checkboxes.length) return;
+
+    const progress = card.querySelector('[data-scorecard-progress]');
+    const reset = card.querySelector('[data-scorecard-reset]');
+    const total = checkboxes.length;
+    const storageKey = `scorecard:${key}`;
+
+    const validIds = new Set(checkboxes.map((checkbox) => checkbox.dataset.scorecardItem).filter(Boolean));
+    let completed = new Set(storage.get(storageKey).filter((id) => validIds.has(id)));
+
+    const syncControls = () => {
+      checkboxes.forEach((checkbox) => {
+        const id = checkbox.dataset.scorecardItem;
+        if (!id) return;
+        checkbox.checked = completed.has(id);
+      });
+    };
+
+    const updateProgress = () => {
+      syncControls();
+      if (progress) {
+        const done = Math.min(completed.size, total);
+        const percent = total ? Math.round((done / total) * 100) : 0;
+        progress.textContent = `${done} of ${total} ready (${percent}%)`;
+      }
+      card.dataset.scorecardComplete = completed.size === total ? '1' : '0';
+    };
+
+    const persist = () => {
+      storage.set(storageKey, Array.from(completed));
+    };
+
+    checkboxes.forEach((checkbox) => {
+      const id = checkbox.dataset.scorecardItem;
+      if (!id) return;
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          completed.add(id);
+        } else {
+          completed.delete(id);
+        }
+        persist();
+        updateProgress();
+      });
+    });
+
+    if (reset) {
+      reset.addEventListener('click', () => {
+        if (!completed.size) return;
+        completed = new Set();
+        storage.remove(storageKey);
+        updateProgress();
+        const firstCheckbox = checkboxes.find((checkbox) => checkbox.offsetParent !== null) || checkboxes[0];
+        firstCheckbox?.focus({ preventScroll: true });
+      });
+    }
+
+    updateProgress();
+  });
+});
