@@ -6,6 +6,7 @@ canonicalPath: "/event-envelope/"
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quick-nav.njk" as quickNav %}
+{% import "components/scorecard.njk" as scorecard %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -288,38 +289,46 @@ canonicalPath: "/event-envelope/"
       Share this checklist before launch so producers, consumers, and platform teams align on envelope expectations and
       operating guardrails.
     </p>
-    <table>
-      <caption>Signals you are ready to ship</caption>
-      <thead>
-        <tr>
-          <th scope="col">Capability</th>
-          <th scope="col">Ready when&hellip;</th>
-          <th scope="col">If not, do this</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">Schema contract</th>
-          <td>Versioned payload schema is published with required fields called out and nullability documented.</td>
-          <td>Draft a schema README, add it to source control, and require schema diff reviews for connector merges.</td>
-        </tr>
-        <tr>
-          <th scope="row">Connector config</th>
-          <td>Before/after images, primary keys, and tombstones are explicitly enabled in configuration.</td>
-          <td>Review connector settings with platform engineering and add automated config tests in CI.</td>
-        </tr>
-        <tr>
-          <th scope="row">Consumer alignment</th>
-          <td>Downstream services have idempotent handlers and are storing envelope metadata they depend on.</td>
-          <td>Host a contract walkthrough, annotate payload fields, and run a replay drill with each critical consumer.</td>
-        </tr>
-        <tr>
-          <th scope="row">Monitoring</th>
-          <td>Envelope validation job runs on a schedule with alerting for missing fields or unexpected types.</td>
-          <td>Add schema validation output to observability dashboards and alert on consecutive failures.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{
+      scorecard.render(
+        'event-envelope',
+        'Signals you are ready to ship',
+        [
+          {
+            id: 'schema-contract',
+            title: 'Schema contract',
+            ready:
+              'Versioned payload schema is published with required fields called out and nullability documented.',
+            action:
+              'Draft a schema README, add it to source control, and require schema diff reviews for connector merges.'
+          },
+          {
+            id: 'connector-config',
+            title: 'Connector config',
+            ready:
+              'Before/after images, primary keys, and tombstones are explicitly enabled in configuration.',
+            action: 'Review connector settings with platform engineering and add automated config tests in CI.'
+          },
+          {
+            id: 'consumer-alignment',
+            title: 'Consumer alignment',
+            ready:
+              'Downstream services have idempotent handlers and are storing envelope metadata they depend on.',
+            action:
+              'Host a contract walkthrough, annotate payload fields, and run a replay drill with each critical consumer.'
+          },
+          {
+            id: 'monitoring',
+            title: 'Monitoring',
+            ready:
+              'Envelope validation job runs on a schedule with alerting for missing fields or unexpected types.',
+            action:
+              'Add schema validation output to observability dashboards and alert on consecutive failures.'
+          }
+        ]
+      )
+      | safe
+    }}
   </section>
 
   <section id="monitoring" aria-labelledby="monitoring-title">

@@ -6,6 +6,7 @@ canonicalPath: "/ops-offsets/"
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quick-nav.njk" as quickNav %}
+{% import "components/scorecard.njk" as scorecard %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -156,38 +157,51 @@ curl -X POST "${CONNECT_URL}/connectors/${CONNECTOR_NAME}/resume"
       Confirm the operations team can rewind confidently at 2 a.m. by checking each line item before you certify a connector as
       production-ready.
     </p>
-    <table>
-      <caption>Operational maturity checklist</caption>
-      <thead>
-        <tr>
-          <th scope="col">Area</th>
-          <th scope="col">Ready when&hellip;</th>
-          <th scope="col">If not, next step</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">Offset durability</th>
-          <td>Primary and secondary offset stores are replicated and restore drills succeed within RTO.</td>
-          <td>Set up replication or snapshots, automate restore verification, and document expected recovery times.</td>
-        </tr>
-        <tr>
-          <th scope="row">Runbook quality</th>
-          <td>Pause/rewind/resume steps are scripted with parameterized inputs and owner contact info.</td>
-          <td>Convert manual docs into scripts, add sanity checks, and capture owner rotation details.</td>
-        </tr>
-        <tr>
-          <th scope="row">Access control</th>
-          <td>Least-privilege access exists for offset stores with MFA and break-glass procedures.</td>
-          <td>Implement RBAC, rotate credentials, and rehearse break-glass approval flow with security.</td>
-        </tr>
-        <tr>
-          <th scope="row">Replay rehearsal</th>
-          <td>Latest quarterly drill has a postmortem with metrics (lag delta, replay duration, data diffs) and closed actions.</td>
-          <td>Schedule a rehearsal, capture metrics template, and assign follow-up owners before certifying the pipeline.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{
+      scorecard.render(
+        'ops-offsets',
+        'Operational maturity checklist',
+        [
+          {
+            id: 'offset-durability',
+            title: 'Offset durability',
+            ready:
+              'Primary and secondary offset stores are replicated and restore drills succeed within RTO.',
+            action:
+              'Set up replication or snapshots, automate restore verification, and document expected recovery times.'
+          },
+          {
+            id: 'runbook-quality',
+            title: 'Runbook quality',
+            ready:
+              'Pause/rewind/resume steps are scripted with parameterized inputs and owner contact info.',
+            action:
+              'Convert manual docs into scripts, add sanity checks, and capture owner rotation details.'
+          },
+          {
+            id: 'access-control',
+            title: 'Access control',
+            ready:
+              'Least-privilege access exists for offset stores with MFA and break-glass procedures.',
+            action:
+              'Implement RBAC, rotate credentials, and rehearse break-glass approval flow with security.'
+          },
+          {
+            id: 'replay-rehearsal',
+            title: 'Replay rehearsal',
+            ready:
+              'Latest quarterly drill has a postmortem with metrics (lag delta, replay duration, data diffs) and closed actions.',
+            action:
+              'Schedule a rehearsal, capture metrics template, and assign follow-up owners before certifying the pipeline.'
+          }
+        ],
+        {
+          capabilityHeading: 'Area',
+          actionHeading: 'If not, next step'
+        }
+      )
+      | safe
+    }}
   </section>
 
   <section id="resources" aria-labelledby="resources-title">

@@ -6,6 +6,7 @@ canonicalPath: "/materialization/"
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quick-nav.njk" as quickNav %}
+{% import "components/scorecard.njk" as scorecard %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -233,38 +234,49 @@ where rnk = 1 and op != 'd';
       Align the data platform, analytics, and ops teams on what “ready for production” means before turning on the CDC
       materialization job.
     </p>
-    <table>
-      <caption>Checklist before promoting to production</caption>
-      <thead>
-        <tr>
-          <th scope="col">Workstream</th>
-          <th scope="col">Ready when&hellip;</th>
-          <th scope="col">If not, take this step</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">Target schema</th>
-          <td>Warehouse tables exist with primary keys, clustering, and partitioning that match the envelope design.</td>
-          <td>Provision tables with the final schema and run dry-run merges against staging data.</td>
-        </tr>
-        <tr>
-          <th scope="row">Merge orchestration</th>
-          <td>Incremental jobs have retries, alerting, and offset checkpointing wired up.</td>
-          <td>Add idempotent retries, persist offsets with the job metadata, and document restart steps.</td>
-        </tr>
-        <tr>
-          <th scope="row">Backfill strategy</th>
-          <td>Snapshot-to-stream cutover plan is rehearsed with clear checkpoints and rollback triggers.</td>
-          <td>Run a timed rehearsal in staging, log each checkpoint, and confirm revert instructions are executable.</td>
-        </tr>
-        <tr>
-          <th scope="row">Stakeholder buy-in</th>
-          <td>Analytics owners sign off on data quality thresholds and downstream dashboards include freshness indicators.</td>
-          <td>Review metrics with stakeholders, add freshness badges to dashboards, and capture acceptance criteria in a doc.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{
+      scorecard.render(
+        'materialization',
+        'Checklist before promoting to production',
+        [
+          {
+            id: 'target-schema',
+            title: 'Target schema',
+            ready:
+              'Warehouse tables exist with primary keys, clustering, and partitioning that match the envelope design.',
+            action:
+              'Provision tables with the final schema and run dry-run merges against staging data.'
+          },
+          {
+            id: 'merge-orchestration',
+            title: 'Merge orchestration',
+            ready: 'Incremental jobs have retries, alerting, and offset checkpointing wired up.',
+            action: 'Add idempotent retries, persist offsets with the job metadata, and document restart steps.'
+          },
+          {
+            id: 'backfill-strategy',
+            title: 'Backfill strategy',
+            ready:
+              'Snapshot-to-stream cutover plan is rehearsed with clear checkpoints and rollback triggers.',
+            action:
+              'Run a timed rehearsal in staging, log each checkpoint, and confirm revert instructions are executable.'
+          },
+          {
+            id: 'stakeholder-buy-in',
+            title: 'Stakeholder buy-in',
+            ready:
+              'Analytics owners sign off on data quality thresholds and downstream dashboards include freshness indicators.',
+            action:
+              'Review metrics with stakeholders, add freshness badges to dashboards, and capture acceptance criteria in a doc.'
+          }
+        ],
+        {
+          capabilityHeading: 'Workstream',
+          actionHeading: 'If not, take this step'
+        }
+      )
+      | safe
+    }}
   </section>
 
   <section id="resources" aria-labelledby="resources-title">

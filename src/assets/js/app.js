@@ -421,3 +421,113 @@ onReady(() => {
     targets.forEach(({ section }) => observer.observe(section));
   });
 });
+
+onReady(() => {
+  const cards = doc.querySelectorAll('[data-scorecard]');
+  if (!cards.length) return;
+
+  const storage = (() => {
+    try {
+      const probe = '__scorecard_probe__';
+      localStorage.setItem(probe, '1');
+      localStorage.removeItem(probe);
+      return {
+        get: (key) => {
+          try {
+            const value = localStorage.getItem(key);
+            if (!value) return [];
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (_) {
+            return [];
+          }
+        },
+        set: (key, value) => {
+          try {
+            localStorage.setItem(key, JSON.stringify(value));
+          } catch (_) {
+            /* ignore */
+          }
+        },
+        remove: (key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      };
+    } catch (_) {
+      return {
+        get: () => [],
+        set: () => {},
+        remove: () => {}
+      };
+    }
+  })();
+
+  cards.forEach((card) => {
+    const key = card.getAttribute('data-scorecard');
+    if (!key) return;
+
+    const checkboxes = Array.from(card.querySelectorAll('input[data-scorecard-control]'));
+    if (!checkboxes.length) return;
+
+    const progress = card.querySelector('[data-scorecard-progress]');
+    const reset = card.querySelector('[data-scorecard-reset]');
+    const total = checkboxes.length;
+    const storageKey = `scorecard:${key}`;
+
+    const validIds = new Set(checkboxes.map((checkbox) => checkbox.dataset.scorecardItem).filter(Boolean));
+    let completed = new Set(storage.get(storageKey).filter((id) => validIds.has(id)));
+
+    const syncControls = () => {
+      checkboxes.forEach((checkbox) => {
+        const id = checkbox.dataset.scorecardItem;
+        if (!id) return;
+        checkbox.checked = completed.has(id);
+      });
+    };
+
+    const updateProgress = () => {
+      syncControls();
+      if (progress) {
+        const done = Math.min(completed.size, total);
+        const percent = total ? Math.round((done / total) * 100) : 0;
+        progress.textContent = `${done} of ${total} ready (${percent}%)`;
+      }
+      card.dataset.scorecardComplete = completed.size === total ? '1' : '0';
+    };
+
+    const persist = () => {
+      storage.set(storageKey, Array.from(completed));
+    };
+
+    checkboxes.forEach((checkbox) => {
+      const id = checkbox.dataset.scorecardItem;
+      if (!id) return;
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          completed.add(id);
+        } else {
+          completed.delete(id);
+        }
+        persist();
+        updateProgress();
+      });
+    });
+
+    if (reset) {
+      reset.addEventListener('click', () => {
+        if (!completed.size) return;
+        completed = new Set();
+        storage.remove(storageKey);
+        updateProgress();
+        const firstCheckbox = checkboxes.find((checkbox) => checkbox.offsetParent !== null) || checkboxes[0];
+        firstCheckbox?.focus({ preventScroll: true });
+      });
+    }
+
+    updateProgress();
+  });
+});
