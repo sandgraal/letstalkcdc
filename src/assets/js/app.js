@@ -366,14 +366,14 @@ onReady(() => {
       return badge;
     };
 
-    const handleScorecardUpdate = (event) => {
-      const detail = event.detail || {};
-      if (!detail.sectionId) return;
+    const applyProgressDetail = (detail) => {
+      if (!detail || !detail.sectionId) return;
       const target = targetMap.get(detail.sectionId);
       if (!target) return;
-      if (!detail.total) {
-        const badge = target.link.querySelector('.quick-nav-badge');
-        badge?.remove();
+      if (!detail.total || detail.total <= 0) {
+        if (target.badge) {
+          target.badge.remove();
+        }
         target.badge = null;
         target.link.dataset.quickNavComplete = '0';
         return;
@@ -391,7 +391,13 @@ onReady(() => {
       }
     };
 
-    doc.addEventListener('scorecard:update', handleScorecardUpdate);
+    doc.addEventListener('scorecard:update', (event) => {
+      applyProgressDetail(event.detail || {});
+    });
+
+    doc.addEventListener('scorecard:summary', (event) => {
+      applyProgressDetail(event.detail || {});
+    });
 
     const applyActive = (targetId) => {
       let matched = false;
@@ -524,6 +530,7 @@ onReady(() => {
         record.element.dataset.scorecardSummaryState = summaryState;
         record.element.dataset.scorecardSummaryTotal = String(totalChecks);
         record.element.dataset.scorecardSummaryCompleted = String(completedChecks);
+        record.element.dataset.scorecardSummaryPercent = String(percentComplete);
       }
 
       if (record.progress) {
@@ -590,6 +597,31 @@ onReady(() => {
       } else if (record.empty && !entries.length) {
         record.empty.hidden = false;
       }
+    });
+
+    const sections = new Set();
+    records.forEach((record) => {
+      const section = record.element?.closest('section');
+      if (section && section.id) {
+        sections.add(section);
+      }
+    });
+
+    sections.forEach((section) => {
+      const heading = section.querySelector('h2, h3');
+      const headingText = heading?.textContent?.trim() || '';
+      doc.dispatchEvent(
+        new CustomEvent('scorecard:summary', {
+          detail: {
+            group: resolvedGroup,
+            sectionId: section.id,
+            title: headingText,
+            total: totalChecks,
+            completed: completedChecks,
+            percent: percentComplete
+          }
+        })
+      );
     });
   };
 
