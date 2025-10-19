@@ -18,6 +18,7 @@ canonicalPath: "/observability/"
     { id: 'tracing', label: 'Tracing & logs' },
     { id: 'handbook', label: 'Runbook hygiene' },
     { id: 'reviews', label: 'Post-incident reviews' },
+    { id: 'scorecard', label: 'Readiness scorecard' },
     { id: 'resources', label: 'Further resources' }
   ]) | safe }}
 
@@ -157,6 +158,46 @@ canonicalPath: "/observability/"
       Sharing the review with data consumers builds trust and keeps shadow
       monitoring from proliferating across teams.
     </p>
+  </section>
+
+  <section id="scorecard" aria-labelledby="scorecard-title">
+    <h2 id="scorecard-title">Observability readiness scorecard</h2>
+    <p>
+      Use this scorecard during production readiness reviews to ensure monitoring covers the entire CDC surface area&mdash;from
+      connectors to downstream consumers.
+    </p>
+    <table>
+      <caption>Monitoring maturity checkpoints</caption>
+      <thead>
+        <tr>
+          <th scope="col">Dimension</th>
+          <th scope="col">Ready when&hellip;</th>
+          <th scope="col">If not, shore it up by&hellip;</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Golden signals</th>
+          <td>Lag, throughput, error rate, and saturation dashboards exist with ownership and SLO targets.</td>
+          <td>Add missing charts, wire alerts to on-call, and document runbook links beside each metric.</td>
+        </tr>
+        <tr>
+          <th scope="row">Alert routing</th>
+          <td>Pager policies differentiate wake-you-up incidents from follow-up tasks with clear escalation paths.</td>
+          <td>Restructure notification channels, prune noisy alerts, and note escalation contacts in the runbook.</td>
+        </tr>
+        <tr>
+          <th scope="row">Log & trace depth</th>
+          <td>Structured logs include correlation ids, connector, and table metadata; traces capture slow sinks.</td>
+          <td>Instrument connectors to emit correlation ids, enrich logs with metadata, and sample traces during load tests.</td>
+        </tr>
+        <tr>
+          <th scope="row">Review cadence</th>
+          <td>Post-incident reviews close on time and backlog items have explicit owners.</td>
+          <td>Schedule review retrospectives, assign owners in the incident tracker, and follow up during weekly ops syncs.</td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 
   <section id="resources" aria-labelledby="resources-title">

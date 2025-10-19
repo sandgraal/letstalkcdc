@@ -54,6 +54,14 @@ html[data-theme="dark"] .intro-quick-nav {
     color 160ms ease;
 }
 
+.intro-quick-nav a.is-active,
+.intro-quick-nav a[aria-current="true"] {
+  border-color: rgba(13, 148, 136, 0.5);
+  background: rgba(13, 148, 136, 0.18);
+  color: #065f46;
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.18);
+}
+
 .intro-quick-nav a:hover,
 .intro-quick-nav a:focus {
   border-color: rgba(13, 148, 136, 0.42);
@@ -63,6 +71,14 @@ html[data-theme="dark"] .intro-quick-nav {
 
 html[data-theme="dark"] .intro-quick-nav a {
   color: #2dd4bf;
+}
+
+html[data-theme="dark"] .intro-quick-nav a.is-active,
+html[data-theme="dark"] .intro-quick-nav a[aria-current="true"] {
+  border-color: rgba(45, 212, 191, 0.52);
+  background: rgba(13, 148, 136, 0.24);
+  color: #a5f3fc;
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.28);
 }
 
 html[data-theme="dark"] .intro-quick-nav a:hover,

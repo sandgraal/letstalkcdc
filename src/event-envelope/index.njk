@@ -19,6 +19,7 @@ canonicalPath: "/event-envelope/"
     { id: 'connectors', label: 'Connector crosswalk' },
     { id: 'playbooks', label: 'Playbooks' },
     { id: 'validation', label: 'Validation' },
+    { id: 'scorecard', label: 'Readiness scorecard' },
     { id: 'monitoring', label: 'Monitoring & guardrails' },
     { id: 'resources', label: 'Further resources' }
   ]) | safe }}
@@ -279,6 +280,46 @@ canonicalPath: "/event-envelope/"
       These guardrails keep consumers from silently degrading when connector
       upgrades or config toggles change the envelope shape.
     </p>
+  </section>
+
+  <section id="scorecard" aria-labelledby="scorecard-title">
+    <h2 id="scorecard-title">Event envelope readiness scorecard</h2>
+    <p>
+      Share this checklist before launch so producers, consumers, and platform teams align on envelope expectations and
+      operating guardrails.
+    </p>
+    <table>
+      <caption>Signals you are ready to ship</caption>
+      <thead>
+        <tr>
+          <th scope="col">Capability</th>
+          <th scope="col">Ready when&hellip;</th>
+          <th scope="col">If not, do this</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Schema contract</th>
+          <td>Versioned payload schema is published with required fields called out and nullability documented.</td>
+          <td>Draft a schema README, add it to source control, and require schema diff reviews for connector merges.</td>
+        </tr>
+        <tr>
+          <th scope="row">Connector config</th>
+          <td>Before/after images, primary keys, and tombstones are explicitly enabled in configuration.</td>
+          <td>Review connector settings with platform engineering and add automated config tests in CI.</td>
+        </tr>
+        <tr>
+          <th scope="row">Consumer alignment</th>
+          <td>Downstream services have idempotent handlers and are storing envelope metadata they depend on.</td>
+          <td>Host a contract walkthrough, annotate payload fields, and run a replay drill with each critical consumer.</td>
+        </tr>
+        <tr>
+          <th scope="row">Monitoring</th>
+          <td>Envelope validation job runs on a schedule with alerting for missing fields or unexpected types.</td>
+          <td>Add schema validation output to observability dashboards and alert on consecutive failures.</td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 
   <section id="monitoring" aria-labelledby="monitoring-title">
