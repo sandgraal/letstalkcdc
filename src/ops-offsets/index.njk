@@ -1,0 +1,201 @@
+---
+layout: base.njk
+title: "Ops: Offsets & Replays"
+description: "Operate CDC pipelines with confidence by hardening offset storage, planning safe rewinds, and scripting replay drills."
+canonicalPath: "/ops-offsets/"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quick-nav.njk" as quickNav %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  {{ quickNav.render('Offsets quick nav', [
+    { id: 'checklist', label: 'Ops checklist' },
+    { id: 'storage', label: 'Offset storage patterns' },
+    { id: 'rewind', label: 'Safe rewind procedure' },
+    { id: 'drills', label: 'Replay drills' },
+    { id: 'alerts', label: 'Monitoring' },
+    { id: 'automation', label: 'Automation' },
+    { id: 'audits', label: 'Quarterly audits' },
+    { id: 'scorecard', label: 'Readiness scorecard' },
+    { id: 'resources', label: 'Further resources' }
+  ]) | safe }}
+
+  <section id="checklist" aria-labelledby="checklist-title">
+    <h2 id="checklist-title">Guardrail checklist</h2>
+    <ul>
+      <li>Offsets persist to durable storage separate from the connector host.</li>
+      <li>Backups exist for the last seven days of offset snapshots.</li>
+      <li>Runbooks document how to pause, rewind, and resume each connector.</li>
+      <li>DLQ triage flow is rehearsed quarterly.</li>
+      <li>Access to offset stores is restricted to on-call engineers (MFA enforced).</li>
+    </ul>
+  </section>
+
+  <section id="storage" aria-labelledby="storage-title">
+    <h2 id="storage-title">Offset storage patterns</h2>
+    <p>
+      Treat offsets as crown jewels. They decide whether a replay is a clean
+      rewind or a week-long dedupe exercise.
+    </p>
+    <table>
+      <caption>Choose durable storage intentionally</caption>
+      <thead>
+        <tr>
+          <th scope="col">Pipeline</th>
+          <th scope="col">Primary store</th>
+          <th scope="col">Secondary copy</th>
+          <th scope="col">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Kafka Connect</th>
+          <td><code>__consumer_offsets</code> (internal topic)</td>
+          <td>MirrorMaker stream to DR cluster</td>
+          <td>Enable <code>offset.flush.interval.ms</code> &lt; 5000 for tighter RPO.</td>
+        </tr>
+        <tr>
+          <th scope="row">Debezium Server</th>
+          <td>File-based or JDBC offset storage</td>
+          <td>Nightly object storage snapshot</td>
+          <td>Encrypt backups; restore drill should be documented.</td>
+        </tr>
+        <tr>
+          <th scope="row">Custom sink</th>
+          <td>Table in target warehouse</td>
+          <td>Application DB with strict RBAC</td>
+          <td>Persist last processed <code>ts_ms</code> per partition with checksum.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="callout">Store offsets in a system that survives connector hosts. Local disk is a single point of failure.</p>
+  </section>
+
+  <section id="rewind" aria-labelledby="rewind-title">
+    <h2 id="rewind-title">Safe rewind procedure</h2>
+    <ol>
+      <li>Pause ingestion and confirm downstream consumers are idle.</li>
+      <li>Restore the offset snapshot you want to resume from.</li>
+      <li>Validate that the target system can handle replays idempotently.</li>
+      <li>Resume the connector and watch lag + error metrics.</li>
+      <li>Document the incident: why rewind happened, what data was affected.</li>
+    </ol>
+    <p class="callout">
+      Never delete offsets ad hoc. Instead, copy them to a safe location and
+      prove your recovery path in staging first.
+    </p>
+  </section>
+
+  <section id="drills" aria-labelledby="drills-title">
+    <h2 id="drills-title">Replay drills</h2>
+    <details open>
+      <summary>Quarterly dry run</summary>
+      <ul>
+        <li>Pick a connector and simulate a failure that requires rewind.</li>
+        <li>Time each step from detection to recovery.</li>
+        <li>Capture deltas between the replayed data set and expected outcome.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Game day metrics</summary>
+      <ul>
+        <li>Record lag peak, throughput dip, and recovery duration.</li>
+        <li>Update runbooks with observed bottlenecks or manual fixes.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="alerts" aria-labelledby="alerts-title">
+    <h2 id="alerts-title">Monitoring & alerting</h2>
+    <ul>
+      <li><strong>Lag & throughput:</strong> Alert when lag growth exceeds the agreed budget or throughput drops suddenly.</li>
+      <li><strong>Offset staleness:</strong> Detect connectors that have not committed offsets in the last five minutes.</li>
+      <li><strong>DLQ spikes:</strong> Track dead-letter events per partition to spot poison pills early.</li>
+    </ul>
+  </section>
+
+  <section id="automation" aria-labelledby="automation-title">
+    <h2 id="automation-title">Automate the boring, dangerous steps</h2>
+    <p>Codify replay drills so humans do not improvise under pressure.</p>
+    <pre><code class="language-bash">#!/usr/bin/env bash
+set -euo pipefail
+
+CONNECTOR_NAME="$1"
+TARGET_OFFSET_SNAPSHOT="$2"
+
+echo "Pausing $CONNECTOR_NAME"
+curl -X PUT "${CONNECT_URL}/connectors/${CONNECTOR_NAME}/pause"
+
+aws s3 cp "s3://cdc-offsets/${CONNECTOR_NAME}/${TARGET_OFFSET_SNAPSHOT}" ./offsets.json
+
+psql $OFFSET_STORE -c "\copy connect_offsets FROM './offsets.json' WITH (FORMAT json)"
+
+curl -X POST "${CONNECT_URL}/connectors/${CONNECTOR_NAME}/resume"
+</code></pre>
+    <p class="callout">Keep scripts idempotent—rerunning should yield the same offset state. Track revisions in version control.</p>
+  </section>
+
+  <section id="audits" aria-labelledby="audits-title">
+    <h2 id="audits-title">Quarterly offset audits</h2>
+    <ol>
+      <li>Verify snapshots exist for every critical connector and restore one into staging.</li>
+      <li>Reconcile stored offsets against the target system watermark to catch drift.</li>
+      <li>Document gaps, update runbooks, and assign owners for remediation tasks.</li>
+    </ol>
+    <p>
+      Pair the audit with a tabletop exercise covering simultaneous connector
+      failure and downstream replay to keep teams confident under stress.
+    </p>
+  </section>
+
+  <section id="scorecard" aria-labelledby="scorecard-title">
+    <h2 id="scorecard-title">Offset operations readiness scorecard</h2>
+    <p>
+      Confirm the operations team can rewind confidently at 2 a.m. by checking each line item before you certify a connector as
+      production-ready.
+    </p>
+    <table>
+      <caption>Operational maturity checklist</caption>
+      <thead>
+        <tr>
+          <th scope="col">Area</th>
+          <th scope="col">Ready when&hellip;</th>
+          <th scope="col">If not, next step</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Offset durability</th>
+          <td>Primary and secondary offset stores are replicated and restore drills succeed within RTO.</td>
+          <td>Set up replication or snapshots, automate restore verification, and document expected recovery times.</td>
+        </tr>
+        <tr>
+          <th scope="row">Runbook quality</th>
+          <td>Pause/rewind/resume steps are scripted with parameterized inputs and owner contact info.</td>
+          <td>Convert manual docs into scripts, add sanity checks, and capture owner rotation details.</td>
+        </tr>
+        <tr>
+          <th scope="row">Access control</th>
+          <td>Least-privilege access exists for offset stores with MFA and break-glass procedures.</td>
+          <td>Implement RBAC, rotate credentials, and rehearse break-glass approval flow with security.</td>
+        </tr>
+        <tr>
+          <th scope="row">Replay rehearsal</th>
+          <td>Latest quarterly drill has a postmortem with metrics (lag delta, replay duration, data diffs) and closed actions.</td>
+          <td>Schedule a rehearsal, capture metrics template, and assign follow-up owners before certifying the pipeline.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="/event-envelope/">Event envelope</a> for understanding replay impacts on payload contracts.</li>
+      <li><a href="/observability/">Observability basics</a> to plug audit metrics into dashboards.</li>
+      <li><a href="/materialization/">Materialization 101</a> for coordinating offset rewinds with downstream table recovery.</li>
+    </ul>
+  </section>
+</div>
