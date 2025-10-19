@@ -12,6 +12,7 @@ canonicalPath: "/materialization/"
 
 <div class="page-wrap prose">
   {{ quickNav.render('Materialization quick nav', [
+    { id: 'tracker', label: 'Readiness tracker' },
     { id: 'patterns', label: 'Materialization patterns' },
     { id: 'merge', label: 'Idempotent merge logic' },
     { id: 'sql', label: 'SQL templates' },
@@ -23,6 +24,14 @@ canonicalPath: "/materialization/"
     { id: 'scorecard', label: 'Readiness scorecard' },
     { id: 'resources', label: 'Further resources' }
   ]) | safe }}
+
+    {{ scorecard.summary('materialization', {
+      sectionId: 'tracker',
+      title: 'Materialization readiness tracker',
+      description: 'Track how close each readiness checklist is to production-ready materialization in a single view.',
+      resetLabel: 'Reset all materialization checklists',
+      meterLabel: 'Materialization readiness progress'
+    }) | safe }}
 
   <section id="patterns" aria-labelledby="patterns-title">
     <h2 id="patterns-title">Choose the right pattern for the job</h2>
@@ -272,7 +281,9 @@ where rnk = 1 and op != 'd';
         ],
         {
           capabilityHeading: 'Workstream',
-          actionHeading: 'If not, take this step'
+          actionHeading: 'If not, take this step',
+          group: 'materialization',
+          summaryLabel: 'Materialization readiness scorecard'
         }
       )
       | safe

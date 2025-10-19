@@ -12,6 +12,7 @@ canonicalPath: "/observability/"
 
 <div class="page-wrap prose">
   {{ quickNav.render('Observability quick nav', [
+    { id: 'tracker', label: 'Readiness tracker' },
     { id: 'signals', label: 'Golden signals' },
     { id: 'dashboards', label: 'Dashboards' },
     { id: 'alerts', label: 'Alert policy' },
@@ -22,6 +23,17 @@ canonicalPath: "/observability/"
     { id: 'scorecard', label: 'Readiness scorecard' },
     { id: 'resources', label: 'Further resources' }
   ]) | safe }}
+
+  {{
+    scorecard.summary('observability', {
+      sectionId: 'tracker',
+      title: 'Observability readiness tracker',
+      description: 'See overall monitoring maturity at a glance before diving into each checklist.',
+      resetLabel: 'Reset all observability checklists',
+      meterLabel: 'Observability readiness progress'
+    })
+    | safe
+  }}
 
   <section id="signals" aria-labelledby="signals-title">
     <h2 id="signals-title">Golden signals for CDC</h2>
@@ -205,7 +217,9 @@ canonicalPath: "/observability/"
         ],
         {
           capabilityHeading: 'Dimension',
-          actionHeading: 'If not, shore it up by…'
+          actionHeading: 'If not, shore it up by…',
+          group: 'observability',
+          summaryLabel: 'Observability readiness scorecard'
         }
       )
       | safe

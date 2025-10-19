@@ -12,6 +12,7 @@ canonicalPath: "/event-envelope/"
 
 <div class="page-wrap prose">
   {{ quickNav.render('Event envelope quick nav', [
+    { id: 'tracker', label: 'Readiness tracker' },
     { id: 'anatomy', label: 'Event anatomy' },
     { id: 'images', label: 'Before/after images' },
     { id: 'delivery', label: 'Delivery guarantees' },
@@ -24,6 +25,17 @@ canonicalPath: "/event-envelope/"
     { id: 'monitoring', label: 'Monitoring & guardrails' },
     { id: 'resources', label: 'Further resources' }
   ]) | safe }}
+
+  {{
+    scorecard.summary('event-envelope', {
+      sectionId: 'tracker',
+      title: 'Envelope readiness tracker',
+      description: 'Roll up your readiness checklist progress before you dive into the deep-dive sections.',
+      resetLabel: 'Reset all envelope checklists',
+      meterLabel: 'Event envelope readiness progress'
+    })
+    | safe
+  }}
 
   <section id="anatomy" aria-labelledby="anatomy-title">
     <h2 id="anatomy-title">What lives inside the envelope</h2>
@@ -325,7 +337,11 @@ canonicalPath: "/event-envelope/"
             action:
               'Add schema validation output to observability dashboards and alert on consecutive failures.'
           }
-        ]
+        ],
+        {
+          group: 'event-envelope',
+          summaryLabel: 'Event envelope readiness scorecard'
+        }
       )
       | safe
     }}

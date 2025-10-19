@@ -43,7 +43,7 @@ html[data-theme="dark"] .intro-quick-nav {
 .intro-quick-nav a {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.5rem;
   padding: 0.4rem 0.95rem;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
@@ -86,4 +86,35 @@ html[data-theme="dark"] .intro-quick-nav a:focus {
   border-color: rgba(45, 212, 191, 0.42);
   background: rgba(13, 148, 136, 0.16);
   color: #99f6e4;
+}
+
+.intro-quick-nav a .quick-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45rem;
+  padding: 0 0.45rem;
+  height: 1.2rem;
+  border-radius: var(--radius-full);
+  background: rgba(13, 148, 136, 0.14);
+  color: #0f766e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.intro-quick-nav a .quick-nav-badge[data-state="complete"] {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+html[data-theme="dark"] .intro-quick-nav a .quick-nav-badge {
+  background: rgba(45, 212, 191, 0.22);
+  color: #5eead4;
+}
+
+html[data-theme="dark"] .intro-quick-nav a .quick-nav-badge[data-state="complete"] {
+  background: rgba(45, 212, 191, 0.32);
+  color: #ccfbf1;
 }

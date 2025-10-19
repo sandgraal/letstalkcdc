@@ -12,6 +12,7 @@ canonicalPath: "/ops-offsets/"
 
 <div class="page-wrap prose">
   {{ quickNav.render('Offsets quick nav', [
+    { id: 'tracker', label: 'Readiness tracker' },
     { id: 'checklist', label: 'Ops checklist' },
     { id: 'storage', label: 'Offset storage patterns' },
     { id: 'rewind', label: 'Safe rewind procedure' },
@@ -22,6 +23,17 @@ canonicalPath: "/ops-offsets/"
     { id: 'scorecard', label: 'Readiness scorecard' },
     { id: 'resources', label: 'Further resources' }
   ]) | safe }}
+
+  {{
+    scorecard.summary('ops-offsets', {
+      sectionId: 'tracker',
+      title: 'Offset operations readiness tracker',
+      description: 'Watch overall rewind preparedness climb as you complete each operational checklist.',
+      resetLabel: 'Reset all offset checklists',
+      meterLabel: 'Offset readiness progress'
+    })
+    | safe
+  }}
 
   <section id="checklist" aria-labelledby="checklist-title">
     <h2 id="checklist-title">Guardrail checklist</h2>
@@ -197,7 +209,9 @@ curl -X POST "${CONNECT_URL}/connectors/${CONNECTOR_NAME}/resume"
         ],
         {
           capabilityHeading: 'Area',
-          actionHeading: 'If not, next step'
+          actionHeading: 'If not, next step',
+          group: 'ops-offsets',
+          summaryLabel: 'Offset operations readiness scorecard'
         }
       )
       | safe
