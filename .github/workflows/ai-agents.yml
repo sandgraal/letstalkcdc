@@ -43,9 +43,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        if: ${{ needs.setup.outputs.has_pkg == 'true' }}
+        run: npm ci
       - name: Build site if available
-        run: |
-          if [ -f package.json ] && jq -e '.scripts.build' package.json > /dev/null; then npm run build; else echo "No build script"; fi
+        if: ${{ needs.setup.outputs.has_build == 'true' }}
+        run: npm run build
       - name: Log run
         run: node ai/scripts/log-agent-run.mjs
         env:
