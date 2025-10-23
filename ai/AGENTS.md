@@ -8,7 +8,7 @@ Use a short prefix for clarity. Set it in `.chatgpt-context.yml` under `agent_pr
 
 | Agent Name        | Role                                                               | Trigger                         | Linked Script/Workflow                         |
 |-------------------|--------------------------------------------------------------------|---------------------------------|-----------------------------------------------|
-| `site-content`    | Builds and updates site pages, product catalog, docs, and blog     | On push, manual, schedule       | `.github/workflows/agents.yml` (content job)  |
+| `site-content`    | Builds and updates site pages, product catalog, docs, and blog     | On push, manual, schedule       | `.github/workflows/ai-agents.yml` (content job)  |
 | `site-image`      | Generates and optimizes images for responsive use                  | Manual or schedule              | `ai/scripts/image-optimize.mjs`               |
 | `site-packaging`  | Produces label exports and print-ready assets                      | On commit to `assets/labels/`   | `ai/scripts/package-render.mjs`               |
 | `site-data`       | Syncs structured data to collections and JSON caches               | On change to `/src/_data/`      | `ai/scripts/data-sync.mjs`                    |
@@ -48,7 +48,7 @@ All agents must:
 ## 7. Deployment
 - Detects `package.json` and runs `npm ci && npm run build` if present
 - Pages deployment remains in your existing Pages workflow (if used)
-- Extend automation via `.github/workflows/agents.yml`
+- Extend automation via `.github/workflows/ai-agents.yml`
 
 ## 8. Contributing Agents
 1. Name with the chosen prefix, e.g., `site-<role>`

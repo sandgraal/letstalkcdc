@@ -15,5 +15,5 @@ Purpose: define recurring jobs and their triggers. Keep human effort minimal.
 
 ## How to add a job
 1. Create a script in `ai/scripts/`
-2. Add a job block to `.github/workflows/agents.yml`
+2. Add a job block to `.github/workflows/ai-agents.yml`
 3. Log results via `ai/scripts/log-agent-run.mjs`
