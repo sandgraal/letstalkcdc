@@ -37,3 +37,15 @@ letstalkcdc/
 ├── package-lock.json
 └── README.md
 ```
+
+## Deploying to GitHub Pages
+
+This repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) that builds the Eleventy site and publishes it to GitHub Pages whenever `main` is updated.
+
+1. Enable GitHub Pages for the repository and select **GitHub Actions** as the source.
+2. Define the following repository variables (Settings → Secrets and variables → Actions → Variables) so the build knows where it is being hosted:
+   - `SITE_HOST`: The fully-qualified domain where the site will be served (for example `https://letstalkcdc.github.io` or your custom domain). This controls canonical URLs and metadata.
+   - `ELEVENTY_PATH_PREFIX`: Leave blank for a root-level deployment or set to `/<repository-name>` if the site is published under a project page path.
+3. Push to `main` (or trigger the workflow manually) to build and deploy the `_site/` output.
+
+The runtime JavaScript automatically honours the configured path prefix, so internal links continue to work when the site is hosted under a subdirectory.

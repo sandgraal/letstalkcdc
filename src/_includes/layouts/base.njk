@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-path-prefix="{{ '/' | url }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% if title %}{{ title }} | {{ site.title }}{% else %}{{ site.seoTitle }}{% endif %}</title>
     <meta name="description" content="{{ description | default(site.description) }}">
     <meta name="robots" content="index,follow,max-image-preview:large">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ '/apple-touch-icon.png' | url }}">
+    <link rel="icon" href="{{ '/favicon.svg' | url }}" type="image/svg+xml">
+    <link rel="icon" href="{{ '/favicon.ico' | url }}">
     <link rel="canonical" href="{{ site.host }}{{ canonicalPath | default(page.url) }}">
     <meta name="theme-color" content="#0f172a">
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
-    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="global-header">
       <div class="nav-container">
-        <a class="site-title" href="/">{{ site.seoTitle }}</a>
+        <a class="site-title" href="{{ '/' | url }}">{{ site.seoTitle }}</a>
         <button
           class="nav-toggle"
           type="button"
@@ -38,9 +38,9 @@
         </button>
         <div class="nav-right" id="primaryNav" data-nav-panel>
           <nav aria-label="Primary" class="nav-links">
-            <a class="{% if page.url == '/' %}active{% endif %}" href="/">Home</a>
-            <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="/overview/">The Series</a>
-            <a class="{% if page.url | startsWith('/design-system') %}active{% endif %}" href="/design-system/">Design System</a>
+            <a class="{% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
+            <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">The Series</a>
+            <a class="{% if page.url | startsWith('/design-system') %}active{% endif %}" href="{{ '/design-system/' | url }}">Design System</a>
           </nav>
           <div class="nav-utilities">
             <button
@@ -93,10 +93,45 @@
       </div>
     </div>
 
-    <script type="module" src="/assets/js/app.js"></script>
+    <script>
+      (function () {
+        const raw = (document.documentElement.dataset.pathPrefix || '/').replace(/\/$/, '')
+          .replace(/^\/$/, '');
+        window.__PATH_PREFIX__ = raw;
+
+        if (!raw) {
+          return;
+        }
+
+        const rewriteAttribute = (element, attribute) => {
+          const value = element.getAttribute(attribute);
+          if (!value || value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('#')) {
+            return;
+          }
+          if (!value.startsWith('/') || value.startsWith(raw)) {
+            return;
+          }
+          element.setAttribute(attribute, `${raw}${value}`);
+        };
+
+        const adjustDom = () => {
+          document.querySelectorAll('a[href^="/"]').forEach((el) => rewriteAttribute(el, 'href'));
+          document.querySelectorAll('img[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('script[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('form[action^="/"]').forEach((el) => rewriteAttribute(el, 'action'));
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', adjustDom, { once: true });
+        } else {
+          adjustDom();
+        }
+      })();
+    </script>
+    <script type="module" src="{{ '/assets/js/app.js' | url }}"></script>
     {% if scripts %}
       {% for script in scripts %}
-        <script type="module" src="{{ script }}"></script>
+        <script type="module" src="{{ script | url }}"></script>
       {% endfor %}
     {% endif %}
     {% if appwrite.endpoint and appwrite.project %}
@@ -112,7 +147,7 @@
       <script>
         window.CDC_JOURNEY_SLUG = {{ seriesKey | dump | safe }};
       </script>
-      <script type="module" src="/scripts/progress.js"></script>
+      <script type="module" src="{{ '/scripts/progress.js' | url }}"></script>
     {% endif %}
     <footer class="site-footer">
       <p>{{ site.copyright }}</p>

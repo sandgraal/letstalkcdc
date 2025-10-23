@@ -1,3 +1,5 @@
+import { withBasePath } from './utils/path-prefix.js';
+
 const doc = document;
 
 const syncThemeToggle = (mode) => {
@@ -219,7 +221,7 @@ onReady(() => {
   const closeBtn = overlay.querySelector('.close-search');
   let data = [];
 
-  fetch('/search-index.json', { cache: 'force-cache' })
+  fetch(withBasePath('/search-index.json'), { cache: 'force-cache' })
     .then((res) => (res.ok ? res.json() : []))
     .then((json) => {
       if (Array.isArray(json)) {
