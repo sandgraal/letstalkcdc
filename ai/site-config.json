@@ -1,0 +1,14 @@
+{
+  "project_name": "Let's Talk CDC",
+  "output_dir": "_site",
+  "build_script": "build",
+  "default_branch": "main",
+  "agents": [
+    "site-content",
+    "site-image",
+    "site-data",
+    "site-packaging",
+    "site-analytics"
+  ],
+  "logs_dir": "ai/logs"
+}

@@ -1,0 +1,21 @@
+project_name: "Let's Talk CDC"
+repo_url: https://github.com/letstalkcdc/letstalkcdc
+stack:
+  ssg: eleventy
+  node: ">=20"
+directories:
+  source: src
+  data: src/_data
+  layouts: src/_includes/layouts
+  assets: src/assets
+  output: _site
+agent_prefix: site
+active_agents:
+  - site-content
+  - site-image
+  - site-data
+  - site-packaging
+  - site-analytics
+constraints:
+  privacy: "no external API calls unless configured"
+  publishing: "only dedicated workflows can deploy"

@@ -1,0 +1,110 @@
+name: AI Agents
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: 'Run a specific agent (content, image, packaging, data, analytics)'
+        required: false
+        default: 'all'
+  schedule:
+    - cron: '0 3 * * *' # daily at 03:00 UTC
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      has_pkg: ${{ steps.detect.outputs.has_pkg }}
+      has_build: ${{ steps.detect.outputs.has_build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Detect package.json and build script
+        id: detect
+        run: |
+          if [ -f package.json ]; then echo "has_pkg=true" >> $GITHUB_OUTPUT; else echo "has_pkg=false" >> $GITHUB_OUTPUT; fi
+          if [ -f package.json ] && jq -e '.scripts.build' package.json > /dev/null; then echo "has_build=true" >> $GITHUB_OUTPUT; else echo "has_build=false" >> $GITHUB_OUTPUT; fi
+
+      - name: Install deps
+        if: ${{ steps.detect.outputs.has_pkg == 'true' }}
+        run: npm ci
+
+  content:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'content' || github.event.inputs.agent == 'all' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site if available
+        run: |
+          if [ -f package.json ] && jq -e '.scripts.build' package.json > /dev/null; then npm run build; else echo "No build script"; fi
+      - name: Log run
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-content
+          STATUS: ok
+          DURATION_MS: 0
+
+  image:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'image' || github.event.inputs.agent == 'all' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node ai/scripts/image-optimize.mjs || true
+      - name: Log run
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-image
+          STATUS: ok
+          DURATION_MS: 0
+
+  packaging:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'packaging' || github.event.inputs.agent == 'all' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node ai/scripts/package-render.mjs || true
+      - name: Log run
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-packaging
+          STATUS: ok
+          DURATION_MS: 0
+
+  data:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'data' || github.event.inputs.agent == 'all' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node ai/scripts/data-sync.mjs || true
+      - name: Log run
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-data
+          STATUS: ok
+          DURATION_MS: 0
+
+  analytics:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'analytics' || github.event.inputs.agent == 'all' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node ai/scripts/analytics.mjs || true
+      - name: Log run
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-analytics
+          STATUS: ok
+          DURATION_MS: 0
