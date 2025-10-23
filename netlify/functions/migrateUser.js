@@ -315,3 +315,12 @@ export const handler = async (event) => {
     });
   }
 };
+
+export {
+  Query,
+  documentPermissions,
+  eventPermissions,
+  listAllDocuments,
+  parseTimestamp,
+  shouldPreferSource,
+};
