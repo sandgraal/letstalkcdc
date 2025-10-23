@@ -26,5 +26,16 @@
         {% endif %}
       </div>
     </nav>
+    <div class="series-progress" data-progress-toolbar>
+      <div class="series-progress__info">
+        <span class="series-progress__label">Progress</span>
+        <span class="series-progress__value" data-progress-percent>0%</span>
+        <span class="series-progress__status" data-progress-status>Not signed in</span>
+      </div>
+      <div class="series-progress__auth">
+        <button type="button" class="button ghost" data-progress-login="github">Sign in with GitHub</button>
+        <button type="button" class="button ghost" data-progress-logout hidden>Sign out</button>
+      </div>
+    </div>
   </div>
 {% endif %}

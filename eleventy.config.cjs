@@ -4,6 +4,7 @@ module.exports = function (eleventyConfig) {
     "src/assets": "assets",
     "src/resources": "downloads",
     "compose.yaml": "downloads/compose.yaml",
+    scripts: "scripts",
   });
 
   eleventyConfig.addWatchTarget("src/assets/css");
@@ -17,7 +18,7 @@ module.exports = function (eleventyConfig) {
   return {
     dir: {
       input: "src",
-      output: "dist",
+      output: "_site",
       includes: "_includes",
       layouts: "_includes/layouts",
     },

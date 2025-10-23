@@ -1,10 +1,12 @@
 ---
-layout: layout-page
+layout: base.njk
 title: "Let’s Talk CDC #7 — From Change Capture to Continuous Integration"
 description: "How treating data pipelines like code bridges the gap between CDC and CI/CD."
 canonicalPath: "/from-change-capture-to-ci/"
 seriesKey: "from-change-capture-to-ci"
 ---
+
+{% import "components/ui.njk" as ui %}
 
 {{ ui.hero(heroConfig) | safe }}
 
