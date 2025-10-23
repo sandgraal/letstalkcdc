@@ -4,7 +4,8 @@ import { resolve } from 'path';
 
 const { default: pa11y } = await import('pa11y');
 
-const toUrl = (...segments) => pathToFileURL(resolve('dist', ...segments)).href;
+const outputDirName = process.env.BUILD_OUTPUT_DIR ?? '_site';
+const toUrl = (...segments) => pathToFileURL(resolve(outputDirName, ...segments)).href;
 
 const targets = [
   { label: 'Home', url: toUrl('index.html') },

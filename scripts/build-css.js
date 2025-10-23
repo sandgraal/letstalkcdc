@@ -8,7 +8,8 @@ const minifier = resolve('node_modules/.bin/node'); // we'll run node + minify s
 const minifyScript = resolve('scripts/minify-css.js');
 
 const srcDir = resolve('src/assets/css/pages');
-const outDir = resolve('dist/assets/css/pages');
+const outputDirName = process.env.BUILD_OUTPUT_DIR ?? '_site';
+const outDir = resolve(outputDirName, 'assets', 'css', 'pages');
 
 mkdirSync(outDir, { recursive: true });
 

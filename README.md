@@ -27,7 +27,7 @@ letstalkcdc/
 │   ├── search-index.11ty.cjs    # JSON feed used by local search
 │   ├── index.njk                # Home page template
 │   └── …                        # Content directories (quickstarts, labs, guides, etc.)
-├── dist/                       # Generated site output (`npm run build`)
+├── _site/                      # Generated site output (`npm run build`)
 ├── scripts/                    # Build helpers (CSS minification, etc.)
 ├── src/assets/js/app.js        # Client-side interactions shared sitewide
 ├── src/assets/css/styles.css   # Source stylesheet processed by PostCSS

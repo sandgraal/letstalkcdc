@@ -4,16 +4,17 @@ import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 
 const root = resolve('.');
-const distDir = join(root, 'dist');
+const outputDirName = process.env.BUILD_OUTPUT_DIR ?? '_site';
+const outputDir = join(root, outputDirName);
 
-const read = (relativePath) => readFileSync(join(distDir, relativePath), 'utf8');
+const read = (relativePath) => readFileSync(join(outputDir, relativePath), 'utf8');
 
-const ensureDist = () => {
-  if (existsSync(distDir)) {
+const ensureOutputDir = () => {
+  if (existsSync(outputDir)) {
     return;
   }
 
-  console.log('dist directory missing; running "npm run build" to generate site…');
+  console.log(`${outputDirName} directory missing; running "npm run build" to generate site…`);
   const { status } = spawnSync('npm', ['run', 'build'], {
     stdio: 'inherit',
     shell: process.platform === 'win32'
@@ -23,11 +24,16 @@ const ensureDist = () => {
     console.error('Unable to build the site; aborting smoke test.');
     process.exit(status ?? 1);
   }
+
+  if (!existsSync(outputDir)) {
+    console.error(`Build completed but ${outputDirName} directory is still missing; aborting smoke test.`);
+    process.exit(1);
+  }
 };
 
 const failures = [];
 
-ensureDist();
+ensureOutputDir();
 
 const walkHtml = (() => {
   const walk = (dir) => {
@@ -41,7 +47,7 @@ const walkHtml = (() => {
     }
     return acc;
   };
-  return walk(distDir);
+  return walk(outputDir);
 })();
 
 try {

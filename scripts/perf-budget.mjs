@@ -3,7 +3,8 @@ import { statSync, readdirSync } from 'fs';
 import { join, resolve } from 'path';
 
 const root = resolve('.');
-const distDir = join(root, 'dist');
+const outputDirName = process.env.BUILD_OUTPUT_DIR ?? '_site';
+const outputDir = join(root, outputDirName);
 
 const bytes = (kb) => kb * 1024;
 
@@ -19,13 +20,13 @@ const pageBudgets = [
   { label: 'Exactly-Once', path: ['exactly-once', 'index.html'], max: bytes(280) }
 ];
 
-const jsDir = join(distDir, 'assets', 'js', 'pages');
+const jsDir = join(outputDir, 'assets', 'js', 'pages');
 const pageScripts = readdirSync(jsDir)
   .filter((name) => name.endsWith('.js'))
   .map((name) => ({ label: `Page script: ${name}`, path: ['assets', 'js', 'pages', name], max: bytes(120) }));
 
 const check = ({ label, path, max }) => {
-  const filePath = join(distDir, ...path);
+  const filePath = join(outputDir, ...path);
   const size = statSync(filePath).size;
   return { label, filePath, size, max, ok: size <= max };
 };
