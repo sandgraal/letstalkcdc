@@ -64,6 +64,7 @@ Eleventy will now expose `seriesKey`, `heroConfig`, and any other exports to the
 
 Author `index.njk` with standard front matter and use the shared UI macros. The `layout: base.njk` line pulls in the global navigation, while `seriesKey` enables the previous/next module strip to resolve automatically based on `series.cjs` ordering.
 
+{% raw %}
 ```njk
 ---
 layout: base.njk
@@ -80,6 +81,7 @@ canonicalPath: /anatomy-of-connectors/
   <p>…</p>
 </section>
 ```
+{% endraw %}
 
 ## 5. Add optional assets
 
