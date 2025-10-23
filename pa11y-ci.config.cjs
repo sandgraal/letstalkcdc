@@ -1,7 +1,9 @@
 const path = require('path');
 
+const outputDirName = process.env.BUILD_OUTPUT_DIR || '_site';
+
 const toFileUrl = (...segments) => {
-  const filePath = path.resolve(process.cwd(), 'dist', ...segments);
+  const filePath = path.resolve(process.cwd(), outputDirName, ...segments);
   return `file://${filePath}`;
 };
 
