@@ -18,7 +18,12 @@
         {% endif %}
       </div>
       <div class="series-nav__group series-nav__group--center">
-        <a class="series-nav__link series-nav__link--overview" href="/overview/#series-{% if current.key %}{{ current.key }}{% endif %}">Back to Overview</a>
+        <a
+          class="series-nav__link series-nav__link--overview"
+          href="{{ '/overview/' | url }}#series-{% if current.key %}{{ current.key }}{% endif %}"
+        >
+          Back to Overview
+        </a>
       </div>
       <div class="series-nav__group series-nav__group--end{% if not next %} is-disabled{% endif %}">
         {% if next %}

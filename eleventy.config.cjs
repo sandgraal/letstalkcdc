@@ -1,3 +1,12 @@
+const normalizePathPrefix = (prefix) => {
+  if (!prefix || prefix === "/") {
+    return "/";
+  }
+
+  const trimmed = prefix.replace(/^\/+|\/+$/g, "");
+  return trimmed ? `/${trimmed}/` : "/";
+};
+
 module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "src/static": "/",
@@ -15,7 +24,10 @@ module.exports = function (eleventyConfig) {
     return value.startsWith(prefix);
   });
 
+  const pathPrefix = normalizePathPrefix(process.env.ELEVENTY_PATH_PREFIX);
+
   return {
+    pathPrefix,
     dir: {
       input: "src",
       output: "_site",
