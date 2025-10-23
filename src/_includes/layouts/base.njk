@@ -14,7 +14,7 @@
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
     <link rel="stylesheet" href="/assets/css/styles.css">
   </head>
-  <body>
+  <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="global-header">
       <div class="nav-container">
@@ -83,11 +83,36 @@
       {% include "components/series-nav.njk" %}
     {% endif %}
 
+    <div class="progress-toast" data-progress-toast hidden aria-live="polite">
+      <div class="progress-toast__body" role="status">
+        <p class="progress-toast__message" data-progress-toast-message></p>
+        <div class="progress-toast__actions">
+          <button type="button" class="button" data-progress-toast-resume>Resume</button>
+          <button type="button" class="button ghost" data-progress-toast-dismiss>Dismiss</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/assets/js/app.js"></script>
     {% if scripts %}
       {% for script in scripts %}
         <script type="module" src="{{ script }}"></script>
       {% endfor %}
+    {% endif %}
+    {% if appwrite.endpoint and appwrite.project %}
+      <script>
+        window.APPWRITE_ENDPOINT = {{ appwrite.endpoint | dump | safe }};
+        window.APPWRITE_PROJECT = {{ appwrite.project | dump | safe }};
+        window.APPWRITE_DB_ID = {{ appwrite.databaseId | dump | safe }};
+        window.COL_PROGRESS_ID = {{ appwrite.progressCollectionId | dump | safe }};
+        window.COL_EVENTS_ID = {{ appwrite.eventsCollectionId | dump | safe }};
+      </script>
+    {% endif %}
+    {% if seriesKey %}
+      <script>
+        window.CDC_JOURNEY_SLUG = {{ seriesKey | dump | safe }};
+      </script>
+      <script type="module" src="/scripts/progress.js"></script>
     {% endif %}
     <footer class="site-footer">
       <p>{{ site.copyright }}</p>
