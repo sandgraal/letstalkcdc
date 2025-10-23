@@ -45,16 +45,11 @@ COL_EVENTS_ID=events
 - Merge to `main` once verified.
 
 
-Update package.json:
-
-"dependencies": {
-  "node-appwrite": "^13.0.0"
-}
-
-
 Ensure Eleventy wiring:
 
 Journey templates import /scripts/progress.js.
+
+Netlify functions rely on the built-in Fetch API and no longer require the `node-appwrite` SDK dependency.
 
 Buttons call CDCProgress.signInWithOAuth("github") and CDCProgress.signOut().
 

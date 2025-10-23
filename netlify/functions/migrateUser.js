@@ -1,10 +1,119 @@
-import {
-  Client,
-  Databases,
-  Permission,
-  Query,
-  Role,
-} from "node-appwrite";
+const fetchFn = globalThis.fetch?.bind(globalThis);
+
+if (!fetchFn) {
+  throw new Error("Global fetch API is not available in this runtime");
+}
+
+class AppwriteClient {
+  constructor(endpoint, project, apiKey) {
+    this.endpoint = endpoint.replace(/\/$/, "");
+    this.project = project;
+    this.apiKey = apiKey;
+  }
+
+  async request(path, { method = "GET", queries = [], body } = {}) {
+    const base = this.endpoint.endsWith("/")
+      ? this.endpoint
+      : `${this.endpoint}/`;
+    const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+    const url = new URL(normalizedPath, base);
+
+    for (const query of queries) {
+      if (query !== undefined && query !== null) {
+        url.searchParams.append("queries[]", query);
+      }
+    }
+
+    const response = await fetchFn(url.toString(), {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Appwrite-Project": this.project,
+        "X-Appwrite-Key": this.apiKey,
+        "X-Appwrite-Mode": "admin",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Appwrite request failed: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    return response.text();
+  }
+}
+
+class Databases {
+  constructor(client) {
+    this.client = client;
+  }
+
+  listDocuments(databaseId, collectionId, queries = []) {
+    return this.client.request(
+      `/databases/${databaseId}/collections/${collectionId}/documents`,
+      { queries }
+    );
+  }
+
+  updateDocument(databaseId, collectionId, documentId, data, permissions = []) {
+    const payload = { ...data };
+
+    if (permissions.length > 0) {
+      payload.permissions = permissions;
+    }
+
+    return this.client.request(
+      `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`,
+      {
+        method: "PATCH",
+        body: payload,
+      }
+    );
+  }
+
+  deleteDocument(databaseId, collectionId, documentId) {
+    return this.client.request(
+      `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+}
+
+const Role = {
+  user: (id) => `user:${id}`,
+};
+
+const Permission = {
+  read: (role) => `read("${role}")`,
+  update: (role) => `update("${role}")`,
+  delete: (role) => `delete("${role}")`,
+};
+
+const serializeValues = (values) =>
+  `[${values.map((value) => JSON.stringify(value)).join(",")}]`;
+
+const Query = {
+  equal: (attribute, value) => {
+    const values = Array.isArray(value) ? value : [value];
+    return `equal("${attribute}", ${serializeValues(values)})`;
+  },
+  limit: (count) => `limit(${Number(count)})`,
+  cursorAfter: (cursor) => `cursorAfter(${JSON.stringify(cursor)})`,
+};
 
 const {
   APPWRITE_ENDPOINT,
@@ -29,11 +138,7 @@ const createClient = () => {
   if (!APPWRITE_ENDPOINT || !APPWRITE_PROJECT || !APPWRITE_API_KEY) {
     throw new Error("Missing Appwrite configuration");
   }
-  const client = new Client();
-  client.setEndpoint(APPWRITE_ENDPOINT);
-  client.setProject(APPWRITE_PROJECT);
-  client.setKey(APPWRITE_API_KEY);
-  return client;
+  return new AppwriteClient(APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY);
 };
 
 const listAllDocuments = async (databases, collectionId, filters = []) => {
