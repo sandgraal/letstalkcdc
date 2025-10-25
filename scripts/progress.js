@@ -84,22 +84,26 @@ const canRenderDashboard = () => {
 
 const transformDocsForDashboard = (docs = []) =>
   docs.map((doc) => {
-    const percent = typeof doc.percent === "number" ? doc.percent : 0;
+    const rawPercent = Number(doc.percent ?? 0);
+    const percent = Number.isFinite(rawPercent)
+      ? Math.min(100, Math.max(0, rawPercent))
+      : 0;
+    const updatedAt =
+      doc.updatedAt ?? doc.$updatedAt ?? doc.$createdAt ?? new Date().toISOString();
+
     return {
       moduleId: doc.journeySlug,
       moduleTitle:
         moduleTitleLookup.get(doc.journeySlug) ?? doc.journeySlug ?? "",
+      percent,
       status:
         percent >= 99
           ? "completed"
           : percent > 0
           ? "in-progress"
           : "not-started",
-      updatedAt:
-        doc.updatedAt ??
-        doc.$updatedAt ??
-        doc.$createdAt ??
-        new Date().toISOString(),
+      updatedAt,
+      step: typeof doc.step === "number" ? doc.step : null,
     };
   });
 
