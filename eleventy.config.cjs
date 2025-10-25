@@ -1,11 +1,4 @@
-const normalizePathPrefix = (prefix) => {
-  if (!prefix || prefix === "/") {
-    return "/";
-  }
-
-  const trimmed = prefix.replace(/^\/+|\/+$/g, "");
-  return trimmed ? `/${trimmed}/` : "/";
-};
+const { getPathPrefix } = require("./lib/path-prefix.cjs");
 
 module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
@@ -26,7 +19,7 @@ module.exports = function (eleventyConfig) {
     return value.startsWith(prefix);
   });
 
-  const pathPrefix = normalizePathPrefix(process.env.ELEVENTY_PATH_PREFIX);
+  const pathPrefix = getPathPrefix();
 
   return {
     pathPrefix,
