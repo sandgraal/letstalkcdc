@@ -1,0 +1,177 @@
+:root {
+  --bg: #0b121d;
+  --surface: #0f1726;
+  --surface2: #0b1322;
+  --border: #2a3441;
+  --muted: #9aa7b7;
+}
+
+
+.dlq-app {
+  background: var(--bg);
+  color: #e6eef7;
+  font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+  padding-bottom: 2.5rem;
+}
+
+.dlq-app__back,
+.dlq-app__content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.dlq-app__back {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dlq-app a {
+  color: inherit;
+}
+
+h1 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  margin: 0.35rem 0;
+}
+
+.lede {
+  opacity: 0.9;
+  margin: 0 0 1rem;
+}
+
+.dlq-app .wrap {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1080px) {
+  .dlq-app .wrap {
+    grid-template-columns: 1.05fr 1fr;
+  }
+}
+
+.dlq-app .panel {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
+  margin: 0;
+}
+
+.dlq-app .muted {
+  color: var(--muted);
+}
+
+.dlq-app .row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0.5rem 0;
+}
+
+.dlq-app input[type="text"] {
+  min-width: 230px;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface2);
+  color: #e6eef7;
+  padding: 0.45rem 0.55rem;
+}
+
+.dlq-app .btn {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.dlq-app .btn:hover,
+.dlq-app .btn:focus {
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.dlq-app .small {
+  font-size: 0.9rem;
+}
+
+.dlq-app pre {
+  margin: 0.4rem 0 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface2);
+  padding: 0.65rem;
+  overflow: auto;
+}
+
+.dlq-app code {
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dlq-app .grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dlq-app .card {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.8rem;
+  background: var(--surface2);
+}
+
+.dlq-app details {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--surface);
+  margin-top: 0.6rem;
+}
+
+.dlq-app details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dlq-app .pill {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.ok {
+  color: #22c55e;
+}
+
+.warn {
+  color: #f59e0b;
+}
+
+.err {
+  color: #ef4444;
+}
+
+.kvs {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.3rem 0.6rem;
+  font-size: 0.95rem;
+}
+
+.right {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.copy {
+  float: right;
+}

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en" data-path-prefix="/">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Materialization 101 | CDC: The Missing Manual</title>
+    <meta name="description" content="Translate CDC change events into reliable warehouse tables with upsert, delete, and history-friendly patterns.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico">
+    
+    
+      
+      
+        
+      
+    
+    
+      
+    
+    <link rel="canonical" href="https://letstalkcdc.github.io/materialization">
+    <meta name="theme-color" content="#0f172a">
+    
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+  </head>
+  <body data-journey-slug="materialization">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primaryNav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="nav-right" id="primaryNav" data-nav-panel>
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+            <a class="" href="/design-system/">Design System</a>
+          </nav>
+          <div class="nav-utilities">
+            <button
+              aria-label="Toggle dark mode"
+              class="theme-toggle"
+              data-toggle-theme
+              type="button"
+              aria-pressed="false"
+            >
+              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  fill="none"
+                />
+              </svg>
+              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="sr-only">Toggle theme</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+
+
+
+
+  <section class="hero-section hero-align-center">
+    <div class="hero-container container">
+      <div class="prose">
+        
+        <h1 class="type-display">Materialization 101</h1>
+        
+          <div class="hero-lede"><p>Master the merge logic that turns change events into durable, queryable tables across warehouses, lakes, and caches.</p></div>
+        
+        
+          <div class="hero-actions">
+            
+              <a class="button primary" href="#patterns">Compare Patterns</a>
+            
+              <a class="button ghost" href="#quality">Ship Quality Gates</a>
+            
+          </div>
+        
+      </div>
+    </div>
+  </section>
+
+<div class="page-wrap prose">
+  
+  <nav aria-label="Materialization quick nav" class="intro-quick-nav">
+    <ul>
+      
+        
+        <li><a href="#tracker">Readiness tracker</a></li>
+      
+        
+        <li><a href="#patterns">Materialization patterns</a></li>
+      
+        
+        <li><a href="#merge">Idempotent merge logic</a></li>
+      
+        
+        <li><a href="#sql">SQL templates</a></li>
+      
+        
+        <li><a href="#history">Maintaining history</a></li>
+      
+        
+        <li><a href="#late-arrivals">Late arrivals</a></li>
+      
+        
+        <li><a href="#ops">Operational guardrails</a></li>
+      
+        
+        <li><a href="#quality">Data quality checks</a></li>
+      
+        
+        <li><a href="#verification">Verification playbooks</a></li>
+      
+        
+        <li><a href="#scorecard">Readiness scorecard</a></li>
+      
+        
+        <li><a href="#resources">Further resources</a></li>
+      
+    </ul>
+  </nav>
+
+
+    
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <section id="tracker" aria-labelledby="tracker-title" class="scorecard-summary-section">
+    <div class="scorecard-summary" data-scorecard-summary="materialization">
+      <header class="scorecard-summary-header">
+        <div class="scorecard-summary-text">
+          <h2 class="scorecard-summary-title" id="tracker-title">Materialization readiness tracker</h2>
+          
+            <p class="scorecard-summary-description">Track how close each readiness checklist is to production-ready materialization in a single view.</p>
+          
+        </div>
+        <div class="scorecard-summary-progress-group">
+          <p
+            class="scorecard-summary-progress"
+            data-scorecard-summary-progress
+            role="status"
+            aria-live="polite"
+          >
+            0 of 0 readiness checks complete (0%)
+          </p>
+          <div
+            class="scorecard-summary-meter"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+            aria-label="Materialization readiness progress"
+            data-scorecard-summary-meter
+          >
+            <span class="scorecard-summary-meter-fill" data-scorecard-summary-meter-fill style="width: 0%"></span>
+          </div>
+        </div>
+      </header>
+      <div class="scorecard-summary-body">
+        <ul class="scorecard-summary-list" data-scorecard-summary-list></ul>
+        <p class="scorecard-summary-empty" data-scorecard-summary-empty hidden>No readiness checklists available yet.</p>
+      </div>
+      
+        <div class="scorecard-summary-actions">
+          <button type="button" class="scorecard-summary-reset" data-scorecard-summary-reset>
+            Reset all materialization checklists
+          </button>
+        </div>
+      
+    </div>
+  </section>
+
+
+  <section id="patterns" aria-labelledby="patterns-title">
+    <h2 id="patterns-title">Choose the right pattern for the job</h2>
+    <table>
+      <caption>Materialization strategies compared</caption>
+      <thead>
+        <tr>
+          <th scope="col">Pattern</th>
+          <th scope="col">How it works</th>
+          <th scope="col">Best for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Mutable table (upsert/delete)</th>
+          <td>Apply change events directly to a target table using merge logic.</td>
+          <td>Serving layer caches, feature stores, operational analytics.</td>
+        </tr>
+        <tr>
+          <th scope="row">Streaming merge</th>
+          <td>Continuous ingestion job (dbt incremental, Snowpipe, Flink) performs row-level MERGE as events arrive.</td>
+          <td>Low-latency marts where freshness is minutes, not hours.</td>
+        </tr>
+        <tr>
+          <th scope="row">Append-only with views</th>
+          <td>Store each event as a row, surface latest state via window functions.</td>
+          <td>Auditable fact tables, debugging, ad-hoc comparisons.</td>
+        </tr>
+        <tr>
+          <th scope="row">Incremental batch</th>
+          <td>Land CDC events in stages, then run scheduled merge statements.</td>
+          <td>Warehouses that favor batch execution or have strict cost controls.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="merge" aria-labelledby="merge-title">
+    <h2 id="merge-title">Build idempotent merge logic</h2>
+    <ol>
+      <li>Stage events in a temporary table keyed by primary key and log position.</li>
+      <li>Deduplicate by picking the highest <code>ts_ms</code> (or change version) per key.</li>
+      <li>Merge updates and inserts using the latest event per key.</li>
+      <li>Apply deletes as tombstones that remove or flag the row.</li>
+      <li>Record the processed offset so restarts can resume safely.</li>
+      <li>Publish metrics: rows inserted, updated, deleted, skipped duplicates.</li>
+    </ol>
+    <p class="callout">
+      When duplicates land, the <em>last change wins</em> rule keeps results stable. Do not rely on arrival order; rely on source
+      timestamps or change versions.
+    </p>
+    <p>
+      Capture merge SQL in version control and tag it with the connector
+      version it expects. This makes rollbacks trivial when envelope changes
+      introduce new columns.
+    </p>
+  </section>
+
+  <section id="sql" aria-labelledby="sql-title">
+    <h2 id="sql-title">SQL templates you can adapt</h2>
+    <details open>
+      <summary>Snowflake MERGE</summary>
+      <pre><code class="language-sql">MERGE INTO analytics.orders tgt
+USING staging.orders_src src
+  ON tgt.order_id = src.order_id
+WHEN MATCHED AND src.op = 'd' THEN DELETE
+WHEN MATCHED THEN UPDATE SET
+  amount = src.amount,
+  status = src.status,
+  updated_at = src.ts_ms
+WHEN NOT MATCHED AND src.op IN ('c', 'u') THEN
+  INSERT (order_id, amount, status, updated_at)
+  VALUES (src.order_id, src.amount, src.status, src.ts_ms);
+</code></pre>
+    </details>
+    <details>
+      <summary>BigQuery change-applier</summary>
+      <pre><code class="language-sql">CREATE OR REPLACE TABLE analytics.orders AS
+SELECT AS VALUE latest.*
+FROM (
+  SELECT *,
+         ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ts_ms DESC) AS rnk
+  FROM staging.orders_src
+)
+WHERE rnk = 1 AND op != 'd';
+</code></pre>
+    </details>
+    <details>
+      <summary>dbt incremental model</summary>
+      
+      <pre><code class="language-sql">{{
+  config(
+    materialized='incremental',
+    unique_key='order_id'
+  )
+}}
+
+with ranked as (
+  select *,
+         row_number() over (
+           partition by order_id
+           order by ts_ms desc
+         ) as rnk
+  from {{ source('cdc', 'orders') }}
+)
+
+select * except(rnk)
+from ranked
+where rnk = 1 and op != 'd';
+</code></pre>
+      
+    </details>
+  </section>
+
+  <section id="history" aria-labelledby="history-title">
+    <h2 id="history-title">Keep history when you need it</h2>
+    <ul>
+      <li>Add <code>valid_from</code> and <code>valid_to</code> columns around each change.</li>
+      <li>Close the previous version when a new update arrives.</li>
+      <li>Expose current rows via a view that filters on <code>valid_to IS NULL</code>.</li>
+    </ul>
+    <p>
+      This pattern powers <abbr title="slowly changing dimension">SCD</abbr> Type 2 tables without losing the benefits of CDC
+      freshness.
+    </p>
+  </section>
+
+  <section id="late-arrivals" aria-labelledby="late-arrivals-title">
+    <h2 id="late-arrivals-title">Handle late-arriving and out-of-order events</h2>
+    <ul>
+      <li>Track a <em>watermark</em> timestamp in your staging table and ignore events older than your replay budget.</li>
+      <li>Store raw envelopes for N days so you can reprocess with updated merge logic.</li>
+      <li>Document how to reconcile when the source database is manually patched (backfills, deletes).</li>
+    </ul>
+    <p class="callout">Late arrivals are usually replayed by ops teams—make the procedure idempotent so you can run it twice without fear.</p>
+  </section>
+
+  <section id="ops" aria-labelledby="ops-title">
+    <h2 id="ops-title">Operational guardrails</h2>
+    <details>
+      <summary>Validate inputs</summary>
+      <ul>
+        <li>Reject events that miss primary keys or required columns.</li>
+        <li>Track schema version and fail fast on incompatible changes.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Observe merge latency</summary>
+      <ul>
+        <li>Alert when staging tables age beyond the expected SLA.</li>
+        <li>Keep a backlog gauge so you know when to scale compute.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Disaster recovery</summary>
+      <ul>
+        <li>Retain staging data long enough to replay the last full window.</li>
+        <li>Store checkpoints (offset, batch id, timestamps) beside the target table.</li>
+      </ul>
+    </details>
+    <p>
+      Combine these runbooks with automated smoke tests that upsert and delete
+      a synthetic record daily. The job should fail if materialization drifts.
+    </p>
+  </section>
+
+  <section id="quality" aria-labelledby="quality-title">
+    <h2 id="quality-title">Data quality checks before publishing</h2>
+    <ol>
+      <li>Compare row counts between source and target using time-bounded windows.</li>
+      <li>Verify key uniqueness and detect primary-key churn with a duplicate audit query.</li>
+      <li>Validate soft deletes by ensuring tombstones propagate to downstream marts within SLA.</li>
+    </ol>
+    <p>
+      Embed these checks in orchestration (Airflow, Dagster, dbt) so they run
+      on every deploy and after infrastructure maintenance.
+    </p>
+  </section>
+
+  <section id="verification" aria-labelledby="verification-title">
+    <h2 id="verification-title">Verification playbooks</h2>
+    <div class="grid">
+      <article>
+        <h3>Pre-prod regression</h3>
+        <ul>
+          <li>Run fixtures that upsert, delete, and reinsert entities to validate merge branches.</li>
+          <li>Backfill a 1-hour slice from production CDC into staging and diff row-level hashes.</li>
+          <li>Exercise late-arrival and out-of-order scenarios before promoting SQL changes.</li>
+        </ul>
+      </article>
+      <article>
+        <h3>Production spot checks</h3>
+        <ul>
+          <li>Schedule canary merges on synthetic ids with deterministic payloads.</li>
+          <li>Export change event samples weekly and replay them against a shadow environment.</li>
+          <li>Rotate on-call owners through a monthly verification drill to keep docs fresh.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="callout">
+      Treat verification as part of the deployment pipeline—pair SQL reviews with a matching verification checklist so no
+      merge ships without evidence that the materialized view still behaves.
+    </p>
+  </section>
+
+  <section id="scorecard" aria-labelledby="scorecard-title">
+    <h2 id="scorecard-title">Materialization readiness scorecard</h2>
+    <p>
+      Align the data platform, analytics, and ops teams on what “ready for production” means before turning on the CDC
+      materialization job.
+    </p>
+    
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <div
+    class="scorecard"
+    data-scorecard="materialization"
+    data-scorecard-group="materialization"
+    data-scorecard-summary-label="Materialization readiness scorecard"
+  >
+    <div class="scorecard-meta">
+      <p class="scorecard-progress" data-scorecard-progress aria-live="polite">
+        0 of 4 ready (0%)
+      </p>
+      <div class="scorecard-controls" data-scorecard-controls>
+        <button
+          type="button"
+          class="scorecard-action scorecard-filter"
+          data-scorecard-filter
+          data-label-incomplete="Show incomplete only"
+          data-label-all="Show all items"
+          aria-pressed="false"
+        >
+          Show incomplete only
+        </button>
+        <button
+          type="button"
+          class="scorecard-action scorecard-copy"
+          data-scorecard-copy
+          data-label-default="Copy progress"
+          data-label-success="Progress copied!"
+          data-label-error="Copy failed"
+        >
+          Copy progress
+        </button>
+        <button type="button" class="scorecard-action scorecard-reset" data-scorecard-reset>
+          Reset progress
+        </button>
+      </div>
+    </div>
+    <table class="scorecard-table">
+      <caption>Checklist before promoting to production</caption>
+      <thead>
+        <tr>
+          <th scope="col">Workstream</th>
+          <th scope="col">Ready when…</th>
+          <th scope="col">If not, take this step</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          
+          <tr data-scorecard-item="target-schema">
+            <th scope="row">
+              <label class="scorecard-label" for="scorecard-materialization-target-schema">
+                <input
+                  id="scorecard-materialization-target-schema"
+                  type="checkbox"
+                  value="target-schema"
+                  data-scorecard-control
+                  data-scorecard-item="target-schema"
+                />
+                <span>Target schema</span>
+              </label>
+            </th>
+            <td data-heading="Ready when…">Warehouse tables exist with primary keys, clustering, and partitioning that match the envelope design.</td>
+            <td data-heading="If not, take this step">Provision tables with the final schema and run dry-run merges against staging data.</td>
+          </tr>
+        
+          
+          <tr data-scorecard-item="merge-orchestration">
+            <th scope="row">
+              <label class="scorecard-label" for="scorecard-materialization-merge-orchestration">
+                <input
+                  id="scorecard-materialization-merge-orchestration"
+                  type="checkbox"
+                  value="merge-orchestration"
+                  data-scorecard-control
+                  data-scorecard-item="merge-orchestration"
+                />
+                <span>Merge orchestration</span>
+              </label>
+            </th>
+            <td data-heading="Ready when…">Incremental jobs have retries, alerting, and offset checkpointing wired up.</td>
+            <td data-heading="If not, take this step">Add idempotent retries, persist offsets with the job metadata, and document restart steps.</td>
+          </tr>
+        
+          
+          <tr data-scorecard-item="backfill-strategy">
+            <th scope="row">
+              <label class="scorecard-label" for="scorecard-materialization-backfill-strategy">
+                <input
+                  id="scorecard-materialization-backfill-strategy"
+                  type="checkbox"
+                  value="backfill-strategy"
+                  data-scorecard-control
+                  data-scorecard-item="backfill-strategy"
+                />
+                <span>Backfill strategy</span>
+              </label>
+            </th>
+            <td data-heading="Ready when…">Snapshot-to-stream cutover plan is rehearsed with clear checkpoints and rollback triggers.</td>
+            <td data-heading="If not, take this step">Run a timed rehearsal in staging, log each checkpoint, and confirm revert instructions are executable.</td>
+          </tr>
+        
+          
+          <tr data-scorecard-item="stakeholder-buy-in">
+            <th scope="row">
+              <label class="scorecard-label" for="scorecard-materialization-stakeholder-buy-in">
+                <input
+                  id="scorecard-materialization-stakeholder-buy-in"
+                  type="checkbox"
+                  value="stakeholder-buy-in"
+                  data-scorecard-control
+                  data-scorecard-item="stakeholder-buy-in"
+                />
+                <span>Stakeholder buy-in</span>
+              </label>
+            </th>
+            <td data-heading="Ready when…">Analytics owners sign off on data quality thresholds and downstream dashboards include freshness indicators.</td>
+            <td data-heading="If not, take this step">Review metrics with stakeholders, add freshness badges to dashboards, and capture acceptance criteria in a doc.</td>
+          </tr>
+        
+      </tbody>
+    </table>
+    <p class="scorecard-empty" data-scorecard-empty hidden role="status" aria-live="polite">
+      All capabilities are ready. Toggle to see everything or reset to start over.
+    </p>
+  </div>
+
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="/event-envelope/">Event envelope</a> for envelope field semantics feeding your merges.</li>
+      <li><a href="/ops-offsets/">Offsets &amp; replays</a> to keep staging tables consistent during rewinds.</li>
+      <li><a href="/observability/">Observability basics</a> to monitor merge throughput, freshness, and failure rates.</li>
+    </ul>
+  </section>
+</div>
+</main>
+
+    
+      
+
+
+
+  
+
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+  
+  <div class="container">
+    <nav class="series-nav" aria-label="Series navigation">
+      <div class="series-nav__group series-nav__group--start">
+        
+          <a class="series-nav__link series-nav__link--prev" href="/event-envelope/" aria-label="Previous module: Event Envelope &amp; Delivery Guarantees">← Event Envelope &amp; Delivery Guarantees</a>
+        
+      </div>
+      <div class="series-nav__group series-nav__group--center">
+        <a
+          class="series-nav__link series-nav__link--overview"
+          href="/overview/#series-materialization"
+        >
+          Back to Overview
+        </a>
+      </div>
+      <div class="series-nav__group series-nav__group--end">
+        
+          <a class="series-nav__link series-nav__link--next" href="/snapshotting/" aria-label="Next module: Snapshotting: The First Sync">Snapshotting: The First Sync →</a>
+        
+      </div>
+    </nav>
+    <div class="series-progress" data-progress-toolbar>
+      <div class="series-progress__info">
+        <span class="series-progress__label">Progress</span>
+        <span class="series-progress__value" data-progress-percent>0%</span>
+        <span class="series-progress__status" data-progress-status>Not signed in</span>
+      </div>
+      <div class="series-progress__auth">
+        <button type="button" class="button ghost" data-progress-login="github">Sign in with GitHub</button>
+        <button type="button" class="button ghost" data-progress-logout hidden>Sign out</button>
+      </div>
+    </div>
+  </div>
+
+
+    
+
+    <div class="progress-toast" data-progress-toast hidden aria-live="polite">
+      <div class="progress-toast__body" role="status">
+        <p class="progress-toast__message" data-progress-toast-message></p>
+        <div class="progress-toast__actions">
+          <button type="button" class="button" data-progress-toast-resume>Resume</button>
+          <button type="button" class="button ghost" data-progress-toast-dismiss>Dismiss</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="dashboard-boot container" id="cdcDashboardBoot" aria-live="polite">
+      <h2>Let&rsquo;s Talk CDC Session</h2>
+      <p>Sign in with your CDC account to unlock the interactive dashboard and sync module progress across devices.</p>
+    </section>
+
+    <section class="cdc-dashboard container" id="cdcDashboard" hidden aria-labelledby="cdcDashboardTitle">
+      <header>
+        <h2 id="cdcDashboardTitle">Let&rsquo;s Talk CDC Interactive Dashboard</h2>
+        <p>Track journey completion, monitor recent activity, and export your session logs.</p>
+      </header>
+      <div class="dashboard-charts">
+        <canvas id="cdc-progress-overall" aria-label="Overall progress" role="img"></canvas>
+        <canvas id="cdc-progress-modules" aria-label="Module progress" role="img"></canvas>
+      </div>
+      <div class="dashboard-legend" id="progressLegend" aria-live="polite"></div>
+      <div class="dashboard-footer" id="progressFooter" data-last-completed="0" aria-live="polite"></div>
+      <div class="agent-console" id="agentConsole" aria-live="polite">
+        <div class="agent-scroll" role="log" aria-live="polite" aria-label="CDC agent activity"></div>
+      </div>
+    </section>
+
+    <div class="stats-wrapper" aria-live="polite">
+      <button type="button" class="stats-chip" id="statsButton" aria-haspopup="dialog" aria-controls="sessionModal">
+        <span class="sr-only">Open dashboard activity</span>
+        <span aria-hidden="true">📊</span>
+        <span class="stats-counter" id="statsCounter">0</span>
+      </button>
+      <div class="filter-tooltip" id="filterTooltip" role="status" aria-live="assertive">FILTER: all</div>
+    </div>
+
+    <div class="session-modal hidden" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionModalTitle">
+      <div class="modal-content">
+        <header>
+          <h2 id="sessionModalTitle">Session Activity</h2>
+        </header>
+        <div id="sessionDetails"></div>
+        <div class="export-controls">
+          <button type="button" id="exportTxt">Export TXT</button>
+          <button type="button" id="exportJson">Export JSON</button>
+        </div>
+        <button type="button" class="button ghost" id="closeModal">Close</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const attr = document.documentElement.dataset.pathPrefix || '/';
+        const prefix = attr === '/' ? '' : attr.replace(/\/$/, '');
+        window.__PATH_PREFIX__ = prefix;
+
+        if (!prefix) {
+          return;
+        }
+
+        const rewriteAttribute = (element, attribute) => {
+          const value = element.getAttribute(attribute);
+          if (!value || value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('#')) {
+            return;
+          }
+          if (!value.startsWith('/') || value.startsWith(prefix)) {
+            return;
+          }
+          element.setAttribute(attribute, `${prefix}${value}`);
+        };
+
+        const adjustDom = () => {
+          document.querySelectorAll('a[href^="/"]').forEach((el) => rewriteAttribute(el, 'href'));
+          document.querySelectorAll('img[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('script[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('form[action^="/"]').forEach((el) => rewriteAttribute(el, 'action'));
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', adjustDom, { once: true });
+        } else {
+          adjustDom();
+        }
+      })();
+    </script>
+    <script>
+      window.CDC_MODULES = [{"key":"intro","title":"Interactive Introduction to CDC","description":"An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.","href":"/intro/","ctaLabel":"Dive In!","isRecommended":true,"badge":{"label":"Start Here","variant":"recommended"},"tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"event-envelope","title":"Event Envelope & Delivery Guarantees","description":"Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.","href":"/event-envelope/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"materialization","title":"Materialization 101 (Upsert/Delete)","description":"Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.","href":"/materialization/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"snapshotting","title":"Snapshotting: The First Sync","description":"Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.","href":"/snapshotting/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"exactly-once","title":"Exactly-Once Semantics","description":"Visual walkthrough of ALO vs EOS + transactional outbox.","href":"/exactly-once/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"multi-tenancy","title":"Multi-Tenancy","description":"Isolation patterns, topic math, and rough egress estimates.","href":"/multi-tenancy/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"partitioning","title":"Partitioning","description":"Partition keys, skew, late-arrivals, and audit loops.","href":"/partitioning/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"schema-evolution","title":"Schema Evolution","description":"Handle schema changes gracefully with forward/backward compatibility and schema registries.","href":"/schema-evolution/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"ops-offsets","title":"Ops: Offsets & Replays","description":"Offset stores, safe rewind, idempotency, and resync drills when things go sideways.","href":"/ops-offsets/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"observability","title":"Observability Basics","description":"Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.","href":"/observability/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"use-cases","title":"Real-World Use Cases","description":"Explore practical applications of CDC, from real-time analytics to cache invalidation.","href":"/use-cases/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"strategy","title":"The Strategic Value of CDC","description":"Understand the business case and philosophical shift behind adopting an event-driven data culture.","href":"/strategy/","tags":[{"label":"Strategy","variant":"tag-strategy"}]},{"key":"tooling","title":"The CDC Ecosystem","description":"A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).","href":"/tooling/","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"lab-kafka-debezium","title":"Hands-On Lab: Kafka + Debezium","description":"Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.","href":"/lab-kafka-debezium/","ctaLabel":"Start the Lab","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"quickstarts","title":"Quickstarts","description":"Pick your source database and follow a 10–20 minute setup with checks and commands.","href":"/quickstarts/","ctaLabel":"View Quickstarts","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"tests","title":"Acceptance Tests","description":"Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.","href":"/tests/","ctaLabel":"Verify Your Stack","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"connector-builder","title":"Connector Config Builder","description":"Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.","href":"/connector-builder/","ctaLabel":"Launch the Builder","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"dlq-triage","title":"DLQ Triage Assistant","description":"Guided commands and playbooks for decoding and re-driving Kafka DLQ events.","href":"/dlq-triage/","ctaLabel":"Try the Assistant","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"debezium-decoder","title":"Debezium Event Decoder","description":"Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.","href":"/debezium-decoder/","ctaLabel":"Decode an Event","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"errata","title":"Nuances & Errata","description":"Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.","href":"/errata/","ctaLabel":"See nuances","tags":[{"label":"Extras","variant":"tag-extras"}]}];
+    </script>
+    <script type="module" src="/scripts/dashboard.js"></script>
+    <script type="module" src="/assets/js/app.js"></script>
+    
+    
+    
+      <script>
+        window.CDC_JOURNEY_SLUG = "materialization";
+      </script>
+      <script type="module" src="/scripts/progress.js"></script>
+    
+    <footer class="site-footer">
+      <p>© 2025 Christopher Ennis. A deep dive into the world of Change Data Capture.</p>
+    </footer>
+  </body>
+</html>

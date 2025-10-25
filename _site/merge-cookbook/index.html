@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" data-path-prefix="/">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>merge / upsert cookbook — sinks for CDC | CDC: The Missing Manual</title>
+    <meta name="description" content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico">
+    
+    
+      
+      
+        
+      
+    
+    
+      
+    
+    <link rel="canonical" href="https://letstalkcdc.github.io/merge-cookbook">
+    <meta name="theme-color" content="#0f172a">
+    <meta content="battle-tested merge/upsert templates for Snowflake, BigQuery, Databricks Delta, Postgres, MySQL, and Redshift. handles dupes, late events, and deletes." name="description"/>
+  <link rel="stylesheet" href="{{ '/assets/css/pages/merge-cookbook.css' | url }}">
+<link href="https://letstalkcdc.nfshost.com/merge-cookbook/" rel="canonical"/>
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primaryNav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="nav-right" id="primaryNav" data-nav-panel>
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+            <a class="" href="/design-system/">Design System</a>
+          </nav>
+          <div class="nav-utilities">
+            <button
+              aria-label="Toggle dark mode"
+              class="theme-toggle"
+              data-toggle-theme
+              type="button"
+              aria-pressed="false"
+            >
+              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  fill="none"
+                />
+              </svg>
+              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="sr-only">Toggle theme</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="main"><section class="box callout">
+<h2>shared assumptions (adapt to your schema)</h2>
+<ul class="list">
+<li>staging table: <code>STG_CUSTOMERS</code> (raw CDC) with columns <code>ID</code>, <code>EMAIL</code>, <code>OP</code> (c/u/d), <code>OP_TS</code> (event time), optional <code>VERSION</code> or <code>LSN/GTID/SCN</code>.</li>
+<li>target table: <code>TARGET_CUSTOMERS</code> (latest state).</li>
+<li>business key: <code>ID</code>. replace with your key columns as needed.</li>
+<li>late events: we accept an incoming row if its <code>OP_TS</code> ≥ current target <code>OP_TS</code>.</li>
+<li>soft deletes: either actually delete or set a <code>IS_DELETED</code> flag.</li>
+</ul>
+<p class="muted">if your source doesn’t emit <code>OP_TS</code>, use commit LSN/GTID/SCN as the ordering surrogate.</p>
+</section>
+<section class="grid">
+<article class="box">
+<h2>snowflake</h2>
+<pre><code>MERGE INTO TARGET_CUSTOMERS t
+USING (
+  SELECT ID, EMAIL, OP, OP_TS FROM STG_CUSTOMERS
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+) s
+ON t.ID = s.ID
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
+  DELETE
+WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS THEN
+  UPDATE SET EMAIL = s.EMAIL, OP_TS = s.OP_TS
+WHEN NOT MATCHED AND s.OP &lt;&gt; 'd' THEN
+  INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
+<p class="muted">dedup in the <code>USING</code> subquery protects against duplicate events in staging.</p>
+</article>
+<article class="box">
+<h2>bigquery</h2>
+<pre><code>MERGE `dataset.TARGET_CUSTOMERS` t
+USING (
+  SELECT ID, EMAIL, OP, OP_TS FROM `dataset.STG_CUSTOMERS`
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+) s
+ON t.ID = s.ID
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
+  DELETE
+WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS THEN
+  UPDATE SET EMAIL = s.EMAIL, OP_TS = s.OP_TS
+WHEN NOT MATCHED AND s.OP != 'd' THEN
+  INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
+<p class="muted">consider partitioning <code>TARGET_CUSTOMERS</code> by <code>DATE(OP_TS)</code> and clustering by <code>ID</code> for merge performance.</p>
+</article>
+<article class="box">
+<h2>databricks delta</h2>
+<pre><code>MERGE INTO target_customers AS t
+USING (
+  SELECT ID, EMAIL, OP, OP_TS
+  FROM   stg_customers
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+) AS s
+ON t.ID = s.ID
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN DELETE
+WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS
+  THEN UPDATE SET t.EMAIL = s.EMAIL, t.OP_TS = s.OP_TS
+WHEN NOT MATCHED AND s.OP &lt;&gt; 'd'
+  THEN INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
+<p class="muted">enable <code>OPTIMIZE</code> + <code>ZORDER BY (ID)</code> on large tables to keep merge fast.</p>
+</article>
+<article class="box">
+<h2>postgres</h2>
+<pre><code>-- ensure pk
+ALTER TABLE target_customers ADD PRIMARY KEY (id);
+
+-- idempotent upsert with latest-wins
+INSERT INTO target_customers (id, email, op_ts)
+SELECT id, email, op_ts
+FROM (
+  SELECT id, email, op, op_ts,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) AS rn
+  FROM stg_customers
+) s
+WHERE s.rn = 1 AND s.op &lt;&gt; 'd'
+ON CONFLICT (id) DO UPDATE
+SET email = EXCLUDED.email,
+    op_ts = GREATEST(target_customers.op_ts, EXCLUDED.op_ts);
+
+-- deletes
+DELETE FROM target_customers t
+USING (
+  SELECT id, MAX(op_ts) AS op_ts
+  FROM stg_customers WHERE op = 'd'
+  GROUP BY id
+) d
+WHERE t.id = d.id AND d.op_ts &gt;= t.op_ts;</code></pre>
+<p class="muted">two-step approach (upsert then delete) is simple and fast; wrap in a transaction.</p>
+</article>
+<article class="box">
+<h2>mysql</h2>
+<pre><code>-- latest non-delete per id into a temp table
+CREATE TEMPORARY TABLE tmp_latest AS
+SELECT id, email, op, op_ts
+FROM (
+  SELECT id, email, op, op_ts,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) rn
+  FROM stg_customers
+) x WHERE rn = 1;
+
+-- upsert
+INSERT INTO target_customers (id, email, op_ts)
+SELECT id, email, op_ts FROM tmp_latest WHERE op &lt;&gt; 'd'
+ON DUPLICATE KEY UPDATE
+  email = VALUES(email),
+  op_ts = GREATEST(target_customers.op_ts, VALUES(op_ts));
+
+-- delete
+DELETE t FROM target_customers t
+JOIN tmp_latest d ON d.id = t.id AND d.op = 'd' AND d.op_ts &gt;= t.op_ts;</code></pre>
+<p class="muted">ensure an index/PK on <code>target_customers(id)</code>. MySQL 8+ window functions simplify the dedupe step.</p>
+</article>
+<article class="box">
+<h2>redshift</h2>
+<pre><code>-- staging dedupe (late-events safe)
+CREATE TEMP TABLE stg_dedup DISTKEY(id) SORTKEY(id) AS
+SELECT id, email, op, op_ts
+FROM (
+  SELECT id, email, op, op_ts,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) rn
+  FROM stg_customers
+) s WHERE rn = 1;
+
+-- deletes first (to avoid extra writes)
+DELETE FROM target_customers t
+USING stg_dedup d
+WHERE d.op = 'd' AND t.id = d.id AND d.op_ts &gt;= t.op_ts;
+
+-- upsert via MERGE (supported)
+MERGE INTO target_customers t
+USING stg_dedup s
+ON t.id = s.id
+WHEN MATCHED AND s.op &lt;&gt; 'd' AND s.op_ts &gt;= t.op_ts THEN
+  UPDATE SET email = s.email, op_ts = s.op_ts
+WHEN NOT MATCHED AND s.op &lt;&gt; 'd' THEN
+  INSERT (id, email, op_ts) VALUES (s.id, s.email, s.op_ts);</code></pre>
+<p class="muted">consider <code>VACUUM</code> / <code>ANALYZE</code> schedules on heavy churn tables.</p>
+</article>
+</section>
+<section class="box">
+<h2>handling hard parts</h2>
+<h3>1) replays after a crash</h3>
+<pre><code>-- safe replay: re-run the last N minutes of staging
+DELETE FROM target_customers
+WHERE (id, op_ts) IN (
+  SELECT id, op_ts FROM stg_customers WHERE op_ts &gt;= NOW() - INTERVAL '10 minutes'
+);
+-- re-run the regular upsert + delete logic</code></pre>
+<h3>2) keyless tables</h3>
+<p>avoid “replica identity full” targets. pick a **natural business key** or synthesize one (hash of stable columns). worst case, land to a history table only.</p>
+<h3>3) soft deletes vs hard deletes</h3>
+<pre><code>-- soft delete variant (Snowflake example)
+WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
+  UPDATE SET IS_DELETED = TRUE, OP_TS = s.OP_TS</code></pre>
+<h3>4) schema evolution</h3>
+<p>additive columns are easiest: default target to <code>NULL</code> and include them in the <code>UPDATE SET</code>. for type changes, land to a compatible staging column and cast during merge.</p>
+</section>
+<section class="box">
+<h2>acceptance checks (copy/paste)</h2>
+<pre><code>-- duplicates: expect 0 difference
+SELECT COUNT(*) AS rows, COUNT(DISTINCT id) AS keys FROM target_customers;
+
+-- latest-wins: target should reflect max OP_TS per id (expect 0 stale)
+WITH last AS (SELECT id, MAX(op_ts) AS last_ts FROM stg_customers GROUP BY id)
+SELECT COUNT(*) FROM target_customers t JOIN last l USING(id)
+WHERE t.op_ts &lt; l.last_ts;
+
+-- delete sanity (expect 0)
+SELECT COUNT(*) FROM target_customers t
+JOIN (
+  SELECT id, MAX(op_ts) op_ts FROM stg_customers WHERE op='d' GROUP BY id
+) d USING(id)
+WHERE t.op_ts &lt; d.op_ts;</code></pre>
+</section>
+</main>
+
+    
+
+    <div class="progress-toast" data-progress-toast hidden aria-live="polite">
+      <div class="progress-toast__body" role="status">
+        <p class="progress-toast__message" data-progress-toast-message></p>
+        <div class="progress-toast__actions">
+          <button type="button" class="button" data-progress-toast-resume>Resume</button>
+          <button type="button" class="button ghost" data-progress-toast-dismiss>Dismiss</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="dashboard-boot container" id="cdcDashboardBoot" aria-live="polite">
+      <h2>Let&rsquo;s Talk CDC Session</h2>
+      <p>Sign in with your CDC account to unlock the interactive dashboard and sync module progress across devices.</p>
+    </section>
+
+    <section class="cdc-dashboard container" id="cdcDashboard" hidden aria-labelledby="cdcDashboardTitle">
+      <header>
+        <h2 id="cdcDashboardTitle">Let&rsquo;s Talk CDC Interactive Dashboard</h2>
+        <p>Track journey completion, monitor recent activity, and export your session logs.</p>
+      </header>
+      <div class="dashboard-charts">
+        <canvas id="cdc-progress-overall" aria-label="Overall progress" role="img"></canvas>
+        <canvas id="cdc-progress-modules" aria-label="Module progress" role="img"></canvas>
+      </div>
+      <div class="dashboard-legend" id="progressLegend" aria-live="polite"></div>
+      <div class="dashboard-footer" id="progressFooter" data-last-completed="0" aria-live="polite"></div>
+      <div class="agent-console" id="agentConsole" aria-live="polite">
+        <div class="agent-scroll" role="log" aria-live="polite" aria-label="CDC agent activity"></div>
+      </div>
+    </section>
+
+    <div class="stats-wrapper" aria-live="polite">
+      <button type="button" class="stats-chip" id="statsButton" aria-haspopup="dialog" aria-controls="sessionModal">
+        <span class="sr-only">Open dashboard activity</span>
+        <span aria-hidden="true">📊</span>
+        <span class="stats-counter" id="statsCounter">0</span>
+      </button>
+      <div class="filter-tooltip" id="filterTooltip" role="status" aria-live="assertive">FILTER: all</div>
+    </div>
+
+    <div class="session-modal hidden" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionModalTitle">
+      <div class="modal-content">
+        <header>
+          <h2 id="sessionModalTitle">Session Activity</h2>
+        </header>
+        <div id="sessionDetails"></div>
+        <div class="export-controls">
+          <button type="button" id="exportTxt">Export TXT</button>
+          <button type="button" id="exportJson">Export JSON</button>
+        </div>
+        <button type="button" class="button ghost" id="closeModal">Close</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const attr = document.documentElement.dataset.pathPrefix || '/';
+        const prefix = attr === '/' ? '' : attr.replace(/\/$/, '');
+        window.__PATH_PREFIX__ = prefix;
+
+        if (!prefix) {
+          return;
+        }
+
+        const rewriteAttribute = (element, attribute) => {
+          const value = element.getAttribute(attribute);
+          if (!value || value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('#')) {
+            return;
+          }
+          if (!value.startsWith('/') || value.startsWith(prefix)) {
+            return;
+          }
+          element.setAttribute(attribute, `${prefix}${value}`);
+        };
+
+        const adjustDom = () => {
+          document.querySelectorAll('a[href^="/"]').forEach((el) => rewriteAttribute(el, 'href'));
+          document.querySelectorAll('img[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('script[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('form[action^="/"]').forEach((el) => rewriteAttribute(el, 'action'));
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', adjustDom, { once: true });
+        } else {
+          adjustDom();
+        }
+      })();
+    </script>
+    <script>
+      window.CDC_MODULES = [{"key":"intro","title":"Interactive Introduction to CDC","description":"An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.","href":"/intro/","ctaLabel":"Dive In!","isRecommended":true,"badge":{"label":"Start Here","variant":"recommended"},"tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"event-envelope","title":"Event Envelope & Delivery Guarantees","description":"Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.","href":"/event-envelope/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"materialization","title":"Materialization 101 (Upsert/Delete)","description":"Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.","href":"/materialization/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"snapshotting","title":"Snapshotting: The First Sync","description":"Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.","href":"/snapshotting/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"exactly-once","title":"Exactly-Once Semantics","description":"Visual walkthrough of ALO vs EOS + transactional outbox.","href":"/exactly-once/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"multi-tenancy","title":"Multi-Tenancy","description":"Isolation patterns, topic math, and rough egress estimates.","href":"/multi-tenancy/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"partitioning","title":"Partitioning","description":"Partition keys, skew, late-arrivals, and audit loops.","href":"/partitioning/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"schema-evolution","title":"Schema Evolution","description":"Handle schema changes gracefully with forward/backward compatibility and schema registries.","href":"/schema-evolution/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"ops-offsets","title":"Ops: Offsets & Replays","description":"Offset stores, safe rewind, idempotency, and resync drills when things go sideways.","href":"/ops-offsets/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"observability","title":"Observability Basics","description":"Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.","href":"/observability/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"use-cases","title":"Real-World Use Cases","description":"Explore practical applications of CDC, from real-time analytics to cache invalidation.","href":"/use-cases/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"strategy","title":"The Strategic Value of CDC","description":"Understand the business case and philosophical shift behind adopting an event-driven data culture.","href":"/strategy/","tags":[{"label":"Strategy","variant":"tag-strategy"}]},{"key":"tooling","title":"The CDC Ecosystem","description":"A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).","href":"/tooling/","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"lab-kafka-debezium","title":"Hands-On Lab: Kafka + Debezium","description":"Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.","href":"/lab-kafka-debezium/","ctaLabel":"Start the Lab","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"quickstarts","title":"Quickstarts","description":"Pick your source database and follow a 10–20 minute setup with checks and commands.","href":"/quickstarts/","ctaLabel":"View Quickstarts","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"tests","title":"Acceptance Tests","description":"Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.","href":"/tests/","ctaLabel":"Verify Your Stack","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"connector-builder","title":"Connector Config Builder","description":"Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.","href":"/connector-builder/","ctaLabel":"Launch the Builder","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"dlq-triage","title":"DLQ Triage Assistant","description":"Guided commands and playbooks for decoding and re-driving Kafka DLQ events.","href":"/dlq-triage/","ctaLabel":"Try the Assistant","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"debezium-decoder","title":"Debezium Event Decoder","description":"Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.","href":"/debezium-decoder/","ctaLabel":"Decode an Event","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"errata","title":"Nuances & Errata","description":"Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.","href":"/errata/","ctaLabel":"See nuances","tags":[{"label":"Extras","variant":"tag-extras"}]}];
+    </script>
+    <script type="module" src="/scripts/dashboard.js"></script>
+    <script type="module" src="/assets/js/app.js"></script>
+    
+    
+    
+    <footer class="site-footer">
+      <p>© 2025 Christopher Ennis. A deep dive into the world of Change Data Capture.</p>
+    </footer>
+  </body>
+</html>

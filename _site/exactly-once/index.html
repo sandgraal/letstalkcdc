@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en" data-path-prefix="/">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Exactly-Once Semantics | CDC: The Missing Manual</title>
+    <meta name="description" content="A deep dive into at-least-once vs. exactly-once semantics, idempotency, and the transactional outbox pattern for reliable data pipelines.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico">
+    
+    
+      
+      
+        
+      
+    
+    
+      
+    
+    <link rel="canonical" href="https://letstalkcdc.github.io/exactly-once">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="{{ '/assets/css/pages/exactly-once.css' | url }}">
+<script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Exactly-Once Semantics",
+        "description": "A deep dive into at-least-once vs. exactly-once semantics, idempotency, and the transactional outbox pattern for reliable data pipelines.",
+        "url": "https://letstalkcdc.nfshost.com/exactly-once/",
+        "inLanguage": "en",
+        "about": [
+          "Change Data Capture",
+          "Exactly-Once Semantics",
+          "Idempotency",
+          "Transactional Outbox",
+          "Data Engineering"
+        ]
+      }
+    </script>
+<script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Series Overview",
+            "item": "https://letstalkcdc.nfshost.com/overview/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Exactly-Once Semantics",
+            "item": "https://letstalkcdc.nfshost.com/exactly-once/"
+          }
+        ]
+      }
+    </script>
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+  </head>
+  <body data-journey-slug="exactly-once">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primaryNav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="nav-right" id="primaryNav" data-nav-panel>
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+            <a class="" href="/design-system/">Design System</a>
+          </nav>
+          <div class="nav-utilities">
+            <button
+              aria-label="Toggle dark mode"
+              class="theme-toggle"
+              data-toggle-theme
+              type="button"
+              aria-pressed="false"
+            >
+              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  fill="none"
+                />
+              </svg>
+              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="sr-only">Toggle theme</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+
+
+  <section class="hero-section hero-align-center">
+    <div class="hero-container container">
+      <div class="prose">
+        
+        <h1 class="type-display">Exactly-Once Processing, For Real</h1>
+        
+          <div class="hero-lede"><p>Cut through marketing myths and learn how to deliver CDC pipelines that behave idempotently under failure, even when end-to-end EOS is impossible.</p></div>
+        
+        
+          <div class="hero-actions">
+            
+              <a class="button " href="#at-least-once">See the Failure Mode</a>
+            
+              <a class="button ghost" href="#demo">Run the Interactive Demo</a>
+            
+          </div>
+        
+      </div>
+    </div>
+  </section>
+
+<div class="page-wrap prose">
+      <article class="prose">
+        <p>
+          End-to-end "exactly-once <em>delivery</em>" across <em>heterogeneous</em> systems
+          (DB → Kafka → warehouse/search) is not achievable in general. What we actually ship is
+          <strong>Exactly-Once <em>Processing</em> (EOP)</strong>: combine <strong>At-Least-Once (ALO)</strong>
+          transport with <strong>idempotent</strong> sinks so replays don’t create duplicates.
+        </p>
+        <p>
+          Scope matters:
+          <ul>
+            <li><strong>Source connectors (e.g., Debezium):</strong> ALO into Kafka. They can’t make the
+              external database “transactional” with Kafka.</li>
+            <li><strong>Within Kafka→Kafka topologies:</strong> EOS is possible using Kafka transactions
+              (idempotent producers + transactional offsets), but the scope is limited to Kafka topics.</li>
+            <li><strong>Kafka → external sinks:</strong> Effective EOS comes from <em>idempotent upserts</em>
+              (or staging+MERGE) at the destination, not from transport guarantees alone.</li>
+          </ul>
+        </p>
+        <p>
+          How a CDC pipeline behaves during failures is defined by its data
+          delivery guarantees:
+        </p>
+        <ul>
+          <li>
+            <strong>At-Most-Once:</strong> The weakest guarantee. A message is
+            sent once, but if a failure occurs before it's processed, the
+            message is lost forever. Unsuitable for critical data.
+          </li>
+          <li>
+            <strong>At-Least-Once:</strong> The most common default. The system
+            ensures every message is delivered, but a message might be delivered
+            more than once during a retry. This prevents data loss but requires
+            consumers to handle duplicates.
+          </li>
+          <li>
+            <strong>Exactly-Once Processing:</strong> The effective goal. The
+            system delivers every message at least once, and the consumer is
+            designed to process each unique message precisely one time, even if
+            it receives duplicates.
+          </li>
+        </ul>
+        <h2 id="at-least-once">The Problem: Duplicates in At-Least-Once Systems</h2>
+        <p>
+          Imagine a consumer reads an event from a Kafka topic, processes it
+          (writes to a database), and then crashes before it can commit the
+          topic offset. When the consumer restarts, it will re-read the same
+          event, leading to duplicate processing. The interactive demo below
+          walks through this failure scenario.
+        </p>
+      </article>
+
+      <div class="interactive-demo" id="demo">
+        <div class="step-diagram">
+          <div class="step" id="step-1">
+            <h4>1. Consume Message</h4>
+            <p>
+              The consumer service pulls a message (`Order #123`) from the
+              message broker.
+            </p>
+          </div>
+          <div class="step" id="step-2">
+            <h4>2. Process &amp; Write to Sink</h4>
+            <p>
+              The service processes the order and successfully inserts a record
+              into the `orders` table in the downstream database.
+            </p>
+          </div>
+          <div class="step" id="step-3">
+            <h4>3. CRASH! 💥</h4>
+            <p>
+              Before the service can acknowledge the message by committing its
+              offset to the broker, the service crashes. The broker assumes the
+              message was never processed.
+            </p>
+          </div>
+          <div class="step" id="step-4">
+            <h4>4. Restart &amp; Re-process</h4>
+            <p>
+              The service restarts. Since the offset was not committed, it
+              fetches the same message (`Order #123`) again and inserts a
+              <em>duplicate record</em> into the `orders` table.
+            </p>
+          </div>
+        </div>
+        <div class="diagram-visual-panel">
+          <div
+            class="w-full text-center transition-all duration-500"
+            id="diagram-visual"
+          >
+            <div class="icon">🎬</div>
+            <p class="mt-2 font-semibold">Ready to start</p>
+          </div>
+          <div style="display:grid; gap:.5rem; width:100%; margin-top:1rem">
+            <button class="button" id="failure-stepper">Start Failure</button>
+            <button class="button" id="idempotent-stepper" aria-label="Show idempotent handling">
+              Show Idempotent Handling
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <article class="prose">
+        <h2 id="idempotency">The Solution: Idempotent Consumers</h2>
+        <p>
+          <strong>Idempotency</strong> is the property of an operation that
+          allows it to be applied multiple times without changing the result
+          beyond the initial application. An idempotent consumer can safely
+          process the same message multiple times with no side effects. This
+          requires two things:
+        </p>
+        <ol>
+          <li>
+            <strong>A Unique, Deterministic Event ID:</strong> Every change
+            event must have a unique identifier. This can be a UUID from an
+            outbox table or a composite key of the source table's primary key
+            and the transaction's log position.
+          </li>
+          <li>
+            <strong>Deduplication Logic at the Sink:</strong> The consumer uses
+            this ID to check if the event has already been processed before
+            applying the change. Common patterns include:
+            <ul>
+              <li>
+                <strong>Using `MERGE` or `UPSERT`:</strong> The sink database
+                handles the logic of creating a new record or updating an
+                existing one atomically. This is the preferred method.
+              </li>
+              <li>
+                <strong>Using a Deduplication Table:</strong> The consumer first
+                tries to `INSERT` the event ID into a `processed_events` table.
+                If it succeeds, it proceeds; if it fails (due to a primary key
+                violation), it knows the event is a duplicate and can be safely
+                ignored.
+              </li>
+              <li>
+                <strong>Staging + MERGE:</strong> Land events into a staging table keyed by
+                <code>event_id</code>, then <code>MERGE</code> into the target to make replays safe.
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <p><em>Commit order:</em> write to sink → then commit offsets. If offsets commit first,
+        a crash can drop data; idempotent sinks tolerate replays after restart.</p>
+        <div class="code-comparison">
+          <div>
+            <h4>Naive Consumer</h4>
+            <pre><code>// Pseudocode: may create duplicates
+for (event of stream) {
+  // Simple insert will create a new
+  // record for every retry.
+  insert_into_sink(event.payload);
+  commit_offset();
+}</code></pre>
+          </div>
+          <div>
+            <h4>Idempotent Consumer</h4>
+            <pre><code>// Pseudocode: safe from duplicates
+for (event of stream) {
+  // MERGE/UPSERT handles existing records
+  // based on a primary key.
+  upsert_into_sink(
+    event.key,
+    event.payload
+  );
+  commit_offset();
+}</code></pre>
+          </div>
+        </div>
+        <div class="code-comparison">
+          <div>
+            <h4>Warehouse MERGE (Snowflake-style)</h4>
+<pre><code>MERGE INTO dw.orders AS t
+USING (SELECT :event_id AS event_id, :order_id AS order_id, :payload::variant AS p) s
+ON t.event_id = s.event_id
+WHEN NOT MATCHED THEN
+  INSERT (event_id, order_id, payload) VALUES (s.event_id, s.order_id, s.p)
+WHEN MATCHED THEN
+  UPDATE SET payload = s.p;  -- idempotent overwrite
+</code></pre>
+          </div>
+          <div>
+            <h4>BigQuery MERGE (idempotent)</h4>
+<pre><code>MERGE `dw.orders` t
+USING (SELECT @event_id AS event_id, @order_id AS order_id, @payload AS payload) s
+ON t.event_id = s.event_id
+WHEN NOT MATCHED THEN
+  INSERT (event_id, order_id, payload) VALUES (s.event_id, s.order_id, s.payload)
+WHEN MATCHED THEN
+  UPDATE SET payload = s.payload;
+</code></pre>
+          </div>
+        </div>
+        <h2 id="outbox">
+          The Transactional Outbox Pattern (Solving the Dual-Write Problem)
+        </h2>
+        <p>
+          A common anti-pattern is the "dual-write," where an application first
+          writes to its database and *then*, in a separate network call, tries
+          to publish a message. If the application crashes between these two
+          steps, the systems become inconsistent. The
+          <strong>Transactional Outbox Pattern</strong> solves this.
+        </p>
+        <ol>
+          <li>
+            An application writes both its business data (an `orders` record)
+            and an event record to an "outbox" table within the same single,
+            atomic database transaction.
+          </li>
+          <li>
+            A log-based CDC process monitors the outbox table. When it detects
+            the committed transaction in the database log, it reliably reads the
+            event from the log and publishes it to a message bus like Kafka.
+          </li>
+          <li>
+            This guarantees that an event is published if, and only if, the
+            corresponding business transaction was successfully committed to the
+            database. Data consistency is preserved.
+          </li>
+        </ol>
+        <p>
+          <strong>Important scope note:</strong> Outbox gives you EOS between the application DB and Kafka
+          (no lost/phantom messages). It does <em>not</em> make your downstream warehouses exactly-once by itself—
+          you still need idempotent consumers at the sinks.
+        </p>
+      </article>
+</div>
+</main>
+
+    
+      
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+  
+  
+  <div class="container">
+    <nav class="series-nav" aria-label="Series navigation">
+      <div class="series-nav__group series-nav__group--start">
+        
+          <a class="series-nav__link series-nav__link--prev" href="/snapshotting/" aria-label="Previous module: Snapshotting: The First Sync">← Snapshotting: The First Sync</a>
+        
+      </div>
+      <div class="series-nav__group series-nav__group--center">
+        <a
+          class="series-nav__link series-nav__link--overview"
+          href="/overview/#series-exactly-once"
+        >
+          Back to Overview
+        </a>
+      </div>
+      <div class="series-nav__group series-nav__group--end">
+        
+          <a class="series-nav__link series-nav__link--next" href="/multi-tenancy/" aria-label="Next module: Multi-Tenancy">Multi-Tenancy →</a>
+        
+      </div>
+    </nav>
+    <div class="series-progress" data-progress-toolbar>
+      <div class="series-progress__info">
+        <span class="series-progress__label">Progress</span>
+        <span class="series-progress__value" data-progress-percent>0%</span>
+        <span class="series-progress__status" data-progress-status>Not signed in</span>
+      </div>
+      <div class="series-progress__auth">
+        <button type="button" class="button ghost" data-progress-login="github">Sign in with GitHub</button>
+        <button type="button" class="button ghost" data-progress-logout hidden>Sign out</button>
+      </div>
+    </div>
+  </div>
+
+
+    
+
+    <div class="progress-toast" data-progress-toast hidden aria-live="polite">
+      <div class="progress-toast__body" role="status">
+        <p class="progress-toast__message" data-progress-toast-message></p>
+        <div class="progress-toast__actions">
+          <button type="button" class="button" data-progress-toast-resume>Resume</button>
+          <button type="button" class="button ghost" data-progress-toast-dismiss>Dismiss</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="dashboard-boot container" id="cdcDashboardBoot" aria-live="polite">
+      <h2>Let&rsquo;s Talk CDC Session</h2>
+      <p>Sign in with your CDC account to unlock the interactive dashboard and sync module progress across devices.</p>
+    </section>
+
+    <section class="cdc-dashboard container" id="cdcDashboard" hidden aria-labelledby="cdcDashboardTitle">
+      <header>
+        <h2 id="cdcDashboardTitle">Let&rsquo;s Talk CDC Interactive Dashboard</h2>
+        <p>Track journey completion, monitor recent activity, and export your session logs.</p>
+      </header>
+      <div class="dashboard-charts">
+        <canvas id="cdc-progress-overall" aria-label="Overall progress" role="img"></canvas>
+        <canvas id="cdc-progress-modules" aria-label="Module progress" role="img"></canvas>
+      </div>
+      <div class="dashboard-legend" id="progressLegend" aria-live="polite"></div>
+      <div class="dashboard-footer" id="progressFooter" data-last-completed="0" aria-live="polite"></div>
+      <div class="agent-console" id="agentConsole" aria-live="polite">
+        <div class="agent-scroll" role="log" aria-live="polite" aria-label="CDC agent activity"></div>
+      </div>
+    </section>
+
+    <div class="stats-wrapper" aria-live="polite">
+      <button type="button" class="stats-chip" id="statsButton" aria-haspopup="dialog" aria-controls="sessionModal">
+        <span class="sr-only">Open dashboard activity</span>
+        <span aria-hidden="true">📊</span>
+        <span class="stats-counter" id="statsCounter">0</span>
+      </button>
+      <div class="filter-tooltip" id="filterTooltip" role="status" aria-live="assertive">FILTER: all</div>
+    </div>
+
+    <div class="session-modal hidden" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionModalTitle">
+      <div class="modal-content">
+        <header>
+          <h2 id="sessionModalTitle">Session Activity</h2>
+        </header>
+        <div id="sessionDetails"></div>
+        <div class="export-controls">
+          <button type="button" id="exportTxt">Export TXT</button>
+          <button type="button" id="exportJson">Export JSON</button>
+        </div>
+        <button type="button" class="button ghost" id="closeModal">Close</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const attr = document.documentElement.dataset.pathPrefix || '/';
+        const prefix = attr === '/' ? '' : attr.replace(/\/$/, '');
+        window.__PATH_PREFIX__ = prefix;
+
+        if (!prefix) {
+          return;
+        }
+
+        const rewriteAttribute = (element, attribute) => {
+          const value = element.getAttribute(attribute);
+          if (!value || value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('#')) {
+            return;
+          }
+          if (!value.startsWith('/') || value.startsWith(prefix)) {
+            return;
+          }
+          element.setAttribute(attribute, `${prefix}${value}`);
+        };
+
+        const adjustDom = () => {
+          document.querySelectorAll('a[href^="/"]').forEach((el) => rewriteAttribute(el, 'href'));
+          document.querySelectorAll('img[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('script[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('form[action^="/"]').forEach((el) => rewriteAttribute(el, 'action'));
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', adjustDom, { once: true });
+        } else {
+          adjustDom();
+        }
+      })();
+    </script>
+    <script>
+      window.CDC_MODULES = [{"key":"intro","title":"Interactive Introduction to CDC","description":"An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.","href":"/intro/","ctaLabel":"Dive In!","isRecommended":true,"badge":{"label":"Start Here","variant":"recommended"},"tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"event-envelope","title":"Event Envelope & Delivery Guarantees","description":"Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.","href":"/event-envelope/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"materialization","title":"Materialization 101 (Upsert/Delete)","description":"Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.","href":"/materialization/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"snapshotting","title":"Snapshotting: The First Sync","description":"Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.","href":"/snapshotting/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"exactly-once","title":"Exactly-Once Semantics","description":"Visual walkthrough of ALO vs EOS + transactional outbox.","href":"/exactly-once/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"multi-tenancy","title":"Multi-Tenancy","description":"Isolation patterns, topic math, and rough egress estimates.","href":"/multi-tenancy/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"partitioning","title":"Partitioning","description":"Partition keys, skew, late-arrivals, and audit loops.","href":"/partitioning/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"schema-evolution","title":"Schema Evolution","description":"Handle schema changes gracefully with forward/backward compatibility and schema registries.","href":"/schema-evolution/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"ops-offsets","title":"Ops: Offsets & Replays","description":"Offset stores, safe rewind, idempotency, and resync drills when things go sideways.","href":"/ops-offsets/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"observability","title":"Observability Basics","description":"Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.","href":"/observability/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"use-cases","title":"Real-World Use Cases","description":"Explore practical applications of CDC, from real-time analytics to cache invalidation.","href":"/use-cases/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"strategy","title":"The Strategic Value of CDC","description":"Understand the business case and philosophical shift behind adopting an event-driven data culture.","href":"/strategy/","tags":[{"label":"Strategy","variant":"tag-strategy"}]},{"key":"tooling","title":"The CDC Ecosystem","description":"A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).","href":"/tooling/","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"lab-kafka-debezium","title":"Hands-On Lab: Kafka + Debezium","description":"Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.","href":"/lab-kafka-debezium/","ctaLabel":"Start the Lab","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"quickstarts","title":"Quickstarts","description":"Pick your source database and follow a 10–20 minute setup with checks and commands.","href":"/quickstarts/","ctaLabel":"View Quickstarts","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"tests","title":"Acceptance Tests","description":"Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.","href":"/tests/","ctaLabel":"Verify Your Stack","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"connector-builder","title":"Connector Config Builder","description":"Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.","href":"/connector-builder/","ctaLabel":"Launch the Builder","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"dlq-triage","title":"DLQ Triage Assistant","description":"Guided commands and playbooks for decoding and re-driving Kafka DLQ events.","href":"/dlq-triage/","ctaLabel":"Try the Assistant","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"debezium-decoder","title":"Debezium Event Decoder","description":"Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.","href":"/debezium-decoder/","ctaLabel":"Decode an Event","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"errata","title":"Nuances & Errata","description":"Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.","href":"/errata/","ctaLabel":"See nuances","tags":[{"label":"Extras","variant":"tag-extras"}]}];
+    </script>
+    <script type="module" src="/scripts/dashboard.js"></script>
+    <script type="module" src="/assets/js/app.js"></script>
+    
+      
+        <script type="module" src="/assets/js/pages/exactly-once.js"></script>
+      
+    
+    
+    
+      <script>
+        window.CDC_JOURNEY_SLUG = "exactly-once";
+      </script>
+      <script type="module" src="/scripts/progress.js"></script>
+    
+    <footer class="site-footer">
+      <p>© 2025 Christopher Ennis. A deep dive into the world of Change Data Capture.</p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" data-path-prefix="/">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connector Config Builder — Debezium (Postgres • MySQL • Oracle) | CDC: The Missing Manual</title>
+    <meta name="description" content="Generate Debezium connector configs with the right settings for DLQ, snapshot modes, and filtering.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico">
+    
+    
+      
+      
+        
+      
+    
+    
+      
+    
+    <link rel="canonical" href="https://letstalkcdc.github.io/connector-builder">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="{{ '/assets/css/pages/connector-builder.css' | url }}">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+  </head>
+  <body data-journey-slug="connector-builder">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="global-header">
+      <div class="nav-container">
+        <a class="site-title" href="/">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primaryNav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="nav-right" id="primaryNav" data-nav-panel>
+          <nav aria-label="Primary" class="nav-links">
+            <a class="" href="/">Home</a>
+            <a class="" href="/overview/">The Series</a>
+            <a class="" href="/design-system/">Design System</a>
+          </nav>
+          <div class="nav-utilities">
+            <button
+              aria-label="Toggle dark mode"
+              class="theme-toggle"
+              data-toggle-theme
+              type="button"
+              aria-pressed="false"
+            >
+              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  fill="none"
+                />
+              </svg>
+              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
+                <path
+                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="sr-only">Toggle theme</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+
+
+  <section class="hero-section hero-align-center">
+    <div class="hero-container container">
+      <div class="prose">
+        
+        <h1 class="type-display">Connector Config Builder</h1>
+        
+          <div class="hero-lede"><p>Generate Debezium connector configs for Postgres, MySQL, or Oracle. Pick your version, set filters and DLQ options, then copy or curl straight to Kafka Connect.</p></div>
+        
+        
+          <div class="hero-actions">
+            
+              <a class="button " href="#builder-inputs">Choose a Source</a>
+            
+              <a class="button ghost" href="#builder-preview">Preview &amp; Copy</a>
+            
+          </div>
+        
+      </div>
+    </div>
+  </section>
+
+<div class="builder-app">
+<div class="builder-app__back"><a href="/overview/#series-connector-builder">← Back to Overview</a></div>
+  <div class="builder-app__content">
+    <div class="wrap">
+      <section aria-labelledby="builder-inputs" class="panel">
+        <h2 id="builder-inputs">1) choose source &amp; version</h2>
+        <div aria-label="source" class="tabs" role="tablist">
+          <button class="active" data-src="postgres" role="tab">postgres</button>
+          <button data-src="mysql" role="tab">mysql</button>
+          <button data-src="oracle" role="tab">oracle</button>
+        </div>
+        <div class="row">
+          <label for="debz">debezium version:</label>
+          <select id="debz">
+            <option value="2">2.x (topic.prefix)</option>
+            <option value="1">1.x (database.server.name)</option>
+          </select>
+        </div>
+        <h2 style="margin-top:0.6rem">2) connection &amp; naming</h2>
+        <div class="two">
+          <div>
+            <div class="row"><label for="cname">connector name:</label><input id="cname" type="text" value="inventory-connector"></div>
+            <div class="row"><label for="curl">connect url:</label><input id="curl" type="text" value="http://localhost:8083"></div>
+            <div class="row"><label for="dbname">database:</label><input id="dbname" type="text" value="inventory"></div>
+          </div>
+          <div>
+            <div class="row"><label for="user">username:</label><input id="user" type="text" value="inventory"></div>
+            <div class="row"><label for="pass">password:</label><input id="pass" type="password" value="inventory"></div>
+            <div class="row"><label for="dlq">dlq topic (optional):</label><input id="dlq" type="text" value="dlq.inventory"></div>
+          </div>
+        </div>
+
+        <h2>3) filters &amp; snapshot</h2>
+        <details open>
+          <summary>table filtering</summary>
+          <div class="row"><label for="include">include regex:</label><input id="include" type="text" placeholder="inventory.public.customers"></div>
+          <div class="row"><label for="exclude">exclude regex:</label><input id="exclude" type="text" placeholder="inventory.public.audit_.*"></div>
+        </details>
+        <details open>
+          <summary>snapshot options</summary>
+          <div class="row">
+            <label for="snapshot">snapshot mode:</label>
+            <select id="snapshot">
+              <option value="initial">initial</option>
+              <option value="initial_only">initial_only</option>
+              <option value="never">never</option>
+            </select>
+          </div>
+          <div class="row"><label for="fetch">fetch size:</label><input id="fetch" type="text" value="2000"></div>
+        </details>
+        <details>
+          <summary>advanced settings</summary>
+          <div class="hint">
+            leave defaults alone unless you know the operational impact. overrides are preserved below.
+          </div>
+          <div class="row"><label for="taskMax">tasks.max:</label><input id="taskMax" type="text" value="1"></div>
+          <div class="row"><label for="heartbeat">heartbeat interval ms:</label><input id="heartbeat" type="text" value="30000"></div>
+        </details>
+      </section>
+
+      <aside class="panel right" aria-labelledby="builder-preview">
+        <h2 id="builder-preview">4) preview &amp; apply</h2>
+        <button class="btn copy" id="copyConfig">copy</button>
+        <pre><code id="config"></code></pre>
+        <details>
+          <summary>curl to Kafka Connect</summary>
+          <button class="btn copy" id="copyCurl">copy</button>
+          <pre><code id="curlCmd"></code></pre>
+        </details>
+        <section class="hint">
+          <strong>Remember:</strong> apply config changes with <code>PUT /connectors/&lt;name&gt;/config</code> to avoid task bounce.
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
+</main>
+
+    
+      
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+
+  
+  
+  <div class="container">
+    <nav class="series-nav" aria-label="Series navigation">
+      <div class="series-nav__group series-nav__group--start">
+        
+          <a class="series-nav__link series-nav__link--prev" href="/tests/" aria-label="Previous module: Acceptance Tests">← Acceptance Tests</a>
+        
+      </div>
+      <div class="series-nav__group series-nav__group--center">
+        <a
+          class="series-nav__link series-nav__link--overview"
+          href="/overview/#series-connector-builder"
+        >
+          Back to Overview
+        </a>
+      </div>
+      <div class="series-nav__group series-nav__group--end">
+        
+          <a class="series-nav__link series-nav__link--next" href="/dlq-triage/" aria-label="Next module: DLQ Triage Assistant">DLQ Triage Assistant →</a>
+        
+      </div>
+    </nav>
+    <div class="series-progress" data-progress-toolbar>
+      <div class="series-progress__info">
+        <span class="series-progress__label">Progress</span>
+        <span class="series-progress__value" data-progress-percent>0%</span>
+        <span class="series-progress__status" data-progress-status>Not signed in</span>
+      </div>
+      <div class="series-progress__auth">
+        <button type="button" class="button ghost" data-progress-login="github">Sign in with GitHub</button>
+        <button type="button" class="button ghost" data-progress-logout hidden>Sign out</button>
+      </div>
+    </div>
+  </div>
+
+
+    
+
+    <div class="progress-toast" data-progress-toast hidden aria-live="polite">
+      <div class="progress-toast__body" role="status">
+        <p class="progress-toast__message" data-progress-toast-message></p>
+        <div class="progress-toast__actions">
+          <button type="button" class="button" data-progress-toast-resume>Resume</button>
+          <button type="button" class="button ghost" data-progress-toast-dismiss>Dismiss</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="dashboard-boot container" id="cdcDashboardBoot" aria-live="polite">
+      <h2>Let&rsquo;s Talk CDC Session</h2>
+      <p>Sign in with your CDC account to unlock the interactive dashboard and sync module progress across devices.</p>
+    </section>
+
+    <section class="cdc-dashboard container" id="cdcDashboard" hidden aria-labelledby="cdcDashboardTitle">
+      <header>
+        <h2 id="cdcDashboardTitle">Let&rsquo;s Talk CDC Interactive Dashboard</h2>
+        <p>Track journey completion, monitor recent activity, and export your session logs.</p>
+      </header>
+      <div class="dashboard-charts">
+        <canvas id="cdc-progress-overall" aria-label="Overall progress" role="img"></canvas>
+        <canvas id="cdc-progress-modules" aria-label="Module progress" role="img"></canvas>
+      </div>
+      <div class="dashboard-legend" id="progressLegend" aria-live="polite"></div>
+      <div class="dashboard-footer" id="progressFooter" data-last-completed="0" aria-live="polite"></div>
+      <div class="agent-console" id="agentConsole" aria-live="polite">
+        <div class="agent-scroll" role="log" aria-live="polite" aria-label="CDC agent activity"></div>
+      </div>
+    </section>
+
+    <div class="stats-wrapper" aria-live="polite">
+      <button type="button" class="stats-chip" id="statsButton" aria-haspopup="dialog" aria-controls="sessionModal">
+        <span class="sr-only">Open dashboard activity</span>
+        <span aria-hidden="true">📊</span>
+        <span class="stats-counter" id="statsCounter">0</span>
+      </button>
+      <div class="filter-tooltip" id="filterTooltip" role="status" aria-live="assertive">FILTER: all</div>
+    </div>
+
+    <div class="session-modal hidden" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionModalTitle">
+      <div class="modal-content">
+        <header>
+          <h2 id="sessionModalTitle">Session Activity</h2>
+        </header>
+        <div id="sessionDetails"></div>
+        <div class="export-controls">
+          <button type="button" id="exportTxt">Export TXT</button>
+          <button type="button" id="exportJson">Export JSON</button>
+        </div>
+        <button type="button" class="button ghost" id="closeModal">Close</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const attr = document.documentElement.dataset.pathPrefix || '/';
+        const prefix = attr === '/' ? '' : attr.replace(/\/$/, '');
+        window.__PATH_PREFIX__ = prefix;
+
+        if (!prefix) {
+          return;
+        }
+
+        const rewriteAttribute = (element, attribute) => {
+          const value = element.getAttribute(attribute);
+          if (!value || value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('#')) {
+            return;
+          }
+          if (!value.startsWith('/') || value.startsWith(prefix)) {
+            return;
+          }
+          element.setAttribute(attribute, `${prefix}${value}`);
+        };
+
+        const adjustDom = () => {
+          document.querySelectorAll('a[href^="/"]').forEach((el) => rewriteAttribute(el, 'href'));
+          document.querySelectorAll('img[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('script[src^="/"]').forEach((el) => rewriteAttribute(el, 'src'));
+          document.querySelectorAll('form[action^="/"]').forEach((el) => rewriteAttribute(el, 'action'));
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', adjustDom, { once: true });
+        } else {
+          adjustDom();
+        }
+      })();
+    </script>
+    <script>
+      window.CDC_MODULES = [{"key":"intro","title":"Interactive Introduction to CDC","description":"An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.","href":"/intro/","ctaLabel":"Dive In!","isRecommended":true,"badge":{"label":"Start Here","variant":"recommended"},"tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"event-envelope","title":"Event Envelope & Delivery Guarantees","description":"Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.","href":"/event-envelope/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"materialization","title":"Materialization 101 (Upsert/Delete)","description":"Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.","href":"/materialization/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"snapshotting","title":"Snapshotting: The First Sync","description":"Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.","href":"/snapshotting/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"exactly-once","title":"Exactly-Once Semantics","description":"Visual walkthrough of ALO vs EOS + transactional outbox.","href":"/exactly-once/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"multi-tenancy","title":"Multi-Tenancy","description":"Isolation patterns, topic math, and rough egress estimates.","href":"/multi-tenancy/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"partitioning","title":"Partitioning","description":"Partition keys, skew, late-arrivals, and audit loops.","href":"/partitioning/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"schema-evolution","title":"Schema Evolution","description":"Handle schema changes gracefully with forward/backward compatibility and schema registries.","href":"/schema-evolution/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"ops-offsets","title":"Ops: Offsets & Replays","description":"Offset stores, safe rewind, idempotency, and resync drills when things go sideways.","href":"/ops-offsets/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"observability","title":"Observability Basics","description":"Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.","href":"/observability/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"use-cases","title":"Real-World Use Cases","description":"Explore practical applications of CDC, from real-time analytics to cache invalidation.","href":"/use-cases/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"strategy","title":"The Strategic Value of CDC","description":"Understand the business case and philosophical shift behind adopting an event-driven data culture.","href":"/strategy/","tags":[{"label":"Strategy","variant":"tag-strategy"}]},{"key":"tooling","title":"The CDC Ecosystem","description":"A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).","href":"/tooling/","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"lab-kafka-debezium","title":"Hands-On Lab: Kafka + Debezium","description":"Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.","href":"/lab-kafka-debezium/","ctaLabel":"Start the Lab","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"quickstarts","title":"Quickstarts","description":"Pick your source database and follow a 10–20 minute setup with checks and commands.","href":"/quickstarts/","ctaLabel":"View Quickstarts","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"tests","title":"Acceptance Tests","description":"Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.","href":"/tests/","ctaLabel":"Verify Your Stack","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"connector-builder","title":"Connector Config Builder","description":"Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.","href":"/connector-builder/","ctaLabel":"Launch the Builder","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"dlq-triage","title":"DLQ Triage Assistant","description":"Guided commands and playbooks for decoding and re-driving Kafka DLQ events.","href":"/dlq-triage/","ctaLabel":"Try the Assistant","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"debezium-decoder","title":"Debezium Event Decoder","description":"Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.","href":"/debezium-decoder/","ctaLabel":"Decode an Event","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"errata","title":"Nuances & Errata","description":"Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.","href":"/errata/","ctaLabel":"See nuances","tags":[{"label":"Extras","variant":"tag-extras"}]}];
+    </script>
+    <script type="module" src="/scripts/dashboard.js"></script>
+    <script type="module" src="/assets/js/app.js"></script>
+    
+      
+        <script type="module" src="/assets/js/pages/connector-builder.js"></script>
+      
+    
+    
+    
+      <script>
+        window.CDC_JOURNEY_SLUG = "connector-builder";
+      </script>
+      <script type="module" src="/scripts/progress.js"></script>
+    
+    <footer class="site-footer">
+      <p>© 2025 Christopher Ennis. A deep dive into the world of Change Data Capture.</p>
+    </footer>
+  </body>
+</html>

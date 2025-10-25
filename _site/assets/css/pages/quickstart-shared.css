@@ -1,0 +1,21 @@
+@import url("../components/panels.css");
+
+.grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 950px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+pre {
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  overflow: auto;
+  background: var(--color-background-soft);
+}
