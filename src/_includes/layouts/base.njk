@@ -9,7 +9,23 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ '/apple-touch-icon.png' | url }}">
     <link rel="icon" href="{{ '/favicon.svg' | url }}" type="image/svg+xml">
     <link rel="icon" href="{{ '/favicon.ico' | url }}">
-    <link rel="canonical" href="{{ site.host }}{{ canonicalPath | default(page.url) }}">
+    {% set canonicalUrl = canonicalPath | default(page.url) %}
+    {% if site.pathPrefix %}
+      {% set prefix = site.pathPrefix %}
+      {% if canonicalUrl | startsWith(prefix ~ '/') %}
+        {% set canonicalUrl = canonicalUrl | replace(prefix ~ '/', '/') %}
+      {% elseif canonicalUrl == prefix %}
+        {% set canonicalUrl = '/' %}
+      {% elseif canonicalUrl | startsWith(prefix) %}
+        {% set canonicalUrl = canonicalUrl | replace(prefix, '') %}
+      {% endif %}
+    {% endif %}
+    {% if canonicalUrl == '' %}
+      {% set canonicalUrl = '/' %}
+    {% elseif not (canonicalUrl | startsWith('/')) %}
+      {% set canonicalUrl = '/' ~ canonicalUrl %}
+    {% endif %}
+    <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
     <meta name="theme-color" content="#0f172a">
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
     <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
