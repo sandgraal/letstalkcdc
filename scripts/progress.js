@@ -255,6 +255,42 @@ const resolveReady = () => {
   }
 };
 
+const dispatchProgressChange = (slug) => {
+  if (!slug) return;
+  if (
+    typeof globalScope.dispatchEvent !== "function" ||
+    typeof globalScope.CustomEvent !== "function"
+  ) {
+    return;
+  }
+
+  try {
+    const entry = state.progress.get(slug) ?? null;
+    let detailEntry = null;
+    if (entry) {
+      detailEntry = { ...entry };
+      if (detailEntry.state && typeof detailEntry.state !== "string") {
+        try {
+          detailEntry.state = JSON.stringify(detailEntry.state);
+        } catch (_) {
+          detailEntry.state = null;
+        }
+      }
+    }
+
+    globalScope.dispatchEvent(
+      new CustomEvent("cdc-progress-change", {
+        detail: {
+          journeySlug: slug,
+          entry: detailEntry,
+        },
+      })
+    );
+  } catch (error) {
+    console.warn("CDCProgress: Unable to dispatch progress change event", error);
+  }
+};
+
 const ensureToastElements = () => {
   const root = globalScope.document?.querySelector("[data-progress-toast]");
   if (!root) return null;
@@ -508,6 +544,7 @@ const onStepChangeInternal = async (payload) => {
 
   writeLocalProgress();
   renderToolbar(slug);
+  dispatchProgressChange(slug);
 
   if (AppwriteExports && state.user) {
     await persistRemote(slug);
@@ -725,6 +762,7 @@ const loadRemoteProgress = async () => {
       };
       mergeProgressEntry(doc.journeySlug, entry);
       state.remoteDocs.set(doc.journeySlug, doc.$id);
+      dispatchProgressChange(doc.journeySlug);
     });
     const normalizedDocs = transformDocsForDashboard(docs);
     persistDashboardDocs(normalizedDocs);
