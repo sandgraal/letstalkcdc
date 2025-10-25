@@ -140,11 +140,11 @@
 
     <script>
       (function () {
-        const raw = (document.documentElement.dataset.pathPrefix || '/').replace(/\/$/, '')
-          .replace(/^\/$/, '');
-        window.__PATH_PREFIX__ = raw;
+        const attr = document.documentElement.dataset.pathPrefix || '/';
+        const prefix = attr === '/' ? '' : attr.replace(/\/$/, '');
+        window.__PATH_PREFIX__ = prefix;
 
-        if (!raw) {
+        if (!prefix) {
           return;
         }
 
@@ -153,10 +153,10 @@
           if (!value || value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('#')) {
             return;
           }
-          if (!value.startsWith('/') || value.startsWith(raw)) {
+          if (!value.startsWith('/') || value.startsWith(prefix)) {
             return;
           }
-          element.setAttribute(attribute, `${raw}${value}`);
+          element.setAttribute(attribute, `${prefix}${value}`);
         };
 
         const adjustDom = () => {
