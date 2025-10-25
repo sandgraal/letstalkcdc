@@ -13,6 +13,8 @@ module.exports = function (eleventyConfig) {
     "src/assets": "assets",
     "src/resources": "downloads",
     "compose.yaml": "downloads/compose.yaml",
+    "src/css": "css",
+    "src/scripts": "scripts",
     scripts: "scripts",
   });
 

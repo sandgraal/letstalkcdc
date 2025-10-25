@@ -1,3 +1,5 @@
+import { renderProgressDashboard, appendAgentLog } from "./dashboard.js";
+
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 
 const config = {
@@ -28,6 +30,99 @@ const state = {
   remoteDocs: new Map(),
   readyResolvers: [],
   pendingStepChanges: [],
+};
+
+const rawDashboardModules = Array.isArray(globalScope.CDC_MODULES)
+  ? globalScope.CDC_MODULES
+  : [];
+const dashboardModules = rawDashboardModules
+  .filter((module) => module && (module.key || module.id || module.slug))
+  .map((module, index) => ({
+    id: module.key || module.id || module.slug || `module-${index + 1}`,
+    title: module.title || module.name || `Module ${index + 1}`,
+    totalSteps:
+      typeof module.totalSteps === "number" && module.totalSteps > 0
+        ? module.totalSteps
+        : 1,
+  }));
+const moduleTitleLookup = new Map(
+  dashboardModules.map((module) => [module.id, module.title])
+);
+
+const persistDashboardDocs = (docs) => {
+  if (typeof globalScope.localStorage === "undefined") return;
+  try {
+    globalScope.localStorage.setItem(
+      "lastProgressDocs",
+      JSON.stringify(docs)
+    );
+  } catch (_) {
+    /* ignore */
+  }
+};
+
+const resetDashboardView = () => {
+  const doc = globalScope.document;
+  if (!doc) return;
+  const boot = doc.getElementById("cdcDashboardBoot");
+  const board = doc.getElementById("cdcDashboard");
+  if (board) {
+    board.setAttribute("hidden", "hidden");
+  }
+  if (boot) {
+    boot.removeAttribute("hidden");
+  }
+};
+
+const canRenderDashboard = () => {
+  const doc = globalScope.document;
+  if (!doc) return false;
+  const overall = doc.getElementById("cdc-progress-overall");
+  const modulesCanvas = doc.getElementById("cdc-progress-modules");
+  return Boolean(overall && modulesCanvas && dashboardModules.length);
+};
+
+const transformDocsForDashboard = (docs = []) =>
+  docs.map((doc) => {
+    const percent = typeof doc.percent === "number" ? doc.percent : 0;
+    return {
+      moduleId: doc.journeySlug,
+      moduleTitle:
+        moduleTitleLookup.get(doc.journeySlug) ?? doc.journeySlug ?? "",
+      status:
+        percent >= 99
+          ? "completed"
+          : percent > 0
+          ? "in-progress"
+          : "not-started",
+      updatedAt:
+        doc.updatedAt ??
+        doc.$updatedAt ??
+        doc.$createdAt ??
+        new Date().toISOString(),
+    };
+  });
+
+const updateDashboardView = (docs = []) => {
+  if (!canRenderDashboard()) return;
+  renderProgressDashboard("cdc-progress", dashboardModules);
+  const doc = globalScope.document;
+  if (!doc) return;
+  const boot = doc.getElementById("cdcDashboardBoot");
+  const board = doc.getElementById("cdcDashboard");
+  if (boot) {
+    boot.setAttribute("hidden", "hidden");
+  }
+  if (board) {
+    board.removeAttribute("hidden");
+  }
+};
+
+let lastAuthState = null;
+
+const logAgentMessage = (message, type = "info", source = "CDC_AGENT") => {
+  if (typeof appendAgentLog !== "function") return;
+  appendAgentLog(message, type, source);
 };
 
 const hasAppwriteConfig =
@@ -453,6 +548,8 @@ const signOutInternal = async () => {
   state.session = null;
   state.isAuthenticated = false;
   state.isAnonymous = true;
+  persistDashboardDocs([]);
+  resetDashboardView();
   await bootstrap();
 };
 
@@ -513,6 +610,33 @@ const updateSessionDetails = async () => {
     state.session = null;
     state.isAnonymous = true;
     state.isAuthenticated = false;
+  }
+  const previous = lastAuthState;
+  lastAuthState = state.isAuthenticated;
+  if (previous === null) {
+    if (state.isAuthenticated) {
+      const identity =
+        state.user?.name ?? state.user?.email ?? state.user?.$id ?? "user";
+      logAgentMessage(`Session restored for ${identity}.`, "info", "CDC_AGENT");
+    } else {
+      persistDashboardDocs([]);
+      resetDashboardView();
+      logAgentMessage(
+        "Anonymous session active. Sign in to sync your dashboard.",
+        "info",
+        "CDC_AGENT"
+      );
+    }
+    return;
+  }
+  if (state.isAuthenticated && !previous) {
+    const identity =
+      state.user?.name ?? state.user?.email ?? state.user?.$id ?? "user";
+    logAgentMessage(`Signed in as ${identity}.`, "info", "CDC_AGENT");
+  } else if (!state.isAuthenticated && previous) {
+    persistDashboardDocs([]);
+    resetDashboardView();
+    logAgentMessage("Signed out of CDC session.", "info", "CDC_AGENT");
   }
 };
 
@@ -580,6 +704,19 @@ const loadRemoteProgress = async () => {
       mergeProgressEntry(doc.journeySlug, entry);
       state.remoteDocs.set(doc.journeySlug, doc.$id);
     });
+    const normalizedDocs = transformDocsForDashboard(docs);
+    persistDashboardDocs(normalizedDocs);
+    if (!state.isAnonymous) {
+      updateDashboardView(normalizedDocs);
+      const completedCount = normalizedDocs.filter(
+        (doc) => doc.status === "completed"
+      ).length;
+      logAgentMessage(
+        `Synced ${normalizedDocs.length} progress record(s); ${completedCount} completed.`,
+        "info",
+        "SYNC"
+      );
+    }
     writeLocalProgress();
   } catch (error) {
     console.warn("CDCProgress: Unable to load remote progress", error);
