@@ -481,6 +481,7 @@ onReady(() => {
   const summaryByGroup = new Map();
   const groupState = new Map();
   const cardGroups = new Map();
+  const cardControllers = new Map();
 
   const journeySlug =
     window.CDC_JOURNEY_SLUG ||
@@ -539,13 +540,27 @@ onReady(() => {
     let total = 0;
     let completed = 0;
     let latest = null;
+    const checklists = {};
 
-    progressEntries.forEach((entry) => {
-      total += entry.total;
-      completed += entry.completed;
+    progressEntries.forEach((entry, entryKey) => {
+      const entryTotal = toCount(entry.total);
+      const entryCompleted = Math.min(toCount(entry.completed), entryTotal);
+      total += entryTotal;
+      completed += entryCompleted;
       if (!latest || (entry.updatedAt ?? 0) > (latest.updatedAt ?? 0)) {
         latest = entry;
       }
+
+      const completedIds = Array.isArray(entry.completedIds)
+        ? entry.completedIds.filter((id) => typeof id === 'string')
+        : [];
+
+      checklists[entryKey] = {
+        completed: completedIds,
+        total: entryTotal,
+        sectionId: entry.sectionId || null,
+        updatedAt: entry.updatedAt ?? Date.now(),
+      };
     });
 
     const percent = total > 0 ? Math.min(100, Math.max(0, Math.round((completed / total) * 100))) : 0;
@@ -554,13 +569,15 @@ onReady(() => {
       percent,
     };
 
-    if (percent > 0 && latest?.sectionId) {
-      const state = { hash: `#${latest.sectionId}` };
+    const state = { checklists };
+    if (latest?.sectionId) {
+      state.hash = `#${latest.sectionId}`;
       if (typeof window !== 'undefined') {
         state.scrollY = Math.max(0, window.scrollY ?? window.pageYOffset ?? 0);
       }
-      payload.state = state;
     }
+
+    payload.state = state;
 
     dispatchJourneyProgress(payload);
   };
@@ -921,9 +938,15 @@ onReady(() => {
         })
       );
 
+      const completedIds = Array.from(completed)
+        .map((id) => (typeof id === 'string' ? id : String(id)))
+        .filter((id) => validIds.has(id));
+      completedIds.sort();
+
       progressEntries.set(key, {
         total,
         completed: completed.size,
+        completedIds,
         sectionId,
         updatedAt: Date.now(),
       });
@@ -1042,7 +1065,34 @@ onReady(() => {
     };
 
     const persist = () => {
-      storage.set(storageKey, Array.from(completed));
+      const values = Array.from(completed).map((id) => (typeof id === 'string' ? id : String(id)));
+      values.sort();
+      storage.set(storageKey, values);
+    };
+
+    const applyChecklist = (ids = []) => {
+      if (!Array.isArray(ids)) return false;
+      const normalized = ids
+        .map((id) => (typeof id === 'string' ? id : String(id)))
+        .filter((id) => validIds.has(id));
+      const next = new Set(normalized);
+
+      if (next.size === completed.size) {
+        let identical = true;
+        next.forEach((id) => {
+          if (!completed.has(id)) {
+            identical = false;
+          }
+        });
+        if (identical) {
+          return false;
+        }
+      }
+
+      completed = next;
+      persist();
+      updateProgress();
+      return true;
     };
 
     checkboxes.forEach((checkbox) => {
@@ -1105,6 +1155,86 @@ onReady(() => {
       focus: () => focusFirstCheckbox()
     });
 
+    cardControllers.set(key, {
+      applyChecklist,
+    });
+
     updateProgress();
   });
+
+  const parseProgressState = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    if (typeof value === 'object') {
+      return value;
+    }
+    return null;
+  };
+
+  const applyRemoteProgress = (entry) => {
+    if (!entry) return;
+    const state = parseProgressState(entry.state);
+    if (!state || typeof state.checklists !== 'object' || state.checklists === null) {
+      return;
+    }
+
+    Object.entries(state.checklists).forEach(([cardKey, descriptor]) => {
+      const controller = cardControllers.get(cardKey);
+      if (!controller || typeof controller.applyChecklist !== 'function') {
+        return;
+      }
+      let completedIds = [];
+      if (Array.isArray(descriptor?.completed)) {
+        completedIds = descriptor.completed;
+      } else if (Array.isArray(descriptor)) {
+        completedIds = descriptor;
+      }
+      controller.applyChecklist(completedIds);
+    });
+  };
+
+  const syncRemoteProgress = () => {
+    if (!journeySlug) return;
+    const progress = window.CDCProgress;
+    if (!progress || typeof progress.getProgress !== 'function') {
+      return;
+    }
+
+    const apply = () => {
+      const entry = progress.getProgress(journeySlug);
+      if (entry) {
+        applyRemoteProgress(entry);
+      }
+    };
+
+    if (progress.ready && typeof progress.ready.then === 'function') {
+      progress.ready.then(apply).catch(() => {
+        /* ignore */
+      });
+    } else {
+      apply();
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('cdc-progress-ready', () => {
+      syncRemoteProgress();
+    });
+
+    window.addEventListener('cdc-progress-change', (event) => {
+      const detail = event?.detail;
+      if (!detail || detail.journeySlug !== journeySlug) {
+        return;
+      }
+      applyRemoteProgress(detail.entry || null);
+    });
+  }
+
+  syncRemoteProgress();
 });
