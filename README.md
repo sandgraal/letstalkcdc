@@ -49,3 +49,8 @@ This repository includes a GitHub Actions workflow (`.github/workflows/deploy.ym
 3. Push to `main` (or trigger the workflow manually) to build and deploy the `_site/` output.
 
 The runtime JavaScript automatically honours the configured path prefix, so internal links continue to work when the site is hosted under a subdirectory.
+
+
+<!-- AI-STATUS:START -->
+Last AI agents run: 2025-10-25T15:51:28.427Z
+<!-- AI-STATUS:END -->
