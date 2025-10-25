@@ -32,6 +32,8 @@ const state = {
   pendingStepChanges: [],
 };
 
+let readyEventDispatched = false;
+
 const rawDashboardModules = Array.isArray(globalScope.CDC_MODULES)
   ? globalScope.CDC_MODULES
   : [];
@@ -235,6 +237,22 @@ const ensureReadyPromise = () =>
 const resolveReady = () => {
   state.ready = true;
   state.readyResolvers.splice(0).forEach((fn) => fn());
+  if (
+    !readyEventDispatched &&
+    typeof globalScope.dispatchEvent === "function" &&
+    typeof globalScope.CustomEvent === "function"
+  ) {
+    readyEventDispatched = true;
+    try {
+      globalScope.dispatchEvent(
+        new CustomEvent("cdc-progress-ready", {
+          detail: { progress: globalScope.CDCProgress ?? null },
+        })
+      );
+    } catch (error) {
+      console.warn("CDCProgress: Unable to dispatch ready event", error);
+    }
+  }
 };
 
 const ensureToastElements = () => {

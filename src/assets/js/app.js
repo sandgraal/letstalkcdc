@@ -482,6 +482,89 @@ onReady(() => {
   const groupState = new Map();
   const cardGroups = new Map();
 
+  const journeySlug =
+    window.CDC_JOURNEY_SLUG ||
+    (doc.body?.dataset?.journeySlug ?? '') ||
+    '';
+
+  const progressEntries = new Map();
+  const pendingProgressUpdates = [];
+
+  const flushPendingProgress = () => {
+    const progress = window.CDCProgress;
+    if (!progress?.onStepChange) {
+      return;
+    }
+    while (pendingProgressUpdates.length) {
+      const next = pendingProgressUpdates.shift();
+      if (!next) continue;
+      const send = () => progress.onStepChange(next);
+      if (progress.ready && typeof progress.ready.then === 'function') {
+        progress.ready.then(send).catch(() => {
+          /* ignore */
+        });
+      } else {
+        send();
+      }
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('cdc-progress-ready', flushPendingProgress);
+    window.addEventListener('load', flushPendingProgress, { once: true });
+  }
+
+  const dispatchJourneyProgress = (payload) => {
+    if (!journeySlug) return;
+    const normalized = { journeySlug, ...payload };
+    const progress = window.CDCProgress;
+    if (progress?.onStepChange) {
+      const send = () => progress.onStepChange(normalized);
+      if (progress.ready && typeof progress.ready.then === 'function') {
+        progress.ready.then(send).catch(() => {
+          /* ignore */
+        });
+      } else {
+        send();
+      }
+    } else {
+      pendingProgressUpdates.push(normalized);
+    }
+    flushPendingProgress();
+  };
+
+  const updateJourneyProgress = () => {
+    if (!journeySlug || !progressEntries.size) return;
+
+    let total = 0;
+    let completed = 0;
+    let latest = null;
+
+    progressEntries.forEach((entry) => {
+      total += entry.total;
+      completed += entry.completed;
+      if (!latest || (entry.updatedAt ?? 0) > (latest.updatedAt ?? 0)) {
+        latest = entry;
+      }
+    });
+
+    const percent = total > 0 ? Math.min(100, Math.max(0, Math.round((completed / total) * 100))) : 0;
+    const payload = {
+      step: completed,
+      percent,
+    };
+
+    if (percent > 0 && latest?.sectionId) {
+      const state = { hash: `#${latest.sectionId}` };
+      if (typeof window !== 'undefined') {
+        state.scrollY = Math.max(0, window.scrollY ?? window.pageYOffset ?? 0);
+      }
+      payload.state = state;
+    }
+
+    dispatchJourneyProgress(payload);
+  };
+
   const toOrder = (value, fallback = 0) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
       return value;
@@ -837,6 +920,14 @@ onReady(() => {
           }
         })
       );
+
+      progressEntries.set(key, {
+        total,
+        completed: completed.size,
+        sectionId,
+        updatedAt: Date.now(),
+      });
+      updateJourneyProgress();
     };
 
     const copyReport = () => {
