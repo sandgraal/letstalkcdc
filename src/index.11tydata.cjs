@@ -1,9 +1,13 @@
 module.exports = {
   heroConfig: {
+    kicker: 'Plan • Practice • Share',
     title: 'Why Change Data Capture Still Breaks, and How To Get It Right.',
     description: 'Build production-grade CDC pipelines, understand why they fail, and learn how to design resilient, real-time data architectures.',
     align: 'center',
-    actions: [{ href: '/overview/', label: 'Start the Journey' }]
+    actions: [
+      { href: '/overview/', label: 'Start guided walkthrough' },
+      { href: '/quickstarts/', label: 'Explore quick starts', variant: 'secondary' }
+    ]
   },
   learningModules: [
     {
