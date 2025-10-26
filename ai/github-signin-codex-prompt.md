@@ -26,7 +26,8 @@ Reference files:
      - `COL_PROGRESS_ID`
      - `COL_EVENTS_ID`
      - `APPWRITE_API_KEY`
-   - Ensure the build outputs corresponding `window.APPWRITE_*` globals.
+   - Ensure only the non-secret values above (`ENDPOINT`, `PROJECT`, `DB_ID`, `COL_*`) are emitted as `window.APPWRITE_*` globals for the browser.
+   - Keep `APPWRITE_API_KEY` scoped to serverless functions (e.g., Netlify) and explicitly warn against exposing it in client-side bundles or globals.
 
 2. **Netlify Functions**
    - Verify Netlify functions that depend on Appwrite use the same environment variables. Align naming if discrepancies exist.
@@ -44,6 +45,6 @@ Reference files:
 
 ## Deliverables
 - Code and configuration updates that ensure the front end receives Appwrite credentials at build time.
-- Documentation updates that explain required environment variables and Appwrite provider setup.
+- Documentation updates that explain required environment variables, noting the API key must remain server-side, and Appwrite provider setup.
 - Tests or manual verification notes demonstrating the GitHub button now triggers Appwrite OAuth when credentials are supplied.
 
