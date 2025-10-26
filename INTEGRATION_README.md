@@ -11,28 +11,46 @@ This adds persistent learning progress and authentication across devices to the 
    - Generate an API key with DB read/write.
    - Note your `APPWRITE_PROJECT`, `APPWRITE_ENDPOINT`, and key.
 
-2. **Netlify**
-   Add environment variables:
+2. **Netlify & Local Development**
+   Define the Appwrite environment variables both in Netlify and in any local `.env` file used by `netlify dev`. Only the non-secret values are exposed to the browser—`APPWRITE_API_KEY` must remain server-side.
 
-APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+   | Variable | Scope | Notes |
+   | --- | --- | --- |
+   | `APPWRITE_ENDPOINT` | Client & Functions | Forwarded to the browser as `window.APPWRITE_ENDPOINT`. |
+   | `APPWRITE_PROJECT` | Client & Functions | Forwarded to the browser as `window.APPWRITE_PROJECT`. |
+   | `APPWRITE_DB_ID` | Client & Functions | Forwarded to the browser as `window.APPWRITE_DB_ID`. |
+   | `COL_PROGRESS_ID` | Client & Functions | Forwarded to the browser as `window.COL_PROGRESS_ID`. |
+   | `COL_EVENTS_ID` | Client & Functions | Forwarded to the browser as `window.COL_EVENTS_ID`. |
+   | `APPWRITE_API_KEY` | **Functions only** | Consumed by Netlify functions; never render this in templates or client bundles. |
 
-APPWRITE_PROJECT=68e0140c0009e2a4e550
-APPWRITE_API_KEY=standard_0b2310a6f58785109e9f6b73e43f441b19f65a9fefb45058461e42d010e698fd07953c181d9e675801fa671fc9fd9a75f9564186527a76e8c99d74be6076b6e2d86445ee1576d3472b08842bd10e77dc858f258f789976537ea75054921fa64d23eef6c7a57c27c3482ec3bb13ae5940e4d0ff757e6ad4ad1fbc8ddc0e344b10
-APPWRITE_DB_ID=main
-COL_PROGRESS_ID=progress
-COL_EVENTS_ID=events
+   Populate those variables with the IDs that match your Appwrite project. Netlify deploy contexts inherit the same keys, so set them in the “Site settings → Environment variables” UI or via `netlify env:set`.
 
 3. **Eleventy**
 
 - Include `/scripts/progress.js` in all journey layouts.
-- Inject `window.APPWRITE_*` vars at runtime.
+- Eleventy reads the Appwrite variables via `src/_data/appwrite.cjs` and injects the non-secret values as `window.APPWRITE_*` and `window.COL_*` globals. No additional build wiring is required.
 - Call:
   ```js
   CDCProgress.onStepChange({ journeySlug, step, percent, state });
   ```
   whenever a user moves to a new step.
 
-4. **Testing**
+4. **GitHub OAuth provider in Appwrite**
+
+   In the Appwrite Console → **Authentication → Providers → GitHub**:
+
+   1. Supply the GitHub OAuth App Client ID and Client Secret.
+   2. Add the following redirect URLs (adjust the domain to match production and previews):
+      - `http://localhost:8888/?auth=success`
+      - `http://localhost:8888/?auth=failed`
+      - `https://<your-production-domain>/?auth=success`
+      - `https://<your-production-domain>/?auth=failed`
+      - Include any additional Netlify preview domains that should be allowed.
+   3. Save and enable the provider.
+
+   The progress widget constructs success/failure URLs by appending `?auth=success` or `?auth=failed` to the current page location, so each origin that serves the site must be explicitly whitelisted.
+
+5. **Testing**
 
 - Run locally with `netlify dev`.
 - Confirm:
@@ -40,7 +58,9 @@ COL_EVENTS_ID=events
   - OAuth login → runs migration via `migrateUser.js`.
   - Resume toast appears when returning to a journey.
 
-5. **Deploy**
+  For local testing, create a `.env` file that mirrors the Netlify environment variables above. Start the dev server with `netlify dev` so that the serverless functions receive the same configuration.
+
+6. **Deploy**
 
 - Commit to `feature/appwrite-progress-login`.
 - Push and verify deploy preview.
