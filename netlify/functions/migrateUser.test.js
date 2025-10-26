@@ -111,6 +111,23 @@ test('shouldPreferSource considers step when percent is equal', () => {
   );
 });
 
+test('shouldPreferSource considers created timestamps when updates are missing', () => {
+  assert.equal(
+    shouldPreferSource(
+      { percent: 50, step: 2, $createdAt: '2024-03-01T00:00:00Z' },
+      { percent: 50, step: 2, $createdAt: '2024-01-01T00:00:00Z' },
+    ),
+    true,
+  );
+  assert.equal(
+    shouldPreferSource(
+      { percent: 50, step: 2, $createdAt: '2023-10-01T00:00:00Z' },
+      { percent: 50, step: 2, $createdAt: '2024-04-01T00:00:00Z' },
+    ),
+    false,
+  );
+});
+
 test('documentPermissions returns full CRUD permissions for a user', () => {
   assert.deepEqual(documentPermissions('user123'), [
     'read("user:user123")',
@@ -165,6 +182,58 @@ test('listAllDocuments paginates until the entire collection is loaded', async (
   assert.equal(recordedCalls[0].collectionId, 'progress');
   assert.deepEqual(recordedCalls[0].queries, [filter, 'limit(100)']);
   assert.deepEqual(recordedCalls[1].queries, [filter, 'limit(100)', 'cursorAfter("b")']);
+});
+
+test('listAllDocuments continues without total metadata using page length heuristics', async () => {
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    $id: `doc-${index}`,
+  }));
+  const secondPage = [{ $id: 'doc-100' }];
+  const responses = [
+    { documents: firstPage },
+    { documents: secondPage },
+  ];
+
+  const recordedCalls = [];
+  const databases = {
+    listDocuments: async (databaseId, collectionId, queries) => {
+      recordedCalls.push({ databaseId, collectionId, queries });
+      return responses.shift();
+    },
+  };
+
+  const docs = await listAllDocuments(databases, 'progress');
+
+  assert.equal(docs.length, 101);
+  assert.equal(recordedCalls.length, 2);
+  assert.deepEqual(
+    docs.map((doc) => doc.$id),
+    [...Array.from({ length: 100 }, (_, index) => `doc-${index}`), 'doc-100'],
+  );
+  assert.deepEqual(recordedCalls[0].queries, ['limit(100)']);
+  assert.deepEqual(recordedCalls[1].queries, ['limit(100)', 'cursorAfter("doc-99")']);
+});
+
+test('listAllDocuments tolerates missing document arrays', async () => {
+  const responses = [
+    { documents: [{ $id: 'doc-1' }], total: 5 },
+    { documents: null, total: 5 },
+  ];
+
+  const recordedCalls = [];
+  const databases = {
+    listDocuments: async (databaseId, collectionId, queries) => {
+      recordedCalls.push({ databaseId, collectionId, queries });
+      return responses.shift();
+    },
+  };
+
+  const docs = await listAllDocuments(databases, 'progress');
+
+  assert.equal(docs.length, 1);
+  assert.equal(recordedCalls.length, 2);
+  assert.deepEqual(recordedCalls[0].queries, ['limit(100)']);
+  assert.deepEqual(recordedCalls[1].queries, ['limit(100)', 'cursorAfter("doc-1")']);
 });
 
 test('handler returns early when migrating to the same user', async () => {
