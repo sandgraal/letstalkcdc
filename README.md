@@ -2,7 +2,7 @@
 
 _A lightweight, open learning project for Change Data Capture (CDC) and streaming. Built with Eleventy as a static site (all HTML/CSS/JS generated at build time) so anyone can clone, run locally, and contribute._
 
-Status: **alpha** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/JS + CSV/JSON content**
+Status: **beta** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/JS + CSV/JSON content**
 
 ---
 
@@ -50,7 +50,8 @@ This repository includes a GitHub Actions workflow (`.github/workflows/deploy.ym
 
 The runtime JavaScript automatically honours the configured path prefix, so internal links continue to work when the site is hosted under a subdirectory.
 
-
 <!-- AI-STATUS:START -->
+
 Last AI agents run: 2025-10-25T15:51:28.427Z
+
 <!-- AI-STATUS:END -->
