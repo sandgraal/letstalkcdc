@@ -259,6 +259,12 @@ export const handler = async (event) => {
       Query.equal("userId", toUserId),
     ]);
     const targetMap = new Map(targetDocs.map((doc) => [doc.journeySlug, doc]));
+    const updateTargetEntry = (slug, payload) => {
+      if (slug === undefined || slug === null) {
+        return;
+      }
+      targetMap.set(slug, payload);
+    };
 
     const sourceDocs = await listAllDocuments(databases, COL_PROGRESS_ID, [
       Query.equal("userId", fromUserId),
@@ -270,6 +276,19 @@ export const handler = async (event) => {
     for (const doc of sourceDocs) {
       const existing = targetMap.get(doc.journeySlug);
       if (existing) {
+        const nextStep = toFiniteNumber(doc.step, toFiniteNumber(existing.step, 0));
+        const nextPercent = toFiniteNumber(
+          doc.percent,
+          toFiniteNumber(existing.percent, 0)
+        );
+        const nextState = doc.state ?? existing.state ?? null;
+        const nextUpdatedAt =
+          doc.updatedAt ??
+          doc.$updatedAt ??
+          existing.updatedAt ??
+          existing.$updatedAt ??
+          null;
+
         if (shouldPreferSource(doc, existing)) {
           await databases.updateDocument(
             APPWRITE_DB_ID,
@@ -277,16 +296,28 @@ export const handler = async (event) => {
             existing.$id,
             {
               userId: toUserId,
-              step: toFiniteNumber(doc.step, toFiniteNumber(existing.step, 0)),
-              percent: toFiniteNumber(
-                doc.percent,
-                toFiniteNumber(existing.percent, 0)
-              ),
-              state: doc.state ?? existing.state ?? null,
-              updatedAt: doc.updatedAt ?? doc.$updatedAt ?? existing.updatedAt,
+              step: nextStep,
+              percent: nextPercent,
+              state: nextState,
+              updatedAt: nextUpdatedAt ?? existing.updatedAt,
             },
             documentPermissions(toUserId)
           );
+
+          updateTargetEntry(doc.journeySlug, {
+            ...existing,
+            ...doc,
+            $id: existing.$id,
+            userId: toUserId,
+            step: nextStep,
+            percent: nextPercent,
+            state: nextState,
+            updatedAt: nextUpdatedAt ?? existing.updatedAt ?? existing.$updatedAt ?? null,
+            $updatedAt:
+              nextUpdatedAt ?? existing.$updatedAt ?? existing.updatedAt ?? null,
+          });
+        } else {
+          updateTargetEntry(doc.journeySlug, existing);
         }
 
         await databases.deleteDocument(
@@ -305,6 +336,17 @@ export const handler = async (event) => {
           },
           documentPermissions(toUserId)
         );
+
+        updateTargetEntry(doc.journeySlug, {
+          ...doc,
+          userId: toUserId,
+          step: toFiniteNumber(doc.step, 0),
+          percent: toFiniteNumber(doc.percent, 0),
+          state: doc.state ?? null,
+          updatedAt: doc.updatedAt ?? doc.$updatedAt ?? doc.$createdAt ?? null,
+          $updatedAt: doc.$updatedAt ?? doc.updatedAt ?? doc.$createdAt ?? null,
+        });
+
         migrated += 1;
       }
     }

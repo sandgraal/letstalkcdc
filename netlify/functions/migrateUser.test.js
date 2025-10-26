@@ -187,12 +187,20 @@ test('handler migrates documents and events to the target user', async () => {
   queueResponse({
     documents: [
       {
-        $id: 'source-doc',
+        $id: 'source-winner',
         journeySlug: 'journey-a',
-        percent: 60,
-        step: 2,
+        percent: 75,
+        step: 4,
         state: '{"foo":"bar"}',
-        updatedAt: '2024-02-01T00:00:00Z',
+        updatedAt: '2024-03-01T00:00:00Z',
+      },
+      {
+        $id: 'source-weaker',
+        journeySlug: 'journey-a',
+        percent: 40,
+        step: 2,
+        state: null,
+        updatedAt: '2024-01-15T00:00:00Z',
       },
       {
         $id: 'source-new',
@@ -203,10 +211,11 @@ test('handler migrates documents and events to the target user', async () => {
         updatedAt: '2024-01-15T00:00:00Z',
       },
     ],
-    total: 2,
+    total: 3,
   });
 
   queueResponse({ $id: 'target-doc' });
+  queueResponse(null, { status: 204 });
   queueResponse(null, { status: 204 });
   queueResponse({ $id: 'source-new' });
 
@@ -230,7 +239,7 @@ test('handler migrates documents and events to the target user', async () => {
   assert.equal(result.headers['Content-Type'], 'application/json');
 
   const payload = JSON.parse(result.body);
-  assert.deepEqual(payload, { migrated: 1, merged: 1, events: 2 });
+  assert.deepEqual(payload, { migrated: 1, merged: 2, events: 2 });
 
   assert.equal(responseQueue.length, 0);
 
@@ -256,8 +265,14 @@ test('handler migrates documents and events to the target user', async () => {
   ]);
 
   const deleteCalls = fetchCalls.filter((call) => call.method === 'DELETE');
-  assert.equal(deleteCalls.length, 1);
-  assert.ok(deleteCalls[0].url.endsWith('/progress/documents/source-doc'));
+  assert.equal(deleteCalls.length, 2);
+  const deletePaths = new Set(deleteCalls.map((call) => new URL(call.url).pathname));
+  assert.ok(deletePaths.has(
+    `/v1/databases/${process.env.APPWRITE_DB_ID}/collections/${process.env.COL_PROGRESS_ID}/documents/source-winner`
+  ));
+  assert.ok(deletePaths.has(
+    `/v1/databases/${process.env.APPWRITE_DB_ID}/collections/${process.env.COL_PROGRESS_ID}/documents/source-weaker`
+  ));
 
   const patchCalls = fetchCalls.filter((call) => call.method === 'PATCH');
   assert.equal(patchCalls.length, 4);
@@ -276,10 +291,10 @@ test('handler migrates documents and events to the target user', async () => {
     patchMap.get(progressPath('target-doc')),
     {
       userId: 'member-1',
-      step: 2,
-      percent: 60,
+      step: 4,
+      percent: 75,
       state: '{"foo":"bar"}',
-      updatedAt: '2024-02-01T00:00:00Z',
+      updatedAt: '2024-03-01T00:00:00Z',
       permissions: [
         'read("user:member-1")',
         'update("user:member-1")',
@@ -287,6 +302,8 @@ test('handler migrates documents and events to the target user', async () => {
       ],
     },
   );
+
+  assert.equal(patchMap.has(progressPath('source-weaker')), false);
 
   assert.deepEqual(
     patchMap.get(progressPath('source-new')),
