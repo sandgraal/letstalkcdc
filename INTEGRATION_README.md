@@ -14,6 +14,7 @@ This adds persistent learning progress and authentication across devices to the 
 2. **Netlify & Local Development**
    Define the Appwrite environment variables both in Netlify and in any local `.env` file used by `netlify dev`. Only the non-secret values are exposed to the browser—`APPWRITE_API_KEY` must remain server-side.
 
+- **Keep your API key secret:** Never commit your `APPWRITE_API_KEY` to version control. Configure it via environment variables in Netlify, Vercel, or your `.env` file.
    | Variable | Scope | Notes |
    | --- | --- | --- |
    | `APPWRITE_ENDPOINT` | Client & Functions | Forwarded to the browser as `window.APPWRITE_ENDPOINT`. |
