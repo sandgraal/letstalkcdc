@@ -147,10 +147,12 @@ const snapshotDashboardDocs = () =>
     state: entry.state ?? null,
   }));
 
-const syncDashboardFromState = () => {
-  if (!state.isAuthenticated) return;
-  const docs = snapshotDashboardDocs();
-  const normalized = transformDocsForDashboard(docs);
+const getDashboardDocsFromState = () =>
+  transformDocsForDashboard(snapshotDashboardDocs());
+
+const syncDashboardFromState = ({ force = false } = {}) => {
+  if (!force && !state.isAuthenticated) return;
+  const normalized = getDashboardDocsFromState();
   persistDashboardDocs(normalized);
   updateDashboardView(normalized);
 };
@@ -779,13 +781,20 @@ const listAllDocuments = async (collectionId, filters = []) => {
   return documents;
 };
 
-const loadRemoteProgress = async () => {
+const loadRemoteProgress = async ({ clearStaleRemoteDocs = false } = {}) => {
   if (!AppwriteExports || !state.user || !state.databases) return;
   try {
     const docs = await listAllDocuments(config.progressCollectionId, [
       Query.equal("userId", state.user.$id),
     ]);
+    const seenSlugs = new Set();
+    const relevantDocs = [];
     docs.forEach((doc) => {
+      if (!doc?.journeySlug) {
+        return;
+      }
+      seenSlugs.add(doc.journeySlug);
+      relevantDocs.push(doc);
       const parsedState = doc.state ? safeJsonParse(doc.state) : null;
       const entry = {
         step: doc.step ?? 0,
@@ -797,7 +806,22 @@ const loadRemoteProgress = async () => {
       state.remoteDocs.set(doc.journeySlug, doc.$id);
       dispatchProgressChange(doc.journeySlug);
     });
-    const normalizedDocs = transformDocsForDashboard(docs);
+    if (clearStaleRemoteDocs && state.remoteDocs.size) {
+      const removed = [];
+      state.remoteDocs.forEach((_, slug) => {
+        if (!seenSlugs.has(slug)) {
+          removed.push(slug);
+        }
+      });
+      removed.forEach((slug) => {
+        state.remoteDocs.delete(slug);
+        if (state.progress.delete(slug)) {
+          dispatchProgressChange(slug);
+        }
+        lastStepEvents.delete(slug);
+      });
+    }
+    const normalizedDocs = transformDocsForDashboard(relevantDocs);
     persistDashboardDocs(normalizedDocs);
     if (!state.isAnonymous) {
       updateDashboardView(normalizedDocs);
@@ -905,6 +929,24 @@ const bootstrap = async () => {
   maybeAutoResume();
 };
 
+const refreshProgressInternal = async ({ remote = true, forceDashboard = false } = {}) => {
+  await ensureReadyPromise();
+  if (
+    remote &&
+    AppwriteExports &&
+    state.user &&
+    state.databases
+  ) {
+    await loadRemoteProgress({ clearStaleRemoteDocs: true });
+  }
+  const docs = getDashboardDocsFromState();
+  persistDashboardDocs(docs);
+  if (state.isAuthenticated || forceDashboard) {
+    updateDashboardView(docs);
+  }
+  return docs;
+};
+
 const bindAuthButtons = () => {
   const doc = globalScope.document;
   if (!doc) return;
@@ -927,10 +969,12 @@ const CDCProgress = {
   getCurrentUser: () => state.user,
   isAuthenticated: () => state.isAuthenticated,
   getProgress: getProgressInternal,
+  getDashboardDocs: getDashboardDocsFromState,
   signInWithOAuth: signInWithOAuthInternal,
   signOut: signOutInternal,
   onStepChange: onStepChangeInternal,
   offerResume: offerResumeInternal,
+  refresh: refreshProgressInternal,
 };
 
 globalScope.CDCProgress = CDCProgress;
