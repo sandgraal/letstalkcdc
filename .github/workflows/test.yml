@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main, ci-test-setup]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npx playwright install --with-deps || true
+          if [ -d tests ]; then
+            npx playwright test
+          else
+            echo 'No Playwright tests yet'
+          fi

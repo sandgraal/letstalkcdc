@@ -1,9 +1,0 @@
-*.zip
-node_modules/
-dist/
-src/assets/css/styles.pref.css
-src/assets/css/styles.min.css
-ai/logs/*
-!ai/logs/.gitkeep
-ai/_state/*
-!ai/_state/.gitkeep
