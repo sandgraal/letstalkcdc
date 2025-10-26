@@ -46,6 +46,7 @@ This adds persistent learning progress and authentication across devices to the 
       - `https://<your-production-domain>/?auth=success`
       - `https://<your-production-domain>/?auth=failed`
       - Include any additional Netlify preview domains that should be allowed.
+      - **Important:** the widget appends `?auth=…` to the *current page URL*, so Appwrite will receive the full path (e.g., `/journey/foo?auth=success`). Either whitelist every path your journeys use (Appwrite accepts wildcards like `https://<domain>/*`) or update the site code to redirect to a fixed callback path before initiating OAuth.
    3. Save and enable the provider.
 
    The progress widget constructs success/failure URLs by appending `?auth=success` or `?auth=failed` to the current page location, so each origin that serves the site must be explicitly whitelisted.

@@ -4,7 +4,7 @@
 - Reviewed the existing Appwrite data loader (`src/_data/appwrite.cjs`) and confirmed it exposes only non-secret fields to Eleventy templates.
 - Verified `scripts/progress.js` expects `window.APPWRITE_*` plus `window.COL_*` globals and gracefully falls back to offline mode when they are missing.
 - Audited `netlify/functions/migrateUser.js` to confirm it relies on the same `APPWRITE_*` and `COL_*` environment variables as the Eleventy build.
-- Updated `INTEGRATION_README.md` with precise environment-variable scoping guidance, Appwrite GitHub provider steps, and local validation instructions.
+- Updated `INTEGRATION_README.md` with precise environment-variable scoping guidance, Appwrite GitHub provider steps, local validation instructions, and clarification that redirect URLs must account for the full path returned by Appwrite.
 
 ## Remaining Work
 1. Populate environment variables in each deployment target (Netlify, local `.env`) with real Appwrite values so the browser receives the Appwrite endpoint/project/database/collection IDs.
