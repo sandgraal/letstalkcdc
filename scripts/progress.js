@@ -63,6 +63,18 @@ const persistDashboardDocs = (docs) => {
   }
 };
 
+const readPersistedDashboardDocs = () => {
+  if (typeof globalScope.localStorage === "undefined") return [];
+  try {
+    const raw = globalScope.localStorage.getItem("lastProgressDocs");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+};
+
 const resetDashboardView = () => {
   const doc = globalScope.document;
   if (!doc) return;
@@ -111,7 +123,7 @@ const transformDocsForDashboard = (docs = []) =>
 
 const updateDashboardView = (docs = []) => {
   if (!canRenderDashboard()) return;
-  renderProgressDashboard("cdc-progress", dashboardModules);
+  renderProgressDashboard("cdc-progress", dashboardModules, docs);
   const doc = globalScope.document;
   if (!doc) return;
   const boot = doc.getElementById("cdcDashboardBoot");
@@ -125,6 +137,23 @@ const updateDashboardView = (docs = []) => {
 };
 
 let lastAuthState = null;
+
+const snapshotDashboardDocs = () =>
+  Array.from(state.progress.entries()).map(([journeySlug, entry]) => ({
+    journeySlug,
+    percent: Number(entry.percent ?? 0),
+    step: typeof entry.step === "number" ? entry.step : 0,
+    updatedAt: entry.updatedAt ?? new Date().toISOString(),
+    state: entry.state ?? null,
+  }));
+
+const syncDashboardFromState = () => {
+  if (!state.isAuthenticated) return;
+  const docs = snapshotDashboardDocs();
+  const normalized = transformDocsForDashboard(docs);
+  persistDashboardDocs(normalized);
+  updateDashboardView(normalized);
+};
 
 const logAgentMessage = (message, type = "info", source = "CDC_AGENT") => {
   if (typeof appendAgentLog !== "function") return;
@@ -546,6 +575,10 @@ const onStepChangeInternal = async (payload) => {
   renderToolbar(slug);
   dispatchProgressChange(slug);
 
+  if (state.isAuthenticated) {
+    syncDashboardFromState();
+  }
+
   if (AppwriteExports && state.user) {
     await persistRemote(slug);
   }
@@ -840,6 +873,18 @@ const bootstrap = async () => {
   }
 
   await updateSessionDetails();
+
+  if (state.isAuthenticated) {
+    const cachedDashboardDocs = readPersistedDashboardDocs();
+    if (cachedDashboardDocs.length) {
+      updateDashboardView(cachedDashboardDocs);
+      logAgentMessage(
+        `Loaded ${cachedDashboardDocs.length} cached dashboard record(s).`,
+        "info",
+        "CDC_AGENT"
+      );
+    }
+  }
 
   if (state.user) {
     if (state.isAnonymous) {
