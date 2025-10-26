@@ -92,7 +92,7 @@ If the module requires custom styling or client-side logic, drop files under `sr
 Run the standard development server to confirm the new module renders and the overview card appears with the supplied description and tags.
 
 ```bash
-npm run dev
+npm run serve
 ```
 
 Visit `http://localhost:8080/overview/` and confirm the module card shows the correct metadata. Because the overview consumes `series.cjs`, no additional wiring is required—the card renders automatically with the description and classification tags you defined.
