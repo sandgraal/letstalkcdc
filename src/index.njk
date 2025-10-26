@@ -1,27 +1,29 @@
 ---
 layout: base.njk
 description: Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines. A deep-dive series.
-head_extra: |
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://letstalkcdc.nfshost.com/">
-  <meta property="og:title" content="CDC: The Missing Manual | A Deep Dive into Change Data Capture">
-  <meta property="og:description" content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines.">
-  <meta property="og:image" content="https://letstalkcdc.nfshost.com/images/cdc-cover.jpg">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://letstalkcdc.nfshost.com/">
-  <meta name="twitter:title" content="CDC: The Missing Manual | A Deep Dive into Change Data Capture">
-  <meta name="twitter:description" content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines.">
-  <meta name="twitter:image" content="https://letstalkcdc.nfshost.com/images/cdc-cover.jpg">
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "CDC: The Missing Manual",
-      "url": "https://letstalkcdc.nfshost.com/",
-      "inLanguage": "en"
-    }
-  </script>
+eleventyComputed:
+  head_extra: |
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ site.host }}{{ page.url }}">
+    <meta property="og:title" content="CDC: The Missing Manual | A Deep Dive into Change Data Capture">
+    <meta property="og:description" content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines.">
+    <meta property="og:image" content="{{ site.host }}{{ '/images/cdc-cover.jpg' | url }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ site.host }}{{ page.url }}">
+    <meta name="twitter:title" content="CDC: The Missing Manual | A Deep Dive into Change Data Capture">
+    <meta name="twitter:description" content="Learn why Change Data Capture (CDC) projects fail and how to build scalable, reliable, and production-ready data pipelines.">
+    <meta name="twitter:image" content="{{ site.host }}{{ '/images/cdc-cover.jpg' | url }}">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "CDC: The Missing Manual",
+        "url": "{{ site.host }}{{ page.url }}",
+        "inLanguage": "en"
+      }
+    </script>
 ---
+
 {% import "components/ui.njk" as ui %}
 
 {{ ui.hero(heroConfig) | safe }}
