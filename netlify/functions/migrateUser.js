@@ -168,6 +168,19 @@ const listAllDocuments = async (databases, collectionId, filters = []) => {
   return docs;
 };
 
+const toFiniteNumber = (value, fallback = 0) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const parseTimestamp = (value) => {
   if (!value) return 0;
   const time = Date.parse(value);
@@ -175,10 +188,16 @@ const parseTimestamp = (value) => {
 };
 
 const shouldPreferSource = (source, target) => {
-  const sourcePercent = Number(source.percent ?? 0);
-  const targetPercent = Number(target.percent ?? 0);
+  const sourcePercent = toFiniteNumber(source.percent, 0);
+  const targetPercent = toFiniteNumber(target.percent, 0);
   if (sourcePercent > targetPercent) return true;
   if (sourcePercent < targetPercent) return false;
+
+  const sourceStep = toFiniteNumber(source.step, 0);
+  const targetStep = toFiniteNumber(target.step, 0);
+  if (sourceStep > targetStep) return true;
+  if (sourceStep < targetStep) return false;
+
   return (
     parseTimestamp(source.updatedAt ?? source.$updatedAt) >=
     parseTimestamp(target.updatedAt ?? target.$updatedAt)
@@ -258,8 +277,11 @@ export const handler = async (event) => {
             existing.$id,
             {
               userId: toUserId,
-              step: doc.step ?? existing.step ?? 0,
-              percent: doc.percent ?? existing.percent ?? 0,
+              step: toFiniteNumber(doc.step, toFiniteNumber(existing.step, 0)),
+              percent: toFiniteNumber(
+                doc.percent,
+                toFiniteNumber(existing.percent, 0)
+              ),
               state: doc.state ?? existing.state ?? null,
               updatedAt: doc.updatedAt ?? doc.$updatedAt ?? existing.updatedAt,
             },

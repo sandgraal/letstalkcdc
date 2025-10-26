@@ -94,6 +94,23 @@ test('shouldPreferSource breaks ties by most recent timestamp', () => {
   );
 });
 
+test('shouldPreferSource considers step when percent is equal', () => {
+  assert.equal(
+    shouldPreferSource(
+      { percent: 50, step: 4, updatedAt: '2023-12-01T00:00:00Z' },
+      { percent: 50, step: 2, updatedAt: '2024-02-01T00:00:00Z' },
+    ),
+    true,
+  );
+  assert.equal(
+    shouldPreferSource(
+      { percent: '50', step: '1', updatedAt: '2024-05-01T00:00:00Z' },
+      { percent: 50, step: 3, updatedAt: '2024-01-01T00:00:00Z' },
+    ),
+    false,
+  );
+});
+
 test('documentPermissions returns full CRUD permissions for a user', () => {
   assert.deepEqual(documentPermissions('user123'), [
     'read("user:user123")',
