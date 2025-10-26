@@ -3,10 +3,7 @@ module.exports = {
     title: 'Why Change Data Capture Still Breaks, and How To Get It Right.',
     description: 'Build production-grade CDC pipelines, understand why they fail, and learn how to design resilient, real-time data architectures.',
     align: 'center',
-    actions: [
-      { href: '/overview/', label: 'Start the Journey' },
-      { href: '/design-system/', label: 'Design System', variant: 'ghost' }
-    ]
+    actions: [{ href: '/overview/', label: 'Start the Journey' }]
   },
   learningModules: [
     {
