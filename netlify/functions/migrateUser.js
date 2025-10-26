@@ -248,6 +248,7 @@ export const handler = async (event) => {
       migrated: 0,
       merged: 0,
       events: 0,
+      details: { progress: [], events: [] },
     });
   }
 
@@ -255,6 +256,8 @@ export const handler = async (event) => {
   const databases = new Databases(client);
 
   try {
+    const progressDetails = [];
+    const eventDetails = [];
     const targetDocs = await listAllDocuments(databases, COL_PROGRESS_ID, [
       Query.equal("userId", toUserId),
     ]);
@@ -316,8 +319,24 @@ export const handler = async (event) => {
             $updatedAt:
               nextUpdatedAt ?? existing.$updatedAt ?? existing.updatedAt ?? null,
           });
+
+          progressDetails.push({
+            action: "merged",
+            winner: "source",
+            journeySlug: doc.journeySlug ?? null,
+            sourceDocumentId: doc.$id ?? null,
+            targetDocumentId: existing.$id ?? null,
+          });
         } else {
           updateTargetEntry(doc.journeySlug, existing);
+
+          progressDetails.push({
+            action: "merged",
+            winner: "target",
+            journeySlug: doc.journeySlug ?? null,
+            sourceDocumentId: doc.$id ?? null,
+            targetDocumentId: existing.$id ?? null,
+          });
         }
 
         await databases.deleteDocument(
@@ -347,6 +366,12 @@ export const handler = async (event) => {
           $updatedAt: doc.$updatedAt ?? doc.updatedAt ?? doc.$createdAt ?? null,
         });
 
+        progressDetails.push({
+          action: "migrated",
+          journeySlug: doc.journeySlug ?? null,
+          documentId: doc.$id ?? null,
+        });
+
         migrated += 1;
       }
     }
@@ -365,12 +390,22 @@ export const handler = async (event) => {
         },
         eventPermissions(toUserId)
       );
+
+      eventDetails.push({
+        action: "transferred",
+        eventId: doc.$id ?? null,
+        journeySlug: doc.journeySlug ?? null,
+      });
     }
 
     return jsonResponse(200, {
       migrated,
       merged,
       events: eventDocs.length,
+      details: {
+        progress: progressDetails,
+        events: eventDetails,
+      },
     });
   } catch (error) {
     console.error("Migration failed", error);

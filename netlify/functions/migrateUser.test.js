@@ -167,6 +167,26 @@ test('listAllDocuments paginates until the entire collection is loaded', async (
   assert.deepEqual(recordedCalls[1].queries, [filter, 'limit(100)', 'cursorAfter("b")']);
 });
 
+test('handler returns early when migrating to the same user', async () => {
+  resetFetchMock();
+
+  const result = await handler({
+    httpMethod: 'POST',
+    body: JSON.stringify({ fromUserId: 'user-1', toUserId: 'user-1' }),
+  });
+
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(JSON.parse(result.body), {
+    message: 'No migration necessary',
+    migrated: 0,
+    merged: 0,
+    events: 0,
+    details: { progress: [], events: [] },
+  });
+
+  assert.equal(fetchCalls.length, 0);
+});
+
 test('handler migrates documents and events to the target user', async () => {
   resetFetchMock();
 
@@ -239,7 +259,38 @@ test('handler migrates documents and events to the target user', async () => {
   assert.equal(result.headers['Content-Type'], 'application/json');
 
   const payload = JSON.parse(result.body);
-  assert.deepEqual(payload, { migrated: 1, merged: 2, events: 2 });
+  assert.deepEqual(payload, {
+    migrated: 1,
+    merged: 2,
+    events: 2,
+    details: {
+      progress: [
+        {
+          action: 'merged',
+          winner: 'source',
+          journeySlug: 'journey-a',
+          sourceDocumentId: 'source-winner',
+          targetDocumentId: 'target-doc',
+        },
+        {
+          action: 'merged',
+          winner: 'target',
+          journeySlug: 'journey-a',
+          sourceDocumentId: 'source-weaker',
+          targetDocumentId: 'target-doc',
+        },
+        {
+          action: 'migrated',
+          journeySlug: 'journey-b',
+          documentId: 'source-new',
+        },
+      ],
+      events: [
+        { action: 'transferred', eventId: 'event-1', journeySlug: null },
+        { action: 'transferred', eventId: 'event-2', journeySlug: null },
+      ],
+    },
+  });
 
   assert.equal(responseQueue.length, 0);
 
