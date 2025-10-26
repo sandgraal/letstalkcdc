@@ -144,24 +144,44 @@ const createClient = () => {
 
 const listAllDocuments = async (databases, collectionId, filters = []) => {
   const docs = [];
+  const pageSize = 100;
   let cursor = undefined;
   let hasMore = true;
 
   while (hasMore) {
-    const queries = [...filters, Query.limit(100)];
-    if (cursor) {
+    const queries = [...filters, Query.limit(pageSize)];
+    if (cursor !== undefined) {
       queries.push(Query.cursorAfter(cursor));
     }
+
     const response = await databases.listDocuments(
       APPWRITE_DB_ID,
       collectionId,
       queries
     );
-    docs.push(...response.documents);
-    if (response.documents.length === 0 || docs.length >= response.total) {
+
+    const pageDocuments = Array.isArray(response?.documents)
+      ? response.documents
+      : [];
+    docs.push(...pageDocuments);
+
+    const totalValue = Number(response?.total);
+    const hasTotal = Number.isFinite(totalValue);
+    const lastDoc = pageDocuments[pageDocuments.length - 1] ?? null;
+    const nextCursor =
+      lastDoc && typeof lastDoc.$id === "string" && lastDoc.$id
+        ? lastDoc.$id
+        : null;
+
+    if (
+      pageDocuments.length === 0 ||
+      (hasTotal && docs.length >= totalValue) ||
+      (!hasTotal && pageDocuments.length < pageSize) ||
+      !nextCursor
+    ) {
       hasMore = false;
     } else {
-      cursor = response.documents[response.documents.length - 1].$id;
+      cursor = nextCursor;
     }
   }
 
@@ -198,10 +218,14 @@ const shouldPreferSource = (source, target) => {
   if (sourceStep > targetStep) return true;
   if (sourceStep < targetStep) return false;
 
-  return (
-    parseTimestamp(source.updatedAt ?? source.$updatedAt) >=
-    parseTimestamp(target.updatedAt ?? target.$updatedAt)
+  const sourceTimestamp = parseTimestamp(
+    source.updatedAt ?? source.$updatedAt ?? source.$createdAt
   );
+  const targetTimestamp = parseTimestamp(
+    target.updatedAt ?? target.$updatedAt ?? target.$createdAt
+  );
+
+  return sourceTimestamp >= targetTimestamp;
 };
 
 const documentPermissions = (userId) => [
