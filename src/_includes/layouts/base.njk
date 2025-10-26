@@ -36,60 +36,12 @@
     <header class="global-header">
       <div class="nav-container">
         <a class="site-title" href="{{ '/' | url }}">{{ site.seoTitle }}</a>
-        <button
-          class="nav-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="primaryNav"
-          data-nav-toggle
-        >
-          <span class="sr-only">Toggle navigation</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path
-              d="M4 7h16M4 12h16M4 17h16"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-        <div class="nav-right" id="primaryNav" data-nav-panel>
+        <div class="nav-right">
           <nav aria-label="Primary" class="nav-links">
             <a class="{% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
             <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">The Series</a>
-            <a class="{% if page.url | startsWith('/design-system') %}active{% endif %}" href="{{ '/design-system/' | url }}">Design System</a>
           </nav>
-          <div class="nav-utilities">
-            <button
-              aria-label="Toggle dark mode"
-              class="theme-toggle"
-              data-toggle-theme
-              type="button"
-              aria-pressed="false"
-            >
-              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  fill="none"
-                />
-              </svg>
-              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  fill="none"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span class="sr-only">Toggle theme</span>
-            </button>
-          </div>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
         </div>
       </div>
     </header>
