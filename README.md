@@ -51,7 +51,5 @@ This repository includes a GitHub Actions workflow (`.github/workflows/deploy.ym
 The runtime JavaScript automatically honours the configured path prefix, so internal links continue to work when the site is hosted under a subdirectory.
 
 <!-- AI-STATUS:START -->
-
-Last AI agents run: 2025-10-25T15:51:28.427Z
-
+Last AI agents run: 2025-10-27T04:07:29.333Z
 <!-- AI-STATUS:END -->
