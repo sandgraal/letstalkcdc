@@ -10,10 +10,10 @@ head_extra: |
       "@type": "ItemList",
       "name": "CDC Learning Series",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "https://letstalkcdc.nfshost.com/intro/"},
-        {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "https://letstalkcdc.nfshost.com/exactly-once/"},
-        {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "https://letstalkcdc.nfshost.com/multi-tenancy/"},
-        {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "https://letstalkcdc.nfshost.com/lab-kafka-debezium/"}
+        {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "{{ site.host }}{{ '/intro/' | url }}"},
+        {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "{{ site.host }}{{ '/exactly-once/' | url }}"},
+        {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "{{ site.host }}{{ '/multi-tenancy/' | url }}"},
+        {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "{{ site.host }}{{ '/lab-kafka-debezium/' | url }}"}
       ]
     }
   </script>

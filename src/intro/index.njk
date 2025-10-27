@@ -5,6 +5,16 @@ description: "An interactive dashboard covering core CDC concepts, methods, arch
 canonicalPath: "/intro/"
 eleventyComputed:
   head_extra: |
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ site.host }}{{ page.url }}">
+    <meta property="og:title" content="{{ title }}">
+    <meta property="og:description" content="{{ description }}">
+    <meta property="og:image" content="{{ site.host }}{{ '/images/cdc-cover.jpg' | url }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ site.host }}{{ page.url }}">
+    <meta name="twitter:title" content="{{ title }}">
+    <meta name="twitter:description" content="{{ description }}">
+    <meta name="twitter:image" content="{{ site.host }}{{ '/images/cdc-cover.jpg' | url }}">
     <link rel="stylesheet" href="{{ '/assets/css/pages/intro.css' | url }}">
     <script type="application/ld+json">
       {

@@ -11,7 +11,7 @@ head_extra: |
           "@type": "TechArticle",
           "headline": "Exactly-Once Semantics",
           "description": "A deep dive into at-least-once vs. exactly-once semantics, idempotency, and the transactional outbox pattern for reliable data pipelines.",
-          "url": "https://letstalkcdc.nfshost.com/exactly-once/",
+          "url": "{{ site.host }}{{ page.url }}",
           "inLanguage": "en",
           "about": [
             "Change Data Capture",
@@ -31,13 +31,13 @@ head_extra: |
               "@type": "ListItem",
               "position": 1,
               "name": "Series Overview",
-              "item": "https://letstalkcdc.nfshost.com/overview/"
+              "item": "{{ site.host }}{{ '/overview/' | url }}"
             },
             {
               "@type": "ListItem",
               "position": 2,
               "name": "Exactly-Once Semantics",
-              "item": "https://letstalkcdc.nfshost.com/exactly-once/"
+              "item": "{{ site.host }}{{ page.url }}"
             }
           ]
         }
