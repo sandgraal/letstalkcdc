@@ -10,10 +10,10 @@ head_extra: |
       "@type": "ItemList",
       "name": "CDC Learning Series",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "{{ site.host }}/intro/"},
-        {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "{{ site.host }}/exactly-once/"},
-        {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "{{ site.host }}/multi-tenancy/"},
-        {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "{{ site.host }}/lab-kafka-debezium/"}
+        {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "{{ '/intro/' | url | absoluteUrl(site) }}"},
+        {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "{{ '/exactly-once/' | url | absoluteUrl(site) }}"},
+        {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "{{ '/multi-tenancy/' | url | absoluteUrl(site) }}"},
+        {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "{{ '/lab-kafka-debezium/' | url | absoluteUrl(site) }}"}
       ]
     }
   </script>

@@ -25,7 +25,7 @@
     {% elseif not (canonicalUrl | startsWith('/')) %}
       {% set canonicalUrl = '/' ~ canonicalUrl %}
     {% endif %}
-    <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
+    <link rel="canonical" href="{{ canonicalUrl | absoluteUrl(site) }}">
     <meta name="theme-color" content="#0f172a">
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
     <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">

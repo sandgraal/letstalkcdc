@@ -18,7 +18,7 @@ head_extra: |
           "@type": "TechArticle",
           "headline": "Multi-Tenancy: Cost vs Isolation",
           "description": "Isolation models, throughput math, topic strategy, and operational guardrails for multi-tenant CDC.",
-          "url": "{{ site.host }}{{ page.url }}",
+          "url": "{{ page.url | absoluteUrl(site) }}",
           "inLanguage": "en",
           "about": [
             "Multi-Tenancy",
@@ -38,13 +38,13 @@ head_extra: |
               "@type": "ListItem",
               "position": 1,
               "name": "Series Overview",
-              "item": "{{ site.host }}/overview/"
+              "item": "{{ '/overview/' | url | absoluteUrl(site) }}"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "Multi-Tenancy: Cost vs Isolation",
-            "item": "{{ site.host }}{{ page.url }}"
+            "item": "{{ page.url | absoluteUrl(site) }}"
           }
         ]
       }

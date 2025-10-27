@@ -4,19 +4,17 @@ title: "Interactive Introduction to CDC"
 description: "An interactive dashboard covering core CDC concepts, methods, architectures, and the tooling ecosystem."
 canonicalPath: "/intro/"
 eleventyComputed:
-  absoluteUrl: "{{ site.host }}{{ canonicalPath | default(page.url) }}"
-  coverImageUrl: "{{ site.host }}/images/cdc-cover.jpg"
   head_extra: |
     <meta property="og:type" content="article">
-    <meta property="og:url" content="{{ absoluteUrl }}">
+    <meta property="og:url" content="{{ page.url | absoluteUrl(site) }}">
     <meta property="og:title" content="{{ title }}">
     <meta property="og:description" content="{{ description }}">
-    <meta property="og:image" content="{{ coverImageUrl }}">
+    <meta property="og:image" content="{{ '/images/cdc-cover.jpg' | url | absoluteUrl(site) }}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="{{ absoluteUrl }}">
+    <meta name="twitter:url" content="{{ page.url | absoluteUrl(site) }}">
     <meta name="twitter:title" content="{{ title }}">
     <meta name="twitter:description" content="{{ description }}">
-    <meta name="twitter:image" content="{{ coverImageUrl }}">
+    <meta name="twitter:image" content="{{ '/images/cdc-cover.jpg' | url | absoluteUrl(site) }}">
     <link rel="stylesheet" href="{{ '/assets/css/pages/intro.css' | url }}">
     <script type="application/ld+json">
       {
@@ -24,7 +22,7 @@ eleventyComputed:
         "@type": "TechArticle",
         "headline": "Interactive Introduction to CDC",
         "description": "Core concepts, methods, architectures, and tools that define modern Change Data Capture.",
-        "url": "{{ absoluteUrl }}",
+        "url": "{{ page.url | absoluteUrl(site) }}",
         "inLanguage": "en",
         "about": [
           "Change Data Capture",
@@ -43,13 +41,13 @@ eleventyComputed:
             "@type": "ListItem",
             "position": 1,
             "name": "Series Overview",
-            "item": "{{ site.host }}/overview/"
+            "item": "{{ '/overview/' | url | absoluteUrl(site) }}"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "Interactive Introduction to CDC",
-            "item": "{{ absoluteUrl }}"
+            "item": "{{ page.url | absoluteUrl(site) }}"
           }
         ]
       }
