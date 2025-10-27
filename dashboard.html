@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handoff Dashboard — Let’s Talk CDC</title>
+<style>
+  :root { --header: #4a148c; --accent: #6a1b9a; --th: #ede7f6; --good: #2e7d32; --warn: #f9a825; --next: #1e88e5; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 2rem; background: #fafafa; color: #333; }
+  h1 { color: var(--header); margin-bottom: 0.4rem; }
+  .subtitle { color: #555; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  th, td { border: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
+  th { background: var(--th); color: #111827; }
+  tr:nth-child(even) td { background: #fcfcfc; }
+  .wins { color: var(--good); }
+  .stumbles { color: var(--warn); }
+  .tasks { color: var(--next); }
+  .footer { margin-top: 2rem; font-size: 0.9em; color: #6b7280; }
+  .badge { display: inline-block; background: #eef2ff; color: var(--accent); padding: 2px 8px; border-radius: 999px; font-size: 0.8em; }
+</style>
+</head>
+<body>
+  <h1>📊 Handoff Dashboard — Let’s Talk CDC</h1>
+  <p class="subtitle"><span class="badge">Last updated: <span id="updated"></span></span></p>
+
+  <table id="table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th class="wins">✅ Wins</th>
+        <th class="stumbles">⚠️ Stumbles</th>
+        <th class="tasks">🚀 Next Tasks</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="footer">Updated automatically via Nightly Prompt Sync © 2025</div>
+
+<script>
+async function loadLog() {
+  const res = await fetch('handoff-log.json', { cache: 'no-store' });
+  const data = await res.json();
+  const tbody = document.querySelector('#table tbody');
+  tbody.innerHTML = '';
+  data.slice().reverse().forEach(entry => {
+    const tr = document.createElement('tr');
+    const tdDate = document.createElement('td'); tdDate.textContent = entry.date; tr.appendChild(tdDate);
+    const tdWins = document.createElement('td'); tdWins.className='wins'; tdWins.innerHTML = listify(entry.wins); tr.appendChild(tdWins);
+    const tdSt = document.createElement('td'); tdSt.className='stumbles'; tdSt.innerHTML = listify(entry.stumbles); tr.appendChild(tdSt);
+    const tdTasks = document.createElement('td'); tdTasks.className='tasks'; tdTasks.innerHTML = listify(entry.nextTasks); tr.appendChild(tdTasks);
+    tbody.appendChild(tr);
+  });
+  document.getElementById('updated').textContent = new Date().toISOString().split('T')[0];
+}
+function listify(arr) {
+  if (!arr || !arr.length) return '<em>—</em>';
+  const ul = document.createElement('ul');
+  arr.forEach(x => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+  return ul.outerHTML;
+}
+loadLog();
+</script>
+</body></html>
