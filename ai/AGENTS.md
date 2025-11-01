@@ -13,6 +13,7 @@ Use a short prefix for clarity. Set it in `.chatgpt-context.yml` under `agent_pr
 | `site-packaging`  | Produces label exports and print-ready assets                      | On commit to `assets/labels/`   | `ai/scripts/package-render.mjs`               |
 | `site-data`       | Syncs structured data to collections and JSON caches               | On change to `/src/_data/`      | `ai/scripts/data-sync.mjs`                    |
 | `site-analytics`  | Aggregates build stats or traffic snapshots into `/ai/logs/`       | Nightly                         | `ai/scripts/analytics.mjs`                    |
+| `site-link-check` | Validates internal links in the built site for 404s and broken refs| On schedule, manual             | `ai/scripts/link-check.mjs`                   |
 
 ## 3. Capabilities Matrix
 Each agent specifies:

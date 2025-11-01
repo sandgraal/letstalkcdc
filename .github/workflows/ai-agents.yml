@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       agent:
-        description: 'Run a specific agent (content, image, packaging, data, analytics)'
+        description: 'Run a specific agent (content, image, packaging, data, analytics, link-check)'
         required: false
         default: 'all'
   schedule:
@@ -115,4 +115,36 @@ jobs:
         env:
           AGENT_NAME: site-analytics
           STATUS: ok
+          DURATION_MS: 0
+
+  link-check:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'link-check' || github.event.inputs.agent == 'all' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        if: ${{ needs.setup.outputs.has_pkg == 'true' }}
+        run: npm ci
+      - name: Build site
+        if: ${{ needs.setup.outputs.has_build == 'true' }}
+        env:
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
+          SITE_HOST: ${{ vars.SITE_HOST }}
+        run: npm run build
+      - name: Check for broken links
+        env:
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
+        run: node ai/scripts/link-check.mjs
+      - name: Log run
+        if: always()
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-link-check
+          STATUS: ${{ job.status == 'success' && 'ok' || 'failed' }}
           DURATION_MS: 0
