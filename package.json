@@ -14,7 +14,7 @@
     "smoke": "npm run smoke:core && npm run smoke:a11y && npm run smoke:perf",
     "serve": "eleventy --config=eleventy.config.cjs --serve",
     "dev": "npm run serve",
-    "a11y": "pa11y-ci --config pa11y-ci.config.cjs"
+    "a11y": "pa11y-ci"
   },
   "devDependencies": {
     "@11ty/eleventy": "^2.0.1",
