@@ -14,6 +14,7 @@ const CONFIG = {
   minFileSizeKB: 10, // Only optimize files larger than this
   supportedExtensions: ['.jpg', '.jpeg', '.png', '.gif'],
   excludeDirs: ['node_modules', '_site', 'dist', '.git'],
+  enabled: process.env.IMAGE_OPTIMIZE_ENABLED === 'true', // Set to 'true' to enable actual optimization
 };
 
 async function findImages(dir, images = []) {
@@ -93,10 +94,15 @@ async function optimizeImages() {
         
         if (!hasWebP && ext !== '.webp') {
           console.log(`[image] Would optimize: ${imagePath.replace(PROJECT_ROOT, '.')} (${sizeMB} MB)`);
-          // Uncomment to actually optimize:
-          // await sharp(imagePath)
-          //   .webp({ quality: CONFIG.quality })
-          //   .toFile(webpPath);
+          
+          if (CONFIG.enabled) {
+            // Actually optimize the image
+            await sharp(imagePath)
+              .webp({ quality: CONFIG.quality })
+              .toFile(webpPath);
+            console.log(`[image] ✅ Optimized to WebP: ${webpPath.replace(PROJECT_ROOT, '.')}`);
+          }
+          
           optimized++;
         } else {
           skipped++;
@@ -106,9 +112,10 @@ async function optimizeImages() {
       }
     }
     
-    console.log(`[image] Summary: ${optimized} would be optimized, ${skipped} already optimized or skipped.`);
-    console.log('[image] Note: Actual optimization is disabled by default to avoid modifying source files.');
-    console.log('[image] Enable by uncommenting the sharp conversion code in image-optimize.mjs');
+    console.log(`[image] Summary: ${optimized} ${CONFIG.enabled ? 'optimized' : 'would be optimized'}, ${skipped} already optimized or skipped.`);
+    if (!CONFIG.enabled) {
+      console.log('[image] Note: Actual optimization is disabled. Set IMAGE_OPTIMIZE_ENABLED=true to enable.');
+    }
     
   } catch (err) {
     console.error(`[image] Error during optimization: ${err.message}`);

@@ -124,27 +124,26 @@ class LinkChecker {
       targetPath = join(fromDir, cleanUrl);
     }
     
-    // If the path is a directory or doesn't have an extension, try adding index.html
-    if (!targetPath.endsWith('.html') && !targetPath.endsWith('.css') && 
-        !targetPath.endsWith('.js') && !targetPath.includes('.')) {
-      // Try directory/index.html
-      const indexPath = join(targetPath, 'index.html');
-      if (existsSync(indexPath)) {
-        return indexPath;
-      }
-      // Try as-is with .html
-      const htmlPath = targetPath + '.html';
-      if (existsSync(htmlPath)) {
-        return htmlPath;
-      }
-      // Try original path
-      if (existsSync(targetPath)) {
-        return targetPath;
-      }
-      return null;
+    // Try different resolution strategies in order
+    // 1. Try the path as-is
+    if (existsSync(targetPath)) {
+      return targetPath;
     }
     
-    return existsSync(targetPath) ? targetPath : null;
+    // 2. Try with .html extension
+    const htmlPath = targetPath + '.html';
+    if (existsSync(htmlPath)) {
+      return htmlPath;
+    }
+    
+    // 3. Try as directory with index.html
+    const indexPath = join(targetPath, 'index.html');
+    if (existsSync(indexPath)) {
+      return indexPath;
+    }
+    
+    // File not found
+    return null;
   }
 
   async checkFile(filePath) {

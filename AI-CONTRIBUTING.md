@@ -31,8 +31,9 @@ This document describes the AI agents that automatically maintain and improve th
 **Activation:**
 To enable actual optimization (currently in report-only mode):
 1. Install sharp: `npm install --save-dev sharp`
-2. Uncomment the optimization code in `ai/scripts/image-optimize.mjs`
-3. Commit changes via pull request for review
+2. Set environment variable: `IMAGE_OPTIMIZE_ENABLED=true`
+3. Run the script or workflow with the environment variable set
+4. Review changes and commit via pull request
 
 ### 2. Link Checker Agent (`site-link-check`)
 
@@ -111,7 +112,11 @@ Human review always takes precedence over agent decisions.
 
 ### Image Optimization
 ```bash
+# Report mode (default)
 node ai/scripts/image-optimize.mjs
+
+# Enable actual optimization
+IMAGE_OPTIMIZE_ENABLED=true node ai/scripts/image-optimize.mjs
 ```
 
 ### Link Checking
