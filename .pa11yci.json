@@ -1,0 +1,20 @@
+{
+  "defaults": {
+    "standard": "WCAG2AA",
+    "wait": 1000,
+    "timeout": 30000,
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox", "--disable-dev-shm-usage"]
+    }
+  },
+  "urls": [
+    "_site/index.html",
+    "_site/overview/index.html",
+    "_site/intro/index.html",
+    "_site/multi-tenancy/index.html",
+    "_site/use-cases/index.html",
+    "_site/quickstarts/index.html",
+    "_site/partitioning/index.html",
+    "_site/exactly-once/index.html"
+  ]
+}

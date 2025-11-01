@@ -23,14 +23,34 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
       - name: Install dependencies
         run: npm ci
+        env:
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+
+      - name: Run tests
+        run: npm run test
 
       - name: Build site
         run: npm run build
 
       - name: Smoke tests
         run: npm run smoke
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+
+      - name: Accessibility tests
+        run: npm run a11y
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
 
       - name: Security audit
         run: npm audit --production
