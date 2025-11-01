@@ -737,6 +737,11 @@ const updateSessionDetails = async () => {
 const migrateAnonymousProgress = async (fromUserId, toUserId) => {
   if (!fromUserId || !toUserId || fromUserId === toUserId) return;
   try {
+    // TODO: Update this endpoint URL when deploying the serverless function
+    // to a different platform (e.g., Vercel: /api/migrateUser, 
+    // Cloudflare Workers: https://your-worker.workers.dev/migrateUser,
+    // AWS Lambda: https://your-api-gateway-url/migrateUser)
+    // See docs/HOSTING.md for details on serverless function deployment.
     const response = await fetch("/.netlify/functions/migrateUser", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
