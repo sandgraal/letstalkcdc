@@ -82,6 +82,28 @@ if (offendingFonts.length > 0) {
   failures.push(`Built HTML still references fonts.googleapis.com (${offendingFonts.length} file(s)).`);
 }
 
+// Verify social preview image exists
+const socialImagePath = join(outputDir, 'images', 'cdc-cover.jpg');
+if (!existsSync(socialImagePath)) {
+  failures.push('Social preview image (images/cdc-cover.jpg) is missing from the build output.');
+}
+
+// Verify homepage has correct social preview meta tags
+try {
+  const homepage = read('index.html');
+  if (!homepage.includes('og:image') || !homepage.includes('/images/cdc-cover.jpg')) {
+    failures.push('Homepage is missing correct Open Graph image meta tag.');
+  }
+  if (!homepage.includes('twitter:image') || !homepage.includes('/images/cdc-cover.jpg')) {
+    failures.push('Homepage is missing correct Twitter card image meta tag.');
+  }
+  if (!homepage.includes('twitter:card" content="summary_large_image')) {
+    failures.push('Homepage is missing Twitter card type (summary_large_image).');
+  }
+} catch (error) {
+  failures.push(`Failed to read index.html: ${error.message}`);
+}
+
 const htaccessPath = join(root, '.htaccess');
 if (existsSync(htaccessPath)) {
   try {

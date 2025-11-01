@@ -1,25 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-path-prefix="/">
+<html lang="en" data-path-prefix="/letstalkcdc/">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Series Overview | CDC: The Missing Manual</title>
     <meta name="description" content="Series hub for advanced CDC patterns. Exactly-once semantics, multi-tenancy, partitioning, and reconciliation.">
     <meta name="robots" content="index,follow,max-image-preview:large">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/letstalkcdc/apple-touch-icon.png">
+    <link rel="icon" href="/letstalkcdc/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/letstalkcdc/favicon.ico">
     
     
       
       
-        
-      
     
     
-      
-    
-    <link rel="canonical" href="https://letstalkcdc.github.io/overview">
+    <link rel="canonical" href="https://letstalkcdc.github.io/letstalkcdc/overview/">
     <meta name="theme-color" content="#0f172a">
     <script type="application/ld+json">
   {
@@ -27,76 +23,28 @@
     "@type": "ItemList",
     "name": "CDC Learning Series",
     "itemListElement": [
-      {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "https://letstalkcdc.nfshost.com/intro/"},
-      {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "https://letstalkcdc.nfshost.com/exactly-once/"},
-      {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "https://letstalkcdc.nfshost.com/multi-tenancy/"},
-      {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "https://letstalkcdc.nfshost.com/lab-kafka-debezium/"}
+      {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "{{ site.host }}{{ '/intro/' | url }}"},
+      {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "{{ site.host }}{{ '/exactly-once/' | url }}"},
+      {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "{{ site.host }}{{ '/multi-tenancy/' | url }}"},
+      {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "{{ site.host }}{{ '/lab-kafka-debezium/' | url }}"}
     ]
   }
 </script>
 
-    <link rel="stylesheet" href="/assets/css/styles.css">
-    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/letstalkcdc/assets/css/styles.css">
+    <link rel="stylesheet" href="/letstalkcdc/css/dashboard.css">
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="global-header">
       <div class="nav-container">
-        <a class="site-title" href="/">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
-        <button
-          class="nav-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="primaryNav"
-          data-nav-toggle
-        >
-          <span class="sr-only">Toggle navigation</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path
-              d="M4 7h16M4 12h16M4 17h16"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-        <div class="nav-right" id="primaryNav" data-nav-panel>
+        <a class="site-title" href="/letstalkcdc/">CDC: The Missing Manual | A Deep Dive into Change Data Capture</a>
+        <div class="nav-right">
           <nav aria-label="Primary" class="nav-links">
-            <a class="" href="/">Home</a>
-            <a class="active" href="/overview/">The Series</a>
-            <a class="" href="/design-system/">Design System</a>
+            <a class="" href="/letstalkcdc/">Home</a>
+            <a class="active" href="/letstalkcdc/overview/">The Series</a>
           </nav>
-          <div class="nav-utilities">
-            <button
-              aria-label="Toggle dark mode"
-              class="theme-toggle"
-              data-toggle-theme
-              type="button"
-              aria-pressed="false"
-            >
-              <svg class="icon icon-sun" aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  d="M12 4.75V3m0 18v-1.75M6.11 6.11 4.93 4.93m14.14 14.14-1.18-1.18M4.75 12H3m18 0h-1.75M6.11 17.89l-1.18 1.18m14.14-14.14-1.18 1.18M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  fill="none"
-                />
-              </svg>
-              <svg class="icon icon-moon" aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  fill="none"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span class="sr-only">Toggle theme</span>
-            </button>
-          </div>
+          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
         </div>
       </div>
     </header>
@@ -803,8 +751,8 @@
     <script>
       window.CDC_MODULES = [{"key":"intro","title":"Interactive Introduction to CDC","description":"An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.","href":"/intro/","ctaLabel":"Dive In!","isRecommended":true,"badge":{"label":"Start Here","variant":"recommended"},"tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"event-envelope","title":"Event Envelope & Delivery Guarantees","description":"Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.","href":"/event-envelope/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"materialization","title":"Materialization 101 (Upsert/Delete)","description":"Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.","href":"/materialization/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"snapshotting","title":"Snapshotting: The First Sync","description":"Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.","href":"/snapshotting/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"exactly-once","title":"Exactly-Once Semantics","description":"Visual walkthrough of ALO vs EOS + transactional outbox.","href":"/exactly-once/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"multi-tenancy","title":"Multi-Tenancy","description":"Isolation patterns, topic math, and rough egress estimates.","href":"/multi-tenancy/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"partitioning","title":"Partitioning","description":"Partition keys, skew, late-arrivals, and audit loops.","href":"/partitioning/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"schema-evolution","title":"Schema Evolution","description":"Handle schema changes gracefully with forward/backward compatibility and schema registries.","href":"/schema-evolution/","tags":[{"label":"Advanced Pattern","variant":"tag-pattern"}]},{"key":"ops-offsets","title":"Ops: Offsets & Replays","description":"Offset stores, safe rewind, idempotency, and resync drills when things go sideways.","href":"/ops-offsets/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"observability","title":"Observability Basics","description":"Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.","href":"/observability/","tags":[{"label":"Ops","variant":"tag-ops"}]},{"key":"use-cases","title":"Real-World Use Cases","description":"Explore practical applications of CDC, from real-time analytics to cache invalidation.","href":"/use-cases/","tags":[{"label":"Core Concept","variant":"tag-concept"}]},{"key":"strategy","title":"The Strategic Value of CDC","description":"Understand the business case and philosophical shift behind adopting an event-driven data culture.","href":"/strategy/","tags":[{"label":"Strategy","variant":"tag-strategy"}]},{"key":"tooling","title":"The CDC Ecosystem","description":"A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).","href":"/tooling/","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"lab-kafka-debezium","title":"Hands-On Lab: Kafka + Debezium","description":"Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.","href":"/lab-kafka-debezium/","ctaLabel":"Start the Lab","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"quickstarts","title":"Quickstarts","description":"Pick your source database and follow a 10–20 minute setup with checks and commands.","href":"/quickstarts/","ctaLabel":"View Quickstarts","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"tests","title":"Acceptance Tests","description":"Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.","href":"/tests/","ctaLabel":"Verify Your Stack","tags":[{"label":"Lab","variant":"tag-labs"}]},{"key":"connector-builder","title":"Connector Config Builder","description":"Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.","href":"/connector-builder/","ctaLabel":"Launch the Builder","tags":[{"label":"Tooling","variant":"tag-tooling"}]},{"key":"dlq-triage","title":"DLQ Triage Assistant","description":"Guided commands and playbooks for decoding and re-driving Kafka DLQ events.","href":"/dlq-triage/","ctaLabel":"Try the Assistant","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"debezium-decoder","title":"Debezium Event Decoder","description":"Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.","href":"/debezium-decoder/","ctaLabel":"Decode an Event","tags":[{"label":"Extras","variant":"tag-extras"}]},{"key":"errata","title":"Nuances & Errata","description":"Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.","href":"/errata/","ctaLabel":"See nuances","tags":[{"label":"Extras","variant":"tag-extras"}]}];
     </script>
-    <script type="module" src="/scripts/dashboard.js"></script>
-    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module" src="/letstalkcdc/scripts/dashboard.js"></script>
+    <script type="module" src="/letstalkcdc/assets/js/app.js"></script>
     
     
     
