@@ -38,17 +38,30 @@ letstalkcdc/
 └── README.md
 ```
 
-## Deploying to GitHub Pages
+## Hosting and Deployment
 
-This repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) that builds the Eleventy site and publishes it to GitHub Pages whenever `main` is updated.
+This project is hosted on **GitHub Pages** with automatic deployment via GitHub Actions.
 
-1. Enable GitHub Pages for the repository and select **GitHub Actions** as the source.
-2. Define the following repository variables (Settings → Secrets and variables → Actions → Variables) so the build knows where it is being hosted:
-   - `SITE_HOST`: The fully-qualified domain where the site will be served (for example `https://letstalkcdc.github.io` or your custom domain). This controls canonical URLs and metadata.
-   - `ELEVENTY_PATH_PREFIX`: Leave blank for a root-level deployment or set to `/<repository-name>` if the site is published under a project page path.
-3. Push to `main` (or trigger the workflow manually) to build and deploy the `_site/` output.
+### Quick Start
 
-The runtime JavaScript automatically honours the configured path prefix, so internal links continue to work when the site is hosted under a subdirectory.
+1. Enable GitHub Pages for the repository and select **GitHub Actions** as the source
+2. Configure repository variables (Settings → Secrets and variables → Actions → Variables):
+   - `SITE_HOST`: Full domain where the site is served (e.g., `https://letstalkcdc.github.io` or your custom domain)
+   - `ELEVENTY_PATH_PREFIX`: Leave blank for root deployment or set to `/<repository-name>` for project pages
+3. Push to `main` or manually trigger the workflow to deploy
+
+The site automatically rebuilds and deploys on every push to `main`.
+
+### Serverless Function Hosting
+
+The `migrateUser` serverless function (for Appwrite progress sync) requires separate hosting since GitHub Pages only serves static content. See [docs/HOSTING.md](docs/HOSTING.md) for:
+- Detailed deployment instructions
+- Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify)
+- Environment variable configuration
+- Custom domain setup
+- Migration guides
+
+For full hosting documentation and platform decision rationale, see **[docs/HOSTING.md](docs/HOSTING.md)**.
 
 <!-- AI-STATUS:START -->
 Last AI agents run: 2025-10-27T04:07:29.333Z

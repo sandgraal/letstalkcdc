@@ -1,3 +1,13 @@
+# Netlify Configuration (Legacy/Optional)
+#
+# NOTE: The static site is hosted on GitHub Pages (see .github/workflows/deploy.yml).
+# This configuration is provided for:
+# 1. Users who want to deploy the serverless function to Netlify
+# 2. Local testing with `netlify dev`
+# 3. Alternative deployment option if not using GitHub Pages
+#
+# See docs/HOSTING.md for full hosting platform documentation and alternatives.
+
 [build]
   command = "npm run build"
   publish = "_site"
