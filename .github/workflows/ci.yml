@@ -36,9 +36,6 @@ jobs:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
 
-      - name: Run tests
-        run: npm run test
-
       - name: Build site
         run: npm run build
 

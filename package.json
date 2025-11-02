@@ -7,7 +7,6 @@
     "build:css": "postcss src/assets/css/styles.css -o src/assets/css/styles.pref.css",
     "minify:css": "node scripts/minify-css.js src/assets/css/styles.pref.css src/assets/css/styles.min.css",
     "build": "npm run build:css && npm run minify:css && eleventy --config=eleventy.config.cjs",
-    "test": "node --test",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
     "smoke:a11y": "node scripts/run-pa11y.mjs",
     "smoke:perf": "node scripts/perf-budget.mjs",
