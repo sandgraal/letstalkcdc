@@ -64,5 +64,5 @@ The `migrateUser` serverless function (for Appwrite progress sync) requires sepa
 For full hosting documentation and platform decision rationale, see **[docs/HOSTING.md](docs/HOSTING.md)**.
 
 <!-- AI-STATUS:START -->
-Last AI agents run: 2025-10-27T04:07:29.333Z
+Last AI agents run: 2025-11-03T04:06:25.436Z
 <!-- AI-STATUS:END -->
