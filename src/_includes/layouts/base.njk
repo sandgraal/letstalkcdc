@@ -169,5 +169,9 @@
     <footer class="site-footer">
       <p>{{ site.copyright }}</p>
     </footer>
+    <link rel="stylesheet" href="{{ '/css/assistant.css' | url }}">
+    <button id="askBtn" type="button" aria-label="Ask the Playground">💬</button>
+    <div id="askPanel" hidden></div>
+    <script type="module" src="{{ '/js/assistant.js' | url }}"></script>
   </body>
 </html>
