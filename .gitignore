@@ -8,3 +8,8 @@ ai/logs/*
 !ai/logs/.gitkeep
 ai/_state/*
 !ai/_state/.gitkeep
+
+# Environment variables (never commit secrets!)
+.env
+.env.local
+.env.*.local

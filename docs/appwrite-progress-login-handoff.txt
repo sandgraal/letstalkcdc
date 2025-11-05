@@ -1,69 +1,158 @@
 # CDC Playground — Appwrite Login + Progress Persistence Handoff
 # File: appwrite-progress-login-handoff.txt
-# Purpose: Allow an AI agent (Codex or similar) to pick up the integration from the current branch.
+# Purpose: Documentation of the Appwrite integration implementation status
 
 ------------------------------------------------------------
 PROJECT CONTEXT
 ------------------------------------------------------------
-Repository: sandgraal/Lets-Talk-CDC-Change-Feed-Playground
-Branch: feature/appwrite-progress-login
+Repository: sandgraal/letstalkcdc
+Branch: main (integration completed and merged)
 
-The goal is to finalize and verify the Appwrite + Netlify + Eleventy integration for persistent user progress and login.
+The Appwrite + GitHub Pages + Eleventy integration for persistent user progress and login is COMPLETE.
 
-Current state:
-✔ /scripts/progress.js added
-✔ /netlify/functions/migrateUser.js added
-✔ /appwrite.collections.json added
-✔ Branch is ahead of main and builds cleanly
-
-Pending tasks include: wiring Eleventy layouts, confirming Netlify config, adding the integration README, and validating end-to-end behavior.
-
-------------------------------------------------------------
-TASKS FOR THE AGENT
-------------------------------------------------------------
-
-1. Verify the following files exist and match current design:
-   - scripts/progress.js
-   - netlify/functions/migrateUser.js
-   - appwrite.collections.json
-
-2. Add or confirm presence of:
-   - netlify.toml
-   - INTEGRATION_README.md
+Implementation Status:
+✅ All code files implemented and merged to main
+✅ Frontend integration complete
+✅ Backend serverless function ready
+✅ Documentation complete
+✅ .env.example file created
+⚠️ Environment variables need to be configured for deployment
 
 ------------------------------------------------------------
-REQUIRED FILE CONTENTS
+IMPLEMENTATION SUMMARY
 ------------------------------------------------------------
 
-### netlify.toml
-[build]
-  command = "npm run build"
-  publish = "_site"
+All required files are in place:
 
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
-  included_files = ["netlify/functions/*.js"]
+✅ scripts/progress.js (994 lines)
+   - Dynamic Appwrite SDK loading from CDN
+   - Anonymous session creation
+   - OAuth login (GitHub)
+   - Progress persistence (local + remote)
+   - Migration function for anonymous to authenticated users
+   - Dashboard integration with Chart.js
+   - Resume functionality
+   - Event tracking
+   - Button binding for login/logout
 
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Cross-Origin-Opener-Policy = "same-origin"
-    Cross-Origin-Embedder-Policy = "require-corp"
+✅ netlify/functions/migrateUser.js
+   - Server-side user migration function
+   - Ready for deployment to serverless platform
 
+✅ appwrite.collections.json
+   - Database schema for progress and events collections
 
-### INTEGRATION_README.md
-# Appwrite Login + Progress Persistence Integration
+✅ netlify.toml
+   - Serverless function configuration (optional, for Netlify deployments)
 
-This adds persistent learning progress and authentication across devices to the CDC Playground.
+✅ INTEGRATION_README.md
+   - Comprehensive setup and deployment guide
 
-## Setup
+✅ src/_data/appwrite.cjs
+   - Environment variable reader
 
-1. Appwrite
-   - Create database `main`.
-   - Import `appwrite.collections.json`.
-   - Create an API key with database read/write permissions.
-   - Record `APPWRITE_PROJECT`, `APPWRITE_ENDPOINT`, and the API key.
+✅ src/_includes/layouts/base.njk
+   - Conditionally injects Appwrite config
+   - Loads progress.js on journey pages
+   - Includes toast and dashboard UI
+
+✅ src/_includes/components/series-nav.njk
+   - Progress toolbar with auth buttons
+
+✅ src/assets/js/app.js
+   - Integration with CDCProgress.onStepChange()
+
+✅ Module data files (e.g., src/intro/index.11tydata.cjs)
+   - seriesKey defined for all journey modules
+
+✅ .env.example
+   - Template for environment configuration
+
+✅ .gitignore
+   - Updated to exclude .env files
+
+------------------------------------------------------------
+REMAINING SETUP TASKS
+------------------------------------------------------------
+
+To enable Appwrite features, you need to:
+
+1. **Create an Appwrite Project** (if not done already):
+   - Go to https://cloud.appwrite.io (or your self-hosted instance)
+   - Create a new project
+   - Note your Project ID
+
+2. **Set Up the Database**:
+   - In Appwrite Console, create a database named "main"
+   - Import the collections from appwrite.collections.json
+   - This creates two collections: "progress" and "events"
+
+3. **Generate API Key** (for server-side function only):
+   - In Appwrite Console → Settings → API Keys
+   - Create a new API key with database read/write permissions
+   - This key is ONLY used by the serverless function
+   - Never expose this in the browser!
+
+4. **Configure GitHub OAuth Provider**:
+   - In Appwrite Console → Authentication → Providers → GitHub
+   - Enter your GitHub OAuth App credentials (Client ID + Secret)
+   - Add callback URLs:
+     * http://localhost:8080/?auth=success (local dev)
+     * http://localhost:8080/?auth=failed (local dev)
+     * https://letstalkcdc.github.io/?auth=success (production)
+     * https://letstalkcdc.github.io/?auth=failed (production)
+   - Or use wildcards: https://letstalkcdc.github.io/*
+   - Enable the provider
+
+5. **Configure Environment Variables**:
+
+   A. **Local Development** (.env file):
+      - Copy .env.example to .env
+      - Fill in your Appwrite credentials:
+        ```
+        APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+        APPWRITE_PROJECT=your_actual_project_id
+        APPWRITE_DB_ID=main
+        COL_PROGRESS_ID=progress
+        COL_EVENTS_ID=events
+        APPWRITE_API_KEY=your_secret_api_key
+        ```
+      - Run: `npm run dev`
+      - Visit: http://localhost:8080/intro/
+
+   B. **Production Deployment** (GitHub Actions):
+      - In GitHub repo → Settings → Secrets and variables → Actions
+      - Add repository secrets:
+        * APPWRITE_ENDPOINT
+        * APPWRITE_PROJECT
+        * APPWRITE_DB_ID
+        * COL_PROGRESS_ID
+        * COL_EVENTS_ID
+        * APPWRITE_API_KEY (for serverless function)
+      - Update .github/workflows/deploy.yml to pass these to build
+      
+   C. **Serverless Function Deployment**:
+      Choose your platform and configure environment variables:
+      
+      **Option 1: Vercel**
+      - Deploy function to /api/migrateUser.js
+      - Add environment variables in Vercel dashboard
+      - Update scripts/progress.js line 750 to use /api/migrateUser
+      
+      **Option 2: Cloudflare Workers**
+      - Deploy as Worker function
+      - Configure secrets using wrangler
+      - Update fetch URL in scripts/progress.js
+      
+      **Option 3: AWS Lambda**
+      - Deploy with API Gateway
+      - Configure environment in Lambda console
+      - Update fetch URL in scripts/progress.js
+      
+      **Option 4: Netlify** (legacy)
+      - Add environment variables in Netlify site settings
+      - Function already configured at /.netlify/functions/migrateUser
+      - No code changes needed
 
 2. Netlify
    Add environment variables:
@@ -74,9 +163,26 @@ APPWRITE_DB_ID=main
 COL_PROGRESS_ID=progress
 COL_EVENTS_ID=events
 COL_ASSISTANT_ID=assistant_feedback
+------------------------------------------------------------
+TESTING CHECKLIST
+------------------------------------------------------------
 
-markdown
-Copy code
+Once environment variables are configured:
+
+✅ Local Development:
+   [ ] npm run dev starts without errors
+   [ ] Visit /intro/ page
+   [ ] Open browser console - no Appwrite SDK errors
+   [ ] See "Sign in with GitHub" button in progress toolbar
+   [ ] Progress toolbar shows "Saving to this device" (anonymous mode)
+   [ ] Scroll through content - progress percentage updates
+   [ ] Browser localStorage contains "cdc-progress-store" entry
+
+✅ Anonymous Session:
+   [ ] Navigate through a journey module
+   [ ] Progress persists in Appwrite progress collection
+   [ ] Check Appwrite Console → Database → progress collection
+   [ ] Should see document with anonymous userId
 
 3. Eleventy
 - Include `/scripts/progress.js` in all Journey layouts.
@@ -84,72 +190,124 @@ Copy code
 - Call:
   CDCProgress.onStepChange({ journeySlug, step, percent, state });
   whenever the user advances or edits inputs.
+✅ OAuth Authentication:
+   [ ] Click "Sign in with GitHub" button
+   [ ] Redirected to GitHub authorization
+   [ ] Return to site with ?auth=success
+   [ ] Status changes to "Synced across devices"
+   [ ] "Sign out" button appears
+   [ ] Anonymous progress migrated to authenticated user
 
-4. Testing
-- Run locally with `netlify dev`.
-- Confirm:
-  - Anonymous session creates a `progress` doc.
-  - OAuth (GitHub) login migrates via `migrateUser.js`.
-  - Resume toast appears when user returns to a journey.
+✅ Progress Persistence:
+   [ ] Make progress on a journey while authenticated
+   [ ] Close browser completely
+   [ ] Reopen site and sign in
+   [ ] Progress is restored
+   [ ] Dashboard shows correct completion percentage
 
-5. Deployment
-- Commit and push to `feature/appwrite-progress-login`.
-- Verify deploy preview on Netlify.
-- Merge into `main` after validation.
+✅ Resume Feature:
+   [ ] Start a journey, make partial progress
+   [ ] Close browser
+   [ ] Reopen journey page
+   [ ] Toast appears: "Resume where you left off?"
+   [ ] Click "Resume" - returns to last position
+   [ ] Click "Dismiss" - toast disappears
 
-
-------------------------------------------------------------
-ADDITIONAL CONFIGURATION
-------------------------------------------------------------
-
-### package.json
-Ensure dependency:
-{
-"dependencies": {
- "node-appwrite": "^13.0.0"
-}
-}
-
-### Eleventy integration notes
-- Inject `window.APPWRITE_*` vars inside layout HTML.
-- Attach sign-in/sign-out buttons:
-CDCProgress.signInWithOAuth("github")
-CDCProgress.signOut()
-- Ensure offerResume() shows the toast for resumed sessions.
+✅ Dashboard:
+   [ ] Sign in with GitHub
+   [ ] Dashboard becomes visible
+   [ ] Shows overall progress chart
+   [ ] Shows per-module progress chart
+   [ ] Module completion counts are accurate
 
 ------------------------------------------------------------
-VERIFICATION CHECKLIST
+TROUBLESHOOTING
 ------------------------------------------------------------
-✅ Appwrite collections created and imported
-✅ Netlify env variables configured
-✅ Anonymous session progress autosaves
-✅ OAuth login (GitHub) completes and migrates data
-✅ Resume toast appears and restores state
-✅ Works on both local (`netlify dev`) and preview build
-✅ Ready to merge after passing manual verification
+
+**Issue: Appwrite SDK fails to load**
+- Check browser console for network errors
+- Verify CDN is accessible: https://cdn.jsdelivr.net/npm/appwrite@13.0.0/dist/esm/appwrite.js
+- Check that environment variables are set and injected into HTML
+
+**Issue: OAuth redirect fails**
+- Verify callback URLs are whitelisted in Appwrite Console
+- Check that GitHub OAuth app is properly configured
+- Look for ?auth=failed in URL after redirect
+- Check browser console for errors
+
+**Issue: Progress not persisting**
+- Verify Appwrite collections exist and have correct schema
+- Check browser console for database permission errors
+- Verify API key has database read/write permissions
+- Check that userId is correctly set
+
+**Issue: Migration fails after login**
+- Verify serverless function is deployed and accessible
+- Check function logs for errors
+- Verify APPWRITE_API_KEY is set in function environment
+- Test function directly: POST to /.netlify/functions/migrateUser with { fromUserId, toUserId }
+
+**Issue: Dashboard doesn't show**
+- Verify user is authenticated (not anonymous)
+- Check that Chart.js is loaded
+- Look for JavaScript errors in console
+- Verify CDC_MODULES data is present in window object
 
 ------------------------------------------------------------
-IMPLEMENTATION GOAL
+DEPLOYMENT NOTES
 ------------------------------------------------------------
-After completion, users can:
-- Start journeys anonymously
-- Automatically save progress per step
-- Log in via OAuth and retain progress
-- Resume later from any device
-- Observe funnel telemetry via optional events collection
 
-End result: CDC Playground has seamless Appwrite-powered login and progress continuity.
+**GitHub Pages Deployment:**
+- Static site deploys via .github/workflows/deploy.yml
+- Serverless function must be deployed separately (see options above)
+- Environment variables must be configured in GitHub Actions secrets
+
+**Environment Variables in CI/CD:**
+- Add to .github/workflows/deploy.yml:
+  ```yaml
+  env:
+    APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+    APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
+    APPWRITE_DB_ID: ${{ secrets.APPWRITE_DB_ID }}
+    COL_PROGRESS_ID: ${{ secrets.COL_PROGRESS_ID }}
+    COL_EVENTS_ID: ${{ secrets.COL_EVENTS_ID }}
+  ```
+
+**Security Notes:**
+- NEVER commit .env file to git
+- APPWRITE_API_KEY is server-side ONLY
+- Only public config (endpoint, project ID, collection IDs) goes to browser
+- Appwrite SDK handles client authentication via sessions
 
 ------------------------------------------------------------
-INSTRUCTIONS FOR AGENT
+DEFINITION OF DONE
 ------------------------------------------------------------
-- Pull the latest version of `feature/appwrite-progress-login`
-- Ensure all files listed above exist with correct content
-- Execute local build via `npm install && netlify dev`
-- Validate that the authentication and persistence features work
-- Commit any missing files or adjustments
-- Prepare a pull request to merge into `main`
-- Tag the commit message: feat(appwrite): finalize login + progress persistence
+
+✅ Implementation Complete (ALL CODE MERGED TO MAIN)
+⚠️ Deployment Pending (ENVIRONMENT CONFIGURATION REQUIRED)
+
+To mark this as fully complete:
+1. Configure environment variables (locally and/or in CI/CD)
+2. Deploy serverless function to chosen platform
+3. Run testing checklist above
+4. Verify all features work end-to-end
+5. Update this document with "DEPLOYED ✅" status
+
+------------------------------------------------------------
+NEXT STEPS FOR DEVELOPER
+------------------------------------------------------------
+
+1. Copy .env.example to .env and fill in credentials
+2. Run `npm run dev` and test locally
+3. Configure GitHub Actions secrets for production deployment
+4. Choose and deploy serverless function platform
+5. Test on production deployment
+6. Monitor Appwrite Console for user activity
+
+For questions or issues, refer to:
+- INTEGRATION_README.md - Full setup guide
+- docs/HOSTING.md - Hosting platform details
+- Appwrite docs: https://appwrite.io/docs
 
 ------------------------------------------------------------
 END OF HANDOFF
