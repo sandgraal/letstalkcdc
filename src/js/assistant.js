@@ -1,7 +1,8 @@
 import { databases, dbConfig } from "./appwrite-config.js";
+import { withBasePath } from "../assets/js/utils/path-prefix.js";
 
 async function loadKB() {
-  const res = await fetch('/data/assistant.json');
+  const res = await fetch(withBasePath('/data/assistant.json'));
   return res.json();
 }
 
