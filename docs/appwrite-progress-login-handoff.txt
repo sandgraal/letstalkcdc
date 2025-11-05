@@ -1,0 +1,155 @@
+# CDC Playground — Appwrite Login + Progress Persistence Handoff
+# File: appwrite-progress-login-handoff.txt
+# Purpose: Allow an AI agent (Codex or similar) to pick up the integration from the current branch.
+
+------------------------------------------------------------
+PROJECT CONTEXT
+------------------------------------------------------------
+Repository: sandgraal/Lets-Talk-CDC-Change-Feed-Playground
+Branch: feature/appwrite-progress-login
+
+The goal is to finalize and verify the Appwrite + Netlify + Eleventy integration for persistent user progress and login.
+
+Current state:
+✔ /scripts/progress.js added
+✔ /netlify/functions/migrateUser.js added
+✔ /appwrite.collections.json added
+✔ Branch is ahead of main and builds cleanly
+
+Pending tasks include: wiring Eleventy layouts, confirming Netlify config, adding the integration README, and validating end-to-end behavior.
+
+------------------------------------------------------------
+TASKS FOR THE AGENT
+------------------------------------------------------------
+
+1. Verify the following files exist and match current design:
+   - scripts/progress.js
+   - netlify/functions/migrateUser.js
+   - appwrite.collections.json
+
+2. Add or confirm presence of:
+   - netlify.toml
+   - INTEGRATION_README.md
+
+------------------------------------------------------------
+REQUIRED FILE CONTENTS
+------------------------------------------------------------
+
+### netlify.toml
+[build]
+  command = "npm run build"
+  publish = "_site"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  included_files = ["netlify/functions/*.js"]
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+
+### INTEGRATION_README.md
+# Appwrite Login + Progress Persistence Integration
+
+This adds persistent learning progress and authentication across devices to the CDC Playground.
+
+## Setup
+
+1. Appwrite
+   - Create database `main`.
+   - Import `appwrite.collections.json`.
+   - Create an API key with database read/write permissions.
+   - Record `APPWRITE_PROJECT`, `APPWRITE_ENDPOINT`, and the API key.
+
+2. Netlify
+   Add environment variables:
+APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+APPWRITE_PROJECT=YOUR_PROJECT_ID
+APPWRITE_API_KEY=YOUR_API_KEY
+APPWRITE_DB_ID=main
+COL_PROGRESS_ID=progress
+COL_EVENTS_ID=events
+
+markdown
+Copy code
+
+3. Eleventy
+- Include `/scripts/progress.js` in all Journey layouts.
+- Inject runtime values for `window.APPWRITE_*`.
+- Call:
+  CDCProgress.onStepChange({ journeySlug, step, percent, state });
+  whenever the user advances or edits inputs.
+
+4. Testing
+- Run locally with `netlify dev`.
+- Confirm:
+  - Anonymous session creates a `progress` doc.
+  - OAuth (GitHub) login migrates via `migrateUser.js`.
+  - Resume toast appears when user returns to a journey.
+
+5. Deployment
+- Commit and push to `feature/appwrite-progress-login`.
+- Verify deploy preview on Netlify.
+- Merge into `main` after validation.
+
+
+------------------------------------------------------------
+ADDITIONAL CONFIGURATION
+------------------------------------------------------------
+
+### package.json
+Ensure dependency:
+{
+"dependencies": {
+ "node-appwrite": "^13.0.0"
+}
+}
+
+### Eleventy integration notes
+- Inject `window.APPWRITE_*` vars inside layout HTML.
+- Attach sign-in/sign-out buttons:
+CDCProgress.signInWithOAuth("github")
+CDCProgress.signOut()
+- Ensure offerResume() shows the toast for resumed sessions.
+
+------------------------------------------------------------
+VERIFICATION CHECKLIST
+------------------------------------------------------------
+✅ Appwrite collections created and imported
+✅ Netlify env variables configured
+✅ Anonymous session progress autosaves
+✅ OAuth login (GitHub) completes and migrates data
+✅ Resume toast appears and restores state
+✅ Works on both local (`netlify dev`) and preview build
+✅ Ready to merge after passing manual verification
+
+------------------------------------------------------------
+IMPLEMENTATION GOAL
+------------------------------------------------------------
+After completion, users can:
+- Start journeys anonymously
+- Automatically save progress per step
+- Log in via OAuth and retain progress
+- Resume later from any device
+- Observe funnel telemetry via optional events collection
+
+End result: CDC Playground has seamless Appwrite-powered login and progress continuity.
+
+------------------------------------------------------------
+INSTRUCTIONS FOR AGENT
+------------------------------------------------------------
+- Pull the latest version of `feature/appwrite-progress-login`
+- Ensure all files listed above exist with correct content
+- Execute local build via `npm install && netlify dev`
+- Validate that the authentication and persistence features work
+- Commit any missing files or adjustments
+- Prepare a pull request to merge into `main`
+- Tag the commit message: feat(appwrite): finalize login + progress persistence
+
+------------------------------------------------------------
+END OF HANDOFF
+------------------------------------------------------------
