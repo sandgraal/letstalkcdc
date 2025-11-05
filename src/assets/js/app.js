@@ -1,5 +1,5 @@
-import { withBasePath } from './utils/path-prefix.js';
-import { getEducationTracer } from './tracing-lite.js';
+import { withBasePath } from "./utils/path-prefix.js";
+import { getEducationTracer } from "./tracing-lite.js";
 
 const doc = document;
 
@@ -7,9 +7,9 @@ const doc = document;
 let educationTracer;
 try {
   educationTracer = getEducationTracer();
-  console.log('✓ Education tracing initialized');
+  console.log("✓ Education tracing initialized");
 } catch (error) {
-  console.warn('Tracing initialization failed:', error);
+  console.warn("Tracing initialization failed:", error);
   // Create no-op tracer to prevent errors
   educationTracer = {
     trackModuleView: () => {},

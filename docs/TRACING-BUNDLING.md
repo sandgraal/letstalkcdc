@@ -22,21 +22,21 @@ npm install --save-dev esbuild
 Create `scripts/bundle-tracing.mjs`:
 
 ```javascript
-import * as esbuild from 'esbuild';
+import * as esbuild from "esbuild";
 
 await esbuild.build({
-  entryPoints: ['src/assets/js/tracing.js'],
+  entryPoints: ["src/assets/js/tracing.js"],
   bundle: true,
-  format: 'esm',
-  outfile: 'src/assets/js/tracing.bundle.js',
-  platform: 'browser',
-  target: ['es2020'],
+  format: "esm",
+  outfile: "src/assets/js/tracing.bundle.js",
+  platform: "browser",
+  target: ["es2020"],
   sourcemap: true,
   minify: false,
   external: [], // Bundle all dependencies
 });
 
-console.log('✓ Tracing bundle created');
+console.log("✓ Tracing bundle created");
 ```
 
 Update `package.json` scripts:
@@ -53,7 +53,7 @@ Update `package.json` scripts:
 Update `src/assets/js/app.js` import:
 
 ```javascript
-import { getEducationTracer } from './tracing.bundle.js';
+import { getEducationTracer } from "./tracing.bundle.js";
 ```
 
 ### Option 2: Use CDN (Quick Alternative)
@@ -71,45 +71,45 @@ Create `src/assets/js/tracing-cdn.js`:
 export class EducationTracer {
   constructor() {
     this.sessionId = this._getSessionId();
-    this.endpoint = 'http://localhost:4318/v1/traces';
+    this.endpoint = "http://localhost:4318/v1/traces";
   }
 
   trackModuleView(moduleKey, moduleTitle) {
-    this._sendEvent('module.view', {
-      'module.key': moduleKey,
-      'module.title': moduleTitle,
+    this._sendEvent("module.view", {
+      "module.key": moduleKey,
+      "module.title": moduleTitle,
     });
   }
 
   trackProgress(moduleKey, step, percentComplete) {
-    this._sendEvent('learning.progress', {
-      'module.key': moduleKey,
-      'learning.step': step,
-      'learning.percent_complete': percentComplete,
+    this._sendEvent("learning.progress", {
+      "module.key": moduleKey,
+      "learning.step": step,
+      "learning.percent_complete": percentComplete,
     });
   }
 
   trackInteraction(interactionType, elementId, success = true) {
-    this._sendEvent('learning.interaction', {
-      'interaction.type': interactionType,
-      'interaction.element_id': elementId,
-      'interaction.success': success,
+    this._sendEvent("learning.interaction", {
+      "interaction.type": interactionType,
+      "interaction.element_id": elementId,
+      "interaction.success": success,
     });
   }
 
   trackSearch(query, resultsCount) {
-    this._sendEvent('search.query', {
-      'search.query': query,
-      'search.results_count': resultsCount,
+    this._sendEvent("search.query", {
+      "search.query": query,
+      "search.results_count": resultsCount,
     });
   }
 
   trackWebVital(name, value, rating) {
-    this._sendEvent('web.vital', {
-      'vital.name': name,
-      'vital.value': value,
-      'vital.rating': rating,
-      'page.path': window.location.pathname,
+    this._sendEvent("web.vital", {
+      "vital.name": name,
+      "vital.value": value,
+      "vital.rating": rating,
+      "page.path": window.location.pathname,
     });
   }
 
@@ -119,28 +119,30 @@ export class EducationTracer {
       timestamp: Date.now() * 1000000, // nanoseconds
       attributes: {
         ...attributes,
-        'user.session_id': this.sessionId,
-        'page.url': window.location.href,
+        "user.session_id": this.sessionId,
+        "page.url": window.location.href,
       },
     };
 
     // Send via fetch (non-blocking)
     fetch(this.endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(span),
       keepalive: true,
     }).catch(() => {
       // Silently fail - tracing should not break the app
-      console.debug('Tracing beacon failed:', name);
+      console.debug("Tracing beacon failed:", name);
     });
   }
 
   _getSessionId() {
-    let sessionId = sessionStorage.getItem('trace_session_id');
+    let sessionId = sessionStorage.getItem("trace_session_id");
     if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      sessionStorage.setItem('trace_session_id', sessionId);
+      sessionId = `session_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      sessionStorage.setItem("trace_session_id", sessionId);
     }
     return sessionId;
   }
@@ -149,7 +151,7 @@ export class EducationTracer {
 export function getEducationTracer() {
   if (!window._educationTracer) {
     window._educationTracer = new EducationTracer();
-    console.log('✓ Education tracing initialized');
+    console.log("✓ Education tracing initialized");
   }
   return window._educationTracer;
 }
@@ -167,12 +169,12 @@ Add to your HTML `<head>`:
 
 ```html
 <script type="importmap">
-{
-  "imports": {
-    "@opentelemetry/api": "https://cdn.jsdelivr.net/npm/@opentelemetry/api@1.9.0/+esm",
-    "@opentelemetry/sdk-trace-web": "https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-web@2.2.0/+esm"
+  {
+    "imports": {
+      "@opentelemetry/api": "https://cdn.jsdelivr.net/npm/@opentelemetry/api@1.9.0/+esm",
+      "@opentelemetry/sdk-trace-web": "https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-web@2.2.0/+esm"
+    }
   }
-}
 </script>
 ```
 
