@@ -1,0 +1,64 @@
+intents:
+  - id: cdc_basics
+    triggers: ["what is cdc", "change data capture", "how cdc works"]
+    answer: >
+      Change Data Capture (CDC) streams database row changes to downstream systems in near real time.
+      In Matillion CDC, built on Debezium, the agent tails the database write-ahead log (WAL), converts
+      each commit into a change event, and tracks offsets for consistent delivery.
+    links:
+      - label: Deep dive
+        url: /docs/cdc/basics/
+      - label: Lag simulator
+        url: /playground/simulators/lag/
+
+  - id: lag_handling
+    triggers: ["lag", "backpressure", "slow downstream", "throughput"]
+    answer: >
+      Lag means delay between a committed source change and its appearance downstream.
+      Manage it by right-sizing agents for peak WAL throughput, compressing batches, parallelizing partitions,
+      and tuning sink flush/ack parameters.
+    links:
+      - label: Sizing guide
+        url: /docs/agents/sizing/
+      - label: Offset visualizer
+        url: /playground/tools/offsets/
+
+  - id: snapshot_strategy
+    triggers: ["snapshot", "initial load", "bootstrap"]
+    answer: >
+      Snapshots create an initial dataset before streaming begins. Choose between fast (parallel, minimal locking)
+      and consistent (transactionally aligned) modes depending on source pressure tolerance.
+    links:
+      - label: Snapshot guide
+        url: /docs/cdc/snapshots/
+      - label: Snapshot visualizer
+        url: /playground/tools/snapshot/
+
+  - id: offset_management
+    triggers: ["offset", "resume", "reset", "recovery"]
+    answer: >
+      Offsets record each log position processed. They enable resuming streams after restarts.
+      Never delete them unless re-snapshotting; instead use the Matillion reset workflow.
+    links:
+      - label: Offset reset guide
+        url: /docs/cdc/offsets/
+      - label: Visualizer
+        url: /playground/tools/offsets/
+
+  - id: agent_sizing
+    triggers: ["agent sizing", "cpu", "memory", "scale"]
+    answer: >
+      Start with observed WAL bytes/sec × 1.5–3× headroom. Each connector thread uses 1 core;
+      snapshot threads need more RAM for result buffers. Prefer scaling out beyond 4–6 cores per agent.
+    links:
+      - label: Calculator
+        url: /playground/tools/agent-sizing/
+
+  - id: schema_changes
+    triggers: ["ddl", "schema change", "alter table"]
+    answer: >
+      Debezium emits schema change events. Additive DDL (new columns) propagates automatically;
+      destructive DDL (drops, renames) requires downstream reconciliation. Review schema history topics.
+    links:
+      - label: Schema evolution
+        url: /docs/cdc/schema/
