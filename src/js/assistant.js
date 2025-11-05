@@ -25,7 +25,7 @@ function renderAnswer(intent, q) {
   panel.innerHTML = `
     <div class="assistant-card">
       <h3>${intent ? intent.id.replaceAll('_',' ') : 'No match'}</h3>
-      <p>${intent ? intent.answer : 'Sorry, I couldn’t find that yet.'}</p>
+      <p>${intent ? intent.answer : 'Sorry, I couldn't find that yet.'}</p>
       ${
         intent?.links
           ? `<ul>${intent.links.map(l => `<li><a href="${l.url}">${l.label}</a></li>`).join('')}</ul>`
@@ -44,6 +44,16 @@ function renderAnswer(intent, q) {
 }
 
 async function saveFeedback(question, intentId, helpful) {
+  // If Appwrite SDK didn't load, fall back to local storage immediately
+  if (!databases) {
+    console.warn("Appwrite SDK not available, using local storage");
+    const feedback = JSON.parse(localStorage.getItem("assistantFeedback") || "[]");
+    feedback.push({ question, intentId, helpful, ts: new Date().toISOString() });
+    localStorage.setItem("assistantFeedback", JSON.stringify(feedback));
+    alert("Feedback guardado localmente (offline mode).");
+    return;
+  }
+
   try {
     await databases.createDocument(
       dbConfig.databaseId,
