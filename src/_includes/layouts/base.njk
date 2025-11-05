@@ -158,6 +158,7 @@
         window.APPWRITE_DB_ID = {{ appwrite.databaseId | dump | safe }};
         window.COL_PROGRESS_ID = {{ appwrite.progressCollectionId | dump | safe }};
         window.COL_EVENTS_ID = {{ appwrite.eventsCollectionId | dump | safe }};
+        window.COL_ASSISTANT_ID = {{ appwrite.assistantCollectionId | dump | safe }};
       </script>
     {% endif %}
     {% if seriesKey %}

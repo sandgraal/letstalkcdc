@@ -73,13 +73,14 @@ APPWRITE_API_KEY=YOUR_API_KEY
 APPWRITE_DB_ID=main
 COL_PROGRESS_ID=progress
 COL_EVENTS_ID=events
+COL_ASSISTANT_ID=assistant_feedback
 
 markdown
 Copy code
 
 3. Eleventy
 - Include `/scripts/progress.js` in all Journey layouts.
-- Inject runtime values for `window.APPWRITE_*`.
+- Inject runtime values for `window.APPWRITE_*` and `window.COL_*`.
 - Call:
   CDCProgress.onStepChange({ journeySlug, step, percent, state });
   whenever the user advances or edits inputs.
