@@ -1,10 +1,28 @@
 import { withBasePath } from './utils/path-prefix.js';
+import { getEducationTracer } from './tracing-lite.js';
 
 const doc = document;
 
+// Initialize OpenTelemetry tracing
+let educationTracer;
+try {
+  educationTracer = getEducationTracer();
+  console.log('✓ Education tracing initialized');
+} catch (error) {
+  console.warn('Tracing initialization failed:', error);
+  // Create no-op tracer to prevent errors
+  educationTracer = {
+    trackModuleView: () => {},
+    trackProgress: () => {},
+    trackInteraction: () => {},
+    trackSearch: () => {},
+    trackWebVital: () => {},
+  };
+}
+
 const syncThemeToggle = (mode) => {
-  doc.querySelectorAll('[data-toggle-theme]').forEach((button) => {
-    button.setAttribute('aria-pressed', mode === 'dark' ? 'true' : 'false');
+  doc.querySelectorAll("[data-toggle-theme]").forEach((button) => {
+    button.setAttribute("aria-pressed", mode === "dark" ? "true" : "false");
   });
 };
 
@@ -15,7 +33,7 @@ const applyTheme = (mode) => {
 
 const getStoredTheme = () => {
   try {
-    return localStorage.getItem('theme');
+    return localStorage.getItem("theme");
   } catch (_) {
     return null;
   }
@@ -23,91 +41,108 @@ const getStoredTheme = () => {
 
 const setStoredTheme = (mode) => {
   try {
-    localStorage.setItem('theme', mode);
+    localStorage.setItem("theme", mode);
   } catch (_) {
     /* storage denied */
   }
 };
 
 const themeMediaQuery = window.matchMedia
-  ? window.matchMedia('(prefers-color-scheme: dark)')
+  ? window.matchMedia("(prefers-color-scheme: dark)")
   : null;
 
-const initialTheme = getStoredTheme() ?? (themeMediaQuery?.matches ? 'dark' : 'light');
+const initialTheme =
+  getStoredTheme() ?? (themeMediaQuery?.matches ? "dark" : "light");
 
 applyTheme(initialTheme);
 
-doc.addEventListener('click', (event) => {
-  const target = event.target.closest('[data-toggle-theme]');
+doc.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-toggle-theme]");
   if (!target) return;
-  const next = doc.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  const next = doc.documentElement.dataset.theme === "dark" ? "light" : "dark";
   applyTheme(next);
   setStoredTheme(next);
 });
 
 if (themeMediaQuery) {
-  themeMediaQuery.addEventListener('change', (event) => {
+  themeMediaQuery.addEventListener("change", (event) => {
     if (getStoredTheme()) return;
-    applyTheme(event.matches ? 'dark' : 'light');
+    applyTheme(event.matches ? "dark" : "light");
   });
 }
 
 if (window.matchMedia) {
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   if (reduceMotion.matches) {
-    doc.documentElement.classList.add('reduce-motion');
+    doc.documentElement.classList.add("reduce-motion");
   }
-  reduceMotion.addEventListener('change', (event) => {
-    doc.documentElement.classList.toggle('reduce-motion', event.matches);
+  reduceMotion.addEventListener("change", (event) => {
+    doc.documentElement.classList.toggle("reduce-motion", event.matches);
   });
 }
 
 const onReady = (callback) => {
-  if (doc.readyState === 'loading') {
-    doc.addEventListener('DOMContentLoaded', callback, { once: true });
+  if (doc.readyState === "loading") {
+    doc.addEventListener("DOMContentLoaded", callback, { once: true });
   } else {
     callback();
   }
 };
 
 onReady(() => {
-  const navToggle = doc.querySelector('[data-nav-toggle]');
-  const navPanel = doc.querySelector('[data-nav-panel]');
+  // Track module view on page load
+  try {
+    const journeySlug =
+      window.CDC_JOURNEY_SLUG || doc.body?.dataset?.journeySlug || "";
+    if (journeySlug) {
+      const pageTitle = document.title;
+      educationTracer.trackModuleView(journeySlug, pageTitle);
+    }
+  } catch (error) {
+    console.debug("Module view tracking failed:", error);
+  }
+
+  const navToggle = doc.querySelector("[data-nav-toggle]");
+  const navPanel = doc.querySelector("[data-nav-panel]");
   if (!navToggle || !navPanel) return;
 
   const closeNav = () => {
-    navPanel.classList.remove('is-open');
-    navToggle.setAttribute('aria-expanded', 'false');
-    doc.body.classList.remove('nav-open');
+    navPanel.classList.remove("is-open");
+    navToggle.setAttribute("aria-expanded", "false");
+    doc.body.classList.remove("nav-open");
   };
 
-  navToggle.addEventListener('click', () => {
-    const isOpen = navPanel.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    doc.body.classList.toggle('nav-open', isOpen);
-    if (isOpen && window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
-      const firstLink = navPanel.querySelector('a[href]');
+  navToggle.addEventListener("click", () => {
+    const isOpen = navPanel.classList.toggle("is-open");
+    navToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    doc.body.classList.toggle("nav-open", isOpen);
+    if (
+      isOpen &&
+      window.matchMedia &&
+      window.matchMedia("(max-width: 900px)").matches
+    ) {
+      const firstLink = navPanel.querySelector("a[href]");
       if (firstLink) {
         firstLink.focus({ preventScroll: true });
       }
     }
   });
 
-  doc.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && navPanel.classList.contains('is-open')) {
+  doc.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && navPanel.classList.contains("is-open")) {
       closeNav();
       navToggle.focus({ preventScroll: true });
     }
   });
 
-  navPanel.addEventListener('click', (event) => {
-    if (event.target.closest('a[href]')) {
+  navPanel.addEventListener("click", (event) => {
+    if (event.target.closest("a[href]")) {
       closeNav();
     }
   });
 
-  window.addEventListener('resize', () => {
-    if (window.matchMedia && window.matchMedia('(min-width: 901px)').matches) {
+  window.addEventListener("resize", () => {
+    if (window.matchMedia && window.matchMedia("(min-width: 901px)").matches) {
       closeNav();
     }
   });
@@ -115,36 +150,36 @@ onReady(() => {
 
 onReady(() => {
   // Content depth toggle (Beginner / Practitioner)
-  const toggle = doc.querySelector('.depth-toggle');
+  const toggle = doc.querySelector(".depth-toggle");
   if (toggle) {
     const setDepth = (level) => {
-      toggle.querySelectorAll('.depth-btn').forEach((button) => {
+      toggle.querySelectorAll(".depth-btn").forEach((button) => {
         const isActive = button.dataset.depth === level;
-        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
       });
-      doc.querySelectorAll('[data-level]').forEach((el) => {
-        el.classList.toggle('is-active', el.dataset.level === level);
+      doc.querySelectorAll("[data-level]").forEach((el) => {
+        el.classList.toggle("is-active", el.dataset.level === level);
       });
       doc.documentElement.dataset.depth = level;
     };
 
     const initialDepth = (() => {
       try {
-        return localStorage.getItem('cdcDepth') || 'beginner';
+        return localStorage.getItem("cdcDepth") || "beginner";
       } catch (_) {
-        return 'beginner';
+        return "beginner";
       }
     })();
 
     setDepth(initialDepth);
 
-    toggle.addEventListener('click', (event) => {
-      const button = event.target.closest('.depth-btn');
+    toggle.addEventListener("click", (event) => {
+      const button = event.target.closest(".depth-btn");
       if (!button) return;
       const level = button.dataset.depth;
       setDepth(level);
       try {
-        localStorage.setItem('cdcDepth', level);
+        localStorage.setItem("cdcDepth", level);
       } catch (_) {
         /* ignore */
       }
@@ -154,29 +189,34 @@ onReady(() => {
 
 onReady(() => {
   // Heading anchors
-  doc.querySelectorAll('.prose h2, .prose h3').forEach((heading) => {
-    const slug = heading.id || heading.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+  doc.querySelectorAll(".prose h2, .prose h3").forEach((heading) => {
+    const slug =
+      heading.id ||
+      heading.textContent
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-");
     heading.id = slug;
-    if (heading.querySelector('.anchor')) return;
-    const anchor = Object.assign(doc.createElement('a'), {
+    if (heading.querySelector(".anchor")) return;
+    const anchor = Object.assign(doc.createElement("a"), {
       href: `#${slug}`,
-      className: 'anchor',
-      ariaLabel: 'Link to section'
+      className: "anchor",
+      ariaLabel: "Link to section",
     });
     heading.appendChild(anchor);
   });
 
   // Code copy buttons
-  doc.querySelectorAll('pre > code').forEach((code) => {
+  doc.querySelectorAll("pre > code").forEach((code) => {
     const pre = code.parentElement;
-    let button = pre.querySelector('.copy-btn, .copy-snippet');
+    let button = pre.querySelector(".copy-btn, .copy-snippet");
     if (!button) {
-      button = Object.assign(doc.createElement('button'), {
-        textContent: 'Copy',
-        className: 'copy-snippet',
-        type: 'button'
+      button = Object.assign(doc.createElement("button"), {
+        textContent: "Copy",
+        className: "copy-snippet",
+        type: "button",
       });
-      pre.style.position = 'relative';
+      pre.style.position = "relative";
       pre.appendChild(button);
     }
 
@@ -188,13 +228,21 @@ onReady(() => {
 
     const label = button.textContent;
 
-    button.addEventListener('click', async () => {
+    button.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(code.innerText);
-        button.textContent = 'Copied!';
+        button.textContent = "Copied!";
         restore(label);
+
+        // Track code copy interaction
+        try {
+          const codeId = pre.id || code.className || "unnamed-code-block";
+          educationTracer.trackInteraction("code-copy", codeId, true);
+        } catch (error) {
+          console.debug("Code copy tracking failed:", error);
+        }
       } catch (_) {
-        button.textContent = 'Failed';
+        button.textContent = "Failed";
         restore(label);
       }
     });
@@ -203,8 +251,8 @@ onReady(() => {
 
 onReady(() => {
   // Search overlay
-  const overlay = doc.createElement('div');
-  overlay.className = 'search-overlay hidden';
+  const overlay = doc.createElement("div");
+  overlay.className = "search-overlay hidden";
   overlay.innerHTML = `
     <div class="search-panel" role="dialog" aria-modal="true" aria-labelledby="searchTitle">
       <div class="search-header">
@@ -216,12 +264,12 @@ onReady(() => {
       <div class="search-hint">Press <kbd>/</kbd> to open. <kbd>Esc</kbd> to close.</div>
     </div>`;
   doc.body.appendChild(overlay);
-  const input = overlay.querySelector('#searchInput');
-  const results = overlay.querySelector('#searchResults');
-  const closeBtn = overlay.querySelector('.close-search');
+  const input = overlay.querySelector("#searchInput");
+  const results = overlay.querySelector("#searchResults");
+  const closeBtn = overlay.querySelector(".close-search");
   let data = [];
 
-  fetch(withBasePath('/search-index.json'), { cache: 'force-cache' })
+  fetch(withBasePath("/search-index.json"), { cache: "force-cache" })
     .then((res) => (res.ok ? res.json() : []))
     .then((json) => {
       if (Array.isArray(json)) {
@@ -233,60 +281,68 @@ onReady(() => {
     });
 
   const openOverlay = () => {
-    const openNav = doc.querySelector('[data-nav-panel].is-open');
+    const openNav = doc.querySelector("[data-nav-panel].is-open");
     if (openNav) {
-      openNav.classList.remove('is-open');
-      doc.body.classList.remove('nav-open');
-      const navToggle = doc.querySelector('[data-nav-toggle]');
-      if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
+      openNav.classList.remove("is-open");
+      doc.body.classList.remove("nav-open");
+      const navToggle = doc.querySelector("[data-nav-toggle]");
+      if (navToggle) navToggle.setAttribute("aria-expanded", "false");
     }
-    overlay.classList.remove('hidden');
-    input.value = '';
-    results.innerHTML = '';
+    overlay.classList.remove("hidden");
+    input.value = "";
+    results.innerHTML = "";
     input.focus();
   };
 
   const closeOverlay = () => {
-    overlay.classList.add('hidden');
+    overlay.classList.add("hidden");
   };
 
-  doc.addEventListener('keydown', (event) => {
-    if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+  doc.addEventListener("keydown", (event) => {
+    if (
+      event.key === "/" &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
       openOverlay();
-    } else if (event.key === 'Escape' && !overlay.classList.contains('hidden')) {
+    } else if (
+      event.key === "Escape" &&
+      !overlay.classList.contains("hidden")
+    ) {
       closeOverlay();
     }
   });
 
-  closeBtn.addEventListener('click', closeOverlay);
+  closeBtn.addEventListener("click", closeOverlay);
 
   const render = (items) => {
     results.innerHTML = items
       .slice(0, 30)
       .map((item) => {
-        const snippet = (item.text || '').slice(0, 240).replace(/</g, '&lt;');
+        const snippet = (item.text || "").slice(0, 240).replace(/</g, "&lt;");
         return `<a class="result" href="${item.path}"><strong>${item.title}</strong><div class="snippet">${snippet}...</div></a>`;
       })
-      .join('');
+      .join("");
   };
 
-  input.addEventListener('input', () => {
+  input.addEventListener("input", () => {
     const query = input.value.trim().toLowerCase();
     if (!query) {
-      results.innerHTML = '';
+      results.innerHTML = "";
       return;
     }
     const terms = query.split(/\s+/).filter(Boolean);
     const scored = data
       .map((item) => {
         let score = 0;
-        const text = (item.text || '').toLowerCase();
+        const text = (item.text || "").toLowerCase();
         terms.forEach((term) => {
-          const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const matches = (text.match(new RegExp(escaped, 'g')) || []).length;
+          const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const matches = (text.match(new RegExp(escaped, "g")) || []).length;
           score += matches * (term.length >= 4 ? 2 : 1);
-          if ((item.title || '').toLowerCase().includes(term)) {
+          if ((item.title || "").toLowerCase().includes(term)) {
             score += 5;
           }
         });
@@ -294,29 +350,39 @@ onReady(() => {
       })
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score);
+
     render(scored);
+
+    // Track search query
+    try {
+      educationTracer.trackSearch(query, scored.length);
+    } catch (error) {
+      console.debug("Search tracking failed:", error);
+    }
   });
 
-  const utilities = doc.querySelector('.nav-utilities') || doc.querySelector('.nav-right, header .nav-links');
+  const utilities =
+    doc.querySelector(".nav-utilities") ||
+    doc.querySelector(".nav-right, header .nav-links");
   if (utilities) {
-    const trigger = doc.createElement('button');
-    trigger.className = 'button ghost search-btn';
-    trigger.type = 'button';
-    trigger.textContent = 'Search';
-    trigger.addEventListener('click', openOverlay);
+    const trigger = doc.createElement("button");
+    trigger.className = "button ghost search-btn";
+    trigger.type = "button";
+    trigger.textContent = "Search";
+    trigger.addEventListener("click", openOverlay);
     utilities.appendChild(trigger);
   }
 });
 
 onReady(() => {
-  const quickNavs = doc.querySelectorAll('.intro-quick-nav');
+  const quickNavs = doc.querySelectorAll(".intro-quick-nav");
   if (!quickNavs.length) return;
 
-  const hasObserver = typeof window.IntersectionObserver === 'function';
+  const hasObserver = typeof window.IntersectionObserver === "function";
 
   const getHashId = () => {
-    const raw = window.location.hash.replace(/^#/, '');
-    if (!raw) return '';
+    const raw = window.location.hash.replace(/^#/, "");
+    if (!raw) return "";
     try {
       return decodeURIComponent(raw);
     } catch (_) {
@@ -325,11 +391,11 @@ onReady(() => {
   };
 
   quickNavs.forEach((nav) => {
-    const links = Array.from(nav.querySelectorAll('a[href]'));
+    const links = Array.from(nav.querySelectorAll("a[href]"));
     if (!links.length) return;
 
     const decodeId = (value) => {
-      if (!value) return '';
+      if (!value) return "";
       try {
         return decodeURIComponent(value);
       } catch (_) {
@@ -339,13 +405,13 @@ onReady(() => {
 
     const targets = links
       .map((link) => {
-        const href = link.getAttribute('href');
-        if (!href || !href.startsWith('#')) return null;
+        const href = link.getAttribute("href");
+        if (!href || !href.startsWith("#")) return null;
         const id = decodeId(href.slice(1));
         if (!id) return null;
         const section = doc.getElementById(id);
         if (!section) return null;
-        section.dataset.quickNavVisible = '0';
+        section.dataset.quickNavVisible = "0";
         return { link, id, section };
       })
       .filter(Boolean);
@@ -358,11 +424,11 @@ onReady(() => {
     });
 
     const ensureBadge = (link) => {
-      let badge = link.querySelector('.quick-nav-badge');
+      let badge = link.querySelector(".quick-nav-badge");
       if (!badge) {
-        badge = doc.createElement('span');
-        badge.className = 'quick-nav-badge';
-        badge.setAttribute('aria-hidden', 'true');
+        badge = doc.createElement("span");
+        badge.className = "quick-nav-badge";
+        badge.setAttribute("aria-hidden", "true");
         link.appendChild(badge);
       }
       return badge;
@@ -377,27 +443,27 @@ onReady(() => {
           target.badge.remove();
         }
         target.badge = null;
-        target.link.dataset.quickNavComplete = '0';
+        target.link.dataset.quickNavComplete = "0";
         return;
       }
       const badge = ensureBadge(target.link);
       target.badge = badge;
       if (detail.completed >= detail.total) {
-        badge.textContent = '✓';
-        badge.dataset.state = 'complete';
-        target.link.dataset.quickNavComplete = '1';
+        badge.textContent = "✓";
+        badge.dataset.state = "complete";
+        target.link.dataset.quickNavComplete = "1";
       } else {
         badge.textContent = `${detail.completed}/${detail.total}`;
-        badge.dataset.state = 'progress';
-        target.link.dataset.quickNavComplete = '0';
+        badge.dataset.state = "progress";
+        target.link.dataset.quickNavComplete = "0";
       }
     };
 
-    doc.addEventListener('scorecard:update', (event) => {
+    doc.addEventListener("scorecard:update", (event) => {
       applyProgressDetail(event.detail || {});
     });
 
-    doc.addEventListener('scorecard:summary', (event) => {
+    doc.addEventListener("scorecard:summary", (event) => {
       applyProgressDetail(event.detail || {});
     });
 
@@ -407,11 +473,11 @@ onReady(() => {
         const isActive = Boolean(targetId) && id === targetId;
         if (isActive) matched = true;
         if (isActive) {
-          link.setAttribute('aria-current', 'true');
-          link.classList.add('is-active');
+          link.setAttribute("aria-current", "true");
+          link.classList.add("is-active");
         } else {
-          link.removeAttribute('aria-current');
-          link.classList.remove('is-active');
+          link.removeAttribute("aria-current");
+          link.classList.remove("is-active");
         }
       });
       return matched;
@@ -422,15 +488,15 @@ onReady(() => {
       applyActive(targets[0].id);
     };
 
-    nav.addEventListener('click', (event) => {
+    nav.addEventListener("click", (event) => {
       const link = event.target.closest('a[href^="#"]');
       if (!link) return;
-      const href = link.getAttribute('href');
-      const id = decodeId(href ? href.slice(1) : '');
+      const href = link.getAttribute("href");
+      const id = decodeId(href ? href.slice(1) : "");
       ensureActive(id);
     });
 
-    window.addEventListener('hashchange', () => {
+    window.addEventListener("hashchange", () => {
       ensureActive(getHashId());
     });
 
@@ -444,10 +510,12 @@ onReady(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          entry.target.dataset.quickNavVisible = entry.isIntersecting ? '1' : '0';
+          entry.target.dataset.quickNavVisible = entry.isIntersecting
+            ? "1"
+            : "0";
         });
         const visible = targets
-          .filter(({ section }) => section.dataset.quickNavVisible === '1')
+          .filter(({ section }) => section.dataset.quickNavVisible === "1")
           .sort((a, b) => a.section.offsetTop - b.section.offsetTop);
         const candidate = visible.length ? visible[visible.length - 1] : null;
         const nextId = candidate?.id;
@@ -455,18 +523,17 @@ onReady(() => {
           currentId = nextId;
           applyActive(nextId);
         } else if (!nextId) {
-          const fallback = targets
-            .find(({ section }) => {
-              const rect = section.getBoundingClientRect();
-              return rect.top >= 0 && rect.top < window.innerHeight * 0.6;
-            })?.id;
+          const fallback = targets.find(({ section }) => {
+            const rect = section.getBoundingClientRect();
+            return rect.top >= 0 && rect.top < window.innerHeight * 0.6;
+          })?.id;
           if (fallback && fallback !== currentId) {
             currentId = fallback;
             applyActive(fallback);
           }
         }
       },
-      { rootMargin: '-45% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+      { rootMargin: "-45% 0px -45% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
 
     targets.forEach(({ section }) => observer.observe(section));
@@ -474,19 +541,19 @@ onReady(() => {
 });
 
 onReady(() => {
-  const cards = Array.from(doc.querySelectorAll('[data-scorecard]'));
+  const cards = Array.from(doc.querySelectorAll("[data-scorecard]"));
   if (!cards.length) return;
 
-  const summaries = Array.from(doc.querySelectorAll('[data-scorecard-summary]'));
+  const summaries = Array.from(
+    doc.querySelectorAll("[data-scorecard-summary]")
+  );
   const summaryByGroup = new Map();
   const groupState = new Map();
   const cardGroups = new Map();
   const cardControllers = new Map();
 
   const journeySlug =
-    window.CDC_JOURNEY_SLUG ||
-    (doc.body?.dataset?.journeySlug ?? '') ||
-    '';
+    window.CDC_JOURNEY_SLUG || (doc.body?.dataset?.journeySlug ?? "") || "";
 
   const progressEntries = new Map();
   const pendingProgressUpdates = [];
@@ -500,7 +567,7 @@ onReady(() => {
       const next = pendingProgressUpdates.shift();
       if (!next) continue;
       const send = () => progress.onStepChange(next);
-      if (progress.ready && typeof progress.ready.then === 'function') {
+      if (progress.ready && typeof progress.ready.then === "function") {
         progress.ready.then(send).catch(() => {
           /* ignore */
         });
@@ -510,9 +577,9 @@ onReady(() => {
     }
   };
 
-  if (typeof window !== 'undefined') {
-    window.addEventListener('cdc-progress-ready', flushPendingProgress);
-    window.addEventListener('load', flushPendingProgress, { once: true });
+  if (typeof window !== "undefined") {
+    window.addEventListener("cdc-progress-ready", flushPendingProgress);
+    window.addEventListener("load", flushPendingProgress, { once: true });
   }
 
   const dispatchJourneyProgress = (payload) => {
@@ -521,7 +588,7 @@ onReady(() => {
     const progress = window.CDCProgress;
     if (progress?.onStepChange) {
       const send = () => progress.onStepChange(normalized);
-      if (progress.ready && typeof progress.ready.then === 'function') {
+      if (progress.ready && typeof progress.ready.then === "function") {
         progress.ready.then(send).catch(() => {
           /* ignore */
         });
@@ -552,7 +619,7 @@ onReady(() => {
       }
 
       const completedIds = Array.isArray(entry.completedIds)
-        ? entry.completedIds.filter((id) => typeof id === 'string')
+        ? entry.completedIds.filter((id) => typeof id === "string")
         : [];
 
       checklists[entryKey] = {
@@ -563,7 +630,10 @@ onReady(() => {
       };
     });
 
-    const percent = total > 0 ? Math.min(100, Math.max(0, Math.round((completed / total) * 100))) : 0;
+    const percent =
+      total > 0
+        ? Math.min(100, Math.max(0, Math.round((completed / total) * 100)))
+        : 0;
     const payload = {
       step: completed,
       percent,
@@ -572,18 +642,25 @@ onReady(() => {
     const state = { checklists };
     if (latest?.sectionId) {
       state.hash = `#${latest.sectionId}`;
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         state.scrollY = Math.max(0, window.scrollY ?? window.pageYOffset ?? 0);
       }
     }
 
     payload.state = state;
 
+    // Track progress update with tracing
+    try {
+      educationTracer.trackProgress(journeySlug, completed, percent);
+    } catch (error) {
+      console.debug("Progress tracking failed:", error);
+    }
+
     dispatchJourneyProgress(payload);
   };
 
   const toOrder = (value, fallback = 0) => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       return value;
     }
     const parsed = Number.parseFloat(value);
@@ -591,7 +668,7 @@ onReady(() => {
   };
 
   const toCount = (value) => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       return value;
     }
     const parsed = Number.parseInt(value, 10);
@@ -599,7 +676,7 @@ onReady(() => {
   };
 
   const ensureGroupState = (group) => {
-    const key = group || 'default';
+    const key = group || "default";
     if (!groupState.has(key)) {
       groupState.set(key, new Map());
     }
@@ -607,12 +684,14 @@ onReady(() => {
   };
 
   const renderSummary = (group) => {
-    const resolvedGroup = group || 'default';
+    const resolvedGroup = group || "default";
     const records = summaryByGroup.get(resolvedGroup);
     if (!records || !records.length) return;
 
     const state = ensureGroupState(resolvedGroup);
-    const entries = Array.from(state.values()).sort((a, b) => toOrder(a.order, 0) - toOrder(b.order, 0));
+    const entries = Array.from(state.values()).sort(
+      (a, b) => toOrder(a.order, 0) - toOrder(b.order, 0)
+    );
 
     let totalChecks = 0;
     let completedChecks = 0;
@@ -624,15 +703,22 @@ onReady(() => {
       completedChecks += entryCompleted;
     });
 
-    const percentComplete = totalChecks ? Math.round((completedChecks / totalChecks) * 100) : 0;
-    const summaryState = totalChecks > 0 && completedChecks >= totalChecks ? 'complete' : 'progress';
+    const percentComplete = totalChecks
+      ? Math.round((completedChecks / totalChecks) * 100)
+      : 0;
+    const summaryState =
+      totalChecks > 0 && completedChecks >= totalChecks
+        ? "complete"
+        : "progress";
 
     records.forEach((record) => {
       if (record.element) {
         record.element.dataset.scorecardSummaryState = summaryState;
         record.element.dataset.scorecardSummaryTotal = String(totalChecks);
-        record.element.dataset.scorecardSummaryCompleted = String(completedChecks);
-        record.element.dataset.scorecardSummaryPercent = String(percentComplete);
+        record.element.dataset.scorecardSummaryCompleted =
+          String(completedChecks);
+        record.element.dataset.scorecardSummaryPercent =
+          String(percentComplete);
       }
 
       if (record.progress) {
@@ -640,9 +726,12 @@ onReady(() => {
       }
 
       if (record.meter) {
-        record.meter.setAttribute('aria-valuenow', String(percentComplete));
-        record.meter.setAttribute('aria-valuetext', `${percentComplete}% complete`);
-        record.meter.setAttribute('aria-valuemax', '100');
+        record.meter.setAttribute("aria-valuenow", String(percentComplete));
+        record.meter.setAttribute(
+          "aria-valuetext",
+          `${percentComplete}% complete`
+        );
+        record.meter.setAttribute("aria-valuemax", "100");
       }
 
       if (record.meterFill) {
@@ -650,37 +739,39 @@ onReady(() => {
       }
 
       if (record.list) {
-        record.list.innerHTML = '';
+        record.list.innerHTML = "";
         entries.forEach((entry) => {
           const itemTotal = toCount(entry.total);
           const itemCompleted = Math.min(toCount(entry.completed), itemTotal);
           const isComplete = itemTotal > 0 && itemCompleted >= itemTotal;
           const statusText = isComplete
-            ? 'Complete'
+            ? "Complete"
             : itemTotal
             ? `${itemCompleted} of ${itemTotal} ready`
-            : 'No checks defined';
-          const labelText = (entry.summaryLabel || entry.title || entry.key || '').trim() || 'Readiness scorecard';
+            : "No checks defined";
+          const labelText =
+            (entry.summaryLabel || entry.title || entry.key || "").trim() ||
+            "Readiness scorecard";
 
-          const item = doc.createElement('li');
-          item.className = 'scorecard-summary-item';
+          const item = doc.createElement("li");
+          item.className = "scorecard-summary-item";
           item.dataset.scorecardSummaryItem = entry.key;
-          item.dataset.state = isComplete ? 'complete' : 'pending';
+          item.dataset.state = isComplete ? "complete" : "pending";
           item.dataset.order = String(toOrder(entry.order, 0));
 
-          const label = doc.createElement('div');
-          label.className = 'scorecard-summary-item-label';
+          const label = doc.createElement("div");
+          label.className = "scorecard-summary-item-label";
 
-          const nameNode = doc.createElement(entry.sectionId ? 'a' : 'span');
-          nameNode.className = 'scorecard-summary-item-name';
+          const nameNode = doc.createElement(entry.sectionId ? "a" : "span");
+          nameNode.className = "scorecard-summary-item-name";
           nameNode.textContent = labelText;
           if (entry.sectionId) {
-            nameNode.setAttribute('href', `#${entry.sectionId}`);
+            nameNode.setAttribute("href", `#${entry.sectionId}`);
           }
           label.appendChild(nameNode);
 
-          const status = doc.createElement('span');
-          status.className = 'scorecard-summary-item-status';
+          const status = doc.createElement("span");
+          status.className = "scorecard-summary-item-status";
           status.textContent = statusText;
 
           item.appendChild(label);
@@ -703,40 +794,47 @@ onReady(() => {
 
     const sections = new Set();
     records.forEach((record) => {
-      const section = record.element?.closest('section');
+      const section = record.element?.closest("section");
       if (section && section.id) {
         sections.add(section);
       }
     });
 
     sections.forEach((section) => {
-      const heading = section.querySelector('h2, h3');
-      const headingText = heading?.textContent?.trim() || '';
+      const heading = section.querySelector("h2, h3");
+      const headingText = heading?.textContent?.trim() || "";
       doc.dispatchEvent(
-        new CustomEvent('scorecard:summary', {
+        new CustomEvent("scorecard:summary", {
           detail: {
             group: resolvedGroup,
             sectionId: section.id,
             title: headingText,
             total: totalChecks,
             completed: completedChecks,
-            percent: percentComplete
-          }
+            percent: percentComplete,
+          },
         })
       );
     });
   };
 
   summaries.forEach((summaryElement) => {
-    const group = summaryElement.getAttribute('data-scorecard-summary') || 'default';
+    const group =
+      summaryElement.getAttribute("data-scorecard-summary") || "default";
     const record = {
       element: summaryElement,
-      progress: summaryElement.querySelector('[data-scorecard-summary-progress]'),
-      meter: summaryElement.querySelector('[data-scorecard-summary-meter]'),
-      meterFill: summaryElement.querySelector('[data-scorecard-summary-meter-fill]'),
-      list: summaryElement.querySelector('[data-scorecard-summary-list]'),
-      empty: summaryElement.querySelector('[data-scorecard-summary-empty]'),
-      resetButton: summaryElement.querySelector('[data-scorecard-summary-reset]')
+      progress: summaryElement.querySelector(
+        "[data-scorecard-summary-progress]"
+      ),
+      meter: summaryElement.querySelector("[data-scorecard-summary-meter]"),
+      meterFill: summaryElement.querySelector(
+        "[data-scorecard-summary-meter-fill]"
+      ),
+      list: summaryElement.querySelector("[data-scorecard-summary-list]"),
+      empty: summaryElement.querySelector("[data-scorecard-summary-empty]"),
+      resetButton: summaryElement.querySelector(
+        "[data-scorecard-summary-reset]"
+      ),
     };
 
     if (!summaryByGroup.has(group)) {
@@ -747,12 +845,14 @@ onReady(() => {
     renderSummary(group);
 
     if (record.resetButton) {
-      record.resetButton.addEventListener('click', () => {
+      record.resetButton.addEventListener("click", () => {
         const targets = cardGroups.get(group) || [];
         targets.forEach((entry) => {
           entry.reset({ focus: false });
         });
-        const first = targets.find((entry) => typeof entry.focus === 'function');
+        const first = targets.find(
+          (entry) => typeof entry.focus === "function"
+        );
         if (first) {
           first.focus();
         }
@@ -760,18 +860,18 @@ onReady(() => {
     }
   });
 
-  doc.addEventListener('scorecard:update', (event) => {
+  doc.addEventListener("scorecard:update", (event) => {
     const detail = event.detail;
     if (!detail || !detail.key) return;
-    const group = detail.group || 'default';
+    const group = detail.group || "default";
     ensureGroupState(group).set(detail.key, detail);
     renderSummary(group);
   });
 
   const storage = (() => {
     try {
-      const probe = '__scorecard_probe__';
-      localStorage.setItem(probe, '1');
+      const probe = "__scorecard_probe__";
+      localStorage.setItem(probe, "1");
       localStorage.removeItem(probe);
       return {
         get: (key) => {
@@ -797,48 +897,56 @@ onReady(() => {
           } catch (_) {
             /* ignore */
           }
-        }
+        },
       };
     } catch (_) {
       return {
         get: () => [],
         set: () => {},
-        remove: () => {}
+        remove: () => {},
       };
     }
   })();
 
   cards.forEach((card, index) => {
-    const key = card.getAttribute('data-scorecard');
+    const key = card.getAttribute("data-scorecard");
     if (!key) return;
 
     if (!card.dataset.scorecardIndex) {
       card.dataset.scorecardIndex = String(index);
     }
 
-    const group = card.getAttribute('data-scorecard-group') || 'default';
+    const group = card.getAttribute("data-scorecard-group") || "default";
     ensureGroupState(group);
     if (!cardGroups.has(group)) {
       cardGroups.set(group, []);
     }
 
-    const checkboxes = Array.from(card.querySelectorAll('input[data-scorecard-control]'));
+    const checkboxes = Array.from(
+      card.querySelectorAll("input[data-scorecard-control]")
+    );
     if (!checkboxes.length) return;
 
-    const progress = card.querySelector('[data-scorecard-progress]');
-    const reset = card.querySelector('[data-scorecard-reset]');
-    const filter = card.querySelector('[data-scorecard-filter]');
-    const copy = card.querySelector('[data-scorecard-copy]');
-    const empty = card.querySelector('[data-scorecard-empty]');
-    const caption = card.querySelector('caption');
+    const progress = card.querySelector("[data-scorecard-progress]");
+    const reset = card.querySelector("[data-scorecard-reset]");
+    const filter = card.querySelector("[data-scorecard-filter]");
+    const copy = card.querySelector("[data-scorecard-copy]");
+    const empty = card.querySelector("[data-scorecard-empty]");
+    const caption = card.querySelector("caption");
     const total = checkboxes.length;
     const storageKey = `scorecard:${key}`;
 
-    const validIds = new Set(checkboxes.map((checkbox) => checkbox.dataset.scorecardItem).filter(Boolean));
-    let completed = new Set(storage.get(storageKey).filter((id) => validIds.has(id)));
+    const validIds = new Set(
+      checkboxes
+        .map((checkbox) => checkbox.dataset.scorecardItem)
+        .filter(Boolean)
+    );
+    let completed = new Set(
+      storage.get(storageKey).filter((id) => validIds.has(id))
+    );
 
     const rows = checkboxes
-      .map((checkbox) => checkbox.closest('tr[data-scorecard-item]'))
+      .map((checkbox) => checkbox.closest("tr[data-scorecard-item]"))
       .filter(Boolean);
     const rowById = new Map();
     rows.forEach((row) => {
@@ -850,21 +958,27 @@ onReady(() => {
 
     const filterLabels = filter
       ? {
-          incomplete: filter.dataset.labelIncomplete || filter.textContent || 'Show incomplete only',
-          all: filter.dataset.labelAll || 'Show all items'
+          incomplete:
+            filter.dataset.labelIncomplete ||
+            filter.textContent ||
+            "Show incomplete only",
+          all: filter.dataset.labelAll || "Show all items",
         }
       : null;
 
     const copyLabels = copy
       ? {
-          default: copy.dataset.labelDefault || copy.textContent.trim() || 'Copy progress',
-          success: copy.dataset.labelSuccess || 'Progress copied!',
-          error: copy.dataset.labelError || 'Copy failed'
+          default:
+            copy.dataset.labelDefault ||
+            copy.textContent.trim() ||
+            "Copy progress",
+          success: copy.dataset.labelSuccess || "Progress copied!",
+          error: copy.dataset.labelError || "Copy failed",
         }
       : null;
 
     if (!card.dataset.scorecardFilter) {
-      card.dataset.scorecardFilter = 'all';
+      card.dataset.scorecardFilter = "all";
     }
 
     const syncControls = () => {
@@ -878,53 +992,61 @@ onReady(() => {
     const updateRowStates = () => {
       rowById.forEach((row, id) => {
         const isComplete = completed.has(id);
-        row.dataset.scorecardState = isComplete ? 'complete' : 'pending';
-        row.classList.toggle('scorecard-row-first', false);
+        row.dataset.scorecardState = isComplete ? "complete" : "pending";
+        row.classList.toggle("scorecard-row-first", false);
       });
     };
 
     const syncFilterLabel = () => {
       if (!filter || !filterLabels) return;
-      const isIncomplete = card.dataset.scorecardFilter === 'incomplete';
-      filter.setAttribute('aria-pressed', isIncomplete ? 'true' : 'false');
-      filter.textContent = isIncomplete ? filterLabels.all : filterLabels.incomplete;
+      const isIncomplete = card.dataset.scorecardFilter === "incomplete";
+      filter.setAttribute("aria-pressed", isIncomplete ? "true" : "false");
+      filter.textContent = isIncomplete
+        ? filterLabels.all
+        : filterLabels.incomplete;
     };
 
     const applyVisibility = () => {
-      const mode = card.dataset.scorecardFilter === 'incomplete' ? 'incomplete' : 'all';
+      const mode =
+        card.dataset.scorecardFilter === "incomplete" ? "incomplete" : "all";
       let firstVisible = true;
       rowById.forEach((row) => {
-        const hidden = mode === 'incomplete' && row.dataset.scorecardState === 'complete';
-        row.toggleAttribute('hidden', hidden);
+        const hidden =
+          mode === "incomplete" && row.dataset.scorecardState === "complete";
+        row.toggleAttribute("hidden", hidden);
         if (hidden) {
-          row.classList.remove('scorecard-row-first');
+          row.classList.remove("scorecard-row-first");
         } else {
-          row.classList.toggle('scorecard-row-first', firstVisible);
+          row.classList.toggle("scorecard-row-first", firstVisible);
           firstVisible = false;
         }
       });
       if (empty) {
-        const showEmpty = mode === 'incomplete' && completed.size === total && total > 0;
+        const showEmpty =
+          mode === "incomplete" && completed.size === total && total > 0;
         empty.hidden = !showEmpty;
       }
     };
 
     const focusFirstCheckbox = () => {
-      const firstCheckbox = checkboxes.find((checkbox) => checkbox.offsetParent !== null) || checkboxes[0];
+      const firstCheckbox =
+        checkboxes.find((checkbox) => checkbox.offsetParent !== null) ||
+        checkboxes[0];
       firstCheckbox?.focus({ preventScroll: true });
     };
 
     const notifyUpdate = () => {
-      const section = card.closest('section');
+      const section = card.closest("section");
       const sectionId = section?.id || null;
-      const captionText = caption ? caption.textContent.trim() : '';
-      const sectionTitle = section?.querySelector('h2, h3')?.textContent?.trim() || '';
-      const datasetLabel = (card.dataset.scorecardSummaryLabel || '').trim();
+      const captionText = caption ? caption.textContent.trim() : "";
+      const sectionTitle =
+        section?.querySelector("h2, h3")?.textContent?.trim() || "";
+      const datasetLabel = (card.dataset.scorecardSummaryLabel || "").trim();
       const summaryLabel = datasetLabel || captionText || sectionTitle || key;
       const order = toOrder(card.dataset.scorecardIndex, index);
 
       doc.dispatchEvent(
-        new CustomEvent('scorecard:update', {
+        new CustomEvent("scorecard:update", {
           detail: {
             key,
             group,
@@ -933,13 +1055,13 @@ onReady(() => {
             sectionId,
             title: captionText || sectionTitle,
             summaryLabel,
-            order
-          }
+            order,
+          },
         })
       );
 
       const completedIds = Array.from(completed)
-        .map((id) => (typeof id === 'string' ? id : String(id)))
+        .map((id) => (typeof id === "string" ? id : String(id)))
         .filter((id) => validIds.has(id));
       completedIds.sort();
 
@@ -954,17 +1076,20 @@ onReady(() => {
     };
 
     const copyReport = () => {
-      if (!copy || !copyLabels) return '';
-      const normalize = (value) => (value ? value.replace(/\s+/g, ' ').trim() : '');
-      const captionText = caption ? caption.textContent.trim() : '';
-      const summary = progress ? normalize(progress.textContent) : '';
+      if (!copy || !copyLabels) return "";
+      const normalize = (value) =>
+        value ? value.replace(/\s+/g, " ").trim() : "";
+      const captionText = caption ? caption.textContent.trim() : "";
+      const summary = progress ? normalize(progress.textContent) : "";
       const ready = [];
       const pending = [];
       rowById.forEach((row, id) => {
-        const title = normalize(row.querySelector('.scorecard-label span')?.textContent || id);
-        const cells = row.querySelectorAll('td');
-        const readyText = normalize(cells[0]?.textContent || '');
-        const actionText = normalize(cells[1]?.textContent || '');
+        const title = normalize(
+          row.querySelector(".scorecard-label span")?.textContent || id
+        );
+        const cells = row.querySelectorAll("td");
+        const readyText = normalize(cells[0]?.textContent || "");
+        const actionText = normalize(cells[1]?.textContent || "");
         const entry = { title, readyText, actionText };
         if (completed.has(id)) {
           ready.push(entry);
@@ -976,26 +1101,26 @@ onReady(() => {
       if (captionText) lines.push(captionText);
       if (summary) lines.push(summary);
       if (ready.length) {
-        if (lines.length) lines.push('');
-        lines.push('Ready:');
+        if (lines.length) lines.push("");
+        lines.push("Ready:");
         ready.forEach((item) => {
           const detail = item.readyText || item.actionText;
-          lines.push(`- ${item.title}${detail ? ` — ${detail}` : ''}`);
+          lines.push(`- ${item.title}${detail ? ` — ${detail}` : ""}`);
         });
       }
       if (pending.length) {
-        if (lines.length) lines.push('');
-        lines.push('Still in progress:');
+        if (lines.length) lines.push("");
+        lines.push("Still in progress:");
         pending.forEach((item) => {
           const detail = item.actionText || item.readyText;
-          lines.push(`- ${item.title}${detail ? ` — ${detail}` : ''}`);
+          lines.push(`- ${item.title}${detail ? ` — ${detail}` : ""}`);
         });
       }
       if (!ready.length && !pending.length) {
-        if (lines.length) lines.push('');
-        lines.push('No checklist items defined.');
+        if (lines.length) lines.push("");
+        lines.push("No checklist items defined.");
       }
-      return lines.join('\n');
+      return lines.join("\n");
     };
 
     const updateCopyState = (state) => {
@@ -1012,16 +1137,19 @@ onReady(() => {
           await navigator.clipboard.writeText(value);
           return true;
         }
-        const textarea = doc.createElement('textarea');
+        const textarea = doc.createElement("textarea");
         textarea.value = value;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'absolute';
-        textarea.style.left = '-9999px';
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
         doc.body.appendChild(textarea);
         const selection = doc.getSelection();
-        const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        const range =
+          selection && selection.rangeCount > 0
+            ? selection.getRangeAt(0)
+            : null;
         textarea.select();
-        const success = doc.execCommand ? doc.execCommand('copy') : false;
+        const success = doc.execCommand ? doc.execCommand("copy") : false;
         doc.body.removeChild(textarea);
         if (range) {
           selection.removeAllRanges();
@@ -1040,7 +1168,7 @@ onReady(() => {
         const percent = total ? Math.round((done / total) * 100) : 0;
         progress.textContent = `${done} of ${total} ready (${percent}%)`;
       }
-      card.dataset.scorecardComplete = completed.size === total ? '1' : '0';
+      card.dataset.scorecardComplete = completed.size === total ? "1" : "0";
       updateRowStates();
       applyVisibility();
       syncFilterLabel();
@@ -1065,7 +1193,9 @@ onReady(() => {
     };
 
     const persist = () => {
-      const values = Array.from(completed).map((id) => (typeof id === 'string' ? id : String(id)));
+      const values = Array.from(completed).map((id) =>
+        typeof id === "string" ? id : String(id)
+      );
       values.sort();
       storage.set(storageKey, values);
     };
@@ -1073,7 +1203,7 @@ onReady(() => {
     const applyChecklist = (ids = []) => {
       if (!Array.isArray(ids)) return false;
       const normalized = ids
-        .map((id) => (typeof id === 'string' ? id : String(id)))
+        .map((id) => (typeof id === "string" ? id : String(id)))
         .filter((id) => validIds.has(id));
       const next = new Set(normalized);
 
@@ -1098,7 +1228,7 @@ onReady(() => {
     checkboxes.forEach((checkbox) => {
       const id = checkbox.dataset.scorecardItem;
       if (!id) return;
-      checkbox.addEventListener('change', () => {
+      checkbox.addEventListener("change", () => {
         if (checkbox.checked) {
           completed.add(id);
         } else {
@@ -1110,24 +1240,27 @@ onReady(() => {
     });
 
     if (reset) {
-      reset.addEventListener('click', () => {
+      reset.addEventListener("click", () => {
         performReset({ focus: true });
       });
     }
 
-    card.addEventListener('scorecard:reset', (event) => {
+    card.addEventListener("scorecard:reset", (event) => {
       const focus = event?.detail?.focus ?? false;
       performReset({ focus });
     });
 
     if (filter) {
-      filter.addEventListener('click', () => {
-        const next = card.dataset.scorecardFilter === 'incomplete' ? 'all' : 'incomplete';
+      filter.addEventListener("click", () => {
+        const next =
+          card.dataset.scorecardFilter === "incomplete" ? "all" : "incomplete";
         card.dataset.scorecardFilter = next;
         syncFilterLabel();
         applyVisibility();
-        if (next === 'incomplete') {
-          const firstPending = checkboxes.find((checkbox) => !completed.has(checkbox.dataset.scorecardItem));
+        if (next === "incomplete") {
+          const firstPending = checkboxes.find(
+            (checkbox) => !completed.has(checkbox.dataset.scorecardItem)
+          );
           firstPending?.focus({ preventScroll: true });
         }
       });
@@ -1135,16 +1268,16 @@ onReady(() => {
     }
 
     if (copy) {
-      updateCopyState('default');
-      copy.addEventListener('click', async () => {
+      updateCopyState("default");
+      copy.addEventListener("click", async () => {
         if (copy.disabled) return;
         const report = copyReport();
         copy.disabled = true;
         const success = await copyToClipboard(report);
-        updateCopyState(success ? 'success' : 'error');
+        updateCopyState(success ? "success" : "error");
         setTimeout(() => {
           copy.disabled = false;
-          updateCopyState('default');
+          updateCopyState("default");
         }, 1600);
       });
     }
@@ -1152,7 +1285,7 @@ onReady(() => {
     const groupEntries = cardGroups.get(group);
     groupEntries.push({
       reset: (options = {}) => performReset(options),
-      focus: () => focusFirstCheckbox()
+      focus: () => focusFirstCheckbox(),
     });
 
     cardControllers.set(key, {
@@ -1164,14 +1297,14 @@ onReady(() => {
 
   const parseProgressState = (value) => {
     if (!value) return null;
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       try {
         return JSON.parse(value);
       } catch (_) {
         return null;
       }
     }
-    if (typeof value === 'object') {
+    if (typeof value === "object") {
       return value;
     }
     return null;
@@ -1180,13 +1313,17 @@ onReady(() => {
   const applyRemoteProgress = (entry) => {
     if (!entry) return;
     const state = parseProgressState(entry.state);
-    if (!state || typeof state.checklists !== 'object' || state.checklists === null) {
+    if (
+      !state ||
+      typeof state.checklists !== "object" ||
+      state.checklists === null
+    ) {
       return;
     }
 
     Object.entries(state.checklists).forEach(([cardKey, descriptor]) => {
       const controller = cardControllers.get(cardKey);
-      if (!controller || typeof controller.applyChecklist !== 'function') {
+      if (!controller || typeof controller.applyChecklist !== "function") {
         return;
       }
       let completedIds = [];
@@ -1202,7 +1339,7 @@ onReady(() => {
   const syncRemoteProgress = () => {
     if (!journeySlug) return;
     const progress = window.CDCProgress;
-    if (!progress || typeof progress.getProgress !== 'function') {
+    if (!progress || typeof progress.getProgress !== "function") {
       return;
     }
 
@@ -1213,7 +1350,7 @@ onReady(() => {
       }
     };
 
-    if (progress.ready && typeof progress.ready.then === 'function') {
+    if (progress.ready && typeof progress.ready.then === "function") {
       progress.ready.then(apply).catch(() => {
         /* ignore */
       });
@@ -1222,12 +1359,12 @@ onReady(() => {
     }
   };
 
-  if (typeof window !== 'undefined') {
-    window.addEventListener('cdc-progress-ready', () => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("cdc-progress-ready", () => {
       syncRemoteProgress();
     });
 
-    window.addEventListener('cdc-progress-change', (event) => {
+    window.addEventListener("cdc-progress-change", (event) => {
       const detail = event?.detail;
       if (!detail || detail.journeySlug !== journeySlug) {
         return;
