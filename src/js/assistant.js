@@ -44,6 +44,16 @@ function renderAnswer(intent, q) {
 }
 
 async function saveFeedback(question, intentId, helpful) {
+  // If Appwrite SDK didn't load, fall back to local storage immediately
+  if (!databases) {
+    console.warn("Appwrite SDK not available, using local storage");
+    const feedback = JSON.parse(localStorage.getItem("assistantFeedback") || "[]");
+    feedback.push({ question, intentId, helpful, ts: new Date().toISOString() });
+    localStorage.setItem("assistantFeedback", JSON.stringify(feedback));
+    alert("Feedback guardado localmente (offline mode).");
+    return;
+  }
+
   try {
     await databases.createDocument(
       dbConfig.databaseId,
