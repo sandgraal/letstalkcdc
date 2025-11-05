@@ -1,9 +1,79 @@
-import { databases, dbConfig } from "./appwrite-config.js";
+import { databases, dbConfig, isAppwriteReady } from "./appwrite-config.js";
 import { withBasePath } from "../assets/js/utils/path-prefix.js";
 
 async function loadKB() {
   const res = await fetch(withBasePath('/data/assistant.json'));
   return res.json();
+}
+
+const STORAGE_KEY = "assistantFeedback";
+
+function readLocalFeedback() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Failed to read assistant feedback queue:", error);
+    return [];
+  }
+}
+
+function writeLocalFeedback(entries) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.warn("Failed to persist assistant feedback queue:", error);
+  }
+}
+
+function queueLocalFeedback(entry) {
+  const queue = readLocalFeedback();
+  queue.push(entry);
+  writeLocalFeedback(queue);
+}
+
+async function syncPendingFeedback() {
+  if (!databases || !dbConfig.databaseId || !dbConfig.collectionId) {
+    return;
+  }
+
+  const pending = readLocalFeedback();
+  if (!pending.length) {
+    return;
+  }
+
+  const remaining = [];
+  for (const entry of pending) {
+    try {
+      await databases.createDocument(
+        dbConfig.databaseId,
+        dbConfig.collectionId,
+        "unique()",
+        entry
+      );
+    } catch (error) {
+      console.warn("Assistant feedback sync failed for entry, keeping locally:", error);
+      remaining.push(entry);
+    }
+  }
+
+  writeLocalFeedback(remaining);
+
+  if (!remaining.length) {
+    console.info("Assistant feedback queue synced with Appwrite.");
+  }
 }
 
 function normalize(s) { return (s || "").toLowerCase(); }
@@ -48,9 +118,7 @@ async function saveFeedback(question, intentId, helpful) {
   // If Appwrite SDK didn't load, fall back to local storage immediately
   if (!databases) {
     console.warn("Appwrite SDK not available, using local storage");
-    const feedback = JSON.parse(localStorage.getItem("assistantFeedback") || "[]");
-    feedback.push({ question, intentId, helpful, ts: new Date().toISOString() });
-    localStorage.setItem("assistantFeedback", JSON.stringify(feedback));
+    queueLocalFeedback({ question, intentId, helpful, ts: new Date().toISOString() });
     alert("Feedback guardado localmente (offline mode).");
     return;
   }
@@ -63,17 +131,19 @@ async function saveFeedback(question, intentId, helpful) {
       { question, intentId, helpful, ts: new Date().toISOString() }
     );
     alert("Gracias! Feedback enviado al servidor.");
+    await syncPendingFeedback();
   } catch (err) {
     console.warn("Appwrite feedback fallback:", err);
-    const feedback = JSON.parse(localStorage.getItem("assistantFeedback") || "[]");
-    feedback.push({ question, intentId, helpful, ts: new Date().toISOString() });
-    localStorage.setItem("assistantFeedback", JSON.stringify(feedback));
+    queueLocalFeedback({ question, intentId, helpful, ts: new Date().toISOString() });
     alert("Feedback guardado localmente (offline mode).");
   }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   const kb = await loadKB();
+  if (isAppwriteReady) {
+    await syncPendingFeedback();
+  }
   const btn = document.getElementById('askBtn');
   btn.addEventListener('click', () => {
     const q = prompt('Ask the Playground about CDC, Matillion, or agents:');

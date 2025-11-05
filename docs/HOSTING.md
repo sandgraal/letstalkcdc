@@ -73,6 +73,7 @@ The `migrateUser` serverless function handles migrating user progress from anony
    - `APPWRITE_DB_ID`
    - `COL_PROGRESS_ID`
    - `COL_EVENTS_ID`
+   - `COL_ASSISTANT_ID`
 4. Update `scripts/progress.js` to use Vercel endpoint: `/api/migrateUser`
 5. Configure CORS to allow requests from GitHub Pages domain
 
@@ -152,6 +153,7 @@ Set in your chosen serverless platform:
 | `APPWRITE_DB_ID` | Yes | Appwrite database ID |
 | `COL_PROGRESS_ID` | Yes | Progress collection ID |
 | `COL_EVENTS_ID` | Yes | Events collection ID |
+| `COL_ASSISTANT_ID` | Yes | Assistant feedback collection ID |
 
 **Security Note:** Never commit `APPWRITE_API_KEY` to version control. Always use environment variables or secrets management.
 

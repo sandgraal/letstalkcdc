@@ -34,6 +34,7 @@ This adds persistent learning progress and authentication across devices to the 
    | `APPWRITE_DB_ID` | Client & Functions | Forwarded to the browser as `window.APPWRITE_DB_ID`. |
    | `COL_PROGRESS_ID` | Client & Functions | Forwarded to the browser as `window.COL_PROGRESS_ID`. |
    | `COL_EVENTS_ID` | Client & Functions | Forwarded to the browser as `window.COL_EVENTS_ID`. |
+   | `COL_ASSISTANT_ID` | Client & Functions | Forwarded to the browser as `window.COL_ASSISTANT_ID`. |
    | `APPWRITE_API_KEY` | **Functions only** | **SECRET** - Used by serverless function; never render this in templates or client bundles. |
 
    Populate those variables with the IDs that match your Appwrite project. Configure them in your chosen serverless platform's dashboard (e.g., Vercel environment variables, Cloudflare Workers secrets, AWS Lambda environment variables, or Netlify site settings).
