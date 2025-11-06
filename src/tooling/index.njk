@@ -356,6 +356,11 @@ head_extra: |
               <a href="{{ toolVersions.tools.kafka.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
             </li>
             {%- endif %}
+            {%- if toolVersions.tools.matillion and toolVersions.tools.matillion.status !== 'saas' %}
+            <li><strong>Matillion:</strong> v{{ toolVersions.tools.matillion.version }} 
+              <a href="{{ toolVersions.tools.matillion.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
+            </li>
+            {%- endif %}
             {%- if toolVersions.tools.awsDms.status !== 'saas' %}
             <li><strong>AWS DMS:</strong> v{{ toolVersions.tools.awsDms.version }} 
               <a href="{{ toolVersions.tools.awsDms.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>

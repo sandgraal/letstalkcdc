@@ -47,9 +47,9 @@ Review the following tools for new releases and breaking changes:
 async function loadToolVersions() {
   const toolVersionsPath = join(ROOT, "src/_data/toolVersions.cjs");
   try {
-    // Dynamic import for CJS module
+    // Dynamic import for CJS module - access exports directly, not .default
     const module = await import(`file://${toolVersionsPath}`);
-    return module.default;
+    return module.default || module;
   } catch (err) {
     console.error("[content-review] Error loading toolVersions.cjs:", err.message);
     return null;
