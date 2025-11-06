@@ -28,6 +28,7 @@
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "autoprefixer": "^10.4.20",
     "csso": "^5.0.5",
+    "dotenv": "^17.2.3",
     "pa11y-ci": "^3.1.0",
     "postcss": "^8.4.41",
     "postcss-cli": "^11.0.0",
