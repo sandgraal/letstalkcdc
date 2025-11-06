@@ -1456,7 +1456,8 @@ figure[aria-label="CDC high-level flow"] {
   margin: 1.5rem 0;
 }
 
-figure[aria-label="CDC high-level flow"] svg {
+figure[aria-label="CDC high-level flow"] svg,
+figure[aria-label="CDC high-level flow"] img {
   display: block;
   max-width: 900px; /* give it room to breathe on desktop */
   margin: 0 auto;
