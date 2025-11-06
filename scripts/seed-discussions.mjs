@@ -262,7 +262,7 @@ async function pinDiscussion(discussionId) {
  */
 async function discussionExists(title) {
   const query = `
-    query($owner: String!, $name: String!, $query: String!) {
+    query($query: String!) {
       search(query: $query, type: DISCUSSION, first: 5) {
         nodes {
           ... on Discussion {
@@ -286,8 +286,6 @@ async function discussionExists(title) {
     body: JSON.stringify({
       query,
       variables: {
-        owner: REPO_OWNER,
-        name: REPO_NAME,
         query: searchQuery
       }
     })
