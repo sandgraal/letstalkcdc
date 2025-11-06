@@ -209,14 +209,16 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
         <li>
           <strong>Method 2: Create missing target table scenario</strong>
           <pre><button class="copy">copy</button><code># Rename target table to simulate missing destination
-docker exec -it postgres-sink psql -U start_data_engineer -d inventory -c \
+# Note: postgres-sink is the sink database container (port 5433)
+docker exec -it postgres-sink psql -U sink_user -d warehouse -c \
   "ALTER TABLE public.app_customer RENAME TO app_customer_backup;"</code></pre>
         </li>
         <li>
           <strong>Method 3: Insert oversized payload</strong>
           <pre><button class="copy">copy</button><code># Insert a very large text field that exceeds sink column limit
-docker exec -it postgres bash -c "psql -U start_data_engineer -d inventory -c \
-  \"INSERT INTO public.app_customer (name, email) VALUES ('\$(head -c 10000 < /dev/zero | tr '\\\\0' 'A')', 'large@example.com');\""</code></pre>
+# (Assuming sink has VARCHAR(255) limit and this creates a 5000 char string)
+docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "INSERT INTO public.app_customer (name, email) VALUES (repeat('X', 5000), 'large@example.com');"</code></pre>
         </li>
       </ol>
 
@@ -476,7 +478,8 @@ kafka-console-consumer --bootstrap-server localhost:29092 \
         </li>
         <li>
           <strong>Record sink row count:</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres-sink psql -U start_data_engineer -d inventory -c \
+          <pre><button class="copy">copy</button><code># Note: postgres-sink is the sink database container (port 5433)
+docker exec -it postgres-sink psql -U sink_user -d warehouse -c \
   "SELECT COUNT(*) FROM public.app_customer;"</code></pre>
         </li>
       </ol>
