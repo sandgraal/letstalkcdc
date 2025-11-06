@@ -137,9 +137,9 @@ services:
                  <li>
                     <h3>Create a Table and Insert Data</h3>
                     <p>Let's connect to the Postgres database and create the `products` table that our connector is configured to watch.</p>
-                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "CREATE TABLE products (id SERIAL PRIMARY KEY, name VARCHAR(255), description VARCHAR(512), weight FLOAT);"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "CREATE TABLE products (id SERIAL PRIMARY KEY, name VARCHAR(255), description VARCHAR(512), weight FLOAT);"</code></pre>
                     <p>Now, insert a row:</p>
-                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "INSERT INTO products (name, description, weight) VALUES ('Laptop', 'A powerful laptop', 1.5);"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "INSERT INTO products (name, description, weight) VALUES ('Laptop', 'A powerful laptop', 1.5);"</code></pre>
                 </li>
                  <li>
                     <h3>Observe the Change Event in Kafka</h3>
@@ -150,7 +150,7 @@ services:
                 <li>
                     <h3>Configure the JDBC Sink Connector</h3>
                     <p>Now we'll add a downstream sink to write these changes into another Postgres database (our "data warehouse"). First, create the destination table in the sink database:</p>
-                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "CREATE TABLE products (id INTEGER PRIMARY KEY, name VARCHAR(255), description VARCHAR(512), weight FLOAT);"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "CREATE TABLE products (id INTEGER PRIMARY KEY, name VARCHAR(255), description VARCHAR(512), weight FLOAT);"</code></pre>
                     <p><strong>Note:</strong> The sink table schema must match the source table columns that will be replicated. Alternatively, you can set <code>auto.create=true</code> in the connector config to let it create the table automatically, though manual creation gives you more control over data types and constraints.</p>
                     <p>Create a file named <code>register-sink.json</code> with the JDBC Sink Connector configuration:</p>
                     <pre><code>{
@@ -182,37 +182,37 @@ services:
                 <li>
                     <h3>Verify Data Replication</h3>
                     <p>Check that the data has been replicated to the sink database:</p>
-                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products;"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "SELECT * FROM products;"</code></pre>
                     <p>You should see the same laptop record that was inserted in the source database. The JDBC sink connector consumed the change event from Kafka and inserted it into the destination table.</p>
                 </li>
                 <li>
                     <h3>Test the Upsert Pattern</h3>
                     <p>Let's update the product in the source database to see how the sink handles updates:</p>
-                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "UPDATE products SET weight = 1.8, description = 'A powerful gaming laptop' WHERE id = 1;"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "UPDATE products SET weight = 1.8, description = 'A powerful gaming laptop' WHERE id = 1;"</code></pre>
                     <p>Wait a moment for the change to propagate, then verify the sink reflects the update:</p>
-                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products WHERE id = 1;"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "SELECT * FROM products WHERE id = 1;"</code></pre>
                     <p>The sink should show the updated values. Because we configured the sink with <code>insert.mode=upsert</code>, it performs an UPDATE if the record exists, or an INSERT if it doesn't—implementing a MERGE pattern automatically.</p>
                 </li>
                 <li>
                     <h3>Test Schema Evolution</h3>
                     <p>Let's add a new column to the source table and see how the pipeline handles schema changes:</p>
-                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "ALTER TABLE products ADD COLUMN price DECIMAL(10,2);"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "ALTER TABLE products ADD COLUMN price DECIMAL(10,2);"</code></pre>
                     <p>Insert a new product with the price column:</p>
-                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "INSERT INTO products (name, description, weight, price) VALUES ('Monitor', '27-inch 4K display', 5.5, 499.99);"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "INSERT INTO products (name, description, weight, price) VALUES ('Monitor', '27-inch 4K display', 5.5, 499.99);"</code></pre>
                     <p>The sink connector's <code>auto.evolve=true</code> setting will automatically add the new column to the sink table. Verify the schema evolution:</p>
-                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "\d products"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "\d products"</code></pre>
                     <p>Then check that both products are present:</p>
-                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products;"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "SELECT * FROM products;"</code></pre>
                     <p>You should see the <code>price</code> column has been added, and both products are present—demonstrating seamless schema evolution!</p>
                 </li>
                 <li>
                     <h3>Validate End-to-End Consistency</h3>
                     <p>Finally, let's verify that the source and sink databases are in sync. First, check the source database:</p>
-                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "SELECT COUNT(*), MAX(id), MIN(id) FROM products;"
-docker-compose exec -u postgres postgres psql -d inventory -c "SELECT * FROM products ORDER BY id;"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "SELECT COUNT(*), MAX(id), MIN(id) FROM products;"
+docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c "SELECT * FROM products ORDER BY id;"</code></pre>
                     <p>Then check the sink database:</p>
-                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT COUNT(*), MAX(id), MIN(id) FROM products;"
-docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products ORDER BY id;"</code></pre>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "SELECT COUNT(*), MAX(id), MIN(id) FROM products;"
+docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c "SELECT * FROM products ORDER BY id;"</code></pre>
                     <p>Both databases should show the same counts and data. Congratulations! You've built a complete end-to-end CDC pipeline with:</p>
                     <ul>
                         <li>✅ Real-time change capture from a source database</li>
