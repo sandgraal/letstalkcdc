@@ -253,6 +253,16 @@ WHEN MATCHED THEN
           steps, the systems become inconsistent. The
           <strong>Transactional Outbox Pattern</strong> solves this.
         </p>
+
+        <figure style="max-width: 900px; margin: 2rem auto;">
+          <img src="{{ '/diagrams/outbox-pattern.svg' | url }}" 
+               alt="Transactional outbox pattern sequence diagram showing atomic database transaction writing both business data and event record, followed by CDC relay publishing to event bus" 
+               style="width: 100%; height: auto; display: block; background: #0b1220; border-radius: 8px; padding: 1rem;"/>
+          <figcaption style="color: #94a3b8; font-size: 0.875rem; text-align: center; margin-top: 0.5rem; font-style: italic;">
+            Outbox pattern: Write business data and event atomically, then publish via CDC
+          </figcaption>
+        </figure>
+
         <ol>
           <li>
             An application writes both its business data (an `orders` record)

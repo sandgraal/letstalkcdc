@@ -192,6 +192,15 @@ scripts:
           three phases:
         </p>
 
+        <figure style="max-width: 920px; margin: 2rem auto;">
+          <img src="{{ '/diagrams/snapshot-flow.svg' | url }}" 
+               alt="Snapshot flow diagram showing three phases: marking high watermark, performing consistent read snapshot, and streaming changes from the boundary" 
+               style="width: 100%; height: auto; display: block; background: #0b1220; border-radius: 8px; padding: 1rem;"/>
+          <figcaption style="color: #94a3b8; font-size: 0.875rem; text-align: center; margin-top: 0.5rem; font-style: italic;">
+            The three-phase handoff: mark boundary → snapshot data → stream from boundary
+          </figcaption>
+        </figure>
+
         <div class="handoff-timeline" role="list">
           <article class="timeline-item" id="boundary" role="listitem">
             <h3>Before snapshot: mark the high-watermark</h3>
