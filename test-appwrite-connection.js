@@ -24,7 +24,7 @@ console.log('\n═════════════════════�
 
 if (!APPWRITE_ENDPOINT || !APPWRITE_PROJECT || !APPWRITE_DB_ID || !APPWRITE_API_KEY) {
   console.error('❌ Missing required environment variables.');
-  console.error('Set APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_DB_ID, COL_ASSISTANT_ID, and APPWRITE_API_KEY.');
+  console.error('Set APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_DB_ID, and APPWRITE_API_KEY.');
   process.exit(1);
 }
 
