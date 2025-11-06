@@ -267,7 +267,7 @@ Assistant feedback collection uses **Appwrite** (headless database) via:
 - Assistant works with local-only feedback storage
 - Only loses: centralized assistant feedback analytics
 
-### Collections Schema
+### Collection Schema
 
 **`assistant_feedback` collection** (stores assistant interaction feedback):
 
@@ -283,9 +283,7 @@ Assistant feedback collection uses **Appwrite** (headless database) via:
 - Indexed by: `ts` (descending) for recent feedback queries
 - Permissions: Anonymous users can create documents; admins can read/update/delete
 
-### Legacy Serverless Functions
-
-**Note**: The site previously used serverless functions for user authentication and progress migration. These are no longer required as progress tracking is now browser-based. Any legacy serverless function code in the repository is maintained for reference only and is not used in production.
+**Note**: The site previously used `progress` and `events` collections for user progress tracking and authentication. These have been removed as progress tracking is now entirely browser-based using localStorage.
 
 ## Common Patterns
 
