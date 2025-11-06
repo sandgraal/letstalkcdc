@@ -19,9 +19,12 @@ head_extra: |
   <!-- SME SNAPSHOT THEME OVERRIDE START -->
   
   <!-- SME SNAPSHOT THEME OVERRIDE END -->
+scripts:
+  - "/assets/js/lib/quiz.js"
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -490,5 +493,7 @@ HAVING COUNT(*) &gt; 1;</code></pre>
             duplicate-by-wall-clock.
           </aside>
         </section>
+
+        {{ quizMacro.quiz(quizConfig) | safe }}
       </article>
 </div>
