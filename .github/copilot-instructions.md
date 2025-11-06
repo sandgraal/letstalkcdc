@@ -366,11 +366,36 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 
 ## When in Doubt
 
-1. Check `ai/AGENTS.md` for agent-specific rules
-2. Review `AI-CONTRIBUTING.md` for AI agent constraints
-3. Read `ai/CONTEXT.md` for brand voice and conventions
-4. Inspect existing pages in `src/` for patterns
-5. Run `npm run smoke` to validate changes
+1. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Appwrite, tracing, deployment)
+2. Review **[ai/AGENTS.md](../ai/AGENTS.md)** for agent-specific rules
+3. Read **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** for AI agent constraints
+4. Check **[ai/CONTEXT.md](../ai/CONTEXT.md)** for brand voice and conventions
+5. Inspect existing pages in `src/` for patterns
+6. Run `npm run smoke` to validate changes
+
+### Documentation Index
+
+**Setup & Deployment:**
+- **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Appwrite, tracing, all features)
+- **[docs/HOSTING.md](../docs/HOSTING.md)** — Hosting platforms and deployment
+- **[README.md](../README.md)** — Project overview and quick start
+
+**Features:**
+- **[docs/TRACING.md](../docs/TRACING.md)** — OpenTelemetry tracing (comprehensive)
+- **[docs/TRACING-QUICKSTART.md](../docs/TRACING-QUICKSTART.md)** — Tracing quick start
+- **[docs/assistant-feedback-setup.md](../docs/assistant-feedback-setup.md)** — AI assistant collection setup
+- **[docs/APPWRITE_QUICKSTART.md](../docs/APPWRITE_QUICKSTART.md)** — 15-minute Appwrite setup
+
+**Development:**
+- **[docs/adding-modules.md](../docs/adding-modules.md)** — Guide for adding new content modules
+- **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** — AI agent contribution guidelines
+
+**Architecture:**
+- **[ai/CONTEXT.md](../ai/CONTEXT.md)** — Brand voice and conventions
+- **[ai/AGENTS.md](../ai/AGENTS.md)** — AI agent system documentation
+
+**Archived (Historical Reference):**
+- **[docs/archive/](../docs/archive/)** — Archived status docs and decision records
 
 ## Anti-Patterns to Avoid
 

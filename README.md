@@ -44,6 +44,10 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 ### Quick Start
 
+For complete setup instructions including optional features (Appwrite progress tracking, OpenTelemetry tracing, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
+
+### Basic Deployment
+
 1. Enable GitHub Pages for the repository and select **GitHub Actions** as the source
 2. Configure repository variables (Settings → Secrets and variables → Actions → Variables):
    - `SITE_HOST`: Full domain where the site is served (e.g., `https://letstalkcdc.github.io` or your custom domain)
@@ -52,9 +56,22 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 The site automatically rebuilds and deploys on every push to `main`.
 
+### Optional Features
+
+The site is built with progressive enhancement — core features work immediately:
+
+| Feature                               | Status      | Documentation                      |
+| ------------------------------------- | ----------- | ---------------------------------- |
+| **Static site** (educational content) | ✅ Ready    | This README                        |
+| **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage |
+| **OpenTelemetry tracing**             | ⚠️ Optional | [docs/TRACING.md](docs/TRACING.md) |
+| **Appwrite (cloud sync + auth)**      | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+| **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+
 ### Serverless Function Hosting
 
 The `migrateUser` serverless function (for Appwrite progress sync) requires separate hosting since GitHub Pages only serves static content. See [docs/HOSTING.md](docs/HOSTING.md) for:
+
 - Detailed deployment instructions
 - Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify)
 - Environment variable configuration
@@ -64,5 +81,7 @@ The `migrateUser` serverless function (for Appwrite progress sync) requires sepa
 For full hosting documentation and platform decision rationale, see **[docs/HOSTING.md](docs/HOSTING.md)**.
 
 <!-- AI-STATUS:START -->
+
 Last AI agents run: 2025-11-03T04:06:25.436Z
+
 <!-- AI-STATUS:END -->

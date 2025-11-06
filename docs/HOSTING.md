@@ -37,14 +37,15 @@ Deploy to GitHub Pages (_site/ directory)
 
 Define these repository variables under **Settings → Secrets and variables → Actions → Variables**:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SITE_HOST` | Full URL where the site is hosted | `https://sandgraal.github.io` or `https://yourdomain.com` |
-| `ELEVENTY_PATH_PREFIX` | Path prefix for project pages (leave blank for user/org pages) | `/letstalkcdc` or blank |
+| Variable               | Description                                                    | Example                                                   |
+| ---------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| `SITE_HOST`            | Full URL where the site is hosted                              | `https://sandgraal.github.io` or `https://yourdomain.com` |
+| `ELEVENTY_PATH_PREFIX` | Path prefix for project pages (leave blank for user/org pages) | `/letstalkcdc` or blank                                   |
 
 ### 3. Automatic Deployment
 
 The site automatically rebuilds and deploys when:
+
 - Changes are pushed to the `main` branch
 - The workflow is manually triggered via Actions tab
 
@@ -57,6 +58,7 @@ The `migrateUser` serverless function handles migrating user progress from anony
 #### Option 1: Vercel Serverless Functions (Recommended)
 
 **Pros:**
+
 - Free tier includes serverless functions
 - Simple API route deployment
 - Automatic HTTPS and edge network
@@ -64,6 +66,7 @@ The `migrateUser` serverless function handles migrating user progress from anony
 - Zero-config deployment
 
 **Setup:**
+
 1. Create a Vercel account and connect your GitHub repository
 2. Move `netlify/functions/migrateUser.js` to `api/migrateUser.js`
 3. Configure environment variables in Vercel dashboard:
@@ -80,12 +83,14 @@ The `migrateUser` serverless function handles migrating user progress from anony
 #### Option 2: Cloudflare Workers
 
 **Pros:**
+
 - Generous free tier (100,000 requests/day)
 - Global edge network
 - Fast cold starts
 - Supports Web Standards API (Fetch API)
 
 **Setup:**
+
 1. Create Cloudflare account
 2. Install Wrangler CLI: `npm install -g wrangler`
 3. Adapt `migrateUser.js` for Cloudflare Workers format
@@ -96,11 +101,13 @@ The `migrateUser` serverless function handles migrating user progress from anony
 #### Option 3: AWS Lambda with API Gateway
 
 **Pros:**
+
 - Industry standard
 - Flexible configuration
 - Generous free tier (1M requests/month)
 
 **Setup:**
+
 1. Create AWS account
 2. Use AWS SAM or Serverless Framework
 3. Deploy function and API Gateway endpoint
@@ -110,11 +117,13 @@ The `migrateUser` serverless function handles migrating user progress from anony
 #### Option 4: Keep on Netlify (Hybrid Approach)
 
 **Pros:**
+
 - Netlify configuration already exists
 - Serverless functions natively supported
 - Simple environment variable management
 
 **Setup:**
+
 1. Create Netlify account
 2. Configure netlify.toml to only deploy functions (not the site)
 3. Set environment variables in Netlify dashboard
@@ -124,6 +133,7 @@ The `migrateUser` serverless function handles migrating user progress from anony
 ### Current Implementation
 
 The `migrateUser` function is currently referenced in:
+
 - `scripts/progress.js` - calls `/.netlify/functions/migrateUser`
 - `netlify/functions/migrateUser.js` - function implementation
 - `netlify/functions/migrateUser.test.js` - function tests
@@ -136,24 +146,24 @@ The `migrateUser` function is currently referenced in:
 
 Set in **Settings → Secrets and variables → Actions → Variables**:
 
-| Variable | Scope | Required | Description |
-|----------|-------|----------|-------------|
-| `SITE_HOST` | Build | Yes | Canonical domain for the site |
-| `ELEVENTY_PATH_PREFIX` | Build | No | Path prefix for subdirectory hosting |
+| Variable               | Scope | Required | Description                          |
+| ---------------------- | ----- | -------- | ------------------------------------ |
+| `SITE_HOST`            | Build | Yes      | Canonical domain for the site        |
+| `ELEVENTY_PATH_PREFIX` | Build | No       | Path prefix for subdirectory hosting |
 
 ### Serverless Function (Provider-Specific)
 
 Set in your chosen serverless platform:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `APPWRITE_ENDPOINT` | Yes | Appwrite API endpoint URL |
-| `APPWRITE_PROJECT` | Yes | Appwrite project ID |
-| `APPWRITE_API_KEY` | Yes | **Secret** - Appwrite server API key |
-| `APPWRITE_DB_ID` | Yes | Appwrite database ID |
-| `COL_PROGRESS_ID` | Yes | Progress collection ID |
-| `COL_EVENTS_ID` | Yes | Events collection ID |
-| `COL_ASSISTANT_ID` | Yes | Assistant feedback collection ID |
+| Variable            | Required | Description                          |
+| ------------------- | -------- | ------------------------------------ |
+| `APPWRITE_ENDPOINT` | Yes      | Appwrite API endpoint URL            |
+| `APPWRITE_PROJECT`  | Yes      | Appwrite project ID                  |
+| `APPWRITE_API_KEY`  | Yes      | **Secret** - Appwrite server API key |
+| `APPWRITE_DB_ID`    | Yes      | Appwrite database ID                 |
+| `COL_PROGRESS_ID`   | Yes      | Progress collection ID               |
+| `COL_EVENTS_ID`     | Yes      | Events collection ID                 |
+| `COL_ASSISTANT_ID`  | Yes      | Assistant feedback collection ID     |
 
 **Security Note:** Never commit `APPWRITE_API_KEY` to version control. Always use environment variables or secrets management.
 
@@ -194,13 +204,13 @@ Before considering the migration complete:
 
 ## Costs
 
-| Component | Platform | Cost |
-|-----------|----------|------|
-| Static Site | GitHub Pages | Free for public repos |
+| Component           | Platform           | Cost                              |
+| ------------------- | ------------------ | --------------------------------- |
+| Static Site         | GitHub Pages       | Free for public repos             |
 | Serverless Function | Vercel (free tier) | Free (100GB bandwidth, 100 hours) |
-| Serverless Function | Cloudflare Workers | Free (100k requests/day) |
-| Serverless Function | AWS Lambda | Free tier (1M requests/month) |
-| Serverless Function | Netlify | Free tier (125k requests/month) |
+| Serverless Function | Cloudflare Workers | Free (100k requests/day)          |
+| Serverless Function | AWS Lambda         | Free tier (1M requests/month)     |
+| Serverless Function | Netlify            | Free tier (125k requests/month)   |
 
 ## Decision Log
 
@@ -208,24 +218,42 @@ Before considering the migration complete:
 
 **Decision**: Continue using **GitHub Pages** for static site hosting + separate serverless provider for `migrateUser` function
 
-**Context**: 
+**Context**:
+
 - Static site successfully deployed to GitHub Pages
 - GitHub Actions workflow already configured
 - Netlify configuration exists but not actively used for deployment
 - Single serverless function needs hosting
 
 **Considered Alternatives**:
+
 1. **Full Netlify Hosting**: Would require migrating static site back to Netlify
 2. **Full Vercel Hosting**: Would require new deployment configuration
 3. **Current Hybrid Approach**: Keep working GitHub Pages setup, choose serverless provider
 
 **Chosen Approach**: GitHub Pages (static) + Serverless Provider (function)
+
 - Leverages existing working deployment
 - Minimal migration effort
 - Separation of concerns
 - Freedom to choose best serverless provider
 
 **Next Steps**:
+
 1. Choose and document serverless function provider (Vercel recommended)
 2. Update `scripts/progress.js` with correct endpoint
 3. Remove or clearly mark `netlify.toml` as legacy
+
+---
+
+## See Also
+
+- **Complete Setup Guide**: [docs/SETUP.md](SETUP.md) — Full setup including Appwrite, tracing, and deployment
+- **Appwrite Integration**: [INTEGRATION_README.md](../INTEGRATION_README.md) — Detailed Appwrite setup (archived, see SETUP.md instead)
+- **Adding Modules**: [docs/adding-modules.md](adding-modules.md) — Guide for creating new content modules
+
+---
+
+**Last Updated**: November 2025  
+**Status**: Active deployment on GitHub Pages  
+**Serverless Provider**: To be determined (see options above)

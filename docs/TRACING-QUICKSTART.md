@@ -2,16 +2,26 @@
 
 ## What Was Added
 
-✅ **Client-side tracing** with OpenTelemetry for the Let's Talk CDC educational site
+✅ **Client-side tracing** with a **lightweight OpenTelemetry-compatible implementation**
+
+### Implementation Approach
+
+The site uses **`tracing-lite.js`** — a custom, zero-dependency tracer that:
+
+- ✅ **No bundler required** — Works directly in browsers
+- ✅ **No npm dependencies at runtime** — Uses only browser fetch API
+- ✅ **OTLP-compatible** — Sends standard OpenTelemetry protocol traces
+- ✅ **Progressive enhancement** — Site works even if tracing fails
+
+> **Note**: This replaces the full OpenTelemetry npm packages (`@opentelemetry/*`) which would require bundling. The lite version provides equivalent functionality with browser-native APIs.
 
 ### Key Features
 
-1. **Automatic Instrumentation**
+1. **Automatic Performance Tracking**
 
-   - Page load performance (Document Load)
-   - User interactions (clicks, form submissions)
-   - Network requests (fetch, XHR)
+   - Page load performance (uses PerformanceNavigationTiming API)
    - Core Web Vitals (LCP, FID, CLS)
+   - Resource load metrics
 
 2. **Custom Educational Tracking**
 
@@ -27,16 +37,30 @@
 
 ## Files Modified/Created
 
-### New Files
+### Current Implementation
 
-- ✨ `src/assets/js/tracing.js` - OpenTelemetry initialization and custom tracer
-- 📖 `docs/TRACING.md` - Complete documentation
-- 📝 `docs/TRACING-QUICKSTART.md` - This file
+- ✨ `src/assets/js/tracing-lite.js` - **Lightweight tracer (IN USE)**
 
-### Modified Files
+  - Custom OTLP implementation
+  - No external dependencies
+  - ~364 lines of vanilla JavaScript
 
 - 🔧 `src/assets/js/app.js` - Integrated tracing calls
-- 📦 `package.json` - Added OpenTelemetry dependencies
+  - Imports from `tracing-lite.js`
+  - Graceful fallback if tracing fails
+
+### Alternative (Not Used)
+
+- ⚠️ `src/assets/js/tracing.js` - Full OpenTelemetry SDK (requires bundling)
+  - Uses `@opentelemetry/*` npm packages
+  - Would require webpack/rollup/esbuild
+  - Not used to avoid build complexity
+
+### Documentation
+
+- 📖 `docs/TRACING.md` - Complete documentation (updated)
+- 📝 `docs/TRACING-QUICKSTART.md` - This file (updated)
+- ⚠️ `docs/TRACING-BUNDLING.md` - See deprecation notice
 
 ## How to Use
 

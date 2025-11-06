@@ -4,7 +4,7 @@ This document describes the client-side tracing implementation for the Let's Tal
 
 ## Overview
 
-The site uses **OpenTelemetry** to track:
+The site uses a **lightweight OpenTelemetry-compatible tracer** to track:
 
 - 📊 **Page Load Performance** - Document load timing, resource loading
 - 👆 **User Interactions** - Clicks, form submissions, navigation
@@ -15,18 +15,30 @@ The site uses **OpenTelemetry** to track:
 
 ## Architecture
 
+### Implementation Approach
+
+The site uses **`tracing-lite.js`** — a custom, dependency-free implementation that:
+
+✅ **No bundler required** — Works directly in browsers via ES modules  
+✅ **No npm dependencies at runtime** — Only uses browser fetch API  
+✅ **OTLP-compatible** — Sends standard OpenTelemetry protocol traces  
+✅ **Progressive enhancement** — Site works even if tracing fails
+
+> **Note**: A full OpenTelemetry implementation exists in `tracing.js` but requires bundling. The lite version is used for simplicity and browser compatibility.
+
 ### Components
 
-1. **`src/assets/js/tracing.js`** - Main tracing module
+1. **`src/assets/js/tracing-lite.js`** - Lightweight tracer implementation
 
-   - Initializes OpenTelemetry Web SDK
-   - Exports `EducationTracer` class for custom tracking
-   - Sets up automatic instrumentation
-   - Tracks Core Web Vitals
+   - Custom `EducationTracer` class for educational event tracking
+   - OTLP trace formatting and export
+   - Core Web Vitals integration
+   - No external dependencies
 
 2. **`src/assets/js/app.js`** - Integration points
    - Imports and initializes tracer on page load
    - Tracks module views, progress updates, searches, and interactions
+   - Graceful fallback if tracing fails
 
 ### Trace Destination
 
@@ -34,31 +46,25 @@ Traces are exported to the **AI Toolkit tracing viewer** via OTLP HTTP:
 
 - **Endpoint**: `http://localhost:4318/v1/traces`
 - **Protocol**: OTLP/HTTP
-- **Format**: OpenTelemetry Protocol
+- **Format**: OpenTelemetry Protocol (JSON)
+- **Transport**: Browser fetch API
 
-## Automatic Instrumentation
+## Custom Tracking (Automatic via tracing-lite.js)
 
-The following interactions are automatically traced:
+The lightweight tracer automatically tracks:
 
-### Document Load
+### Page Load Performance
 
-- Page load timing
-- Resource timing
-- Navigation timing
-- Custom attributes: page path, title
+- Uses `PerformanceNavigationTiming` API
+- Tracks DNS, TCP, TLS, request, response timings
+- Records resource load metrics
 
-### User Interactions
+### Core Web Vitals
 
-- Click events on buttons, links, submit inputs
-- Keyboard events (keypresses)
-- Form submissions
-
-### Network Requests
-
-- XMLHttpRequest calls
-- Fetch API calls
-- Request/response timing
-- HTTP status codes
+- **LCP** (Largest Contentful Paint)
+- **FID** (First Input Delay)
+- **CLS** (Cumulative Layout Shift)
+- Uses `web-vitals` library patterns
 
 ## Custom Tracing
 
@@ -186,7 +192,39 @@ web.vital
 
 ### Local Development
 
-The tracing is automatically initialized when `app.js` loads. No additional setup required for local development.
+The tracing is automatically initialized when `app.js` loads. No additional setup required beyond:
+
+1. **Install dependencies**: `npm install`
+2. **Start AI Toolkit tracing viewer**: View → AI Toolkit → Tracing
+3. **Run dev server**: `npm run dev`
+4. **Browse the site**: Traces appear automatically in AI Toolkit
+
+### Implementation Details
+
+**File**: `src/assets/js/tracing-lite.js`
+
+- ~364 lines of vanilla JavaScript
+- No build step required
+- Uses ES modules (`import/export`)
+- Implements OTLP trace format manually
+- Falls back gracefully if collector unavailable
+
+**File**: `src/assets/js/app.js`
+
+- Imports `getEducationTracer()` from `tracing-lite.js`
+- Initializes tracer with try/catch
+- Creates no-op tracer if initialization fails
+- Tracks module views, progress, interactions, searches
+
+### Alternative: Full OpenTelemetry SDK
+
+A full OpenTelemetry Web SDK implementation exists in `src/assets/js/tracing.js` but is **not currently used** because it requires:
+
+- ❌ Bundler (webpack/rollup/esbuild) to work in browsers
+- ❌ Build step to bundle npm dependencies
+- ❌ Additional complexity for deployment
+
+The lite version provides equivalent functionality without these requirements.
 
 ### Error Handling
 

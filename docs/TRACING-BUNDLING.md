@@ -1,3 +1,72 @@
+# ⚠️ DEPRECATION NOTICE
+
+**Date**: November 2025  
+**Status**: This document is obsolete
+
+## Summary
+
+This document described the need for bundling when using the full OpenTelemetry npm packages (`@opentelemetry/*`).
+
+**The project has since adopted a lightweight, zero-dependency tracer** (`tracing-lite.js`) that works directly in browsers without bundling.
+
+## Current Implementation
+
+The site now uses **`src/assets/js/tracing-lite.js`**:
+
+✅ **No bundler required** — Works directly in browsers via ES modules  
+✅ **No npm dependencies at runtime** — Only uses browser fetch API  
+✅ **OTLP-compatible** — Sends standard OpenTelemetry protocol traces  
+✅ **Progressive enhancement** — Site works even if tracing fails
+
+## What Changed
+
+### Before (Requires Bundling)
+
+```javascript
+// tracing.js - FULL SDK (not used)
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+// ... 10+ npm dependencies
+// ❌ Requires webpack/rollup/esbuild to bundle for browsers
+```
+
+### After (No Bundling Needed)
+
+```javascript
+// tracing-lite.js - LIGHTWEIGHT (in use)
+export class EducationTracer {
+  // Custom OTLP implementation
+  // Uses only: fetch API, Performance API, sessionStorage
+  // ✅ Works directly in browsers
+}
+```
+
+## Migration Path (If You Want Full SDK)
+
+If you need the full OpenTelemetry SDK features (more instrumentations, complex sampling, etc.), you can:
+
+1. **Install esbuild**: `npm install --save-dev esbuild`
+2. **Create bundler script**: `scripts/bundle-tracing.mjs`
+3. **Bundle tracing.js**: `npm run bundle:tracing`
+4. **Update imports**: Change `app.js` to import from bundled file
+
+See the bundling options in the original version of this document (git history).
+
+## Recommendation
+
+**Stick with `tracing-lite.js`** unless you have specific needs for:
+
+- Advanced sampling strategies
+- Multiple trace exporters
+- Complex span hierarchies
+- Third-party instrumentation libraries
+
+The lite version covers 99% of use cases for this educational site.
+
+---
+
+## Original Document Context
+
 # Important: OpenTelemetry Browser Bundling
 
 ## Current Limitation
