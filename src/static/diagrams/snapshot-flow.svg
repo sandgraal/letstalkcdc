@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 450" role="img" aria-labelledby="snapshot-flow-title snapshot-flow-desc">
+  <title id="snapshot-flow-title">Snapshot Flow with High Watermark</title>
+  <desc id="snapshot-flow-desc">A diagram illustrating the three-phase snapshot process: marking the high watermark, performing a consistent read snapshot, and then streaming changes from the boundary</desc>
+  
+  <defs>
+    <style>
+      .phase-box { fill: #1e293b; stroke: #3b82f6; stroke-width: 2; }
+      .arrow { stroke: #3b82f6; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead2); }
+      .text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 15px; }
+      .title-text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: bold; }
+      .label { fill: #94a3b8; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; }
+      .phase-num { fill: #3b82f6; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 20px; font-weight: bold; }
+      .watermark-line { stroke: #ef4444; stroke-width: 2; stroke-dasharray: 5,5; }
+      .timeline-box { fill: #0f172a; stroke: #475569; stroke-width: 1; }
+    </style>
+    <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text class="title-text" x="450" y="30" text-anchor="middle">Snapshot Flow: Three-Phase Handoff</text>
+  
+  <!-- Phase 1: Mark High Watermark -->
+  <g>
+    <rect class="phase-box" x="50" y="80" width="220" height="280" rx="8"/>
+    <circle cx="160" cy="110" r="16" fill="#3b82f6"/>
+    <text class="phase-num" x="160" y="117" text-anchor="middle">1</text>
+    
+    <text class="title-text" x="160" y="145" text-anchor="middle">Mark Boundary</text>
+    <text class="text" x="160" y="170" text-anchor="middle">Record LSN/SCN</text>
+    
+    <rect class="timeline-box" x="70" y="190" width="180" height="150" rx="4"/>
+    <text class="label" x="160" y="210" text-anchor="middle">Before Snapshot:</text>
+    <text class="text" x="80" y="235" font-size="13">• Read current log position</text>
+    <text class="text" x="80" y="255" font-size="13">• Persist to metadata</text>
+    <text class="text" x="80" y="275" font-size="13">• Verify retention window</text>
+    <text class="text" x="80" y="295" font-size="13">• Start monitoring lag</text>
+    
+    <line class="watermark-line" x1="70" y1="315" x2="250" y2="315"/>
+    <text class="label" x="160" y="330" text-anchor="middle" fill="#ef4444">High Watermark →</text>
+  </g>
+  
+  <!-- Arrow to Phase 2 -->
+  <path class="arrow" d="M 275 220 L 315 220"/>
+  
+  <!-- Phase 2: Consistent Read -->
+  <g>
+    <rect class="phase-box" x="320" y="80" width="220" height="280" rx="8"/>
+    <circle cx="430" cy="110" r="16" fill="#3b82f6"/>
+    <text class="phase-num" x="430" y="117" text-anchor="middle">2</text>
+    
+    <text class="title-text" x="430" y="145" text-anchor="middle">Snapshot Data</text>
+    <text class="text" x="430" y="170" text-anchor="middle">Consistent Read</text>
+    
+    <rect class="timeline-box" x="340" y="190" width="180" height="150" rx="4"/>
+    <text class="label" x="430" y="210" text-anchor="middle">During Snapshot:</text>
+    <text class="text" x="350" y="235" font-size="13">• BEGIN TX (isolation)</text>
+    <text class="text" x="350" y="255" font-size="13">• Chunk tables by PK</text>
+    <text class="text" x="350" y="275" font-size="13">• Read deterministically</text>
+    <text class="text" x="350" y="295" font-size="13">• OLTP keeps writing</text>
+    <text class="text" x="350" y="315" font-size="13">• Track progress</text>
+    
+    <text class="label" x="430" y="340" text-anchor="middle" fill="#94a3b8">Reads at watermark →</text>
+  </g>
+  
+  <!-- Arrow to Phase 3 -->
+  <path class="arrow" d="M 545 220 L 585 220"/>
+  
+  <!-- Phase 3: Stream from Boundary -->
+  <g>
+    <rect class="phase-box" x="590" y="80" width="220" height="280" rx="8"/>
+    <circle cx="700" cy="110" r="16" fill="#3b82f6"/>
+    <text class="phase-num" x="700" y="117" text-anchor="middle">3</text>
+    
+    <text class="title-text" x="700" y="145" text-anchor="middle">Stream Changes</text>
+    <text class="text" x="700" y="170" text-anchor="middle">Resume from Boundary</text>
+    
+    <rect class="timeline-box" x="610" y="190" width="180" height="150" rx="4"/>
+    <text class="label" x="700" y="210" text-anchor="middle">After Snapshot:</text>
+    <text class="text" x="620" y="235" font-size="13">• Start from LSN/SCN</text>
+    <text class="text" x="620" y="255" font-size="13">• Apply changes</text>
+    <text class="text" x="620" y="275" font-size="13">• Use MERGE/UPSERT</text>
+    <text class="text" x="620" y="295" font-size="13">• Handle deletes</text>
+    <text class="text" x="620" y="315" font-size="13">• Track offsets</text>
+    
+    <text class="label" x="700" y="340" text-anchor="middle" fill="#10b981">✓ No gaps/dupes</text>
+  </g>
+  
+  <!-- Bottom timeline explanation -->
+  <rect class="timeline-box" x="50" y="390" width="760" height="40" rx="4"/>
+  <text class="label" x="430" y="410" text-anchor="middle">Timeline: The watermark ensures snapshot data and streaming changes align perfectly</text>
+  <text class="label" x="430" y="425" text-anchor="middle" font-style="italic">Changes before watermark → in snapshot; changes after watermark → in stream</text>
+</svg>

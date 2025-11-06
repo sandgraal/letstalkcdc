@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 550" role="img" aria-labelledby="outbox-title outbox-desc">
+  <title id="outbox-title">Transactional Outbox Pattern for Exactly-Once Semantics</title>
+  <desc id="outbox-desc">A sequence diagram showing how the transactional outbox pattern ensures exactly-once message delivery by writing business data and event records atomically within a database transaction</desc>
+  
+  <defs>
+    <style>
+      .participant { fill: #1e293b; stroke: #3b82f6; stroke-width: 2; }
+      .lifeline { stroke: #475569; stroke-width: 1; stroke-dasharray: 5,5; }
+      .message { stroke: #3b82f6; stroke-width: 2; fill: none; marker-end: url(#arrowhead3); }
+      .return { stroke: #10b981; stroke-width: 2; fill: none; stroke-dasharray: 3,3; marker-end: url(#arrowhead3-return); }
+      .text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+      .label { fill: #94a3b8; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; }
+      .step-num { fill: #3b82f6; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: bold; }
+      .title-text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: bold; }
+      .tx-box { fill: #0f172a; stroke: #ef4444; stroke-width: 2; opacity: 0.3; }
+      .note-box { fill: #0f172a; stroke: #475569; stroke-width: 1; }
+    </style>
+    <marker id="arrowhead3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+    </marker>
+    <marker id="arrowhead3-return" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text class="title-text" x="425" y="30" text-anchor="middle">Transactional Outbox Pattern (Exactly-Once)</text>
+  
+  <!-- Participants -->
+  <g id="app">
+    <rect class="participant" x="50" y="60" width="100" height="50" rx="4"/>
+    <text class="text" x="100" y="90" text-anchor="middle" font-weight="bold">App Service</text>
+  </g>
+  
+  <g id="db">
+    <rect class="participant" x="230" y="60" width="100" height="50" rx="4"/>
+    <text class="text" x="280" y="90" text-anchor="middle" font-weight="bold">OLTP DB</text>
+  </g>
+  
+  <g id="outbox">
+    <rect class="participant" x="410" y="60" width="100" height="50" rx="4"/>
+    <text class="text" x="460" y="90" text-anchor="middle" font-weight="bold">Outbox Table</text>
+  </g>
+  
+  <g id="bus">
+    <rect class="participant" x="590" y="60" width="100" height="50" rx="4"/>
+    <text class="text" x="640" y="90" text-anchor="middle" font-weight="bold">Event Bus</text>
+  </g>
+  
+  <g id="sink">
+    <rect class="participant" x="720" y="60" width="100" height="50" rx="4"/>
+    <text class="text" x="770" y="90" text-anchor="middle" font-weight="bold">Consumer</text>
+  </g>
+  
+  <!-- Lifelines -->
+  <line class="lifeline" x1="100" y1="115" x2="100" y2="500"/>
+  <line class="lifeline" x1="280" y1="115" x2="280" y2="500"/>
+  <line class="lifeline" x1="460" y1="115" x2="460" y2="500"/>
+  <line class="lifeline" x1="640" y1="115" x2="640" y2="500"/>
+  <line class="lifeline" x1="770" y1="115" x2="770" y2="500"/>
+  
+  <!-- Transaction boundary box -->
+  <rect class="tx-box" x="80" y="150" width="400" height="200" rx="4"/>
+  <text class="label" x="90" y="165" fill="#ef4444" font-weight="bold">ATOMIC TRANSACTION →</text>
+  
+  <!-- Step 1: BEGIN TX -->
+  <circle cx="20" cy="180" r="10" fill="#3b82f6"/>
+  <text class="step-num" x="20" y="185" text-anchor="middle">1</text>
+  <path class="message" d="M 100 180 L 275 180"/>
+  <text class="label" x="187" y="175" text-anchor="middle">BEGIN TX</text>
+  
+  <!-- Step 2: UPDATE domain rows -->
+  <circle cx="20" cy="220" r="10" fill="#3b82f6"/>
+  <text class="step-num" x="20" y="225" text-anchor="middle">2</text>
+  <path class="message" d="M 100 220 L 275 220"/>
+  <text class="label" x="187" y="215" text-anchor="middle">UPDATE orders</text>
+  <text class="label" x="187" y="235" text-anchor="middle" font-size="11">(business data)</text>
+  
+  <!-- Step 3: INSERT into outbox -->
+  <circle cx="20" cy="280" r="10" fill="#3b82f6"/>
+  <text class="step-num" x="20" y="285" text-anchor="middle">3</text>
+  <path class="message" d="M 100 280 L 455 280"/>
+  <text class="label" x="277" y="275" text-anchor="middle">INSERT event record</text>
+  <text class="label" x="277" y="295" text-anchor="middle" font-size="11">(event_id, payload, timestamp)</text>
+  
+  <!-- Step 4: COMMIT -->
+  <circle cx="20" cy="330" r="10" fill="#3b82f6"/>
+  <text class="step-num" x="20" y="335" text-anchor="middle">4</text>
+  <path class="return" d="M 275 330 L 105 330"/>
+  <text class="label" x="190" y="325" text-anchor="middle" fill="#10b981">COMMIT</text>
+  <text class="label" x="190" y="345" text-anchor="middle" font-size="11" fill="#10b981">✓ Both or neither</text>
+  
+  <!-- Note box explaining atomicity -->
+  <rect class="note-box" x="500" y="170" width="180" height="80" rx="4"/>
+  <text class="label" x="510" y="190" font-weight="bold">Why this works:</text>
+  <text class="label" x="510" y="210" font-size="11">✓ Single DB transaction</text>
+  <text class="label" x="510" y="227" font-size="11">✓ ACID guarantees</text>
+  <text class="label" x="510" y="244" font-size="11">✓ No dual-write problem</text>
+  
+  <!-- Step 5: CDC relay publishes -->
+  <circle cx="20" cy="390" r="10" fill="#3b82f6"/>
+  <text class="step-num" x="20" y="395" text-anchor="middle">5</text>
+  <path class="message" d="M 460 390 L 635 390"/>
+  <text class="label" x="547" y="385" text-anchor="middle">CDC relay reads log</text>
+  <text class="label" x="547" y="405" text-anchor="middle" font-size="11">and publishes event</text>
+  
+  <!-- Step 6: Consumer processes -->
+  <circle cx="20" cy="440" r="10" fill="#3b82f6"/>
+  <text class="step-num" x="20" y="445" text-anchor="middle">6</text>
+  <path class="message" d="M 640 440 L 765 440"/>
+  <text class="label" x="702" y="435" text-anchor="middle">Consume & apply</text>
+  <text class="label" x="702" y="455" text-anchor="middle" font-size="11">(idempotent)</text>
+  
+  <!-- Bottom explanation -->
+  <rect class="note-box" x="50" y="480" width="770" height="50" rx="4"/>
+  <text class="label" x="435" y="500" text-anchor="middle" font-weight="bold">Key Insight: The outbox ensures events are only published if the business transaction commits</text>
+  <text class="label" x="435" y="517" text-anchor="middle" font-size="11" font-style="italic">No phantom events, no lost events. The database transaction log is the source of truth.</text>
+</svg>

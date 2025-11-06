@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" role="img" aria-labelledby="schema-evolution-title schema-evolution-desc">
+  <title id="schema-evolution-title">Schema Evolution with Registry Compatibility Modes</title>
+  <desc id="schema-evolution-desc">A diagram showing how a Schema Registry manages schema evolution with different compatibility modes: backward, forward, and full compatibility between producers and consumers</desc>
+  
+  <defs>
+    <style>
+      .component { fill: #1e293b; stroke: #3b82f6; stroke-width: 2; }
+      .registry { fill: #0f172a; stroke: #8b5cf6; stroke-width: 3; }
+      .arrow { stroke: #3b82f6; stroke-width: 2; fill: none; marker-end: url(#arrowhead4); }
+      .check-arrow { stroke: #10b981; stroke-width: 2; fill: none; marker-end: url(#arrowhead4-check); }
+      .reject-arrow { stroke: #ef4444; stroke-width: 2; fill: none; marker-end: url(#arrowhead4-reject); }
+      .text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+      .label { fill: #94a3b8; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; }
+      .title-text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: bold; }
+      .code-text { fill: #94a3b8; font-family: ui-monospace, monospace; font-size: 11px; }
+      .mode-box { fill: #1e293b; stroke: #8b5cf6; stroke-width: 2; }
+      .compat-label { fill: #8b5cf6; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: bold; }
+    </style>
+    <marker id="arrowhead4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+    </marker>
+    <marker id="arrowhead4-check" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+    </marker>
+    <marker id="arrowhead4-reject" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#ef4444" />
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text class="title-text" x="450" y="30" text-anchor="middle">Schema Evolution with Registry</text>
+  
+  <!-- Producer (left) -->
+  <g>
+    <rect class="component" x="50" y="100" width="150" height="80" rx="4"/>
+    <text class="text" x="125" y="135" text-anchor="middle" font-weight="bold">Producer</text>
+    <text class="label" x="125" y="155" text-anchor="middle">Debezium/App</text>
+    <text class="label" x="125" y="170" text-anchor="middle">Schema v2</text>
+  </g>
+  
+  <!-- Schema Registry (center) -->
+  <g>
+    <rect class="registry" x="320" y="80" width="260" height="200" rx="4"/>
+    <text class="title-text" x="450" y="110" text-anchor="middle" fill="#8b5cf6">Schema Registry</text>
+    
+    <!-- Stored schemas -->
+    <rect class="component" x="340" y="130" width="220" height="130" rx="4"/>
+    <text class="label" x="450" y="150" text-anchor="middle" font-weight="bold">Stored Schemas:</text>
+    <text class="code-text" x="350" y="170" fill="#10b981">✓ user-v1 (id=1)</text>
+    <text class="code-text" x="360" y="185">{id: long, email: string}</text>
+    <text class="code-text" x="350" y="210" fill="#3b82f6">⟳ user-v2 (id=2)</text>
+    <text class="code-text" x="360" y="225">{id: long, email: string,</text>
+    <text class="code-text" x="360" y="240"> name: string|null}</text>
+  </g>
+  
+  <!-- Consumer (right) -->
+  <g>
+    <rect class="component" x="700" y="100" width="150" height="80" rx="4"/>
+    <text class="text" x="775" y="135" text-anchor="middle" font-weight="bold">Consumer</text>
+    <text class="label" x="775" y="155" text-anchor="middle">Warehouse/App</text>
+    <text class="label" x="775" y="170" text-anchor="middle">Expects v1 or v2</text>
+  </g>
+  
+  <!-- Step 1: Register schema -->
+  <path class="arrow" d="M 200 140 L 315 160"/>
+  <text class="label" x="257" y="135" text-anchor="middle">① Register v2</text>
+  
+  <!-- Step 2: Compatibility check -->
+  <path class="check-arrow" d="M 315 200 L 200 200"/>
+  <text class="label" x="257" y="195" text-anchor="middle" fill="#10b981">② ✓ Compatible</text>
+  <text class="label" x="257" y="210" text-anchor="middle" font-size="10">(returns id=2)</text>
+  
+  <!-- Step 3: Publish with schema ID -->
+  <path class="arrow" d="M 200 160 L 695 130"/>
+  <text class="label" x="447" y="120" text-anchor="middle">③ Publish events</text>
+  <text class="label" x="447" y="135" text-anchor="middle" font-size="10">(includes schema_id=2)</text>
+  
+  <!-- Step 4: Fetch schema -->
+  <path class="arrow" d="M 700 150 L 585 190"/>
+  <text class="label" x="642" y="165" text-anchor="middle">④ Fetch schema</text>
+  <text class="label" x="642" y="180" text-anchor="middle" font-size="10">(by id=2)</text>
+  
+  <!-- Compatibility Modes Section -->
+  <text class="title-text" x="450" y="320" text-anchor="middle">Compatibility Modes</text>
+  
+  <!-- Backward Compatibility -->
+  <g>
+    <rect class="mode-box" x="50" y="340" width="250" height="110" rx="4"/>
+    <text class="compat-label" x="175" y="360" text-anchor="middle">BACKWARD (Recommended)</text>
+    <text class="label" x="60" y="380">✓ New consumers read old data</text>
+    <text class="label" x="60" y="400">✓ Add optional fields</text>
+    <text class="label" x="60" y="420">✓ Delete fields</text>
+    <text class="label" x="60" y="440" font-style="italic">Consumers upgrade at their pace</text>
+  </g>
+  
+  <!-- Forward Compatibility -->
+  <g>
+    <rect class="mode-box" x="325" y="340" width="250" height="110" rx="4"/>
+    <text class="compat-label" x="450" y="360" text-anchor="middle">FORWARD</text>
+    <text class="label" x="335" y="380">✓ Old consumers read new data</text>
+    <text class="label" x="335" y="400">✓ Add fields (ignored by old)</text>
+    <text class="label" x="335" y="420">✓ Delete optional fields</text>
+    <text class="label" x="335" y="440" font-style="italic">Producers upgrade first</text>
+  </g>
+  
+  <!-- Full Compatibility -->
+  <g>
+    <rect class="mode-box" x="600" y="340" width="250" height="110" rx="4"/>
+    <text class="compat-label" x="725" y="360" text-anchor="middle">FULL</text>
+    <text class="label" x="610" y="380">✓ Both backward AND forward</text>
+    <text class="label" x="610" y="400">✓ Only add optional fields</text>
+    <text class="label" x="610" y="420">✓ Never remove fields</text>
+    <text class="label" x="610" y="440" font-style="italic">Most restrictive, safest</text>
+  </g>
+  
+  <!-- Example Evolution -->
+  <g>
+    <rect class="component" x="50" y="480" width="800" height="100" rx="4"/>
+    <text class="title-text" x="450" y="505" text-anchor="middle" font-size="15">Example: Safe Evolution (Backward Compatible)</text>
+    
+    <text class="code-text" x="70" y="530" fill="#94a3b8">// v1 Schema</text>
+    <text class="code-text" x="70" y="545" fill="#10b981">{id: long, email: string}</text>
+    
+    <text class="code-text" x="350" y="530" fill="#94a3b8">// v2 Schema (backward compatible)</text>
+    <text class="code-text" x="350" y="545" fill="#3b82f6">{id: long, email: string,</text>
+    <text class="code-text" x="350" y="560" fill="#3b82f6"> name: string|null = null}</text>
+    
+    <text class="label" x="700" y="540" font-weight="bold" fill="#10b981">✓ Old consumers</text>
+    <text class="label" x="700" y="555" font-size="11">can still read</text>
+    <text class="label" x="700" y="570" font-size="11">(ignore new field)</text>
+  </g>
+</svg>

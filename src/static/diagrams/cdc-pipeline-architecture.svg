@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" role="img" aria-labelledby="cdc-pipeline-title cdc-pipeline-desc">
+  <title id="cdc-pipeline-title">CDC Pipeline Architecture</title>
+  <desc id="cdc-pipeline-desc">A diagram showing the flow of data in a Change Data Capture pipeline from source database through connector to stream and finally to sink</desc>
+  
+  <defs>
+    <style>
+      .box { fill: #1e293b; stroke: #3b82f6; stroke-width: 2; }
+      .arrow { stroke: #3b82f6; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .text { fill: #e6eefc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; }
+      .label { fill: #94a3b8; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; }
+      .icon-text { fill: #3b82f6; font-family: ui-monospace, monospace; font-size: 24px; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+    </marker>
+  </defs>
+  
+  <!-- Source Database -->
+  <g>
+    <rect class="box" x="20" y="100" width="140" height="100" rx="8"/>
+    <text class="icon-text" x="90" y="135" text-anchor="middle">🗄️</text>
+    <text class="text" x="90" y="165" text-anchor="middle" font-weight="bold">Source DB</text>
+    <text class="label" x="90" y="185" text-anchor="middle">PostgreSQL/</text>
+    <text class="label" x="90" y="200" text-anchor="middle">MySQL/Oracle</text>
+  </g>
+  
+  <!-- Arrow 1 -->
+  <path class="arrow" d="M 165 150 L 210 150"/>
+  <text class="label" x="187" y="140" text-anchor="middle">Transaction Log</text>
+  
+  <!-- Connector -->
+  <g>
+    <rect class="box" x="215" y="100" width="140" height="100" rx="8"/>
+    <text class="icon-text" x="285" y="135" text-anchor="middle">⚙️</text>
+    <text class="text" x="285" y="165" text-anchor="middle" font-weight="bold">Connector</text>
+    <text class="label" x="285" y="185" text-anchor="middle">Debezium/</text>
+    <text class="label" x="285" y="200" text-anchor="middle">Airbyte</text>
+  </g>
+  
+  <!-- Arrow 2 -->
+  <path class="arrow" d="M 360 150 L 430 150"/>
+  <text class="label" x="395" y="140" text-anchor="middle">Change Events</text>
+  
+  <!-- Stream -->
+  <g>
+    <rect class="box" x="435" y="100" width="140" height="100" rx="8"/>
+    <text class="icon-text" x="505" y="135" text-anchor="middle">📊</text>
+    <text class="text" x="505" y="165" text-anchor="middle" font-weight="bold">Stream</text>
+    <text class="label" x="505" y="185" text-anchor="middle">Kafka/</text>
+    <text class="label" x="505" y="200" text-anchor="middle">Kinesis</text>
+  </g>
+  
+  <!-- Arrow 3 -->
+  <path class="arrow" d="M 580 150 L 635 150"/>
+  <text class="label" x="607" y="140" text-anchor="middle">Subscribe</text>
+  
+  <!-- Sink -->
+  <g>
+    <rect class="box" x="640" y="100" width="140" height="100" rx="8"/>
+    <text class="icon-text" x="710" y="135" text-anchor="middle">🎯</text>
+    <text class="text" x="710" y="165" text-anchor="middle" font-weight="bold">Sink</text>
+    <text class="label" x="710" y="185" text-anchor="middle">Warehouse/</text>
+    <text class="label" x="710" y="200" text-anchor="middle">Search/Cache</text>
+  </g>
+  
+  <!-- Bottom flow label -->
+  <text class="label" x="400" y="250" text-anchor="middle" font-style="italic">Data flows left to right: Read → Capture → Transport → Apply</text>
+</svg>
