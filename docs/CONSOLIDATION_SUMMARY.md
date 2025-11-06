@@ -14,6 +14,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 **New File**: `docs/SETUP.md` (comprehensive setup guide)
 
 **Content Merged From**:
+
 - `docs/APPWRITE_QUICKSTART.md` (15-minute setup)
 - `docs/APPWRITE_IMPLEMENTATION_COMPLETE.md` (status report)
 - `docs/appwrite-progress-login-handoff.txt` (314-line handoff)
@@ -22,6 +23,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 - Tracing setup information
 
 **Result**: Single source of truth for all setup tasks with:
+
 - Progressive enhancement approach (core features vs optional)
 - Step-by-step instructions for each feature
 - Clear status indicators (✅ Ready, ⚠️ Optional)
@@ -33,6 +35,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 **Critical Finding**: Project uses `tracing-lite.js` (zero dependencies, works in browsers) instead of full OpenTelemetry npm packages.
 
 **Files Updated**:
+
 - `docs/TRACING.md` — Clarified lite implementation, added architecture notes
 - `docs/TRACING-QUICKSTART.md` — Updated to reflect lite version
 - `docs/TRACING-BUNDLING.md` — Added deprecation notice explaining the change
@@ -42,6 +45,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 ### 3. Consolidated Hosting Documentation ✅
 
 **Files Updated**:
+
 - `docs/HOSTING.md` — Added cross-references, maintained comprehensive guide
 - `README.md` — Updated to point to SETUP.md for detailed instructions
 
@@ -52,6 +56,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 **Created**: `docs/archive/` directory with README explaining archival policy
 
 **Moved to Archive** (6 files):
+
 - `docs/APPWRITE_IMPLEMENTATION_COMPLETE.md`
 - `docs/assistant-mode-status.md`
 - `docs/HOSTING_DECISION.md`
@@ -66,6 +71,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 **File**: `.github/copilot-instructions.md`
 
 **Changes**:
+
 - Updated documentation index with current structure
 - Added archive section for historical reference
 - Removed references to obsolete files
@@ -76,6 +82,7 @@ Completed comprehensive documentation review and consolidation to eliminate redu
 **Test Command**: `node test-appwrite.cjs`
 
 **Findings**:
+
 - ✅ Database `playground` connected
 - ✅ Collection `progress` exists (6 attributes)
 - ✅ Collection `events` exists (4 attributes)
@@ -121,11 +128,13 @@ AI-CONTRIBUTING.md                    # AI agent guidelines
 ### Recommended Entry Points
 
 **For new developers**:
+
 1. Start: `README.md` (project overview)
 2. Setup: `docs/SETUP.md` (comprehensive guide)
 3. Deploy: `docs/HOSTING.md` (deployment options)
 
 **For specific features**:
+
 - **Tracing**: `docs/TRACING-QUICKSTART.md` → `docs/TRACING.md`
 - **Appwrite**: `docs/SETUP.md` (section 2) or `docs/APPWRITE_QUICKSTART.md`
 - **Assistant**: `docs/SETUP.md` (section 3) + `docs/assistant-feedback-setup.md`
@@ -171,10 +180,12 @@ AI-CONTRIBUTING.md                    # AI agent guidelines
 ## Files Changed
 
 ### Created (2)
+
 - `docs/SETUP.md` (comprehensive setup guide)
 - `docs/archive/README.md` (archive explanation)
 
 ### Modified (6)
+
 - `docs/TRACING.md` (clarified lite implementation)
 - `docs/TRACING-QUICKSTART.md` (updated to reflect lite version)
 - `docs/TRACING-BUNDLING.md` (added deprecation notice)
@@ -183,6 +194,7 @@ AI-CONTRIBUTING.md                    # AI agent guidelines
 - `.github/copilot-instructions.md` (updated documentation index)
 
 ### Archived (6)
+
 - Moved to `docs/archive/` (see list above)
 
 ---
