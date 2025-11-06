@@ -2018,3 +2018,66 @@ pre > .theme-toggle {
 .global-header {
   min-height: 64px;
 }
+
+/* Footer highlight styles for community links */
+.footer-highlight-link {
+  font-weight: 600 !important;
+  color: var(--accent-primary) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.footer-highlight-link:hover {
+  color: var(--accent-hover) !important;
+}
+
+.footer-link-description {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+  line-height: 1.4;
+}
+
+:root[data-theme="light"] .footer-highlight-link {
+  color: var(--accent-primary) !important;
+}
+
+:root[data-theme="light"] .footer-link-description {
+  color: var(--text-muted);
+}
+
+/* Community callout section */
+.community-callout {
+  margin: 3rem auto;
+  max-width: 900px;
+}
+
+.community-links-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 1.5rem 0;
+}
+
+.community-links-list li {
+  padding: 0.5rem 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.button-primary {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: var(--accent-primary);
+  color: #fff !important;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.button-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}

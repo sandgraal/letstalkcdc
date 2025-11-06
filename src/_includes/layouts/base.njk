@@ -246,7 +246,12 @@
             <ul class="footer-links">
               <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">GitHub</a></li>
               {% if community.discussions.enabled %}
-              <li><a href="{{ community.discussions.url }}" target="_blank" rel="noopener">{{ community.discussions.label }}</a></li>
+              <li>
+                <a href="{{ community.discussions.url }}" target="_blank" rel="noopener" class="footer-highlight-link">
+                  💬 {{ community.discussions.label }}
+                </a>
+                <p class="footer-link-description">{{ community.discussions.description }}</p>
+              </li>
               {% endif %}
               {% if community.discord.enabled %}
               <li><a href="{{ community.discord.url }}" target="_blank" rel="noopener">{{ community.discord.label }}</a></li>
