@@ -46,6 +46,24 @@
             <a href="{{ '/use-cases/' | url }}">Use Cases</a>
             <a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>
           </nav>
+          <div class="header-progress" data-header-progress>
+            <span class="header-progress__label">Progress</span>
+            <div class="header-progress__bar">
+              <div class="progress-bar progress-bar--sm">
+                <div 
+                  class="progress-bar-fill" 
+                  data-global-progress-bar 
+                  style="width: 0%"
+                  role="progressbar"
+                  aria-valuenow="0"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-label="Overall learning progress"
+                ></div>
+              </div>
+            </div>
+            <span class="header-progress__text" data-global-progress-text>0%</span>
+          </div>
           <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
         </div>
       </div>
@@ -172,6 +190,7 @@
     </script>
     <script type="module" src="{{ '/scripts/dashboard.js' | url }}"></script>
     <script type="module" src="{{ '/assets/js/app.js' | url }}"></script>
+    <script type="module" src="{{ '/assets/js/progress-ui.js' | url }}"></script>
     {% if scripts %}
       {% for script in scripts %}
         <script type="module" src="{{ script | url }}"></script>
