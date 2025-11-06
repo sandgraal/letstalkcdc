@@ -296,6 +296,7 @@ docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c 
   "SELECT id, md5(CAST((id, name, description, weight, price) AS text)) as content_hash 
    FROM products 
    ORDER BY id;"</code></pre>
+            <p><strong>Note:</strong> Adjust the column list <code>(id, name, description, weight, price)</code> to match your actual table schema. Include all columns that should be compared for consistency.</p>
             <p><strong>Expected output:</strong> Hash values should match for each ID:</p>
             <pre><code> id |           content_hash           
 ----+----------------------------------
