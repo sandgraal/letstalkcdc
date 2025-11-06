@@ -118,6 +118,14 @@ module.exports = [
     tags: [ { label: 'Lab', variant: 'tag-labs' } ]
   },
   {
+    key: 'failure-drills',
+    title: 'Failure Scenario Drills',
+    description: 'Hands-on drills to build troubleshooting fluency: backpressure, DLQ handling, schema drift, and offset replays.',
+    href: '/troubleshooting/failure-drills/',
+    ctaLabel: 'Start Drills',
+    tags: [ { label: 'Lab', variant: 'tag-labs' } ]
+  },
+  {
     key: 'cloud-labs',
     title: 'Cloud CDC Labs',
     description: 'End-to-end CDC implementations with cloud-native platforms: AWS DMS, Snowflake, and Matillion.',
