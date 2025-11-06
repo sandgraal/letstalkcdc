@@ -53,8 +53,8 @@ groups:
 
       - alert: KafkaConnectDLQVolumeSpike
         expr: |
-          rate(kafka_topic_partition_current_offset{topic=~".*dlq.*"}[5m]) > 
-          (avg_over_time(rate(kafka_topic_partition_current_offset{topic=~".*dlq.*"}[1h])[30m:1m]) * 3)
+          increase(kafka_topic_partition_current_offset{topic=~".*dlq.*"}[5m]) > 
+          (avg_over_time(increase(kafka_topic_partition_current_offset{topic=~".*dlq.*"}[5m])[1h:5m]) * 3)
         for: 5m
         labels:
           severity: critical

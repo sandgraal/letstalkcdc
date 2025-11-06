@@ -50,6 +50,7 @@ rules:
       task: "$2"
     value: "$4"
     valueFactor: 1
+    type: COUNTER
 
   # Sink connector metrics
   - pattern: 'kafka.connect<type=sink-task-metrics, connector=([^,]+), task=([^,]+)><>(.+): (.+)'
@@ -59,6 +60,7 @@ rules:
       task: "$2"
     value: "$4"
     valueFactor: 1
+    type: COUNTER
 
   # Worker metrics
   - pattern: 'kafka.connect<type=connect-worker-metrics><>(.+): (.+)'
