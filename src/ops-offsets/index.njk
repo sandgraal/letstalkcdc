@@ -111,9 +111,11 @@ canonicalPath: "/ops-offsets/"
         in Kafka Connect (defaults to <code>connect-offsets</code> in the Debezium image).
       </p>
       <pre><code class="language-bash"># Discover your offset topic name from the Connect worker config
-curl -s http://localhost:8083/ | jq -r '.kafka_cluster_id'
-# or inspect container environment:
+# Check the container environment variable
 docker compose exec connect env | grep OFFSET_STORAGE_TOPIC
+
+# Or list all Kafka Connect internal topics
+kafka-topics --bootstrap-server localhost:29092 --list | grep connect
 
 # Dump all offsets to a JSON file (use the actual topic name)
 kafka-console-consumer --bootstrap-server localhost:29092 \
