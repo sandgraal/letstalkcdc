@@ -42,12 +42,13 @@ function updateSeriesCards() {
   document.querySelectorAll('.series-card[data-series-key]').forEach(card => {
     const moduleKey = card.dataset.seriesKey;
     const isCompleted = completed.has(moduleKey);
+    const existingBadge = card.querySelector('.completion-badge');
     
     // Add/remove completed class
     card.classList.toggle('is-completed', isCompleted);
     
     // Add completion badge if not already present
-    if (isCompleted && !card.querySelector('.completion-badge')) {
+    if (isCompleted && !existingBadge) {
       const badge = document.createElement('div');
       badge.className = 'completion-badge';
       badge.innerHTML = '<span class="badge badge--success">✓ Completed</span>';
@@ -59,6 +60,9 @@ function updateSeriesCards() {
       } else {
         card.insertBefore(badge, card.firstChild);
       }
+    } else if (!isCompleted && existingBadge) {
+      // Remove badge if module is no longer completed
+      existingBadge.remove();
     }
   });
 }
@@ -74,12 +78,15 @@ function showBadgesNotification() {
   // Only show if we have badges and haven't shown notification yet
   if (badges.length === 0 || existingNotif) return;
   
-  // Don't show on first page load - only when new badges are earned
-  const hasSeenBadges = sessionStorage.getItem('cdc-badges-shown');
-  if (!hasSeenBadges) {
-    sessionStorage.setItem('cdc-badges-shown', 'true');
-    return;
-  }
+  // Check if we've shown this badge before
+  const lastShownBadge = sessionStorage.getItem('cdc-last-badge');
+  const currentBadge = badges[badges.length - 1].category;
+  
+  // Don't show if it's the same badge we already showed
+  if (lastShownBadge === currentBadge) return;
+  
+  // Mark this badge as shown
+  sessionStorage.setItem('cdc-last-badge', currentBadge);
   
   const notification = document.createElement('div');
   notification.className = 'badges-notification';
@@ -136,8 +143,11 @@ function addCompletionButton() {
   
   // Insert before the progress toolbar
   const toolbar = seriesNav.parentElement?.querySelector('[data-progress-toolbar]');
-  if (toolbar) {
+  if (toolbar && toolbar.parentElement) {
     toolbar.parentElement.insertBefore(buttonContainer, toolbar);
+  } else {
+    // Fallback: insert after series nav if toolbar not found
+    seriesNav.parentElement?.insertBefore(buttonContainer, seriesNav.nextSibling);
   }
   
   // Handle click

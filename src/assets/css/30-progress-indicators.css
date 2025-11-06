@@ -72,7 +72,13 @@
   height: 3px;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
   border-radius: 0.75rem 0.75rem 0 0;
-  opacity: 1 !important;
+  z-index: 1;
+}
+
+/* Override the hover opacity for completed cards */
+.series-card.is-completed:hover::before,
+.series-card.is-completed:focus-within::before {
+  opacity: 1;
 }
 
 .series-card .card-meta {

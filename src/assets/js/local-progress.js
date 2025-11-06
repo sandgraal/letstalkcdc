@@ -108,7 +108,14 @@ export function getOverallProgress(modules) {
   const completed = getCompletedModules();
   const validModules = modules.filter(m => m.key && m.state !== 'disabled');
   if (validModules.length === 0) return 0;
-  return Math.round((completed.size / validModules.length) * 100);
+  
+  // Only count completed modules that are in the current valid modules list
+  const validModuleKeys = new Set(validModules.map(m => m.key));
+  const relevantCompletedCount = Array.from(completed).filter(key => 
+    validModuleKeys.has(key)
+  ).length;
+  
+  return Math.round((relevantCompletedCount / validModules.length) * 100);
 }
 
 /**
