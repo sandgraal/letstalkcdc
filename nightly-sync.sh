@@ -42,7 +42,15 @@ with open(json_path,"w",encoding="utf-8") as f:
 print("Appended", entry)
 PY
 cd "$ROOT_DIR/.."
+
+if ! git config user.email >/dev/null 2>&1; then
+  git config user.email "handoff-bot@lets-talk-cdc.local"
+fi
+if ! git config user.name >/dev/null 2>&1; then
+  git config user.name "Handoff Bot"
+fi
+
 git add handoff/Handoff.md handoff/handoff-log.json handoff/dashboard.html || true
-git commit -m "Nightly handoff update: $DATE" || echo "No changes to commit"
+git commit -m "chore(handoff): nightly sync $DATE" || echo "No changes to commit"
 git push || echo "Push skipped"
 echo "✅ Done"
