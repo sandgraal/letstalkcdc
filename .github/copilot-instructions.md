@@ -376,25 +376,30 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 ### Documentation Index
 
 **Setup & Deployment:**
+
 - **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Appwrite, tracing, all features)
 - **[docs/HOSTING.md](../docs/HOSTING.md)** — Hosting platforms and deployment
 - **[README.md](../README.md)** — Project overview and quick start
 
 **Features:**
+
 - **[docs/TRACING.md](../docs/TRACING.md)** — OpenTelemetry tracing (comprehensive)
 - **[docs/TRACING-QUICKSTART.md](../docs/TRACING-QUICKSTART.md)** — Tracing quick start
 - **[docs/assistant-feedback-setup.md](../docs/assistant-feedback-setup.md)** — AI assistant collection setup
 - **[docs/APPWRITE_QUICKSTART.md](../docs/APPWRITE_QUICKSTART.md)** — 15-minute Appwrite setup
 
 **Development:**
+
 - **[docs/adding-modules.md](../docs/adding-modules.md)** — Guide for adding new content modules
 - **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** — AI agent contribution guidelines
 
 **Architecture:**
+
 - **[ai/CONTEXT.md](../ai/CONTEXT.md)** — Brand voice and conventions
 - **[ai/AGENTS.md](../ai/AGENTS.md)** — AI agent system documentation
 
 **Archived (Historical Reference):**
+
 - **[docs/archive/](../docs/archive/)** — Archived status docs and decision records
 
 ## Anti-Patterns to Avoid
