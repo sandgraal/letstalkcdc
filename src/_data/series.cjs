@@ -118,6 +118,14 @@ module.exports = [
     tags: [ { label: 'Lab', variant: 'tag-labs' } ]
   },
   {
+    key: 'cloud-labs',
+    title: 'Cloud CDC Labs',
+    description: 'End-to-end CDC implementations with cloud-native platforms: AWS DMS, Snowflake, and Matillion.',
+    href: '/cloud-labs/',
+    ctaLabel: 'Explore Cloud Labs',
+    tags: [ { label: 'Lab', variant: 'tag-labs' } ]
+  },
+  {
     key: 'connector-builder',
     title: 'Connector Config Builder',
     description: 'Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.',

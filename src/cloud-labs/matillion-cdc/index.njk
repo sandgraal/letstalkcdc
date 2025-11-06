@@ -1,0 +1,532 @@
+---
+layout: base.njk
+title: "Matillion CDC Pipeline Lab | CDC: The Missing Manual"
+description: "Learn to build CDC pipelines using Matillion's visual ETL platform with drag-and-drop components and automated change tracking."
+canonicalPath: "/cloud-labs/matillion-cdc/"
+head_extra: |
+  <link rel="stylesheet" href="{{ '/assets/css/pages/cloud-labs.css' | url }}">
+ai-generated: true
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section class="box" id="overview">
+    <h2>Overview</h2>
+    <p>
+      Matillion is a cloud-native ETL platform designed specifically for data warehouses like Snowflake, BigQuery, and Redshift. Unlike code-based CDC tools, Matillion provides a visual, drag-and-drop interface for building data pipelines with built-in CDC capabilities.
+    </p>
+    <p>
+      <strong>Key features:</strong>
+    </p>
+    <ul>
+      <li>Visual pipeline designer with pre-built CDC components</li>
+      <li>Native integrations with cloud data warehouses</li>
+      <li>Automated CDC tracking using timestamp/hash columns or CDC logs</li>
+      <li>No-code/low-code approach reduces development time</li>
+      <li>Built-in orchestration, scheduling, and monitoring</li>
+    </ul>
+    <p>
+      <strong>CDC Approaches in Matillion:</strong>
+    </p>
+    <ol>
+      <li><strong>Timestamp-based CDC:</strong> Track changes via <code>updated_at</code> column</li>
+      <li><strong>Hash-based CDC:</strong> Compare row hashes to detect changes</li>
+      <li><strong>Log-based CDC:</strong> Use database transaction logs (requires external CDC tool like Debezium)</li>
+    </ol>
+  </section>
+
+  <section class="box" id="prereqs">
+    <h2>Prerequisites</h2>
+    <ul class="checklist">
+      <li><strong>Matillion Instance:</strong> ETL for Snowflake/Redshift/BigQuery (14-day free trial available)</li>
+      <li><strong>Cloud Data Warehouse:</strong> Snowflake, Redshift, or BigQuery account</li>
+      <li><strong>Source Database:</strong> MySQL, PostgreSQL, SQL Server, or Oracle with CDC-ready schema</li>
+      <li><strong>Network Access:</strong> Source database accessible from Matillion (VPN/peering or public endpoint)</li>
+      <li><strong>Database Credentials:</strong> Read-only user on source, write access on target</li>
+    </ul>
+  </section>
+
+  <section class="box" id="architecture">
+    <h2>Architecture</h2>
+    <pre><code>┌────────────────┐      ┌─────────────────┐      ┌──────────────┐
+│   MySQL        │      │   Matillion      │      │  Snowflake   │
+│   (Source)     │─────▶│   CDC Job        │─────▶│  (Target)    │
+│   + updated_at │      │   (Orchestration)│      │              │
+└────────────────┘      └─────────────────┘      └──────────────┘
+                              │
+                              │ Scheduling
+                              ▼
+                        ┌─────────────┐
+                        │ Incremental │
+                        │   Loads     │
+                        │  (5 min)    │
+                        └─────────────┘</code></pre>
+    <p>Matillion runs as an EC2 instance (AWS) or equivalent in GCP/Azure, orchestrating data movement between source and target.</p>
+  </section>
+
+  <section class="box" id="setup">
+    <h2>Lab Setup</h2>
+    
+    <h3>Step 1: Launch Matillion Instance</h3>
+    <p>Deploy Matillion from AWS Marketplace (Snowflake example):</p>
+    <ol>
+      <li>Go to <strong>AWS Marketplace → Matillion ETL for Snowflake</strong></li>
+      <li>Select instance type (t3.medium minimum for testing, m5.large for production)</li>
+      <li>Configure VPC, subnets, and security groups (allow 443 for web UI)</li>
+      <li>Launch instance and note public IP/DNS</li>
+      <li>Access Matillion UI at <code>https://&lt;instance-ip&gt;</code></li>
+      <li>Complete initial setup wizard (license activation, database connection)</li>
+    </ol>
+
+    <h3>Step 2: Configure Database Connections</h3>
+    <p>In Matillion UI, go to <strong>Project → Manage Database Connections</strong>:</p>
+    
+    <h4>Source Connection (MySQL)</h4>
+    <ul>
+      <li><strong>Name:</strong> MySQL-Source</li>
+      <li><strong>Type:</strong> MySQL</li>
+      <li><strong>Hostname:</strong> mysql.example.com</li>
+      <li><strong>Port:</strong> 3306</li>
+      <li><strong>Database:</strong> production_db</li>
+      <li><strong>Username:</strong> matillion_reader</li>
+      <li><strong>Password:</strong> ••••••••</li>
+      <li><strong>SSL:</strong> Enabled (recommended)</li>
+    </ul>
+    <p>Click <strong>Test</strong> to verify connectivity, then <strong>Save</strong>.</p>
+
+    <h4>Target Connection (Snowflake)</h4>
+    <ul>
+      <li><strong>Name:</strong> Snowflake-Target</li>
+      <li><strong>URL:</strong> https://myaccount.snowflakecomputing.com</li>
+      <li><strong>Username:</strong> matillion_user</li>
+      <li><strong>Password:</strong> •••••••• (or use key-pair auth)</li>
+      <li><strong>Warehouse:</strong> MATILLION_WH</li>
+      <li><strong>Database:</strong> CDC_DB</li>
+      <li><strong>Schema:</strong> RAW_DATA</li>
+      <li><strong>Role:</strong> MATILLION_ROLE</li>
+    </ul>
+
+    <h3>Step 3: Prepare Source Table with CDC Column</h3>
+    <p>Ensure your source table has a timestamp column for tracking changes:</p>
+    <pre><code>-- MySQL: Add updated_at column if not present
+ALTER TABLE customers 
+ADD COLUMN updated_at TIMESTAMP 
+DEFAULT CURRENT_TIMESTAMP 
+ON UPDATE CURRENT_TIMESTAMP;
+
+-- Create index for efficient CDC queries
+CREATE INDEX idx_updated_at ON customers(updated_at);
+
+-- Verify data
+SELECT MAX(updated_at) FROM customers;</code></pre>
+
+    <h3>Step 4: Create Transformation Job (Initial Load)</h3>
+    <p>In Matillion, create a new <strong>Transformation Job</strong>:</p>
+    <ol>
+      <li>Click <strong>Project → New Job → Transformation</strong></li>
+      <li>Name: <code>CDC_Customers_Initial_Load</code></li>
+      <li>Drag components onto canvas:</li>
+    </ol>
+
+    <h4>Components:</h4>
+    <ul>
+      <li>
+        <strong>Table Input (MySQL-Source):</strong>
+        <ul>
+          <li>Connection: MySQL-Source</li>
+          <li>Table: customers</li>
+          <li>Sample Size: All Rows</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Rewrite Table (Snowflake-Target):</strong>
+        <ul>
+          <li>Target Table: RAW_DATA.CUSTOMERS_STAGING</li>
+          <li>Warehouse: MATILLION_WH</li>
+          <li>Drop Table: True (for initial load)</li>
+        </ul>
+      </li>
+    </ul>
+    <p>Connect <code>Table Input → Rewrite Table</code> and click <strong>Run</strong>.</p>
+
+    <h3>Step 5: Create Orchestration Job (Incremental CDC)</h3>
+    <p>Create an <strong>Orchestration Job</strong> for scheduled incremental loads:</p>
+    <ol>
+      <li>Click <strong>Project → New Job → Orchestration</strong></li>
+      <li>Name: <code>CDC_Customers_Incremental</code></li>
+    </ol>
+
+    <h4>Orchestration Flow:</h4>
+    <pre><code>1. [Start]
+    │
+    ▼
+2. [Set Variable: last_run_time]
+    │  ← Query max(updated_at) from CUSTOMERS_STAGING
+    │
+    ▼
+3. [Run Transformation: Extract_Incremental]
+    │
+    ▼
+4. [Run Transformation: Merge_Into_Target]
+    │
+    ▼
+5. [End]</code></pre>
+
+    <h4>Component Details:</h4>
+    
+    <p><strong>1. Set Variable (Grid Variable: last_run_time)</strong></p>
+    <ul>
+      <li>Type: SQL Query</li>
+      <li>Connection: Snowflake-Target</li>
+      <li>SQL:</li>
+    </ul>
+    <pre><code>SELECT COALESCE(MAX(updated_at), '1970-01-01') 
+FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING;</code></pre>
+
+    <p><strong>2. Transformation: Extract_Incremental</strong></p>
+    <ul>
+      <li>Create new transformation job with these components:</li>
+    </ul>
+    <ul>
+      <li>
+        <strong>Table Input:</strong>
+        <ul>
+          <li>Connection: MySQL-Source</li>
+          <li>SQL Query:</li>
+        </ul>
+        <pre><code>SELECT * FROM customers 
+WHERE updated_at > '${last_run_time}'
+ORDER BY updated_at;</code></pre>
+      </li>
+      <li>
+        <strong>Table Output:</strong>
+        <ul>
+          <li>Target: RAW_DATA.CUSTOMERS_INCREMENTAL</li>
+          <li>Mode: Append</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p><strong>3. Transformation: Merge_Into_Target</strong></p>
+    <ul>
+      <li>Create transformation with <strong>SQL Script</strong> component:</li>
+    </ul>
+    <pre><code>MERGE INTO CDC_DB.RAW_DATA.CUSTOMERS_STAGING AS target
+USING CDC_DB.RAW_DATA.CUSTOMERS_INCREMENTAL AS source
+ON target.id = source.id
+WHEN MATCHED THEN UPDATE SET
+  target.name = source.name,
+  target.email = source.email,
+  target.updated_at = source.updated_at
+WHEN NOT MATCHED THEN INSERT (id, name, email, updated_at)
+VALUES (source.id, source.name, source.email, source.updated_at);
+
+-- Clean up incremental table
+TRUNCATE TABLE CDC_DB.RAW_DATA.CUSTOMERS_INCREMENTAL;</code></pre>
+
+    <h3>Step 6: Schedule the Orchestration Job</h3>
+    <ol>
+      <li>Open <code>CDC_Customers_Incremental</code> orchestration job</li>
+      <li>Click <strong>Schedule</strong> button (clock icon)</li>
+      <li>Enable: <strong>Yes</strong></li>
+      <li>Frequency: <strong>Every 5 minutes</strong> (or as needed)</li>
+      <li>Click <strong>Save</strong></li>
+    </ol>
+
+    <h3>Step 7: Add Monitoring Component</h3>
+    <p>Add an <strong>Email Notification</strong> component for failures:</p>
+    <ol>
+      <li>Drag <strong>Email</strong> component onto orchestration canvas</li>
+      <li>Configure SMTP settings in <strong>Project → Email Configuration</strong></li>
+      <li>Set Email component to trigger <strong>On Failure</strong> (right-click component → Options)</li>
+      <li>Configure message with job variables:</li>
+    </ol>
+    <pre><code>Subject: CDC Job Failed: ${job_name}
+Body:
+Job Name: ${job_name}
+Error: ${error_message}
+Timestamp: ${timestamp}</code></pre>
+  </section>
+
+  <section class="box" id="hash-cdc">
+    <h2>Advanced: Hash-Based CDC</h2>
+    <p>
+      For tables without <code>updated_at</code> column, use hash-based change detection:
+    </p>
+
+    <h3>Transformation Flow:</h3>
+    <ol>
+      <li><strong>Table Input:</strong> Load full source table</li>
+      <li><strong>Calculator:</strong> Generate hash of all columns</li>
+      <li><strong>Filter:</strong> Compare with stored hashes in target</li>
+      <li><strong>Table Output:</strong> Write only changed rows</li>
+    </ol>
+
+    <h4>Calculator Component (Generate Hash):</h4>
+    <ul>
+      <li>Function: <code>MD5</code> or <code>SHA256</code></li>
+      <li>Input: <code>CONCAT(id, '|', name, '|', email, ...)</code></li>
+      <li>Output Column: <code>row_hash</code></li>
+    </ul>
+
+    <h4>Filter Component (Detect Changes):</h4>
+    <ul>
+      <li>SQL:</li>
+    </ul>
+    <pre><code>SELECT source.*
+FROM ${THIS} AS source
+LEFT JOIN CDC_DB.RAW_DATA.CUSTOMERS_HASH_LOOKUP AS target
+  ON source.id = target.id
+WHERE target.row_hash IS NULL 
+   OR source.row_hash != target.row_hash;</code></pre>
+
+    <p><strong>Note:</strong> Hash-based CDC requires full table scan each run, which can be expensive for large tables. Use timestamp-based CDC when possible.</p>
+  </section>
+
+  <section class="box" id="verify">
+    <h2>Verification</h2>
+    
+    <h3>1. Test Incremental Load</h3>
+    <pre><code>-- Insert new record in MySQL source
+INSERT INTO customers (name, email) 
+VALUES ('David Brown', 'david@example.com');
+
+-- Update existing record
+UPDATE customers 
+SET email = 'bob.smith.updated@example.com' 
+WHERE name = 'Bob Smith';
+
+-- Wait for next scheduled run (or trigger manually in Matillion)
+
+-- Verify in Snowflake target
+SELECT * FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING 
+WHERE name IN ('David Brown', 'Bob Smith');</code></pre>
+
+    <h3>2. Check Job History</h3>
+    <p>In Matillion UI:</p>
+    <ul>
+      <li>Go to <strong>Task History</strong> (top menu)</li>
+      <li>Filter by job name: <code>CDC_Customers_Incremental</code></li>
+      <li>Review execution times, row counts, and any errors</li>
+    </ul>
+
+    <h3>3. Monitor Performance</h3>
+    <pre><code>-- Check CDC lag
+SELECT 
+  MAX(updated_at) as latest_source_update,
+  CURRENT_TIMESTAMP() as now,
+  DATEDIFF(minute, MAX(updated_at), CURRENT_TIMESTAMP()) as lag_minutes
+FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING;
+
+-- Check ingestion rate
+SELECT 
+  DATE_TRUNC('hour', updated_at) as hour,
+  COUNT(*) as records_loaded
+FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING
+WHERE updated_at > DATEADD(day, -1, CURRENT_TIMESTAMP())
+GROUP BY DATE_TRUNC('hour', updated_at)
+ORDER BY hour DESC;</code></pre>
+  </section>
+
+  <section class="box" id="gotchas">
+    <h2>Matillion-Specific Gotchas</h2>
+    
+    <div class="callout callout-warning">
+      <h4>1. Instance Right-Sizing</h4>
+      <p>
+        <strong>Issue:</strong> Jobs timeout or run slowly on undersized instances.
+      </p>
+      <p>
+        <strong>Solution:</strong> Match instance type to data volume:
+      </p>
+      <ul>
+        <li><strong>t3.medium:</strong> Testing, < 1GB/day</li>
+        <li><strong>m5.large:</strong> Small production, 1-10GB/day</li>
+        <li><strong>m5.2xlarge+:</strong> Heavy workloads, > 10GB/day</li>
+      </ul>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>2. Variable Scoping</h4>
+      <p>
+        <strong>Issue:</strong> Variables not accessible across transformation/orchestration jobs.
+      </p>
+      <p>
+        <strong>Solution:</strong> Use <strong>Grid Variables</strong> (global) instead of job variables for CDC watermarks. Set in orchestration, reference in transformations as <code>${variable_name}</code>.
+      </p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>3. Timezone Handling</h4>
+      <p>
+        <strong>Issue:</strong> <code>updated_at</code> timestamps mismatch due to timezone differences.
+      </p>
+      <p>
+        <strong>Solution:</strong> Standardize on UTC in both source and target. Convert in SQL:
+      </p>
+      <pre><code>-- Convert to UTC in source query
+SELECT *, CONVERT_TZ(updated_at, 'America/New_York', 'UTC') as updated_at_utc
+FROM customers;</code></pre>
+    </div>
+
+    <div class="callout callout-info">
+      <h4>4. Network Latency</h4>
+      <p>
+        Matillion runs on EC2 in your VPC. For best performance, ensure source database is in same region/VPC or use VPN peering. Cross-region queries can add 50-500ms latency per query.
+      </p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>5. Concurrent Job Limits</h4>
+      <p>
+        <strong>Issue:</strong> Multiple CDC jobs scheduling at same time causing resource contention.
+      </p>
+      <p>
+        <strong>Solution:</strong> Stagger schedules by 1-2 minutes. Use <strong>Job Group</strong> to enforce sequential execution:
+      </p>
+      <ul>
+        <li>Create Group: <code>CDC_Group</code></li>
+        <li>Add all CDC jobs to group</li>
+        <li>Set Max Concurrency: 1</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="box" id="best-practices">
+    <h2>Best Practices</h2>
+    
+    <h3>1. Use Staging Tables</h3>
+    <p>Load raw CDC data to staging first, then apply transformations:</p>
+    <pre><code>RAW_DATA.CUSTOMERS_STAGING  (raw CDC data)
+    ↓
+CURATED.CUSTOMERS_CLEAN     (transformed, deduplicated)
+    ↓
+ANALYTICS.DIM_CUSTOMERS     (analytics-ready)</code></pre>
+
+    <h3>2. Implement Idempotency</h3>
+    <p>Use MERGE instead of INSERT to handle duplicate runs:</p>
+    <pre><code>MERGE INTO target USING source ON target.id = source.id
+WHEN MATCHED THEN UPDATE ...
+WHEN NOT MATCHED THEN INSERT ...;</code></pre>
+
+    <h3>3. Add Audit Columns</h3>
+    <p>Track when records were loaded into target:</p>
+    <pre><code>ALTER TABLE CUSTOMERS_STAGING ADD COLUMN matillion_load_timestamp TIMESTAMP;
+
+-- In Table Output component, set:
+-- Populate Columns: matillion_load_timestamp = CURRENT_TIMESTAMP()</code></pre>
+
+    <h3>4. Version Control Jobs</h3>
+    <p>Matillion integrates with Git for version control:</p>
+    <ul>
+      <li>Go to <strong>Project → Git Configuration</strong></li>
+      <li>Connect to GitHub/GitLab repository</li>
+      <li>Commit job changes with descriptive messages</li>
+      <li>Use branches for testing new CDC patterns</li>
+    </ul>
+
+    <h3>5. Monitor Warehouse Credits</h3>
+    <p>Matillion jobs consume data warehouse credits. Monitor usage:</p>
+    <pre><code>-- Snowflake: Check credit usage by Matillion
+SELECT 
+  WAREHOUSE_NAME,
+  SUM(CREDITS_USED) as total_credits,
+  COUNT(*) as query_count
+FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY
+WHERE START_TIME > DATEADD(day, -7, CURRENT_TIMESTAMP())
+  AND WAREHOUSE_NAME = 'MATILLION_WH'
+GROUP BY WAREHOUSE_NAME;</code></pre>
+  </section>
+
+  <section class="box" id="comparison">
+    <h2>Matillion vs. Code-Based CDC</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>Matillion</th>
+          <th>Debezium/DMS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Learning Curve</strong></td>
+          <td>Low (visual, drag-and-drop)</td>
+          <td>High (JSON configs, Kafka knowledge)</td>
+        </tr>
+        <tr>
+          <td><strong>Flexibility</strong></td>
+          <td>Limited to built-in components</td>
+          <td>High (custom code, SMTs)</td>
+        </tr>
+        <tr>
+          <td><strong>CDC Granularity</strong></td>
+          <td>Timestamp/hash-based (polling)</td>
+          <td>Log-based (real-time, sub-second)</td>
+        </tr>
+        <tr>
+          <td><strong>Cost</strong></td>
+          <td>License + EC2 (~$500-2000/mo)</td>
+          <td>Infrastructure only (~$100-500/mo)</td>
+        </tr>
+        <tr>
+          <td><strong>Monitoring</strong></td>
+          <td>Built-in UI, email alerts</td>
+          <td>CloudWatch/Datadog integration needed</td>
+        </tr>
+        <tr>
+          <td><strong>Best For</strong></td>
+          <td>Business users, ETL-heavy workflows</td>
+          <td>Engineers, event-driven architectures</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="box" id="troubleshooting">
+    <h2>Common Issues & Solutions</h2>
+    
+    <h3>Job fails with "Connection timeout"</h3>
+    <ul>
+      <li>Check security group allows Matillion instance IP to database port</li>
+      <li>Verify database endpoint is correct (hostname/IP)</li>
+      <li>Test connection in <strong>Manage Database Connections → Test</strong></li>
+    </ul>
+
+    <h3>"Variable not found" error in transformation</h3>
+    <ul>
+      <li>Ensure variable is set as <strong>Grid Variable</strong> (global), not job-scoped</li>
+      <li>Check variable name matches exactly (case-sensitive): <code>${last_run_time}</code></li>
+    </ul>
+
+    <h3>High latency in incremental loads</h3>
+    <ul>
+      <li>Add index on <code>updated_at</code> column in source database</li>
+      <li>Reduce frequency if loading < 100 rows per run (increase to 15 min)</li>
+      <li>Use batch window: <code>WHERE updated_at BETWEEN ... AND ...</code> instead of <code>> last_run_time</code></li>
+    </ul>
+
+    <h3>Duplicate records in target</h3>
+    <ul>
+      <li>Verify MERGE key matches primary key of source table</li>
+      <li>Check for NULL values in join columns (exclude or handle separately)</li>
+      <li>Use <code>QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1</code> to deduplicate</li>
+    </ul>
+  </section>
+
+  <section class="qs-verify" aria-labelledby="resources-heading">
+    <div class="qs-verify__inner">
+      <div>
+        <h2 id="resources-heading">Additional Resources</h2>
+        <ul>
+          <li><a href="https://documentation.matillion.com/">Matillion Documentation</a></li>
+          <li><a href="https://www.matillion.com/resources/">Matillion Video Tutorials</a></li>
+          <li><a href="https://community.matillion.com/">Matillion Community Forum</a></li>
+        </ul>
+      </div>
+      <a class="button" href="/cloud-labs/">View All Cloud Labs</a>
+    </div>
+  </section>
+</div>
