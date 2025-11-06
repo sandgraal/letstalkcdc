@@ -118,8 +118,6 @@ async function main() {
     const collIds = collData.collections?.map((c) => c.$id) || [];
 
     const required = [
-      { id: "progress", env: "COL_PROGRESS_ID" },
-      { id: "events", env: "COL_EVENTS_ID" },
       { id: "assistant_feedback", env: "COL_ASSISTANT_ID" },
     ];
 

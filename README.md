@@ -78,12 +78,12 @@ The site is built with progressive enhancement — core features work immediatel
 | **Static site** (educational content) | ✅ Ready    | This README                        |
 | **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage |
 | **OpenTelemetry tracing**             | ⚠️ Optional | [docs/TRACING.md](docs/TRACING.md) |
-| **Appwrite (cloud sync + auth)**      | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+| **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
 | **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
 
 ### Serverless Function Hosting
 
-The `migrateUser` serverless function (for Appwrite progress sync) requires separate hosting since GitHub Pages only serves static content. See [docs/HOSTING.md](docs/HOSTING.md) for:
+- Progress is now stored locally in the browser—no serverless function is required. See [docs/HOSTING.md](docs/HOSTING.md) for:
 
 - Detailed deployment instructions
 - Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify)
