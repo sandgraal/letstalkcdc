@@ -215,8 +215,8 @@ docker exec -it postgres-sink psql -U start_data_engineer -d inventory -c \
         <li>
           <strong>Method 3: Insert oversized payload</strong>
           <pre><button class="copy">copy</button><code># Insert a very large text field that exceeds sink column limit
-docker exec -it postgres psql -U start_data_engineer -d inventory -c \
-  "INSERT INTO public.app_customer (name, email) VALUES ('$(head -c 100000 /dev/zero | tr '\0' 'A')', 'large@example.com');"</code></pre>
+docker exec -it postgres bash -c "psql -U start_data_engineer -d inventory -c \
+  \"INSERT INTO public.app_customer (name, email) VALUES ('\$(head -c 10000 < /dev/zero | tr '\\\\0' 'A')', 'large@example.com');\""</code></pre>
         </li>
       </ol>
 
@@ -232,7 +232,7 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
 kafka-console-consumer --bootstrap-server localhost:29092 \
   --topic dlq.sink.inventory --from-beginning \
   --property print.headers=true \
-  --max-messages 5 | jq -C '.'</code></pre>
+  --max-messages 5</code></pre>
         </li>
         <li>
           <strong>Identify error pattern:</strong> Look for headers like:
@@ -547,7 +547,8 @@ docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
           <strong>Verify streaming event arrives:</strong>
           <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
   --topic server2.public.app_customer \
-  --offset latest --partition 0 --timeout-ms 5000 | jq '.payload.op'  # should be 'u' for update</code></pre>
+  --offset latest --partition 0 --timeout-ms 5000</code></pre>
+          <p class="muted">Look for <code>"op":"u"</code> in the JSON payload for update operation</p>
         </li>
       </ol>
 
