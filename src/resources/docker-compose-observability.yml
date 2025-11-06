@@ -1,0 +1,174 @@
+version: "3.8"
+
+# Enhanced CDC monitoring stack with Prometheus, Grafana, and JMX exporter
+# This compose file extends the basic CDC setup with observability tooling
+#
+# Services:
+#   - Kafka + Connect with JMX metrics enabled
+#   - JMX Exporter for exposing Kafka Connect metrics to Prometheus
+#   - Prometheus for metrics collection
+#   - Grafana for visualization (pre-configured dashboard)
+#
+# Access:
+#   - Kafka Connect: http://localhost:8083
+#   - Prometheus: http://localhost:9090
+#   - Grafana: http://localhost:3000 (admin/admin)
+#   - JMX Exporter: http://localhost:5556/metrics
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: cdc-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - cdc-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: cdc-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+      - "9101:9101"  # JMX port
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Enable JMX metrics
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: kafka
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=9101"
+    networks:
+      - cdc-network
+
+  connect:
+    image: debezium/connect:2.6
+    container_name: cdc-connect
+    depends_on:
+      - kafka
+      - pg
+    ports:
+      - "8083:8083"
+      - "9102:9102"  # JMX port
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+      KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      REST_ADVERTISED_HOST_NAME: connect
+      REST_PORT: 8083
+      # Enable JMX metrics
+      KAFKA_JMX_PORT: 9102
+      KAFKA_JMX_HOSTNAME: connect
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=connect -Dcom.sun.management.jmxremote.rmi.port=9102"
+      # Expose metrics via JMX
+      CONNECT_METRIC_REPORTERS: org.apache.kafka.common.metrics.JmxReporter
+    networks:
+      - cdc-network
+
+  pg:
+    image: debezium/example-postgres:2.6
+    container_name: cdc-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inventory
+    ports:
+      - "5432:5432"
+    networks:
+      - cdc-network
+
+  # JMX to Prometheus exporter for Kafka Connect
+  jmx-exporter:
+    image: bitnami/jmx-exporter:0.20.0
+    container_name: cdc-jmx-exporter
+    depends_on:
+      - connect
+    ports:
+      - "5556:5556"
+    environment:
+      SERVICE_PORT: 5556
+    volumes:
+      - ./jmx-exporter-config.yml:/opt/bitnami/jmx-exporter/config.yml:ro
+    command:
+      - "5556"
+      - "/opt/bitnami/jmx-exporter/config.yml"
+    networks:
+      - cdc-network
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: cdc-prometheus
+    depends_on:
+      - jmx-exporter
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    networks:
+      - cdc-network
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: cdc-grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: ""
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/kafka-connect-cdc.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./grafana-kafka-connect-dashboard.json:/var/lib/grafana/dashboards/kafka-connect-cdc.json:ro
+    networks:
+      - cdc-network
+
+  kcat:
+    image: edenhill/kcat:1.7.1
+    container_name: cdc-kcat
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c", "sleep infinity"]
+    networks:
+      - cdc-network
+
+networks:
+  cdc-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
