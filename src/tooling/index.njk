@@ -337,4 +337,49 @@ head_extra: |
             expensive—batch micro-windows without violating freshness SLOs.
           </li>
         </ul>
+
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid #e5e7eb;">
+        
+        <details style="font-size: 0.875rem; color: #6b7280;">
+          <summary style="cursor: pointer; font-weight: 600; margin-bottom: 1rem;">Tool Version Reference</summary>
+          <p style="margin-bottom: 1rem;">
+            <em>This page references the following tool versions (last updated: {{ toolVersions.lastUpdated }}):</em>
+          </p>
+          <ul style="list-style: none; padding-left: 0; font-size: 0.875rem;">
+            {%- if toolVersions.tools.debezium and toolVersions.tools.debezium.status !== 'saas' %}
+            <li><strong>Debezium:</strong> v{{ toolVersions.tools.debezium.version }} 
+              <a href="{{ toolVersions.tools.debezium.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
+            </li>
+            {%- endif %}
+            {%- if toolVersions.tools.kafka and toolVersions.tools.kafka.status !== 'saas' %}
+            <li><strong>Apache Kafka:</strong> v{{ toolVersions.tools.kafka.version }} 
+              <a href="{{ toolVersions.tools.kafka.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
+            </li>
+            {%- endif %}
+            {%- if toolVersions.tools.matillion and toolVersions.tools.matillion.status !== 'saas' %}
+            <li><strong>Matillion:</strong> v{{ toolVersions.tools.matillion.version }} 
+              <a href="{{ toolVersions.tools.matillion.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
+            </li>
+            {%- endif %}
+            {%- if toolVersions.tools.awsDms and toolVersions.tools.awsDms.status !== 'saas' %}
+            <li><strong>AWS DMS:</strong> v{{ toolVersions.tools.awsDms.version }} 
+              <a href="{{ toolVersions.tools.awsDms.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
+            </li>
+            {%- endif %}
+            {%- if toolVersions.tools.goldenGate and toolVersions.tools.goldenGate.status !== 'saas' %}
+            <li><strong>Oracle GoldenGate:</strong> v{{ toolVersions.tools.goldenGate.version }} 
+              <a href="{{ toolVersions.tools.goldenGate.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
+            </li>
+            {%- endif %}
+            {%- if toolVersions.tools.fivetran %}
+            <li><strong>Fivetran:</strong> SaaS (rolling updates) 
+              <a href="{{ toolVersions.tools.fivetran.releaseNotesUrl }}" target="_blank" rel="noopener">changelog</a>
+            </li>
+            {%- endif %}
+          </ul>
+          <p style="margin-top: 1rem; font-size: 0.8rem; color: #9ca3af;">
+            <em>Note: Tool versions are tracked for reference and updated quarterly. 
+            Always check official documentation for the latest releases.</em>
+          </p>
+        </details>
       </article>

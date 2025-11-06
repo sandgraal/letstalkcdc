@@ -16,7 +16,8 @@
     "a11y": "pa11y-ci",
     "verify:deployment": "node scripts/deployment-verify.mjs",
     "agent:analytics": "node ai/scripts/analytics.mjs",
-    "agent:package": "node ai/scripts/package-render.mjs"
+    "agent:package": "node ai/scripts/package-render.mjs",
+    "agent:content-review": "node ai/scripts/content-review.mjs"
   },
   "devDependencies": {
     "@11ty/eleventy": "^2.0.1",

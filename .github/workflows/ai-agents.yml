@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       agent:
-        description: "Run a specific agent (content, image, packaging, data, analytics, link-check)"
+        description: "Run a specific agent (content, content-review, image, packaging, data, analytics, link-check)"
         required: false
         default: "all"
   schedule:
@@ -146,5 +146,25 @@ jobs:
         run: node ai/scripts/log-agent-run.mjs
         env:
           AGENT_NAME: site-link-check
+          STATUS: ${{ job.status == 'success' && 'ok' || 'failed' }}
+          DURATION_MS: 0
+
+  content-review:
+    needs: setup
+    if: ${{ github.event.inputs.agent == 'content-review' || github.event.inputs.agent == 'all' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Generate quarterly review checklist
+        run: node ai/scripts/content-review.mjs
+      - name: Log run
+        if: always()
+        run: node ai/scripts/log-agent-run.mjs
+        env:
+          AGENT_NAME: site-content-review
           STATUS: ${{ job.status == 'success' && 'ok' || 'failed' }}
           DURATION_MS: 0

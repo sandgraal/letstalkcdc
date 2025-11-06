@@ -6,14 +6,15 @@ Defines the autonomous agent system for this repository. Agents manage creative,
 ## 2. Agent Directory
 Use a short prefix for clarity. Set it in `.chatgpt-context.yml` under `agent_prefix`. Examples below use `site`.
 
-| Agent Name        | Role                                                               | Trigger                         | Linked Script/Workflow                         |
-|-------------------|--------------------------------------------------------------------|---------------------------------|-----------------------------------------------|
-| `site-content`    | Builds and updates site pages, product catalog, docs, and blog     | On push, manual, schedule       | `.github/workflows/ai-agents.yml` (content job)  |
-| `site-image`      | Generates and optimizes images for responsive use                  | Manual or schedule              | `ai/scripts/image-optimize.mjs`               |
-| `site-packaging`  | Produces label exports and print-ready assets                      | On commit to `assets/labels/`   | `ai/scripts/package-render.mjs`               |
-| `site-data`       | Syncs structured data to collections and JSON caches               | On change to `/src/_data/`      | `ai/scripts/data-sync.mjs`                    |
-| `site-analytics`  | Aggregates build stats or traffic snapshots into `/ai/logs/`       | Nightly                         | `ai/scripts/analytics.mjs`                    |
-| `site-link-check` | Validates internal links in the built site for 404s and broken refs| On schedule, manual             | `ai/scripts/link-check.mjs`                   |
+| Agent Name            | Role                                                               | Trigger                         | Linked Script/Workflow                         |
+|-----------------------|--------------------------------------------------------------------|---------------------------------|-----------------------------------------------|
+| `site-content`        | Builds and updates site pages, product catalog, docs, and blog     | On push, manual, schedule       | `.github/workflows/ai-agents.yml` (content job)  |
+| `site-content-review` | Tracks CDC tool versions and generates quarterly review checklists | Quarterly (Jan, Apr, Jul, Oct)  | `ai/scripts/content-review.mjs`               |
+| `site-image`          | Generates and optimizes images for responsive use                  | Manual or schedule              | `ai/scripts/image-optimize.mjs`               |
+| `site-packaging`      | Produces label exports and print-ready assets                      | On commit to `assets/labels/`   | `ai/scripts/package-render.mjs`               |
+| `site-data`           | Syncs structured data to collections and JSON caches               | On change to `/src/_data/`      | `ai/scripts/data-sync.mjs`                    |
+| `site-analytics`      | Aggregates build stats or traffic snapshots into `/ai/logs/`       | Nightly                         | `ai/scripts/analytics.mjs`                    |
+| `site-link-check`     | Validates internal links in the built site for 404s and broken refs| On schedule, manual             | `ai/scripts/link-check.mjs`                   |
 
 ## 3. Capabilities Matrix
 Each agent specifies:
