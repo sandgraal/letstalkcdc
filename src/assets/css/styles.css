@@ -28,6 +28,11 @@
 @import url("./30-timeline.css");
 @import url("./31-charts.css");
 @import url("./32-meters-gauges.css");
+@import url("./33-data-tables.css");
+@import url("./34-accordion.css");
+@import url("./35-split-pane.css");
+@import url("./36-context-menu.css");
+@import url("./37-chips-badges.css");
 
 /* =============================================================
    CSS Variables & Base Styles (Light by default)
