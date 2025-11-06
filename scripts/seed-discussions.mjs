@@ -14,9 +14,6 @@
  *   GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs
  */
 
-import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO_OWNER = process.env.GITHUB_REPOSITORY_OWNER || 'sandgraal';
 const REPO_NAME = process.env.GITHUB_REPOSITORY_NAME || 'letstalkcdc';
