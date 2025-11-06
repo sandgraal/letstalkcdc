@@ -40,7 +40,7 @@ If you skip these variables the assistant quietly falls back to local storage.
 - Reload the page and confirm:
   - The toolbar shows the saved percentage and “Progress saved locally.”
   - The interactive dashboard is visible with your local stats.
-- Clear browser storage to reset the session (`localStorage.removeItem('cdc-progress-store')`).
+- Clear browser storage to reset the session (run `localStorage.removeItem('cdc-progress-store')` in the browser console).
 
 ## Deployment notes
 
