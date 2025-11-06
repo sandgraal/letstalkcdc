@@ -22,5 +22,6 @@ module.exports = {
   host: hostWithPrefix,
   author: "Christopher Ennis",
   copyright: "© 2025 Christopher Ennis. A deep dive into the world of Change Data Capture.",
+  repository: "sandgraal/letstalkcdc",
   pathPrefix,
 };

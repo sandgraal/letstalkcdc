@@ -245,6 +245,15 @@
             <h3 class="footer-title">Connect</h3>
             <ul class="footer-links">
               <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">GitHub</a></li>
+              {% if community.discussions.enabled %}
+              <li><a href="{{ community.discussions.url }}" target="_blank" rel="noopener">{{ community.discussions.label }}</a></li>
+              {% endif %}
+              {% if community.discord.enabled %}
+              <li><a href="{{ community.discord.url }}" target="_blank" rel="noopener">{{ community.discord.label }}</a></li>
+              {% endif %}
+              {% if community.slack.enabled %}
+              <li><a href="{{ community.slack.url }}" target="_blank" rel="noopener">{{ community.slack.label }}</a></li>
+              {% endif %}
               <li><a href="{{ '/errata/' | url }}">Report Issue</a></li>
             </ul>
           </div>
