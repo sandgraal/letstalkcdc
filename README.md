@@ -46,6 +46,17 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 For complete setup instructions including optional features (Appwrite progress tracking, OpenTelemetry tracing, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
 
+### New Features ✨
+
+Recent additions to the platform:
+
+- 🔍 **Client-side search** — Press `/` to search all content instantly
+- 📊 **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
+- 📦 **Print-ready exports** — Complete guide at `/downloads/cdc-complete-guide.html`
+- 🧪 **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
+- 📈 **Build analytics** — Track site metrics with `npm run agent:analytics`
+- 🚀 **Deployment verification** — Post-deploy checks with `npm run verify:deployment`
+
 ### Basic Deployment
 
 1. Enable GitHub Pages for the repository and select **GitHub Actions** as the source
@@ -80,8 +91,67 @@ The `migrateUser` serverless function (for Appwrite progress sync) requires sepa
 
 For full hosting documentation and platform decision rationale, see **[docs/HOSTING.md](docs/HOSTING.md)**.
 
+## Developer Commands
+
+```bash
+# Development
+npm run dev              # Start dev server at http://localhost:8080
+npm run build            # Build production site → _site/
+
+# Testing & Quality
+npm run smoke            # Run all tests (core + a11y + perf)
+npm run smoke:core       # HTML validation + link checking
+npm run smoke:a11y       # Accessibility tests (requires Chromium)
+npm run smoke:perf       # Performance budget checks
+
+# Agent Scripts
+npm run agent:analytics  # Generate build analytics report
+npm run agent:package    # Create print-ready export bundle
+
+# Deployment
+npm run verify:deployment # Verify production deployment
+```
+
+### Search Functionality
+
+**Keyboard Shortcuts:**
+
+- Press `/` — Open search modal
+- `↑` `↓` — Navigate results
+- `Enter` — Open selected result
+- `Escape` — Close search
+
+**Programmatic Usage:**
+
+```javascript
+// Search is auto-initialized
+// Trigger via button: <button data-search-trigger>Search</button>
+```
+
+### Web Vitals Monitoring
+
+**Enable in development:**
+
+- Automatically shown on `localhost`
+- Force show: Add `?vitals=1` to any URL
+
+**Metrics tracked:**
+
+- **LCP** (Largest Contentful Paint) — Target: < 2.5s
+- **FID** (First Input Delay) — Target: < 100ms
+- **CLS** (Cumulative Layout Shift) — Target: < 0.1
+
 <!-- AI-STATUS:START -->
 
-Last AI agents run: 2025-11-03T04:06:25.436Z
+Last AI agents run: 2025-11-05T12:00:00.000Z
+
+**Recent Enhancements (Nov 5, 2025):**
+
+- ✅ Implemented client-side search with keyboard shortcuts
+- ✅ Added real-time Web Vitals monitoring dashboard
+- ✅ Created comprehensive test suite (20 modules validated)
+- ✅ Built analytics and package export agents
+- ✅ Added deployment verification script
+- ✅ Enhanced smoke tests with full module coverage
 
 <!-- AI-STATUS:END -->
