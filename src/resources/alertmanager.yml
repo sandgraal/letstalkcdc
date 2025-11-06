@@ -16,9 +16,10 @@ global:
   # PagerDuty API URL (default)
   # pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
 
-# Templates for customizing alert messages
-templates:
-  - '/etc/alertmanager/template/*.tmpl'
+# Templates for customizing alert messages (optional)
+# Uncomment and mount template files to customize alert formatting
+# templates:
+#   - '/etc/alertmanager/template/*.tmpl'
 
 # Route tree for alert dispatch
 route:
@@ -74,7 +75,7 @@ inhibit_rules:
   - source_match:
       alertname: 'KafkaConnectorNotRunning'
     target_match_re:
-      alertname: 'KafkaConnect(HighLag|LowThroughput|NoOffsetCommits)'
+      alertname: 'KafkaConnect(HighLag|NoOffsetCommits)'
     equal: ['connector']
 
   # If high error rate, suppress DLQ volume alerts (same root cause)
@@ -103,6 +104,8 @@ receivers:
     pagerduty_configs:
       # Configure your PagerDuty integration key here
       # Get this from: PagerDuty > Services > Your Service > Integrations > Events API v2
+      # SECURITY: Use environment variable substitution or Docker secrets in production
+      # Example with env var: service_key: '${PAGERDUTY_INTEGRATION_KEY}'
       - service_key: '<YOUR_PAGERDUTY_INTEGRATION_KEY>'
         # Optional: Add custom details to PagerDuty incidents
         description: '{{ .GroupLabels.alertname }}: {{ .GroupLabels.connector }}'
@@ -121,6 +124,8 @@ receivers:
     slack_configs:
       # Configure your Slack webhook URL
       # Get this from: Slack > Apps > Incoming Webhooks > Add New Webhook
+      # SECURITY: Use environment variable substitution or Docker secrets in production
+      # Example with env var: api_url: '${SLACK_WEBHOOK_URL}'
       - api_url: '<YOUR_SLACK_WEBHOOK_URL>'
         channel: '#cdc-alerts-warnings'
         # Optional: Customize message appearance
@@ -145,6 +150,7 @@ receivers:
   # Slack receiver for SLO alerts
   - name: 'slack-slo'
     slack_configs:
+      # SECURITY: Use environment variable substitution or Docker secrets in production
       - api_url: '<YOUR_SLACK_WEBHOOK_URL>'
         channel: '#cdc-slo-tracking'
         title: ':chart_with_downwards_trend: {{ .GroupLabels.alertname }}'
