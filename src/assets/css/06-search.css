@@ -1,0 +1,213 @@
+/* =============================================================
+   Search Modal Component
+   ============================================================= */
+
+.search-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: none;
+  align-items: flex-start;
+  padding-top: 10vh;
+}
+
+.search-modal.active {
+  display: flex;
+  animation: searchFadeIn var(--transition-base);
+}
+
+.search-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.search-modal-content {
+  position: relative;
+  width: 90%;
+  max-width: 640px;
+  margin: 0 auto;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  animation: searchSlideUp var(--transition-slow);
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.search-icon {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.search-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.search-shortcut {
+  flex-shrink: 0;
+  padding: var(--space-2xs) var(--space-xs);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.search-results {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.search-result {
+  display: block;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color var(--transition-fast);
+}
+
+.search-result:hover,
+.search-result.selected {
+  background-color: var(--color-bg-elevated);
+}
+
+.search-result-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2xs);
+}
+
+.search-result-description {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2xs);
+  line-height: 1.5;
+}
+
+.search-result-excerpt {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  line-height: 1.4;
+}
+
+.search-result mark {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning);
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.search-no-results {
+  padding: var(--space-2xl) var(--space-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.search-no-results strong {
+  color: var(--color-text-primary);
+}
+
+.search-no-results .text-muted {
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+}
+
+.search-hint {
+  padding: var(--space-2xl) var(--space-lg);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.search-footer {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-secondary);
+}
+
+.search-footer kbd {
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+}
+
+/* Animations */
+@keyframes searchFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes searchSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .search-modal {
+    padding-top: 5vh;
+  }
+
+  .search-modal-content {
+    width: 95%;
+    border-radius: var(--radius-md);
+  }
+
+  .search-input-wrapper {
+    padding: var(--space-md);
+  }
+
+  .search-input {
+    font-size: var(--text-base);
+  }
+
+  .search-results {
+    max-height: 300px;
+  }
+
+  .search-footer {
+    display: none;
+  }
+}

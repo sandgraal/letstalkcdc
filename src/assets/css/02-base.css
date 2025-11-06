@@ -1,0 +1,196 @@
+/* =============================================================
+   Base Styles - HTML Element Defaults
+   ============================================================= */
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height) + var(--space-md));
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  transition: background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-md);
+}
+
+h1 {
+  font-size: var(--text-4xl);
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: var(--text-3xl);
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: var(--text-2xl);
+}
+
+h4 {
+  font-size: var(--text-xl);
+}
+
+h5 {
+  font-size: var(--text-lg);
+}
+
+h6 {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+p {
+  margin-bottom: var(--space-md);
+  max-width: var(--content-max);
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-link-hover);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Lists */
+ul,
+ol {
+  margin-bottom: var(--space-md);
+  padding-left: var(--space-lg);
+}
+
+li {
+  margin-bottom: var(--space-xs);
+}
+
+/* Code */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+code {
+  padding: 0.125rem 0.375rem;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+}
+
+pre {
+  padding: var(--space-md);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin-bottom: var(--space-md);
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-md);
+}
+
+th,
+td {
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+th {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+}
+
+/* Blockquotes */
+blockquote {
+  margin: var(--space-lg) 0;
+  padding-left: var(--space-lg);
+  border-left: 4px solid var(--color-accent-primary);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* HR */
+hr {
+  border: none;
+  height: 1px;
+  background-color: var(--color-border-default);
+  margin: var(--space-2xl) 0;
+}
+
+/* Images */
+img {
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+/* Form Elements */
+input,
+textarea,
+select {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-accent-primary);
+  color: var(--color-text-inverse);
+}

@@ -1,0 +1,241 @@
+/* =============================================================
+   Layout - Page Structure & Grid
+   ============================================================= */
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+  }
+}
+
+/* Skip Link (Accessibility) */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-md);
+  z-index: 9999;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-accent-primary);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--transition-fast);
+}
+
+.skip-link:focus {
+  top: var(--space-md);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Header */
+.global-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  width: 100%;
+  height: var(--header-height);
+  background-color: var(--color-bg-overlay);
+  border-bottom: 1px solid var(--color-border-subtle);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .nav-container {
+    padding: 0 var(--space-lg);
+  }
+}
+
+.site-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.nav-links {
+  display: none;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+@media (min-width: 640px) {
+  .nav-links {
+    display: flex;
+  }
+}
+
+.nav-links a {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.nav-links a:hover {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+.nav-links a.active {
+  background-color: var(--color-accent-subtle);
+  color: var(--color-accent-primary);
+}
+
+/* Main Content */
+main {
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* Sections */
+section {
+  padding: var(--space-2xl) 0;
+}
+
+@media (min-width: 768px) {
+  section {
+    padding: var(--space-3xl) 0;
+  }
+}
+
+/* Prose (Long-form content) */
+.prose {
+  max-width: var(--content-max);
+}
+
+.prose > * + * {
+  margin-top: var(--space-md);
+}
+
+.prose h2 {
+  margin-top: var(--space-2xl);
+}
+
+.prose h3 {
+  margin-top: var(--space-xl);
+}
+
+/* Hero Section */
+.hero-section {
+  padding: var(--space-3xl) 0;
+  background: linear-gradient(
+    180deg,
+    var(--color-bg-secondary) 0%,
+    var(--color-bg-primary) 100%
+  );
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+@media (min-width: 768px) {
+  .hero-section {
+    padding: var(--space-4xl) 0;
+  }
+}
+
+.hero-container {
+  text-align: center;
+}
+
+.hero-align-left .hero-container {
+  text-align: left;
+}
+
+.hero-kicker {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.hero-lede {
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+  margin: var(--space-lg) 0;
+  max-width: 60ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-align-left .hero-lede {
+  margin-left: 0;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+  justify-content: center;
+}
+
+.hero-align-left .hero-actions {
+  justify-content: flex-start;
+}
+
+/* Grid System */
+.grid {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+@media (min-width: 768px) {
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Footer */
+footer {
+  padding: var(--space-2xl) 0;
+  border-top: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-secondary);
+  text-align: center;
+}

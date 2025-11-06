@@ -113,7 +113,8 @@ function parseAssistantYaml(content) {
 module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "src/static": "/",
-    "src/assets": "assets",
+    "src/assets/css/styles.min.css": "assets/css/styles.min.css",
+    "src/assets/js": "assets/js",
     "src/resources": "downloads",
     "compose.yaml": "downloads/compose.yaml",
     "src/css": "css",

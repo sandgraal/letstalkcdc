@@ -3,11 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clean": "rimraf dist _site src/assets/css/styles.pref.css src/assets/css/styles.min.css",
-    "build:css": "postcss src/assets/css/styles.css -o src/assets/css/styles.pref.css",
-    "minify:css": "node scripts/minify-css.js src/assets/css/styles.pref.css src/assets/css/styles.min.css",
+    "clean": "rimraf dist _site src/assets/css/styles.min.css",
+    "build:css": "postcss src/assets/css/main.css -o src/assets/css/styles.min.css",
     "build:dark-theme": "node scripts/build-dark-theme.mjs",
-    "build": "npm run build:dark-theme && npm run build:css && npm run minify:css && eleventy --config=eleventy.config.cjs",
+    "build": "npm run build:dark-theme && npm run build:css && eleventy --config=eleventy.config.cjs",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
     "smoke:a11y": "node scripts/run-pa11y.mjs",
     "smoke:perf": "node scripts/perf-budget.mjs",
@@ -31,11 +30,13 @@
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "autoprefixer": "^10.4.20",
+    "cssnano": "^7.1.2",
     "csso": "^5.0.5",
     "dotenv": "^17.2.3",
     "pa11y-ci": "^3.1.0",
     "postcss": "^8.4.41",
     "postcss-cli": "^11.0.0",
+    "postcss-import": "^16.1.1",
     "postcss-prefix-selector": "^2.1.1",
     "rimraf": "^5.0.5"
   }
