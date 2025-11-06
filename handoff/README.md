@@ -9,6 +9,10 @@ chmod +x nightly-sync.sh
 ./nightly-sync.sh
 ```
 
+## Automate (GitHub Actions)
+Nightly sync runs automatically from the repository via [`.github/workflows/handoff-nightly.yml`](../.github/workflows/handoff-nightly.yml).
+It executes `nightly-sync.sh`, commits the parsed log entry, and publishes the dashboard through the Pages workflow.
+
 ## Automate (Cron)
 ```bash
 crontab -e
