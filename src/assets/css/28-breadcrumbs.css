@@ -1,0 +1,602 @@
+/* =============================================================
+   28-breadcrumbs.css
+   Advanced breadcrumb navigation system with:
+   - Multi-level navigation support
+   - Truncation with ellipsis for middle items
+   - Dropdown overflow for many items
+   - Mobile collapse to compact view
+   - Responsive text sizing
+   - Icon support for items
+   - Schema.org structured data support
+   - Separator variants (/, >, •, custom)
+   - Max-width constraints per item
+   - Interactive hover states
+   - Current page highlighting
+   - Keyboard navigation
+   ============================================================= */
+
+/* ==============================
+   Base Breadcrumb Structure
+   ============================== */
+
+.breadcrumb-nav {
+  margin: 1rem 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.breadcrumb__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  border-radius: 0.375rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumb__link:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.breadcrumb__link:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* Current page - not clickable */
+.breadcrumb__item--current .breadcrumb__link {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* ==============================
+   Icons
+   ============================== */
+
+.breadcrumb__icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.breadcrumb__home-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* ==============================
+   Separators
+   ============================== */
+
+.breadcrumb__separator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-tertiary);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Separator variants */
+.breadcrumb--slash .breadcrumb__separator::before {
+  content: "/";
+}
+
+.breadcrumb--chevron .breadcrumb__separator::before {
+  content: "›";
+  font-size: 1.25rem;
+}
+
+.breadcrumb--arrow .breadcrumb__separator::before {
+  content: "→";
+}
+
+.breadcrumb--dot .breadcrumb__separator::before {
+  content: "•";
+}
+
+/* Icon separator */
+.breadcrumb__separator-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ==============================
+   Truncation Patterns
+   ============================== */
+
+/* Show first + last, hide middle with ellipsis */
+.breadcrumb--truncated .breadcrumb__item {
+  display: none;
+}
+
+.breadcrumb--truncated .breadcrumb__item:first-child,
+.breadcrumb--truncated .breadcrumb__item:last-child,
+.breadcrumb--truncated .breadcrumb__item--always-visible {
+  display: inline-flex;
+}
+
+.breadcrumb__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.breadcrumb__ellipsis:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+/* ==============================
+   Overflow Dropdown
+   ============================== */
+
+.breadcrumb__overflow {
+  position: relative;
+}
+
+.breadcrumb__overflow-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.breadcrumb__overflow-trigger:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.breadcrumb__overflow-icon {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.breadcrumb__overflow.is-open .breadcrumb__overflow-icon {
+  transform: rotate(180deg);
+}
+
+.breadcrumb__overflow-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  min-width: 12rem;
+  max-width: 20rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.5rem);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.breadcrumb__overflow.is-open .breadcrumb__overflow-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.breadcrumb__overflow-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumb__overflow-item:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+/* ==============================
+   Size Variants
+   ============================== */
+
+.breadcrumb--sm {
+  font-size: 0.8125rem;
+  gap: 0.375rem;
+}
+
+.breadcrumb--sm .breadcrumb__icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.breadcrumb--sm .breadcrumb__link {
+  padding: 0.125rem 0.375rem;
+}
+
+.breadcrumb--lg {
+  font-size: 1rem;
+  gap: 0.625rem;
+}
+
+.breadcrumb--lg .breadcrumb__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.breadcrumb--lg .breadcrumb__link {
+  padding: 0.375rem 0.625rem;
+}
+
+/* ==============================
+   Style Variants
+   ============================== */
+
+/* Bordered variant */
+.breadcrumb--bordered {
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+/* Card variant */
+.breadcrumb--card {
+  padding: 1rem 1.25rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Minimal variant - no backgrounds on hover */
+.breadcrumb--minimal .breadcrumb__link:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.breadcrumb--minimal .breadcrumb__ellipsis:hover {
+  background: transparent;
+}
+
+/* ==============================
+   Max Width Constraints
+   ============================== */
+
+.breadcrumb__link--max-width {
+  max-width: 12rem;
+}
+
+.breadcrumb__link--max-width-sm {
+  max-width: 8rem;
+}
+
+.breadcrumb__link--max-width-lg {
+  max-width: 16rem;
+}
+
+/* ==============================
+   Mobile Variants
+   ============================== */
+
+.breadcrumb--mobile-compact {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Hide desktop breadcrumb, show compact */
+  .breadcrumb--hide-mobile {
+    display: none;
+  }
+
+  .breadcrumb--mobile-compact {
+    display: flex;
+  }
+
+  /* Collapse to back button + current */
+  .breadcrumb--collapse-mobile
+    .breadcrumb__item:not(:last-child):not(:nth-last-child(2)) {
+    display: none;
+  }
+
+  .breadcrumb--collapse-mobile
+    .breadcrumb__item:nth-last-child(2)
+    .breadcrumb__link {
+    padding-left: 0;
+  }
+
+  .breadcrumb--collapse-mobile
+    .breadcrumb__item:nth-last-child(2)
+    .breadcrumb__link::before {
+    content: "← ";
+  }
+}
+
+@media (max-width: 480px) {
+  .breadcrumb {
+    font-size: 0.8125rem;
+    gap: 0.375rem;
+  }
+
+  .breadcrumb__link {
+    padding: 0.125rem 0.375rem;
+    max-width: 8rem;
+  }
+
+  .breadcrumb__icon {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  /* Show only current and back button on small screens */
+  .breadcrumb--auto-collapse .breadcrumb__item {
+    display: none;
+  }
+
+  .breadcrumb--auto-collapse .breadcrumb__item:last-child {
+    display: inline-flex;
+  }
+
+  .breadcrumb--auto-collapse::before {
+    content: "← Back";
+    padding: 0.125rem 0.375rem;
+    color: var(--color-text-secondary);
+    border-radius: 0.375rem;
+    cursor: pointer;
+  }
+
+  .breadcrumb--auto-collapse::before:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
+  }
+}
+
+/* ==============================
+   Schema.org Support
+   ============================== */
+
+/* Hide schema markup from visual display */
+.breadcrumb[itemscope] span[itemprop] {
+  /* Schema data visible to crawlers */
+}
+
+/* ==============================
+   Loading State
+   ============================== */
+
+.breadcrumb--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.breadcrumb__skeleton {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.breadcrumb__skeleton-item {
+  height: 1.25rem;
+  background: var(--color-bg-tertiary);
+  border-radius: 0.375rem;
+  animation: breadcrumbPulse 1.5s ease-in-out infinite;
+}
+
+.breadcrumb__skeleton-item:nth-child(1) {
+  width: 4rem;
+}
+
+.breadcrumb__skeleton-item:nth-child(2) {
+  width: 6rem;
+}
+
+.breadcrumb__skeleton-item:nth-child(3) {
+  width: 8rem;
+}
+
+@keyframes breadcrumbPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ==============================
+   Accessibility Enhancements
+   ============================== */
+
+.breadcrumb[aria-label] {
+  /* Provide context for screen readers */
+}
+
+.breadcrumb__item--current [aria-current="page"] {
+  /* Mark current page for assistive tech */
+}
+
+/* Skip links for keyboard users */
+.breadcrumb__skip {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.breadcrumb__skip:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  background: var(--color-accent-primary);
+  color: white;
+  border-radius: 0.375rem;
+  z-index: 1000;
+}
+
+/* ==============================
+   Advanced Interactions
+   ============================== */
+
+/* Breadcrumb with actions */
+.breadcrumb-nav--with-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.breadcrumb-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.breadcrumb-action {
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.breadcrumb-action:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+/* ==============================
+   Reduced Motion
+   ============================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .breadcrumb__link,
+  .breadcrumb__ellipsis,
+  .breadcrumb__overflow-trigger,
+  .breadcrumb__overflow-menu,
+  .breadcrumb__overflow-item,
+  .breadcrumb-action {
+    transition: none;
+  }
+
+  .breadcrumb__skeleton-item {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .breadcrumb__overflow-icon {
+    transition: none;
+  }
+}
+
+/* ==============================
+   Light Theme Variants
+   ============================== */
+
+@media (prefers-color-scheme: light) {
+  .breadcrumb--bordered,
+  .breadcrumb--card {
+    background: white;
+    border-color: #e2e8f0;
+  }
+
+  .breadcrumb--card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .breadcrumb__link:hover {
+    background: #f8fafc;
+  }
+
+  .breadcrumb__overflow-menu {
+    background: white;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .breadcrumb__overflow-item:hover {
+    background: #f8fafc;
+  }
+
+  .breadcrumb__skeleton-item {
+    background: #e2e8f0;
+  }
+
+  .breadcrumb-action {
+    border-color: #e2e8f0;
+  }
+
+  .breadcrumb-action:hover {
+    background: #f8fafc;
+  }
+}
+
+/* ==============================
+   Print Styles
+   ============================== */
+
+@media print {
+  .breadcrumb__overflow-menu {
+    display: none;
+  }
+
+  .breadcrumb-actions {
+    display: none;
+  }
+
+  .breadcrumb--truncated .breadcrumb__item {
+    display: inline-flex;
+  }
+
+  .breadcrumb__ellipsis {
+    display: none;
+  }
+
+  /* Show all items in print */
+  .breadcrumb--collapse-mobile .breadcrumb__item {
+    display: inline-flex;
+  }
+}

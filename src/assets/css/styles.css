@@ -23,6 +23,11 @@
 @import url("./25-pagination.css");
 @import url("./26-empty-states.css");
 @import url("./27-skeleton-loaders.css");
+@import url("./28-breadcrumbs.css");
+@import url("./29-stepper.css");
+@import url("./30-timeline.css");
+@import url("./31-charts.css");
+@import url("./32-meters-gauges.css");
 
 /* =============================================================
    CSS Variables & Base Styles (Light by default)
