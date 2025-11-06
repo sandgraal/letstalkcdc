@@ -36,15 +36,42 @@
       <div class="nav-container">
         <a class="site-title" href="{{ '/' | url }}">{{ site.seoTitle }}</a>
         <div class="nav-right">
-          <nav aria-label="Primary" class="nav-links">
+          <button aria-label="Toggle navigation menu" class="mobile-menu-toggle" data-mobile-menu-toggle type="button">
+            <span class="hamburger-icon" aria-hidden="true"></span>
+          </button>
+          <nav aria-label="Primary" class="nav-links" data-mobile-nav>
             <a class="{% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
             <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">The Series</a>
+            <a href="{{ '/quickstarts/' | url }}">Quick Starts</a>
+            <a href="{{ '/use-cases/' | url }}">Use Cases</a>
+            <a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>
             <button aria-label="Search documentation" class="search-trigger" data-search-trigger type="button" title="Search (press /)">🔍</button>
           </nav>
           <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
         </div>
       </div>
     </header>
+
+    {% if breadcrumbs %}
+    <nav aria-label="Breadcrumb" class="breadcrumb-nav">
+      <div class="breadcrumb-container">
+        <ol class="breadcrumb" vocab="https://schema.org/" typeof="BreadcrumbList">
+          {% for crumb in breadcrumbs %}
+          <li property="itemListElement" typeof="ListItem">
+            {% if crumb.url %}
+            <a property="item" typeof="WebPage" href="{{ crumb.url | url }}">
+              <span property="name">{{ crumb.label }}</span>
+            </a>
+            {% else %}
+            <span property="name">{{ crumb.label }}</span>
+            {% endif %}
+            <meta property="position" content="{{ loop.index }}">
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </nav>
+    {% endif %}
 
     <main id="main">{{ content | safe }}</main>
 
@@ -168,7 +195,49 @@
       <script type="module" src="{{ '/scripts/progress.js' | url }}"></script>
     {% endif %}
     <footer class="site-footer">
-      <p>{{ site.copyright }}</p>
+      <div class="footer-container">
+        <div class="footer-grid">
+          <div class="footer-section">
+            <h3 class="footer-title">About CDC</h3>
+            <p class="footer-description">{{ site.tagline }}</p>
+            <p class="footer-description">A comprehensive guide to Change Data Capture patterns, best practices, and production-ready implementations.</p>
+          </div>
+          
+          <div class="footer-section">
+            <h3 class="footer-title">Learn</h3>
+            <ul class="footer-links">
+              <li><a href="{{ '/intro/' | url }}">Introduction</a></li>
+              <li><a href="{{ '/overview/' | url }}">Series Overview</a></li>
+              <li><a href="{{ '/quickstarts/' | url }}">Quick Starts</a></li>
+              <li><a href="{{ '/tooling/' | url }}">Ecosystem</a></li>
+            </ul>
+          </div>
+          
+          <div class="footer-section">
+            <h3 class="footer-title">Resources</h3>
+            <ul class="footer-links">
+              <li><a href="{{ '/use-cases/' | url }}">Use Cases</a></li>
+              <li><a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a></li>
+              <li><a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a></li>
+              <li><a href="{{ '/exactly-once/' | url }}">Exactly-Once</a></li>
+            </ul>
+          </div>
+          
+          <div class="footer-section">
+            <h3 class="footer-title">Connect</h3>
+            <ul class="footer-links">
+              <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="{{ '/errata/' | url }}">Report Issue</a></li>
+              <li><a href="#" data-search-trigger>Search</a></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="footer-bottom">
+          <p class="footer-copyright">{{ site.copyright }}</p>
+          <p class="footer-meta">Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project</p>
+        </div>
+      </div>
     </footer>
     <link rel="stylesheet" href="{{ '/css/assistant.css' | url }}">
     <button id="askBtn" type="button" aria-label="Ask the Playground">💬</button>

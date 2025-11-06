@@ -102,6 +102,72 @@ onReady(() => {
     console.debug("Module view tracking failed:", error);
   }
 
+  // Mobile Navigation Menu
+  const mobileMenuToggle = doc.querySelector("[data-mobile-menu-toggle]");
+  const mobileNav = doc.querySelector("[data-mobile-nav]");
+
+  if (mobileMenuToggle && mobileNav) {
+    const closeNav = () => {
+      mobileNav.removeAttribute("data-mobile-nav-open");
+      mobileMenuToggle.setAttribute("aria-expanded", "false");
+      doc.body.removeAttribute("data-mobile-nav-open");
+    };
+
+    mobileMenuToggle.addEventListener("click", () => {
+      const isOpen = mobileNav.hasAttribute("data-mobile-nav-open");
+
+      if (isOpen) {
+        closeNav();
+      } else {
+        mobileNav.setAttribute("data-mobile-nav-open", "");
+        mobileMenuToggle.setAttribute("aria-expanded", "true");
+        doc.body.setAttribute("data-mobile-nav-open", "");
+
+        // Focus first link in mobile menu
+        const firstLink = mobileNav.querySelector("a[href]");
+        if (firstLink) {
+          setTimeout(() => firstLink.focus(), 50);
+        }
+      }
+    });
+
+    // Close on escape key
+    doc.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape" &&
+        mobileNav.hasAttribute("data-mobile-nav-open")
+      ) {
+        closeNav();
+        mobileMenuToggle.focus();
+      }
+    });
+
+    // Close when clicking overlay
+    doc.body.addEventListener("click", (event) => {
+      if (
+        mobileNav.hasAttribute("data-mobile-nav-open") &&
+        !mobileNav.contains(event.target) &&
+        !mobileMenuToggle.contains(event.target)
+      ) {
+        closeNav();
+      }
+    });
+
+    // Close when clicking a link
+    mobileNav.addEventListener("click", (event) => {
+      if (event.target.closest("a[href]")) {
+        closeNav();
+      }
+    });
+
+    // Close when resizing to desktop
+    window.addEventListener("resize", () => {
+      if (window.matchMedia("(min-width: 640px)").matches) {
+        closeNav();
+      }
+    });
+  }
+
   const navToggle = doc.querySelector("[data-nav-toggle]");
   const navPanel = doc.querySelector("[data-nav-panel]");
   if (!navToggle || !navPanel) return;
@@ -1294,6 +1360,87 @@ onReady(() => {
 
     updateProgress();
   });
+
+  // Code Block Enhancements
+  const enhanceCodeBlocks = () => {
+    const codeBlocks = doc.querySelectorAll("pre > code");
+
+    codeBlocks.forEach((codeBlock) => {
+      const pre = codeBlock.parentElement;
+
+      // Skip if already enhanced
+      if (pre.closest(".code-block-wrapper")) return;
+
+      // Detect language from class (e.g., language-javascript)
+      const languageClass = Array.from(codeBlock.classList).find((cls) =>
+        cls.startsWith("language-")
+      );
+      const language = languageClass
+        ? languageClass.replace("language-", "").toUpperCase()
+        : "CODE";
+
+      // Create wrapper
+      const wrapper = doc.createElement("div");
+      wrapper.className = "code-block-wrapper";
+
+      // Create header
+      const header = doc.createElement("div");
+      header.className = "code-block-header";
+
+      const languageLabel = doc.createElement("span");
+      languageLabel.className = "code-block-language";
+      languageLabel.textContent = language;
+
+      const copyButton = doc.createElement("button");
+      copyButton.className = "code-copy-button";
+      copyButton.textContent = "Copy";
+      copyButton.type = "button";
+      copyButton.setAttribute("aria-label", `Copy ${language} code`);
+
+      header.appendChild(languageLabel);
+      header.appendChild(copyButton);
+
+      // Wrap the pre element
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(header);
+      wrapper.appendChild(pre);
+
+      // Add copy functionality
+      copyButton.addEventListener("click", async () => {
+        const code = codeBlock.textContent;
+
+        try {
+          await navigator.clipboard.writeText(code);
+          copyButton.textContent = "Copied!";
+          copyButton.setAttribute("data-copied", "true");
+
+          // Track code copy interaction
+          try {
+            const blockId = `code-${language.toLowerCase()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
+            educationTracer.trackInteraction("code-copy", blockId, true);
+          } catch (error) {
+            console.debug("Code copy tracking failed:", error);
+          }
+
+          setTimeout(() => {
+            copyButton.textContent = "Copy";
+            copyButton.removeAttribute("data-copied");
+          }, 2000);
+        } catch (error) {
+          console.error("Failed to copy code:", error);
+          copyButton.textContent = "Failed";
+
+          setTimeout(() => {
+            copyButton.textContent = "Copy";
+          }, 2000);
+        }
+      });
+    });
+  };
+
+  enhanceCodeBlocks();
 
   const parseProgressState = (value) => {
     if (!value) return null;
