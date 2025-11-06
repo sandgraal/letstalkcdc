@@ -44,10 +44,13 @@ When adding the string attributes, set the maximum length to the values listed a
 
 Update the deployment environment with the following variables so the browser SDK can locate the collection:
 
+**Required** (all three must be set for Appwrite features to work):
 - `APPWRITE_ENDPOINT` – HTTPS endpoint of your Appwrite instance
 - `APPWRITE_PROJECT` – Project ID from the console
 - `APPWRITE_DB_ID` – Database ID (e.g., `main`)
-- `COL_ASSISTANT_ID` – `assistant_feedback`
+
+**Optional** (required only for assistant feedback collection):
+- `COL_ASSISTANT_ID` – `assistant_feedback` (if not set, assistant feedback is stored locally)
 
 Rebuild and redeploy after setting the variables. At runtime, open the site, trigger the assistant, and submit feedback to verify that the document appears in Appwrite.
 
