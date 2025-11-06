@@ -418,11 +418,10 @@ scripts:
       Want the implementation details? <a href="/connector-builder/">Connector Builder</a> shows how log readers stream events, <a href="/schema-evolution/">Schema Evolution</a> covers contract management, and <a href="/merge-cookbook/">Merge Cookbook</a> demonstrates idempotent sink patterns.
     </p>
 
-    <figure style="max-width: 900px; margin: 2rem auto;">
+    <figure aria-label="CDC high-level flow">
       <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}" 
-           alt="CDC pipeline architecture showing the complete data flow from source database through WAL/binlog, connector (Debezium/Airbyte), streaming platform (Kafka/Kinesis), to sink destinations (warehouse, search, cache)" 
-           style="width: 100%; height: auto; display: block; background: #0b1220; border-radius: 8px; padding: 1rem;"/>
-      <figcaption style="color: #94a3b8; font-size: 0.875rem; text-align: center; margin-top: 0.5rem; font-style: italic;">
+           alt="CDC pipeline architecture showing the complete data flow from source database through WAL/binlog, connector (Debezium/Airbyte), streaming platform (Kafka/Kinesis), to sink destinations (warehouse, search, cache)"/>
+      <figcaption class="figure-caption">
         The CDC pipeline architecture: Source DB → Connector → Stream → Sink. Map components to deeper dives: Source DB → <a href="/snapshotting/">Snapshotting</a>, Connector → <a href="/connector-builder/">Connector Builder</a>, Stream → <a href="/strategy/">Strategy</a>, and Sink → <a href="/merge-cookbook/">Merge Cookbook</a>.
       </figcaption>
     </figure>
