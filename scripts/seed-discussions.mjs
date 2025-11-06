@@ -20,6 +20,7 @@ import { join, resolve } from 'node:path';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO_OWNER = process.env.GITHUB_REPOSITORY_OWNER || 'sandgraal';
 const REPO_NAME = process.env.GITHUB_REPOSITORY_NAME || 'letstalkcdc';
+const RATE_LIMIT_DELAY_MS = parseInt(process.env.RATE_LIMIT_DELAY_MS || '1000', 10);
 
 // Starter discussion threads based on docs/COMMUNITY.md
 const SEED_DISCUSSIONS = [
@@ -259,6 +260,8 @@ async function pinDiscussion(discussionId) {
 
 /**
  * Check if a discussion with the same title already exists
+ * Note: GitHub's search index may have delays, so this check might produce false negatives
+ * for discussions created very recently.
  */
 async function discussionExists(title) {
   const query = `
@@ -307,17 +310,30 @@ async function discussionExists(title) {
 }
 
 /**
- * Find category ID by name or slug
+ * Find category ID by name or slug with fuzzy matching
  */
 function findCategoryId(categories, targetName) {
   const normalized = targetName.toLowerCase().trim();
   
-  const category = categories.find(cat => 
+  // Try exact match first
+  let category = categories.find(cat => 
     cat.name.toLowerCase() === normalized ||
-    cat.slug.toLowerCase() === normalized ||
+    cat.slug.toLowerCase() === normalized
+  );
+  
+  if (category) {
+    return category.id;
+  }
+  
+  // Try partial match
+  category = categories.find(cat => 
     cat.name.toLowerCase().includes(normalized) ||
     normalized.includes(cat.slug.toLowerCase())
   );
+
+  if (category) {
+    console.log(`   ℹ️  Matched category "${targetName}" to "${category.name}" (fuzzy match)`);
+  }
 
   return category?.id;
 }
@@ -386,7 +402,7 @@ async function main() {
         }
 
         // Rate limiting: wait between requests
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
       } catch (error) {
         console.error(`   ❌ Failed to create: ${error.message}`);
       }

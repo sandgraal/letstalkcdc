@@ -2065,11 +2065,15 @@ pre > .theme-toggle {
   line-height: 1.6;
 }
 
+.community-button-wrapper {
+  margin-top: 1.5rem;
+}
+
 .button-primary {
   display: inline-block;
   padding: 0.75rem 1.5rem;
   background: var(--accent-primary);
-  color: #fff !important;
+  color: var(--text-primary);
   border-radius: 0.5rem;
   text-decoration: none;
   font-weight: 600;
