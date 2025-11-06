@@ -1,22 +1,42 @@
 /* =============================================================
    Components - Reusable UI Elements
+   World-Class Design & Polish
    ============================================================= */
 
-/* Buttons */
+/* Buttons - Modern, sophisticated */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-sm) var(--space-xl);
   font-size: var(--text-base);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.5;
   text-decoration: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.button:hover::before {
+  opacity: 1;
 }
 
 .button:focus-visible {
@@ -24,44 +44,55 @@
   outline-offset: 2px;
 }
 
-/* Primary Button */
+/* Primary Button - Bold, attention-grabbing */
 .button,
 .button.primary {
-  background-color: var(--color-accent-primary);
-  color: var(--color-text-inverse);
-  border: 2px solid var(--color-accent-primary);
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
 .button:hover,
 .button.primary:hover {
-  background-color: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.3),
+    var(--shadow-glow);
 }
 
-/* Secondary Button */
+.button:active,
+.button.primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button - Refined outline */
 .button.secondary {
   background-color: transparent;
   color: var(--color-accent-primary);
   border: 2px solid var(--color-accent-primary);
+  box-shadow: var(--shadow-xs);
 }
 
 .button.secondary:hover {
   background-color: var(--color-accent-subtle);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 0 0 2px var(--color-accent-subtle);
 }
 
-/* Ghost Button */
+/* Ghost Button - Subtle, elegant */
 .button.ghost {
-  background-color: transparent;
+  background-color: var(--color-bg-subtle);
   color: var(--color-text-secondary);
-  border: 2px solid transparent;
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: none;
 }
 
 .button.ghost:hover {
   background-color: var(--color-bg-elevated);
   color: var(--color-text-primary);
+  border-color: var(--color-border-default);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Danger Button */
@@ -87,35 +118,55 @@
   font-size: var(--text-lg);
 }
 
-/* Cards */
+/* Cards - Sophisticated depth and hover */
 .card {
-  background-color: var(--color-bg-secondary);
+  background: var(--gradient-subtle), var(--color-bg-secondary);
   border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  transition: transform var(--transition-base),
-    box-shadow var(--transition-base);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity var(--transition-base);
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--color-border-strong);
+}
+
+.card:hover::before {
+  opacity: 1;
 }
 
 .card-header {
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
 }
 
 .card-title {
   font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-text-primary);
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-sm);
+  letter-spacing: var(--tracking-tight);
 }
 
 .card-description {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
 }
 
 .card-body {

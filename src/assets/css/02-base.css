@@ -1,23 +1,29 @@
 /* =============================================================
    Base Styles - HTML Element Defaults
+   World-Class Typography & Polish
    ============================================================= */
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--header-height) + var(--space-md));
+  scroll-padding-top: calc(var(--header-height) + var(--space-lg));
+  font-size: 16px;
 }
 
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
   transition: background-color var(--transition-base),
     color var(--transition-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
 }
 
-/* Typography */
+/* Typography - Refined hierarchy */
 h1,
 h2,
 h3,
@@ -25,49 +31,68 @@ h4,
 h5,
 h6 {
   font-weight: 700;
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   color: var(--color-text-primary);
   margin-bottom: var(--space-md);
+  letter-spacing: var(--tracking-tight);
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 
 h1 {
   font-size: var(--text-4xl);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--tracking-tighter);
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 h2 {
   font-size: var(--text-3xl);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
 }
 
 h3 {
   font-size: var(--text-2xl);
+  font-weight: 700;
 }
 
 h4 {
   font-size: var(--text-xl);
+  font-weight: 600;
 }
 
 h5 {
   font-size: var(--text-lg);
+  font-weight: 600;
 }
 
 h6 {
   font-size: var(--text-base);
   font-weight: 600;
+  letter-spacing: var(--tracking-normal);
 }
 
 p {
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
   max-width: var(--content-max);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+strong {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+em {
+  font-style: italic;
 }
 
 a {
   color: var(--color-link);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-decoration: none;
   transition: color var(--transition-fast);
+  font-weight: 500;
 }
 
 a:hover {
