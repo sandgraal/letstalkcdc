@@ -405,7 +405,6 @@ const CDCProgress = {
   getDashboardDocs: () =>
     transformDocsForDashboard(snapshotProgressDocs()),
   signInWithOAuth: () => {
-    console.info("CDCProgress: OAuth sign-in has been removed. Progress is tracked locally.");
     return Promise.resolve(false);
   },
   signOut: () => {
