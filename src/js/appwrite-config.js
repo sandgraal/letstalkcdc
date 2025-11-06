@@ -1,5 +1,8 @@
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 
+// Default collection ID for assistant feedback if not configured via environment
+const DEFAULT_ASSISTANT_COLLECTION = "assistant_feedback";
+
 const appwriteConfig = {
   endpoint: globalScope.APPWRITE_ENDPOINT ?? "",
   project: globalScope.APPWRITE_PROJECT ?? "",
@@ -45,7 +48,7 @@ if (AppwriteSDK && hasRequiredConfig) {
 export { databases };
 export const dbConfig = {
   databaseId: appwriteConfig.databaseId,
-  collectionId: appwriteConfig.collectionId || "assistant_feedback",
+  collectionId: appwriteConfig.collectionId || DEFAULT_ASSISTANT_COLLECTION,
 };
 export const isAppwriteReady = Boolean(databases);
 export const isAppwriteConfigured = hasRequiredConfig;
