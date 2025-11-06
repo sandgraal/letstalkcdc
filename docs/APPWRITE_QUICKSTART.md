@@ -38,4 +38,4 @@ No serverless function is required. Deploy the static site (GitHub Pages, Netlif
 
 ---
 
-Need to reset? Remove the key `assistantFeedback` from `localStorage` and reload the page.
+Need to reset? Remove the key `assistant_feedback` from `localStorage` and reload the page.
