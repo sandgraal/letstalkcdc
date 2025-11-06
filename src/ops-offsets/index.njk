@@ -117,7 +117,9 @@ docker compose exec connect env | grep OFFSET_STORAGE_TOPIC
 # Or list all Kafka Connect internal topics
 kafka-topics --bootstrap-server localhost:29092 --list | grep connect
 
-# Dump all offsets to a JSON file (use the actual topic name)
+# Dump all offsets to a JSON file
+# IMPORTANT: Replace 'connect-offsets' with your actual topic name if different
+# IMPORTANT: Replace 'localhost:29092' with your Kafka broker address
 kafka-console-consumer --bootstrap-server localhost:29092 \
   --topic connect-offsets \
   --from-beginning --timeout-ms 5000 \
