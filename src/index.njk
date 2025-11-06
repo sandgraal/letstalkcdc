@@ -102,3 +102,26 @@ eleventyComputed:
     </div>
   </section>
 </section>
+
+{% if community.discussions.enabled %}
+<section aria-labelledby="community" class="prose community-callout">
+  <h2 id="community">Join the Community</h2>
+  <div class="callout callout-info">
+    <p>
+      <strong>Connect with other CDC practitioners!</strong> Share your experiences, get help with challenges, 
+      and discuss best practices in our GitHub Discussions.
+    </p>
+    <ul class="community-links-list">
+      <li>💬 <strong>Share your CDC stack</strong> – What tools and technologies are you using?</li>
+      <li>🐛 <strong>War stories</strong> – Share debugging experiences and lessons learned</li>
+      <li>❓ <strong>Get help</strong> – Stuck in a lab or facing a production issue?</li>
+      <li>💡 <strong>Feature requests</strong> – Tell us what you'd like to see added</li>
+    </ul>
+    <p class="community-button-wrapper">
+      <a href="{{ community.discussions.url }}" target="_blank" rel="noopener" class="button button-primary">
+        Visit GitHub Discussions →
+      </a>
+    </p>
+  </div>
+</section>
+{% endif %}

@@ -110,6 +110,9 @@ npm run smoke:perf       # Performance budget checks
 npm run agent:analytics  # Generate build analytics report
 npm run agent:package    # Create print-ready export bundle
 
+# Community Management
+node scripts/seed-discussions.mjs  # Seed GitHub Discussions with starter threads
+
 # Deployment
 npm run verify:deployment # Verify production deployment
 ```
