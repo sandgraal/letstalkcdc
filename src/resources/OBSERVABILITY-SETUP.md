@@ -210,40 +210,262 @@ Reload Prometheus configuration:
 curl -X POST http://localhost:9090/-/reload
 ```
 
-### Integrating with Alertmanager
+### Integrating with Alertmanager for External Alert Routing
 
-To send alerts to PagerDuty, Slack, email, etc:
+The base observability stack includes Prometheus alerts that appear in the Prometheus UI. To route these alerts to external systems like Slack, PagerDuty, email, or custom webhooks, you can add Alertmanager to your stack.
 
-1. Add Alertmanager service to `docker-compose-observability.yml`
-2. Configure routing in `alertmanager.yml`
-3. Update Prometheus to point to Alertmanager
+#### Quick Start with Alertmanager
 
-Example Alertmanager config:
-```yaml
-route:
-  receiver: 'default'
-  group_by: ['alertname', 'severity']
-  group_wait: 30s
-  group_interval: 5m
-  repeat_interval: 4h
-  routes:
-    - match:
-        severity: critical
-      receiver: 'pagerduty'
-    - match:
-        severity: warning
-      receiver: 'slack'
+We provide a ready-to-use Alertmanager configuration that extends the base monitoring stack:
 
-receivers:
-  - name: 'default'
-    # ... configure default receiver
-  - name: 'pagerduty'
-    pagerduty_configs:
-      - service_key: '<your-pagerduty-key>'
-  - name: 'slack'
-    slack_configs:
-      - api_url: '<your-slack-webhook>'
+```bash
+# Download the Alertmanager extension files
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/docker-compose.alerts.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/alertmanager.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus-with-alertmanager.yml
+
+# Start the full stack with Alertmanager
+docker-compose -f docker-compose-observability.yml -f docker-compose.alerts.yml up -d
 ```
+
+#### What You Get
+
+The Alertmanager extension includes:
+
+- **Alert routing** by severity (critical → PagerDuty, warning → Slack)
+- **Alert grouping** to reduce notification spam (groups by alertname, severity, connector)
+- **Alert inhibition** rules to prevent cascading alerts (e.g., connector down suppresses lag alerts)
+- **Rate limiting** with configurable repeat intervals (1h for critical, 12h for warnings)
+- **Pre-configured receivers** for PagerDuty, Slack, email, and webhooks (requires your credentials)
+
+Access the Alertmanager UI at http://localhost:9093 to:
+- View active alerts
+- See silences
+- Test alert routing
+- View alert groups and timing
+
+#### Configuring Alert Receivers
+
+The `alertmanager.yml` file includes pre-configured templates for common integrations. You just need to add your credentials:
+
+**Slack Integration:**
+1. Go to your Slack workspace → Apps → Incoming Webhooks
+2. Create a new webhook and copy the URL
+3. Edit `alertmanager.yml` and replace `<YOUR_SLACK_WEBHOOK_URL>` with your webhook URL
+4. Customize the channel name (default: `#cdc-alerts-warnings`)
+5. Reload configuration: `docker-compose restart alertmanager`
+
+**PagerDuty Integration:**
+1. Log into PagerDuty → Services → Your Service → Integrations
+2. Add "Events API V2" integration and copy the Integration Key
+3. Edit `alertmanager.yml` and replace `<YOUR_PAGERDUTY_INTEGRATION_KEY>`
+4. Reload configuration: `docker-compose restart alertmanager`
+
+**Email Integration:**
+1. Uncomment the `global.smtp_*` settings in `alertmanager.yml`
+2. Configure your SMTP server details (Gmail example included)
+3. Uncomment the `email-ops` receiver section
+4. Update email addresses for your team
+5. Reload configuration: `docker-compose restart alertmanager`
+
+**Custom Webhook Integration:**
+1. Uncomment the `custom-webhook` receiver in `alertmanager.yml`
+2. Update the URL to point to your webhook endpoint
+3. Optionally configure authentication headers
+4. The webhook will receive JSON payloads with full alert details
+
+#### Alert Routing Strategy
+
+The configuration implements a production-ready routing strategy:
+
+```yaml
+Critical Alerts (severity: critical)
+├─> PagerDuty (wakes up on-call)
+├─> Faster delivery (10s group_wait)
+└─> Repeat every 1 hour if not resolved
+
+Warning Alerts (severity: warning)
+├─> Slack #cdc-alerts-warnings
+├─> Standard delivery (5m group_wait)
+└─> Repeat every 12 hours if not resolved
+
+SLO Alerts (label: slo)
+├─> Slack #cdc-slo-tracking
+├─> Longer group_wait (5m)
+└─> Repeat every 6 hours
+```
+
+#### Alert Grouping and Deduplication
+
+Alertmanager groups alerts to reduce noise:
+
+- **By connector**: All alerts for the same connector group together
+- **By severity**: Critical alerts group separately from warnings
+- **By alert name**: Same alert type fires once per group
+- **Time windows**: 
+  - Initial alert waits 30s to group with similar alerts
+  - New alerts in group wait 5m before notification
+  - Resolved alerts trigger a "recovery" notification
+
+#### Alert Inhibition (Preventing Alert Storms)
+
+The configuration includes smart inhibition rules:
+
+```yaml
+Connector Down
+  ↓ suppresses ↓
+├─> High Lag Alert
+├─> Low Throughput Alert  
+└─> No Offset Commits Alert
+
+High Error Rate
+  ↓ suppresses ↓
+└─> DLQ Volume Spike (same root cause)
+
+Any Critical Alert
+  ↓ suppresses ↓
+└─> Related Warning Alerts (same connector)
+```
+
+This prevents receiving 10 alerts when the root cause is a single failed connector.
+
+#### Rate Limiting Best Practices
+
+The configuration implements sensible rate limits:
+
+| Alert Type | Initial Delay | Group Interval | Repeat Interval |
+|------------|---------------|----------------|-----------------|
+| Critical   | 10 seconds    | 5 minutes      | 1 hour          |
+| Warning    | 5 minutes     | 5 minutes      | 12 hours        |
+| SLO        | 5 minutes     | 5 minutes      | 6 hours         |
+
+**Why these intervals?**
+- **Critical (1h repeat)**: On-call engineer needs regular reminders until fixed
+- **Warning (12h repeat)**: Business hours follow-up, less urgency
+- **SLO (6h repeat)**: Tracks trends, doesn't require immediate action
+
+You can adjust these in `alertmanager.yml` under `route.repeat_interval`.
+
+#### Maintenance Windows (Silencing Alerts)
+
+Use the Alertmanager UI to create silences during planned maintenance:
+
+1. Open http://localhost:9093
+2. Click "Silences" → "New Silence"
+3. Add matchers (e.g., `connector="inventory-connector"`)
+4. Set duration and comment
+5. Alerts matching the silence won't trigger notifications
+
+For recurring maintenance windows, use `mute_time_intervals` in `alertmanager.yml`:
+
+```yaml
+mute_time_intervals:
+  - name: 'weekend-maintenance'
+    time_intervals:
+      - times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        weekdays: ['saturday', 'sunday']
+```
+
+Then reference in your route:
+```yaml
+routes:
+  - match:
+      severity: warning
+    receiver: 'slack-warnings'
+    mute_time_intervals:
+      - 'weekend-maintenance'
+```
+
+#### Cloud-Managed Alternatives
+
+For production environments, consider using managed alerting services instead of self-hosting Alertmanager:
+
+**AWS CloudWatch:**
+- Use Prometheus remote_write to send metrics to Amazon Managed Service for Prometheus
+- Configure CloudWatch Alarms for CDC metrics
+- Route to SNS topics → Lambda → Slack/PagerDuty/Email
+
+**Grafana Cloud:**
+- Enable Grafana Cloud Alerting
+- Import our alert rules directly into Grafana
+- Use built-in integrations for Slack, PagerDuty, email, etc.
+- Benefits: automatic deduplication, mobile app, escalation chains
+
+**Datadog:**
+- Install Datadog agent alongside Prometheus
+- Convert Prometheus queries to Datadog monitors
+- Use Datadog's native integrations for notifications
+- Benefits: APM tracing, log correlation, incident management
+
+**PagerDuty Event Intelligence:**
+- Send alerts directly from Prometheus using webhook receiver
+- PagerDuty provides automatic grouping, deduplication, and ML-based noise reduction
+- Best for teams already using PagerDuty for on-call management
+
+**Opsgenie:**
+- Similar to PagerDuty, native integration with Prometheus/Alertmanager
+- Advanced routing with on-call schedules and escalation policies
+- Benefits: integrated incident response, mobile app, status pages
+
+#### Testing Your Alert Configuration
+
+Before deploying to production, test your alert routing:
+
+```bash
+# 1. Check Alertmanager configuration is valid
+docker exec cdc-alertmanager amtool check-config /etc/alertmanager/alertmanager.yml
+
+# 2. View current alert routing
+docker exec cdc-alertmanager amtool config routes show
+
+# 3. Test a specific alert route (dry run)
+docker exec cdc-alertmanager amtool config routes test \
+  alertname=KafkaConnectHighLag \
+  severity=critical \
+  connector=inventory-connector
+
+# 4. Send a test alert manually
+curl -H "Content-Type: application/json" -d '[{
+  "labels": {
+    "alertname": "TestAlert",
+    "severity": "warning",
+    "connector": "test-connector"
+  },
+  "annotations": {
+    "summary": "This is a test alert",
+    "description": "Testing Alertmanager routing configuration"
+  }
+}]' http://localhost:9093/api/v1/alerts
+
+# 5. Check alert was received
+curl http://localhost:9093/api/v1/alerts
+```
+
+#### Troubleshooting Alert Delivery
+
+**Alerts not showing in Alertmanager:**
+1. Check Prometheus is sending alerts: http://localhost:9090/alerts
+2. Verify Prometheus can reach Alertmanager: check logs with `docker logs cdc-prometheus`
+3. Confirm Alertmanager target is UP in Prometheus: http://localhost:9090/targets
+
+**Alerts not reaching Slack/PagerDuty:**
+1. Check Alertmanager logs: `docker logs cdc-alertmanager`
+2. Verify webhook URL/API key is correct in `alertmanager.yml`
+3. Test network connectivity: `docker exec cdc-alertmanager curl -I https://hooks.slack.com`
+4. Check Alertmanager status page: http://localhost:9093/#/status
+
+**Too many notifications (alert fatigue):**
+1. Increase `repeat_interval` in alert routes
+2. Adjust alert thresholds in `prometheus-alerts.yml`
+3. Add more inhibition rules to suppress related alerts
+4. Increase `group_interval` to batch more alerts together
+
+**Alerts resolved but still getting notifications:**
+1. Check `resolve_timeout` in Alertmanager config (default: 5m)
+2. Verify Prometheus is sending "resolved" notifications
+3. Ensure receivers have `send_resolved: true` (default for most receivers)
 
 ## 🔧 Production Deployment
 

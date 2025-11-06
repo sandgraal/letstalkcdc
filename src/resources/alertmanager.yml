@@ -1,0 +1,201 @@
+global:
+  # Global configuration
+  resolve_timeout: 5m
+  
+  # SMTP configuration for email alerts (optional)
+  # Uncomment and configure to enable email notifications
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alerts@example.com'
+  # smtp_auth_username: 'alerts@example.com'
+  # smtp_auth_password: 'your-app-password'
+  # smtp_require_tls: true
+
+  # Slack webhook URL (optional)
+  # slack_api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+
+  # PagerDuty API URL (default)
+  # pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Templates for customizing alert messages
+templates:
+  - '/etc/alertmanager/template/*.tmpl'
+
+# Route tree for alert dispatch
+route:
+  # Default receiver for unmatched alerts
+  receiver: 'default'
+  
+  # Group alerts by these labels to reduce noise
+  group_by: ['alertname', 'severity', 'connector']
+  
+  # How long to wait before sending the first notification
+  # This allows alerts to group together
+  group_wait: 30s
+  
+  # How long to wait before sending notification about new alerts
+  # added to a group for which an initial notification has been sent
+  group_interval: 5m
+  
+  # How long to wait before re-sending a given alert
+  repeat_interval: 4h
+
+  # Child routes for specific alert types
+  routes:
+    # Route critical alerts to PagerDuty (wakes up on-call)
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      # Continue to also send to other receivers if needed
+      continue: false
+      # Override repeat interval for critical alerts
+      repeat_interval: 1h
+      # Override group_wait for faster critical alert delivery
+      group_wait: 10s
+
+    # Route warning alerts to Slack (business hours follow-up)
+    - match:
+        severity: warning
+      receiver: 'slack-warnings'
+      continue: false
+      repeat_interval: 12h
+      group_wait: 5m
+
+    # Route SLO alerts to a dedicated channel
+    - match_re:
+        slo: '.*'
+      receiver: 'slack-slo'
+      continue: false
+      repeat_interval: 6h
+
+# Inhibition rules to prevent alert spam
+# An alert inhibits another if all label values match
+inhibit_rules:
+  # If connector is down, don't alert on lag or throughput
+  - source_match:
+      alertname: 'KafkaConnectorNotRunning'
+    target_match_re:
+      alertname: 'KafkaConnect(HighLag|LowThroughput|NoOffsetCommits)'
+    equal: ['connector']
+
+  # If high error rate, suppress DLQ volume alerts (same root cause)
+  - source_match:
+      alertname: 'KafkaConnectHighErrorRate'
+    target_match:
+      alertname: 'KafkaConnectDLQVolumeSpike'
+    equal: ['connector']
+
+  # Critical alerts inhibit warning alerts for the same connector
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['connector', 'component']
+
+# Receiver definitions
+receivers:
+  # Default receiver (logs to Alertmanager UI only)
+  - name: 'default'
+    # No external integrations configured
+    # Alerts will appear in Alertmanager web UI at http://localhost:9093
+
+  # PagerDuty receiver for critical alerts
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      # Configure your PagerDuty integration key here
+      # Get this from: PagerDuty > Services > Your Service > Integrations > Events API v2
+      - service_key: '<YOUR_PAGERDUTY_INTEGRATION_KEY>'
+        # Optional: Add custom details to PagerDuty incidents
+        description: '{{ .GroupLabels.alertname }}: {{ .GroupLabels.connector }}'
+        details:
+          severity: '{{ .CommonLabels.severity }}'
+          component: '{{ .CommonLabels.component }}'
+          summary: '{{ .CommonAnnotations.summary }}'
+          description: '{{ .CommonAnnotations.description }}'
+          runbook: '{{ .CommonAnnotations.runbook }}'
+        # Optional: Link back to alert in Prometheus/Grafana
+        client: 'Prometheus'
+        client_url: 'http://localhost:9090/alerts'
+
+  # Slack receiver for warning alerts
+  - name: 'slack-warnings'
+    slack_configs:
+      # Configure your Slack webhook URL
+      # Get this from: Slack > Apps > Incoming Webhooks > Add New Webhook
+      - api_url: '<YOUR_SLACK_WEBHOOK_URL>'
+        channel: '#cdc-alerts-warnings'
+        # Optional: Customize message appearance
+        title: ':warning: {{ .GroupLabels.alertname }}'
+        text: |
+          *Connector:* {{ .GroupLabels.connector }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          
+          {{ .CommonAnnotations.description }}
+        # Optional: Color-code messages (good, warning, danger)
+        color: 'warning'
+        # Optional: Add action buttons
+        actions:
+          - type: button
+            text: 'View in Prometheus'
+            url: 'http://localhost:9090/alerts'
+          - type: button
+            text: 'View in Grafana'
+            url: 'http://localhost:3000'
+
+  # Slack receiver for SLO alerts
+  - name: 'slack-slo'
+    slack_configs:
+      - api_url: '<YOUR_SLACK_WEBHOOK_URL>'
+        channel: '#cdc-slo-tracking'
+        title: ':chart_with_downwards_trend: {{ .GroupLabels.alertname }}'
+        text: |
+          *SLO Type:* {{ .CommonLabels.slo }}
+          *Connector:* {{ .GroupLabels.connector }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          
+          {{ .CommonAnnotations.description }}
+        color: 'warning'
+
+  # Email receiver example (uncomment and configure global SMTP settings above)
+  # - name: 'email-ops'
+  #   email_configs:
+  #     - to: 'ops-team@example.com'
+  #       from: 'alerts@example.com'
+  #       subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+  #       html: |
+  #         <h2>{{ .GroupLabels.alertname }}</h2>
+  #         <p><strong>Severity:</strong> {{ .CommonLabels.severity }}</p>
+  #         <p><strong>Connector:</strong> {{ .GroupLabels.connector }}</p>
+  #         <p><strong>Summary:</strong> {{ .CommonAnnotations.summary }}</p>
+  #         <p>{{ .CommonAnnotations.description }}</p>
+  #       headers:
+  #         Subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+
+  # Webhook receiver example (send to custom webhook endpoint)
+  # - name: 'custom-webhook'
+  #   webhook_configs:
+  #     - url: 'http://your-webhook-endpoint/alerts'
+  #       send_resolved: true
+  #       http_config:
+  #         basic_auth:
+  #           username: 'webhook-user'
+  #           password: 'webhook-password'
+
+# Time-based muting (optional)
+# Useful for maintenance windows or known downtime
+# mute_time_intervals:
+#   - name: 'maintenance-window'
+#     time_intervals:
+#       - times:
+#           - start_time: '02:00'
+#             end_time: '04:00'
+#         weekdays: ['saturday', 'sunday']
+#         months: ['january:december']
+#
+# Then in route:
+# routes:
+#   - match:
+#       severity: warning
+#     receiver: 'slack-warnings'
+#     mute_time_intervals:
+#       - 'maintenance-window'
