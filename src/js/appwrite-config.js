@@ -7,7 +7,7 @@ const appwriteConfig = {
   endpoint: globalScope.APPWRITE_ENDPOINT ?? "",
   project: globalScope.APPWRITE_PROJECT ?? "",
   databaseId: globalScope.APPWRITE_DB_ID ?? "",
-  collectionId: globalScope.COL_ASSISTANT_ID ?? "",
+  collectionId: globalScope.COL_ASSISTANT_ID ?? DEFAULT_ASSISTANT_COLLECTION,
 };
 
 // Only require the core fields (endpoint, project, databaseId) for Appwrite SDK initialization
@@ -48,7 +48,7 @@ if (AppwriteSDK && hasRequiredConfig) {
 export { databases };
 export const dbConfig = {
   databaseId: appwriteConfig.databaseId,
-  collectionId: appwriteConfig.collectionId || DEFAULT_ASSISTANT_COLLECTION,
+  collectionId: appwriteConfig.collectionId,
 };
 export const isAppwriteReady = Boolean(databases);
 export const isAppwriteConfigured = hasRequiredConfig;

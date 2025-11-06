@@ -201,9 +201,9 @@
         window.APPWRITE_ENDPOINT = {{ appwrite.endpoint | dump | safe }};
         window.APPWRITE_PROJECT = {{ appwrite.project | dump | safe }};
         window.APPWRITE_DB_ID = {{ appwrite.databaseId | dump | safe }};
-        {% if appwrite.assistantCollectionId %}
+        {%- if appwrite.assistantCollectionId %}
         window.COL_ASSISTANT_ID = {{ appwrite.assistantCollectionId | dump | safe }};
-        {% endif %}
+        {%- endif %}
       </script>
     {% endif %}
     {% if seriesKey %}
