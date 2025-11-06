@@ -76,8 +76,8 @@ function initQuiz(container) {
         updateScore();
 
         // Track completion event (if tracing is available)
-        if (typeof window.trackInteraction === 'function') {
-          window.trackInteraction('quiz-answer', {
+        if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
+          window._educationTracer.trackInteraction('quiz-answer', {
             quizId: container.dataset.quizId,
             questionIndex,
             correct: isCorrect
@@ -92,8 +92,8 @@ function initQuiz(container) {
     resetButton.addEventListener('click', () => {
       resetQuiz();
       
-      if (typeof window.trackInteraction === 'function') {
-        window.trackInteraction('quiz-reset', {
+      if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
+        window._educationTracer.trackInteraction('quiz-reset', {
           quizId: container.dataset.quizId
         });
       }
@@ -146,8 +146,8 @@ function initQuiz(container) {
     summaryMessageEl.hidden = false;
 
     // Track completion
-    if (typeof window.trackInteraction === 'function') {
-      window.trackInteraction('quiz-complete', {
+    if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
+      window._educationTracer.trackInteraction('quiz-complete', {
         quizId: container.dataset.quizId,
         score,
         total,
