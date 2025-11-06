@@ -346,12 +346,12 @@ head_extra: |
             <em>This page references the following tool versions (last updated: {{ toolVersions.lastUpdated }}):</em>
           </p>
           <ul style="list-style: none; padding-left: 0; font-size: 0.875rem;">
-            {%- if toolVersions.tools.debezium.status !== 'saas' %}
+            {%- if toolVersions.tools.debezium and toolVersions.tools.debezium.status !== 'saas' %}
             <li><strong>Debezium:</strong> v{{ toolVersions.tools.debezium.version }} 
               <a href="{{ toolVersions.tools.debezium.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
             </li>
             {%- endif %}
-            {%- if toolVersions.tools.kafka.status !== 'saas' %}
+            {%- if toolVersions.tools.kafka and toolVersions.tools.kafka.status !== 'saas' %}
             <li><strong>Apache Kafka:</strong> v{{ toolVersions.tools.kafka.version }} 
               <a href="{{ toolVersions.tools.kafka.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
             </li>
@@ -361,19 +361,21 @@ head_extra: |
               <a href="{{ toolVersions.tools.matillion.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
             </li>
             {%- endif %}
-            {%- if toolVersions.tools.awsDms.status !== 'saas' %}
+            {%- if toolVersions.tools.awsDms and toolVersions.tools.awsDms.status !== 'saas' %}
             <li><strong>AWS DMS:</strong> v{{ toolVersions.tools.awsDms.version }} 
               <a href="{{ toolVersions.tools.awsDms.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
             </li>
             {%- endif %}
-            {%- if toolVersions.tools.goldenGate.status !== 'saas' %}
+            {%- if toolVersions.tools.goldenGate and toolVersions.tools.goldenGate.status !== 'saas' %}
             <li><strong>Oracle GoldenGate:</strong> v{{ toolVersions.tools.goldenGate.version }} 
               <a href="{{ toolVersions.tools.goldenGate.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
             </li>
             {%- endif %}
+            {%- if toolVersions.tools.fivetran %}
             <li><strong>Fivetran:</strong> SaaS (rolling updates) 
               <a href="{{ toolVersions.tools.fivetran.releaseNotesUrl }}" target="_blank" rel="noopener">changelog</a>
             </li>
+            {%- endif %}
           </ul>
           <p style="margin-top: 1rem; font-size: 0.8rem; color: #9ca3af;">
             <em>Note: Tool versions are tracked for reference and updated quarterly. 

@@ -56,14 +56,25 @@ async function loadToolVersions() {
   }
 }
 
+const TOOL_DISPLAY_NAMES = {
+  debezium: "Debezium",
+  kafka: "Apache Kafka",
+  kafkaConnect: "Kafka Connect",
+  matillion: "Matillion",
+  awsDms: "AWS DMS",
+  fivetran: "Fivetran",
+  goldenGate: "Oracle GoldenGate"
+};
+
 function generateToolChecks(tools) {
   return Object.entries(tools)
     .map(([key, tool]) => {
+      const displayName = TOOL_DISPLAY_NAMES[key] || key;
       const versionDisplay = tool.status === "saas" 
         ? "(SaaS - rolling updates)" 
         : `v${tool.version} (${tool.releaseDate})`;
       
-      return `### ${key}
+      return `### ${displayName}
 - Current tracked version: ${versionDisplay}
 - Release notes: ${tool.releaseNotesUrl}
 - [ ] Check for new releases

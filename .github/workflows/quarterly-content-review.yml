@@ -28,8 +28,12 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add ai/reviews/ ai/logs/
-          git diff-index --quiet HEAD || git commit -m "chore: quarterly content review checklist [automated]"
-          git push
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: quarterly content review checklist [automated]"
+            git push
+          fi
       
       - name: Create issue for review
         uses: actions/github-script@v7
