@@ -1414,6 +1414,16 @@ onReady(() => {
           copyButton.textContent = "Copied!";
           copyButton.setAttribute("data-copied", "true");
 
+          // Show success toast
+          if (window.showToast) {
+            window.showToast({
+              title: "Code copied!",
+              message: `${language} code copied to clipboard`,
+              type: "success",
+              duration: 2000,
+            });
+          }
+
           // Track code copy interaction
           try {
             const blockId = `code-${language.toLowerCase()}-${Math.random()
@@ -1431,6 +1441,16 @@ onReady(() => {
         } catch (error) {
           console.error("Failed to copy code:", error);
           copyButton.textContent = "Failed";
+
+          // Show error toast
+          if (window.showToast) {
+            window.showToast({
+              title: "Copy failed",
+              message: "Unable to copy code to clipboard",
+              type: "error",
+              duration: 3000,
+            });
+          }
 
           setTimeout(() => {
             copyButton.textContent = "Copy";
@@ -1522,3 +1542,109 @@ onReady(() => {
 
   syncRemoteProgress();
 });
+
+// Toast Notification System
+const createToastContainer = () => {
+  let container = doc.querySelector(".toast-container");
+  if (!container) {
+    container = doc.createElement("div");
+    container.className = "toast-container";
+    doc.body.appendChild(container);
+  }
+  return container;
+};
+
+const showToast = (options = {}) => {
+  const {
+    title = "",
+    message = "",
+    type = "info", // info, success, warning, error, loading
+    duration = 5000,
+    actions = [],
+    onClose = null,
+  } = options;
+
+  const container = createToastContainer();
+
+  const toast = doc.createElement("div");
+  toast.className = `toast toast-${type}`;
+
+  const icon = doc.createElement("div");
+  icon.className = "toast-icon";
+
+  const content = doc.createElement("div");
+  content.className = "toast-content";
+
+  if (title) {
+    const titleEl = doc.createElement("div");
+    titleEl.className = "toast-title";
+    titleEl.textContent = title;
+    content.appendChild(titleEl);
+  }
+
+  if (message) {
+    const messageEl = doc.createElement("p");
+    messageEl.className = "toast-message";
+    messageEl.textContent = message;
+    content.appendChild(messageEl);
+  }
+
+  if (actions.length > 0) {
+    const actionsEl = doc.createElement("div");
+    actionsEl.className = "toast-actions";
+    actions.forEach((action) => {
+      const btn = doc.createElement("button");
+      btn.className = `toast-action toast-action-${
+        action.variant || "primary"
+      }`;
+      btn.textContent = action.label;
+      btn.onclick = () => {
+        if (action.onClick) action.onClick();
+        removeToast(toast);
+      };
+      actionsEl.appendChild(btn);
+    });
+    content.appendChild(actionsEl);
+  }
+
+  const closeBtn = doc.createElement("button");
+  closeBtn.className = "toast-close";
+  closeBtn.innerHTML = "×";
+  closeBtn.setAttribute("aria-label", "Close notification");
+  closeBtn.onclick = () => removeToast(toast);
+
+  toast.appendChild(icon);
+  toast.appendChild(content);
+  toast.appendChild(closeBtn);
+
+  // Add progress bar for auto-dismiss
+  if (duration > 0 && type !== "loading") {
+    const progress = doc.createElement("div");
+    progress.className = "toast-progress";
+    progress.style.animationDuration = `${duration}ms`;
+    toast.appendChild(progress);
+  }
+
+  container.appendChild(toast);
+
+  // Auto-dismiss
+  if (duration > 0 && type !== "loading") {
+    setTimeout(() => removeToast(toast), duration);
+  }
+
+  return toast;
+};
+
+const removeToast = (toast) => {
+  toast.classList.add("toast-removing");
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.parentElement.removeChild(toast);
+    }
+  }, 300);
+};
+
+// Export toast function globally
+if (typeof window !== "undefined") {
+  window.showToast = showToast;
+}
