@@ -212,8 +212,8 @@ groups:
 
       - alert: KafkaConnectBatchProcessingSlowing
         expr: |
-          rate(kafka_connect_connector_task_metrics_batch_size_avg[5m]) > 
-          (avg_over_time(rate(kafka_connect_connector_task_metrics_batch_size_avg[1h])[30m:1m]) * 2)
+          kafka_connect_connector_task_metrics_batch_size_avg > 
+          (avg_over_time(kafka_connect_connector_task_metrics_batch_size_avg[1h]) * 2)
         for: 15m
         labels:
           severity: warning
@@ -241,9 +241,8 @@ groups:
       - alert: KafkaConnectFreshnessSLOBreach
         expr: |
           (
-            histogram_quantile(0.99, 
-              rate(kafka_connect_source_connector_metrics_source_record_poll_total[5m])
-            ) 
+            kafka_connect_source_connector_metrics_source_record_poll_total - 
+            kafka_connect_sink_connector_metrics_sink_record_send_total
           ) > 300000
         for: 10m
         labels:

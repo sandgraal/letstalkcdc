@@ -59,14 +59,15 @@ Download all files from the `/downloads/` directory:
 # Create a directory for your CDC monitoring setup
 mkdir cdc-monitoring && cd cdc-monitoring
 
-# Download all required files
-curl -O https://yoursite.com/downloads/docker-compose-observability.yml
-curl -O https://yoursite.com/downloads/prometheus.yml
-curl -O https://yoursite.com/downloads/prometheus-alerts.yml
-curl -O https://yoursite.com/downloads/jmx-exporter-config.yml
-curl -O https://yoursite.com/downloads/grafana-datasources.yml
-curl -O https://yoursite.com/downloads/grafana-dashboards.yml
-curl -O https://yoursite.com/downloads/grafana-kafka-connect-dashboard.json
+# Download all required files from the repository
+# Replace with your actual site URL or use the GitHub raw URLs
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/docker-compose-observability.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus-alerts.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/jmx-exporter-config.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/grafana-datasources.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/grafana-dashboards.yml
+curl -O https://sandgraal.github.io/letstalkcdc/downloads/grafana-kafka-connect-dashboard.json
 ```
 
 ### Step 2: Start the Stack
