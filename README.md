@@ -83,10 +83,10 @@ The site is built with progressive enhancement — core features work immediatel
 
 ### Serverless Function Hosting
 
-- Progress is now stored locally in the browser—no serverless function is required. See [docs/HOSTING.md](docs/HOSTING.md) for:
+- Progress is now stored locally in the browser—no serverless function is required for core site features.
 
 - Detailed deployment instructions
-- Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify)
+- **Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify) are only needed for advanced integrations (e.g., Appwrite, feedback collection) or legacy features. Most users do not need to deploy a serverless function.**
 - Environment variable configuration
 - Custom domain setup
 - Migration guides

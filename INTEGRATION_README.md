@@ -17,7 +17,7 @@
 | `src/assets/js/local-progress.js` | Tracks module completion, visits, and badges in `localStorage`. |
 | `src/assets/js/progress-ui.js` | Updates visual indicators (global progress bar, completion badges, completion button). |
 | `src/_includes/components/series-nav.njk` | Renders the journey toolbar without authentication controls. |
-| `src/scripts/dashboard.js` | Renders charts using the locally cached dashboard data. |
+| `scripts/dashboard.js` | Renders charts using the locally cached dashboard data. |
 
 ## Optional: Appwrite for assistant feedback
 

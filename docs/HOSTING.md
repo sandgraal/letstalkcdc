@@ -103,7 +103,7 @@ Before considering a deployment complete:
 
 ## Decision Log
 
-**Date**: 2025-11-01 (updated 2026-XX-XX)
+**Date**: 2025-11-01 (updated 2025-11-25)
 
 **Decision**: Continue using **GitHub Pages** for static site hosting. Retire the `migrateUser` serverless function and GitHub OAuth flow—progress remains local by design.
 
