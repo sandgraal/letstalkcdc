@@ -13,7 +13,10 @@
     "smoke": "npm run smoke:core && npm run smoke:a11y && npm run smoke:perf",
     "serve": "eleventy --config=eleventy.config.cjs --serve",
     "dev": "npm run serve",
-    "a11y": "pa11y-ci"
+    "a11y": "pa11y-ci",
+    "verify:deployment": "node scripts/deployment-verify.mjs",
+    "agent:analytics": "node ai/scripts/analytics.mjs",
+    "agent:package": "node ai/scripts/package-render.mjs"
   },
   "devDependencies": {
     "@11ty/eleventy": "^2.0.1",

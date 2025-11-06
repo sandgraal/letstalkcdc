@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       agent:
-        description: 'Run a specific agent (content, image, packaging, data, analytics, link-check)'
+        description: "Run a specific agent (content, image, packaging, data, analytics, link-check)"
         required: false
-        default: 'all'
+        default: "all"
   schedule:
-    - cron: '0 3 * * *' # daily at 03:00 UTC
+    - cron: "0 3 * * *" # daily at 03:00 UTC
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Detect package.json and build script
         id: detect
@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
           cache: npm
       - name: Install dependencies
         if: ${{ needs.setup.outputs.has_pkg == 'true' }}
@@ -126,7 +126,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
           cache: npm
       - name: Install dependencies
         if: ${{ needs.setup.outputs.has_pkg == 'true' }}
@@ -134,12 +134,12 @@ jobs:
       - name: Build site
         if: ${{ needs.setup.outputs.has_build == 'true' }}
         env:
-          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
-          SITE_HOST: ${{ vars.SITE_HOST }}
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '' }}
+          SITE_HOST: ${{ vars.SITE_HOST || 'https://letstalkcdc.github.io' }}
         run: npm run build
       - name: Check for broken links
         env:
-          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '' }}
         run: node ai/scripts/link-check.mjs
       - name: Log run
         if: always()
