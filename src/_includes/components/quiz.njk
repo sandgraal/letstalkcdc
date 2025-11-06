@@ -29,7 +29,7 @@
                   name="{{ questionId }}"
                   value="{{ loop.index }}"
                   class="option-input"
-                  {% if loop.index == question.correct %}data-correct="true"{% endif %}
+                  {% if loop.index == (question.correct | int) %}data-correct="true"{% endif %}
                 >
                 <label for="{{ optionId }}" class="option-label">
                   <span class="option-letter">{{ ['A', 'B', 'C', 'D', 'E'][loop.index - 1] }}</span>
