@@ -54,9 +54,11 @@ eleventyComputed:
     </script>
 scripts:
   - "/assets/js/pages/intro.js"
+  - "/assets/js/lib/quiz.js"
 ---
 
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -805,6 +807,8 @@ COMMIT;</code></pre>
           </article>
       </div>
     </section>
+
+    {{ quizMacro.quiz(quizConfig) | safe }}
 
     <section class="next-steps" id="choose-next" aria-labelledby="choose-next-title">
       <h2 id="choose-next-title">Choose your next step</h2>

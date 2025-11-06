@@ -3,6 +3,9 @@
    World-Class Design & Polish
    ============================================================= */
 
+/* Import sub-components */
+@import "components/quiz.css";
+
 /* Buttons - Modern, sophisticated */
 .button {
   display: inline-flex;
