@@ -104,6 +104,39 @@ canonicalPath: "/ops-offsets/"
   <section id="drills" aria-labelledby="drills-title">
     <h2 id="drills-title">Replay drills</h2>
     <details open>
+      <summary>Offset backup commands</summary>
+      <p class="muted">
+        Before attempting any offset manipulation, back up the current state.
+        The offset storage topic name is configured via <code>OFFSET_STORAGE_TOPIC</code>
+        in Kafka Connect (defaults to <code>connect-offsets</code> in the Debezium image).
+      </p>
+      <pre><code class="language-bash"># Discover your offset topic name from the Connect worker config
+curl -s http://localhost:8083/ | jq -r '.kafka_cluster_id'
+# or inspect container environment:
+docker compose exec connect env | grep OFFSET_STORAGE_TOPIC
+
+# Dump all offsets to a JSON file (use the actual topic name)
+kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic connect-offsets \
+  --from-beginning --timeout-ms 5000 \
+  --property print.key=true \
+  --property print.offset=true \
+  --property print.timestamp=true \
+  > offsets-backup-$(date +%Y%m%d-%H%M%S).json
+
+# Verify backup contains data
+wc -l offsets-backup-*.json
+tail -5 offsets-backup-*.json</code></pre>
+      <p class="callout">
+        <strong>Topic name matters:</strong> The standard topic name is
+        <code>connect-offsets</code>, which is used by both the main
+        <a href="https://github.com/sandgraal/letstalkcdc/blob/main/compose.yaml">compose.yaml</a>
+        and the <a href="/lab-kafka-debezium/">lab tutorial</a>.
+        Always verify the topic name in your deployment's Connect configuration
+        before dumping offsets to avoid an empty backup.
+      </p>
+    </details>
+    <details>
       <summary>Quarterly dry run</summary>
       <ul>
         <li>Pick a connector and simulate a failure that requires rewind.</li>

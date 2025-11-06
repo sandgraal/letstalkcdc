@@ -89,9 +89,9 @@ services:
     environment:
       BOOTSTRAP_SERVERS: 'kafka:29092'
       GROUP_ID: 1
-      CONFIG_STORAGE_TOPIC: my_connect_configs
-      OFFSET_STORAGE_TOPIC: my_connect_offsets
-      STATUS_STORAGE_TOPIC: my_connect_statuses
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
 
   postgres-sink:
     image: debezium/postgres:14
@@ -105,6 +105,7 @@ services:
       - POSTGRES_DB=warehouse
                     </code></pre>
                     <p><strong>Security Note:</strong> This lab uses hardcoded credentials for simplicity. In production environments, use environment variables, Docker secrets, or a secrets management solution like HashiCorp Vault to protect sensitive information.</p>
+                    <p><strong>Configuration Note:</strong> The Connect worker uses <code>connect-configs</code>, <code>connect-offsets</code>, and <code>connect-status</code> as Kafka topic names for storing connector configurations, offsets, and status. These are the default topic names used by Debezium Connect. When backing up or inspecting offsets for operational purposes, you'll reference the <code>connect-offsets</code> topic.</p>
                 </li>
                 <li>
                     <h3>Start the Services</h3>
