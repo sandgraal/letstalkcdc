@@ -147,6 +147,18 @@ To add a new agent:
 5. **Use logging** via `ai/scripts/log-agent-run.mjs` for status tracking
 6. **Ensure reversibility** - all changes should be revertable via Git history
 
+## Lightweight Assistant Knowledge Base
+
+The conversational helper ships with a curated YAML knowledge base at `src/data/assistant.yml`.
+
+- Follow the existing intent structure when adding content (`id`, `triggers`, `answer`, and optional `links`).
+- Keep `triggers` short and action-oriented so substring matching works reliably.
+- Prefer internal documentation URLs when possible; external links should be vetted for long-term stability.
+- Run `npm run build` (or `npm run smoke:core`) to regenerate `_site/data/assistant.json` and ensure the smoke test passes.
+- Mention significant knowledge-base updates in the pull request summary so reviewers can validate the new guidance.
+
+> Tip: if an intent is substantially AI-authored, add `ai-generated: true` to its YAML block to maintain transparency.
+
 ## Security & Privacy
 
 - Agents run in GitHub Actions environment with controlled permissions
