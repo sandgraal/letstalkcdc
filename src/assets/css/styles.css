@@ -54,6 +54,7 @@
   --accent-primary: #38bdf8;
   --accent-hover: #0ea5e9;
   --accent-light: rgba(56, 189, 248, 0.12);
+  --accent-shadow: rgba(56, 189, 248, 0.3);
 
   /* Feedback */
   --success-color: #34d399;
@@ -106,6 +107,7 @@
   --accent-primary: #38bdf8;
   --accent-hover: #0ea5e9;
   --accent-light: rgba(56, 189, 248, 0.12);
+  --accent-shadow: rgba(56, 189, 248, 0.3);
   --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.45);
   --shadow-elevated: 0 30px 80px rgba(0, 0, 0, 0.55);
 }
@@ -121,6 +123,7 @@
   --accent-primary: #0d9488;
   --accent-hover: #0f766e;
   --accent-light: #f0fdfa;
+  --accent-shadow: rgba(13, 148, 136, 0.3);
   --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.06);
   --shadow-elevated: 0 18px 48px rgba(15, 23, 42, 0.14);
 }
@@ -2083,5 +2086,5 @@ pre > .theme-toggle {
 .button-primary:hover {
   background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 4px 12px var(--accent-shadow);
 }

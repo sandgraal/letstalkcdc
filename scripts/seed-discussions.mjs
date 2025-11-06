@@ -273,7 +273,7 @@ async function discussionExists(title) {
     }
   `;
 
-  const searchQuery = `repo:${REPO_OWNER}/${REPO_NAME} "${title}" in:title`;
+  const searchQuery = `repo:${REPO_OWNER}/${REPO_NAME} "${title.replace(/"/g, '\\"')}" in:title`;
 
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
