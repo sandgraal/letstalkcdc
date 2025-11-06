@@ -2076,7 +2076,7 @@ pre > .theme-toggle {
   display: inline-block;
   padding: 0.75rem 1.5rem;
   background: var(--accent-primary);
-  color: var(--text-primary);
+  color: #ffffff;
   border-radius: 0.5rem;
   text-decoration: none;
   font-weight: 600;

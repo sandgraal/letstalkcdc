@@ -273,7 +273,9 @@ async function discussionExists(title) {
     }
   `;
 
-  const searchQuery = `repo:${REPO_OWNER}/${REPO_NAME} "${title.replace(/"/g, '\\"')}" in:title`;
+  // Sanitize title for search query by escaping special characters
+  const sanitizedTitle = title.replace(/["\\]/g, '\\$&');
+  const searchQuery = `repo:${REPO_OWNER}/${REPO_NAME} "${sanitizedTitle}" in:title`;
 
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
