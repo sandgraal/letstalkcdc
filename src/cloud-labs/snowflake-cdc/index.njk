@@ -1,0 +1,607 @@
+---
+layout: base.njk
+title: "Snowflake CDC with Kafka Connect Lab | CDC: The Missing Manual"
+description: "Learn to stream CDC data into Snowflake using Kafka Connect and Snowpipe for real-time data warehousing."
+canonicalPath: "/cloud-labs/snowflake-cdc/"
+ai-generated: true
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section class="box" id="overview">
+    <h2>Overview</h2>
+    <p>
+      Snowflake is a cloud data warehouse that excels at analytics workloads. Integrating CDC with Snowflake enables near-real-time analytics on operational data. This lab covers two primary approaches:
+    </p>
+    <ol>
+      <li><strong>Kafka Connect with Snowflake Sink Connector:</strong> Stream CDC events from Kafka topics directly into Snowflake tables</li>
+      <li><strong>Snowpipe:</strong> Automatically ingest CDC files from cloud storage (S3, Azure Blob, GCS) as they arrive</li>
+    </ol>
+    <p>
+      <strong>Key advantages:</strong>
+    </p>
+    <ul>
+      <li>Zero management of data warehouse infrastructure</li>
+      <li>Automatic scaling based on workload</li>
+      <li>Native support for semi-structured data (JSON, Avro, Parquet)</li>
+      <li>Time Travel for historical queries</li>
+      <li>Separation of compute and storage for cost optimization</li>
+    </ul>
+  </section>
+
+  <section class="box" id="prereqs">
+    <h2>Prerequisites</h2>
+    <ul class="checklist">
+      <li><strong>Snowflake Account:</strong> Trial account available (free for 30 days with $400 credit)</li>
+      <li><strong>Kafka Cluster:</strong> Running Debezium or CDC source connector</li>
+      <li><strong>Kafka Connect:</strong> For Snowflake Sink Connector approach</li>
+      <li><strong>Cloud Storage:</strong> S3, Azure Blob, or GCS (for Snowpipe approach)</li>
+      <li><strong>SnowSQL:</strong> Snowflake CLI tool (optional but recommended)</li>
+    </ul>
+  </section>
+
+  <section class="box" id="architecture">
+    <h2>Architecture Options</h2>
+    
+    <h3>Option 1: Kafka Connect → Snowflake (Recommended for Kafka users)</h3>
+    <pre><code>┌──────────────┐      ┌──────────────┐      ┌─────────────┐
+│   MySQL      │─────▶│  Debezium    │─────▶│   Kafka     │
+│  (Source)    │      │  Connector   │      │   Topics    │
+└──────────────┘      └──────────────┘      └──────┬──────┘
+                                                    │
+                                                    │
+                      ┌──────────────┐              │
+                      │  Snowflake   │◀─────────────┘
+                      │    Sink      │
+                      │  Connector   │
+                      └──────┬───────┘
+                             │
+                             ▼
+                      ┌──────────────┐
+                      │  Snowflake   │
+                      │   Tables     │
+                      └──────────────┘</code></pre>
+
+    <h3>Option 2: CDC Files → Snowpipe (For file-based CDC)</h3>
+    <pre><code>┌──────────────┐      ┌──────────────┐      ┌─────────────┐
+│   MySQL      │─────▶│  AWS DMS /   │─────▶│     S3      │
+│  (Source)    │      │  Fivetran    │      │   Bucket    │
+└──────────────┘      └──────────────┘      └──────┬──────┘
+                                                    │
+                                                    │ (Event)
+                      ┌──────────────┐              │
+                      │  Snowpipe    │◀─────────────┘
+                      │  (Auto)      │
+                      └──────┬───────┘
+                             │
+                             ▼
+                      ┌──────────────┐
+                      │  Snowflake   │
+                      │   Tables     │
+                      └──────────────┘</code></pre>
+  </section>
+
+  <section class="box" id="setup-kafka">
+    <h2>Setup: Kafka Connect + Snowflake Sink</h2>
+    
+    <h3>Step 1: Create Snowflake Objects</h3>
+    <p>First, set up database, schema, user, and role for CDC ingestion.</p>
+    <pre><code>-- Connect to Snowflake (SnowSQL or web UI)
+USE ROLE ACCOUNTADMIN;
+
+-- Create database and schema
+CREATE DATABASE IF NOT EXISTS CDC_DB;
+CREATE SCHEMA IF NOT EXISTS CDC_DB.CDC_SCHEMA;
+
+-- Create warehouse for loading
+CREATE WAREHOUSE IF NOT EXISTS CDC_WH 
+  WITH WAREHOUSE_SIZE = 'XSMALL' 
+  AUTO_SUSPEND = 60 
+  AUTO_RESUME = TRUE
+  INITIALLY_SUSPENDED = TRUE;
+
+-- Create role and user for Kafka Connect
+CREATE ROLE IF NOT EXISTS CDC_ROLE;
+GRANT USAGE ON WAREHOUSE CDC_WH TO ROLE CDC_ROLE;
+GRANT USAGE ON DATABASE CDC_DB TO ROLE CDC_ROLE;
+GRANT USAGE ON SCHEMA CDC_DB.CDC_SCHEMA TO ROLE CDC_ROLE;
+GRANT CREATE TABLE ON SCHEMA CDC_DB.CDC_SCHEMA TO ROLE CDC_ROLE;
+GRANT CREATE STAGE ON SCHEMA CDC_DB.CDC_SCHEMA TO ROLE CDC_ROLE;
+GRANT CREATE PIPE ON SCHEMA CDC_DB.CDC_SCHEMA TO ROLE CDC_ROLE;
+
+-- Create user with key-pair authentication (recommended)
+CREATE USER IF NOT EXISTS kafka_connector_user
+  DEFAULT_ROLE = CDC_ROLE
+  DEFAULT_WAREHOUSE = CDC_WH
+  DEFAULT_NAMESPACE = CDC_DB.CDC_SCHEMA
+  COMMENT = 'User for Kafka Connect Snowflake Sink';
+
+GRANT ROLE CDC_ROLE TO USER kafka_connector_user;</code></pre>
+
+    <h3>Step 2: Generate Key-Pair for Authentication</h3>
+    <p>For production, use key-pair authentication instead of passwords.</p>
+    <pre><code># Generate private key
+openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt
+
+# Generate public key
+openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub
+
+# Get public key value (remove header/footer, join lines)
+cat rsa_key.pub | grep -v "BEGIN PUBLIC" | grep -v "END PUBLIC" | tr -d '\n'
+
+# Assign public key to Snowflake user
+ALTER USER kafka_connector_user SET RSA_PUBLIC_KEY='MIIBIjANBg...';</code></pre>
+
+    <h3>Step 3: Install Snowflake Kafka Connector</h3>
+    <pre><code># Download latest connector from Snowflake
+wget https://repo1.maven.org/maven2/com/snowflake/snowflake-kafka-connector/1.9.3/snowflake-kafka-connector-1.9.3.jar
+
+# Copy to Kafka Connect plugins directory
+mkdir -p /opt/kafka/plugins/snowflake-connector
+cp snowflake-kafka-connector-1.9.3.jar /opt/kafka/plugins/snowflake-connector/
+
+# Restart Kafka Connect to load plugin
+docker-compose restart connect
+# Or: systemctl restart kafka-connect</code></pre>
+
+    <h3>Step 4: Configure Snowflake Sink Connector</h3>
+    <p>Create <code>snowflake-sink-config.json</code>:</p>
+    <pre><code>{
+  "name": "snowflake-sink-connector",
+  "config": {
+    "connector.class": "com.snowflake.kafka.connector.SnowflakeSinkConnector",
+    "tasks.max": "2",
+    
+    "topics": "dbserver1.inventory.customers,dbserver1.inventory.orders",
+    
+    "snowflake.url.name": "https://myaccount.snowflakecomputing.com:443",
+    "snowflake.user.name": "kafka_connector_user",
+    "snowflake.private.key": "MIIEvQIBADANBgkqhkiG...",
+    "snowflake.database.name": "CDC_DB",
+    "snowflake.schema.name": "CDC_SCHEMA",
+    
+    "buffer.count.records": "10000",
+    "buffer.flush.time": "60",
+    "buffer.size.bytes": "10000000",
+    
+    "snowflake.topic2table.map": "dbserver1.inventory.customers:CUSTOMERS,dbserver1.inventory.orders:ORDERS",
+    
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "true",
+    
+    "snowflake.metadata.createtime": "true",
+    "snowflake.metadata.topic": "true",
+    "snowflake.metadata.offset.and.partition": "true",
+    
+    "errors.tolerance": "all",
+    "errors.log.enable": "true",
+    "errors.deadletterqueue.topic.name": "dlq.snowflake",
+    "errors.deadletterqueue.context.headers.enable": "true"
+  }
+}</code></pre>
+
+    <h3>Step 5: Deploy the Connector</h3>
+    <pre><code># Deploy via REST API
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" \
+  http://localhost:8083/connectors/ -d @snowflake-sink-config.json
+
+# Check connector status
+curl http://localhost:8083/connectors/snowflake-sink-connector/status | jq
+
+# View connector tasks
+curl http://localhost:8083/connectors/snowflake-sink-connector/tasks | jq</code></pre>
+
+    <h3>Step 6: Verify Data in Snowflake</h3>
+    <pre><code>-- Check that tables were created
+USE SCHEMA CDC_DB.CDC_SCHEMA;
+SHOW TABLES;
+
+-- Query data from customers table
+SELECT * FROM CUSTOMERS LIMIT 10;
+
+-- Check metadata columns
+SELECT 
+  RECORD_METADATA$FILENAME as source_file,
+  RECORD_METADATA$FILE_ROW_NUMBER as row_number,
+  RECORD_CONTENT
+FROM CUSTOMERS;
+
+-- Parse JSON content (Snowflake stores Kafka messages as VARIANT)
+SELECT 
+  RECORD_CONTENT:payload:after:id::INT as customer_id,
+  RECORD_CONTENT:payload:after:name::STRING as customer_name,
+  RECORD_CONTENT:payload:after:email::STRING as email,
+  RECORD_CONTENT:payload:op::STRING as operation
+FROM CUSTOMERS
+WHERE RECORD_CONTENT:payload:op::STRING = 'c' -- inserts only
+LIMIT 10;</code></pre>
+  </section>
+
+  <section class="box" id="snowpipe">
+    <h2>Setup: Snowpipe for File-Based CDC</h2>
+    
+    <h3>Step 1: Create External Stage</h3>
+    <p>Configure Snowflake to access your S3 bucket with CDC files.</p>
+    <pre><code>-- Create storage integration (one-time setup)
+USE ROLE ACCOUNTADMIN;
+
+CREATE STORAGE INTEGRATION s3_cdc_integration
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = S3
+  ENABLED = TRUE
+  STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake-s3-role'
+  STORAGE_ALLOWED_LOCATIONS = ('s3://my-cdc-bucket/cdc-data/');
+
+-- Get AWS IAM user for Snowflake (for trust policy)
+DESC STORAGE INTEGRATION s3_cdc_integration;
+-- Note STORAGE_AWS_IAM_USER_ARN and STORAGE_AWS_EXTERNAL_ID
+
+-- Create external stage
+USE SCHEMA CDC_DB.CDC_SCHEMA;
+
+CREATE STAGE s3_cdc_stage
+  URL = 's3://my-cdc-bucket/cdc-data/'
+  STORAGE_INTEGRATION = s3_cdc_integration
+  FILE_FORMAT = (TYPE = 'PARQUET');
+
+-- Test stage connection
+LIST @s3_cdc_stage;</code></pre>
+
+    <h3>Step 2: Configure AWS IAM Trust Policy</h3>
+    <p>Allow Snowflake to assume role to read S3 bucket:</p>
+    <pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::123456789012:user/abc12345-s"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "ABC123_SFCRole=1_xyz789=="
+        }
+      }
+    }
+  ]
+}</code></pre>
+
+    <h3>Step 3: Create Target Table</h3>
+    <pre><code>CREATE TABLE customers_cdc (
+  id INTEGER,
+  name STRING,
+  email STRING,
+  created_at TIMESTAMP,
+  cdc_operation STRING,
+  cdc_timestamp TIMESTAMP,
+  -- Metadata columns
+  load_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+  source_file STRING
+);</code></pre>
+
+    <h3>Step 4: Create Snowpipe</h3>
+    <pre><code>CREATE PIPE customers_cdc_pipe
+  AUTO_INGEST = TRUE
+  AWS_SNS_TOPIC = 'arn:aws:sns:us-east-1:123456789012:s3-cdc-notifications'
+AS
+COPY INTO customers_cdc (id, name, email, created_at, cdc_operation, cdc_timestamp, source_file)
+FROM (
+  SELECT 
+    $1:id::INTEGER,
+    $1:name::STRING,
+    $1:email::STRING,
+    $1:created_at::TIMESTAMP,
+    $1:Op::STRING,
+    $1:cdc_timestamp::TIMESTAMP,
+    METADATA$FILENAME
+  FROM @s3_cdc_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+ON_ERROR = 'CONTINUE';
+
+-- Get notification channel ARN for S3 event configuration
+SHOW PIPES;
+SELECT SYSTEM$PIPE_STATUS('customers_cdc_pipe');</code></pre>
+
+    <h3>Step 5: Configure S3 Event Notifications</h3>
+    <p>Set up S3 to notify Snowpipe when new files arrive:</p>
+    <pre><code># AWS CLI: Configure S3 bucket notification
+aws s3api put-bucket-notification-configuration \
+  --bucket my-cdc-bucket \
+  --notification-configuration file://s3-notification.json
+
+# s3-notification.json
+{
+  "QueueConfigurations": [
+    {
+      "Id": "snowpipe-cdc-events",
+      "QueueArn": "arn:aws:sqs:us-east-1:123456789012:sf-snowpipe-ABCD1234",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "cdc-data/"
+            },
+            {
+              "Name": "suffix",
+              "Value": ".parquet"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}</code></pre>
+
+    <h3>Step 6: Test Snowpipe</h3>
+    <pre><code>-- Upload test file to S3 to trigger ingestion
+-- Then check pipe status
+SELECT SYSTEM$PIPE_STATUS('customers_cdc_pipe');
+
+-- View load history
+SELECT * FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(
+  TABLE_NAME => 'CUSTOMERS_CDC',
+  START_TIME => DATEADD(hours, -1, CURRENT_TIMESTAMP())
+));
+
+-- Query loaded data
+SELECT COUNT(*) FROM customers_cdc;
+SELECT * FROM customers_cdc ORDER BY load_timestamp DESC LIMIT 10;</code></pre>
+  </section>
+
+  <section class="box" id="materialization">
+    <h2>Materializing CDC Events</h2>
+    <p>
+      Raw CDC events contain operations (INSERT, UPDATE, DELETE). To build a current state table, apply MERGE logic:
+    </p>
+    <pre><code>-- Create current state table
+CREATE TABLE customers_current (
+  id INTEGER PRIMARY KEY,
+  name STRING,
+  email STRING,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+
+-- Merge CDC events (run periodically or via task)
+MERGE INTO customers_current AS target
+USING (
+  SELECT 
+    RECORD_CONTENT:payload:after:id::INT as id,
+    RECORD_CONTENT:payload:after:name::STRING as name,
+    RECORD_CONTENT:payload:after:email::STRING as email,
+    RECORD_CONTENT:payload:after:created_at::TIMESTAMP as created_at,
+    RECORD_CONTENT:payload:ts_ms::TIMESTAMP as updated_at,
+    RECORD_CONTENT:payload:op::STRING as op
+  FROM CUSTOMERS
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1
+) AS source
+ON target.id = source.id
+WHEN MATCHED AND source.op = 'd' THEN DELETE
+WHEN MATCHED THEN UPDATE SET
+  target.name = source.name,
+  target.email = source.email,
+  target.updated_at = source.updated_at
+WHEN NOT MATCHED AND source.op != 'd' THEN INSERT (
+  id, name, email, created_at, updated_at
+) VALUES (
+  source.id, source.name, source.email, source.created_at, source.updated_at
+);</code></pre>
+
+    <h3>Automate with Snowflake Tasks</h3>
+    <pre><code>-- Create task to materialize every 5 minutes
+CREATE TASK materialize_customers_cdc
+  WAREHOUSE = CDC_WH
+  SCHEDULE = '5 MINUTE'
+AS
+MERGE INTO customers_current AS target
+USING (
+  -- Same MERGE logic as above
+) AS source
+ON target.id = source.id
+...;
+
+-- Enable task
+ALTER TASK materialize_customers_cdc RESUME;
+
+-- Monitor task history
+SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
+  TASK_NAME => 'MATERIALIZE_CUSTOMERS_CDC',
+  SCHEDULED_TIME_RANGE_START => DATEADD(hour, -24, CURRENT_TIMESTAMP())
+));</code></pre>
+  </section>
+
+  <section class="box" id="gotchas">
+    <h2>Snowflake-Specific Gotchas</h2>
+    
+    <div class="callout callout-warning">
+      <h4>1. VARIANT Storage Overhead</h4>
+      <p>
+        <strong>Issue:</strong> Kafka messages stored as VARIANT consume more storage than native columns.
+      </p>
+      <p>
+        <strong>Solution:</strong> Materialize frequently queried fields into typed columns. Use VARIANT only for flexible/nested data.
+      </p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>2. Warehouse Auto-Suspend</h4>
+      <p>
+        <strong>Issue:</strong> Snowflake Sink Connector fails intermittently due to warehouse suspended.
+      </p>
+      <p>
+        <strong>Solution:</strong> Set <code>AUTO_RESUME = TRUE</code> on warehouse. Configure connector with retry logic.
+      </p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>3. Key-Pair Authentication Rotation</h4>
+      <p>
+        <strong>Issue:</strong> Connector stops working after key rotation.
+      </p>
+      <p>
+        <strong>Solution:</strong> Snowflake supports dual key pairs. Add new key first, update connector, then remove old key:
+      </p>
+      <pre><code>-- Add second public key (key rotation grace period)
+ALTER USER kafka_connector_user SET RSA_PUBLIC_KEY_2='NEW_KEY...';
+
+-- After connector updated, remove old key
+ALTER USER kafka_connector_user UNSET RSA_PUBLIC_KEY;</code></pre>
+    </div>
+
+    <div class="callout callout-info">
+      <h4>4. Snowpipe Credit Consumption</h4>
+      <p>
+        Snowpipe uses serverless compute, billed separately from warehouse credits. Monitor via:
+      </p>
+      <pre><code>SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.PIPE_USAGE_HISTORY
+WHERE PIPE_NAME = 'CUSTOMERS_CDC_PIPE'
+ORDER BY START_TIME DESC;</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>5. Schema Evolution</h4>
+      <p>
+        <strong>Issue:</strong> Kafka Connect Snowflake Sink doesn't auto-evolve tables on schema changes.
+      </p>
+      <p>
+        <strong>Solution:</strong> Enable <code>snowflake.enable.schematization=true</code> for automatic column additions, or handle schema changes manually.
+      </p>
+    </div>
+  </section>
+
+  <section class="box" id="monitoring">
+    <h2>Monitoring & Observability</h2>
+    
+    <h3>Key Metrics to Track</h3>
+    <pre><code>-- Lag: Time between source change and Snowflake load
+SELECT 
+  TABLE_NAME,
+  DATEDIFF(second, 
+    MAX(RECORD_CONTENT:payload:ts_ms)::TIMESTAMP,
+    CURRENT_TIMESTAMP()
+  ) as lag_seconds
+FROM CUSTOMERS
+GROUP BY TABLE_NAME;
+
+-- Ingestion rate (rows per minute)
+SELECT 
+  DATE_TRUNC('minute', load_timestamp) as minute,
+  COUNT(*) as rows_ingested
+FROM customers_cdc
+WHERE load_timestamp > DATEADD(hour, -1, CURRENT_TIMESTAMP())
+GROUP BY DATE_TRUNC('minute', load_timestamp)
+ORDER BY minute DESC;
+
+-- Error rate from COPY_HISTORY
+SELECT 
+  TABLE_NAME,
+  STATUS,
+  COUNT(*) as load_count,
+  SUM(ROW_COUNT) as total_rows,
+  SUM(ERROR_COUNT) as total_errors
+FROM INFORMATION_SCHEMA.COPY_HISTORY
+WHERE LAST_LOAD_TIME > DATEADD(day, -1, CURRENT_TIMESTAMP())
+GROUP BY TABLE_NAME, STATUS;</code></pre>
+
+    <h3>Alerting with Snowflake Alerts</h3>
+    <pre><code>-- Create alert for high CDC lag
+CREATE ALERT cdc_lag_alert
+  WAREHOUSE = CDC_WH
+  SCHEDULE = '5 MINUTE'
+  IF (EXISTS (
+    SELECT 1
+    FROM CUSTOMERS
+    WHERE DATEDIFF(minute, 
+      MAX(RECORD_CONTENT:payload:ts_ms)::TIMESTAMP,
+      CURRENT_TIMESTAMP()
+    ) > 30
+  ))
+THEN
+  CALL SYSTEM$SEND_EMAIL(
+    'NOTIFICATION_INTEGRATION',
+    'ops@example.com',
+    'CDC Lag Alert',
+    'CDC lag exceeded 30 minutes'
+  );
+
+ALTER ALERT cdc_lag_alert RESUME;</code></pre>
+  </section>
+
+  <section class="box" id="cost">
+    <h2>Cost Optimization</h2>
+    <ul>
+      <li><strong>Warehouse Size:</strong> Start with XSMALL ($2/hour, $0.0006/second). Scale up only if needed.</li>
+      <li><strong>Auto-Suspend:</strong> Set to 60 seconds for CDC workloads to minimize idle time.</li>
+      <li><strong>Clustering:</strong> Add cluster keys on frequently filtered columns (e.g., timestamp) to reduce scan cost.</li>
+      <li><strong>Time Travel:</strong> Reduce retention to 1 day for non-critical CDC tables (default: 1 day, max: 90 days Enterprise).</li>
+      <li><strong>Snowpipe:</strong> More cost-effective than warehouse for continuous micro-batch loads.</li>
+    </ul>
+    <pre><code>-- Set Time Travel retention
+ALTER TABLE customers_cdc SET DATA_RETENTION_TIME_IN_DAYS = 1;
+
+-- Add clustering for query performance
+ALTER TABLE customers_cdc CLUSTER BY (DATE_TRUNC('day', load_timestamp));</code></pre>
+  </section>
+
+  <section class="box" id="comparison">
+    <h2>Snowflake vs. Traditional Data Warehouse</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>Snowflake CDC</th>
+          <th>Traditional DW (Redshift/BigQuery)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Setup</strong></td>
+          <td>No infrastructure, immediate start</td>
+          <td>Cluster provisioning, network config</td>
+        </tr>
+        <tr>
+          <td><strong>Scaling</strong></td>
+          <td>Automatic, instant (multi-cluster)</td>
+          <td>Manual resizing, downtime possible</td>
+        </tr>
+        <tr>
+          <td><strong>JSON Handling</strong></td>
+          <td>Native VARIANT type, fast parsing</td>
+          <td>JSON as string, slower queries</td>
+        </tr>
+        <tr>
+          <td><strong>Cost Model</strong></td>
+          <td>Separate compute/storage, pay-per-second</td>
+          <td>Bundled, hourly billing</td>
+        </tr>
+        <tr>
+          <td><strong>Time Travel</strong></td>
+          <td>Built-in, up to 90 days</td>
+          <td>Manual snapshots or versioning</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="qs-verify" aria-labelledby="resources-heading">
+    <div class="qs-verify__inner">
+      <div>
+        <h2 id="resources-heading">Additional Resources</h2>
+        <ul>
+          <li><a href="https://docs.snowflake.com/en/user-guide/kafka-connector">Snowflake Kafka Connector Docs</a></li>
+          <li><a href="https://docs.snowflake.com/en/user-guide/data-load-snowpipe">Snowpipe Documentation</a></li>
+          <li><a href="https://github.com/snowflakedb/snowflake-kafka-connector">Snowflake Kafka Connector (GitHub)</a></li>
+        </ul>
+      </div>
+      <a class="button" href="/cloud-labs/">View All Cloud Labs</a>
+    </div>
+  </section>
+</div>

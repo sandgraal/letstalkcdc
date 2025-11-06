@@ -1,0 +1,222 @@
+---
+layout: base.njk
+title: "Cloud CDC Labs | CDC: The Missing Manual"
+description: "Hands-on labs for implementing CDC with cloud-native and commercial CDC platforms."
+canonicalPath: "/cloud-labs/"
+ai-generated: true
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section class="intro-section">
+    <p class="text-xl">
+      Learn how to implement CDC pipelines using cloud-native and commercial platforms. These labs complement the open-source Debezium-focused labs with managed service alternatives.
+    </p>
+  </section>
+
+  <div class="qs-grid" id="cloud-labs-grid">
+    <a class="qs-card" href="/cloud-labs/aws-dms/">
+      <div>
+        <h2>AWS DMS</h2>
+        <p>
+          Build a fully managed CDC pipeline using AWS Database Migration Service to replicate changes from RDS to S3 and Redshift. Includes Terraform templates.
+        </p>
+        <ul class="card-features">
+          <li>✓ Fully managed service</li>
+          <li>✓ No Kafka infrastructure needed</li>
+          <li>✓ Native AWS integration</li>
+        </ul>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    </a>
+
+    <a class="qs-card" href="/cloud-labs/snowflake-cdc/">
+      <div>
+        <h2>Snowflake</h2>
+        <p>
+          Stream CDC data into Snowflake using Kafka Connect Sink Connector or Snowpipe for automated ingestion from cloud storage.
+        </p>
+        <ul class="card-features">
+          <li>✓ Real-time data warehouse</li>
+          <li>✓ Native JSON support</li>
+          <li>✓ Auto-scaling compute</li>
+        </ul>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    </a>
+
+    <a class="qs-card" href="/cloud-labs/matillion-cdc/">
+      <div>
+        <h2>Matillion</h2>
+        <p>
+          Build visual CDC pipelines with Matillion's drag-and-drop ETL platform. No-code approach with timestamp-based and hash-based change detection.
+        </p>
+        <ul class="card-features">
+          <li>✓ Visual pipeline designer</li>
+          <li>✓ Low-code/no-code</li>
+          <li>✓ Built-in scheduling</li>
+        </ul>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+    </a>
+  </div>
+
+  <section class="comparison-section">
+    <h2>Choosing the Right Platform</h2>
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>AWS DMS</th>
+          <th>Snowflake</th>
+          <th>Matillion</th>
+          <th>Debezium</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Deployment</strong></td>
+          <td>Fully managed</td>
+          <td>Fully managed</td>
+          <td>EC2/VM instance</td>
+          <td>Self-hosted</td>
+        </tr>
+        <tr>
+          <td><strong>CDC Method</strong></td>
+          <td>Log-based</td>
+          <td>Stream/file ingest</td>
+          <td>Timestamp/hash</td>
+          <td>Log-based</td>
+        </tr>
+        <tr>
+          <td><strong>Latency</strong></td>
+          <td>Seconds</td>
+          <td>Seconds-minutes</td>
+          <td>Minutes</td>
+          <td>Sub-second</td>
+        </tr>
+        <tr>
+          <td><strong>Targets</strong></td>
+          <td>AWS services</td>
+          <td>Snowflake only</td>
+          <td>DW platforms</td>
+          <td>Any (via Kafka)</td>
+        </tr>
+        <tr>
+          <td><strong>Setup Time</strong></td>
+          <td>1-2 hours</td>
+          <td>1-2 hours</td>
+          <td>2-4 hours</td>
+          <td>4-8 hours</td>
+        </tr>
+        <tr>
+          <td><strong>Complexity</strong></td>
+          <td>Medium</td>
+          <td>Medium</td>
+          <td>Low</td>
+          <td>High</td>
+        </tr>
+        <tr>
+          <td><strong>Cost (monthly)</strong></td>
+          <td>$26-500+</td>
+          <td>$50-1000+</td>
+          <td>$500-2000+</td>
+          <td>$100-500</td>
+        </tr>
+        <tr>
+          <td><strong>Best For</strong></td>
+          <td>AWS-native stacks</td>
+          <td>Analytics workloads</td>
+          <td>Business users</td>
+          <td>Event-driven apps</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="decision-guide">
+    <h2>Decision Guide</h2>
+    
+    <div class="guide-grid">
+      <div class="guide-card">
+        <h3>Choose AWS DMS if you:</h3>
+        <ul>
+          <li>Already use AWS RDS or Aurora</li>
+          <li>Target is S3, Redshift, or Kinesis</li>
+          <li>Want minimal operational overhead</li>
+          <li>Need built-in retry and error handling</li>
+          <li>Prefer infrastructure-as-code (Terraform)</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>Choose Snowflake if you:</h3>
+        <ul>
+          <li>Use Snowflake as primary data warehouse</li>
+          <li>Need near-real-time analytics</li>
+          <li>Have semi-structured data (JSON, Avro)</li>
+          <li>Want separation of compute and storage</li>
+          <li>Already have Kafka infrastructure</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>Choose Matillion if you:</h3>
+        <ul>
+          <li>Prefer visual, drag-and-drop tools</li>
+          <li>Have business analysts building pipelines</li>
+          <li>Use Snowflake, Redshift, or BigQuery</li>
+          <li>Need complex transformations beyond CDC</li>
+          <li>Want integrated orchestration/scheduling</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>Choose Debezium if you:</h3>
+        <ul>
+          <li>Need sub-second latency</li>
+          <li>Building event-driven microservices</li>
+          <li>Want full control over CDC logic</li>
+          <li>Already have Kafka infrastructure</li>
+          <li>Need custom transformations (SMTs)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="resources-section">
+    <h2>Additional Resources</h2>
+    <div class="resources-grid">
+      <div class="resource-card">
+        <h3>Open-Source Alternative</h3>
+        <p>Want to try CDC with Kafka and Debezium first?</p>
+        <a href="/lab-kafka-debezium/" class="button">Kafka + Debezium Lab</a>
+      </div>
+      <div class="resource-card">
+        <h3>Database Quickstarts</h3>
+        <p>Database-specific CDC setup guides for MySQL, PostgreSQL, Oracle, and SQL Server.</p>
+        <a href="/quickstarts/" class="button">View Quickstarts</a>
+      </div>
+      <div class="resource-card">
+        <h3>CDC Fundamentals</h3>
+        <p>New to CDC? Start with the interactive introduction.</p>
+        <a href="/intro/" class="button">Learn CDC Basics</a>
+      </div>
+    </div>
+  </section>
+</div>

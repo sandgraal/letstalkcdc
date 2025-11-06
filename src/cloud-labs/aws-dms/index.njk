@@ -1,0 +1,713 @@
+---
+layout: base.njk
+title: "AWS DMS CDC Pipeline Lab | CDC: The Missing Manual"
+description: "Step-by-step guide to building a CDC pipeline using AWS DMS to replicate changes from RDS to S3 and Redshift with Terraform templates."
+canonicalPath: "/cloud-labs/aws-dms/"
+ai-generated: true
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section class="box" id="overview">
+    <h2>Overview</h2>
+    <p>
+      AWS Database Migration Service (DMS) is a managed service that helps migrate databases to AWS, but it's also a powerful tool for continuous Change Data Capture. Unlike Debezium which requires you to manage Kafka infrastructure, DMS handles replication with minimal operational overhead.
+    </p>
+    <p>
+      <strong>Key differences from Debezium:</strong>
+    </p>
+    <ul>
+      <li>Fully managed AWS service (no Kafka/Connect cluster to maintain)</li>
+      <li>Native integration with AWS services (S3, Redshift, Kinesis, DynamoDB)</li>
+      <li>Web UI for configuration and monitoring</li>
+      <li>Pay-per-use pricing based on instance hours and data transfer</li>
+      <li>Built-in VPC networking support</li>
+    </ul>
+  </section>
+
+  <section class="box" id="prereqs">
+    <h2>Prerequisites</h2>
+    <ul class="checklist">
+      <li><strong>AWS Account:</strong> Free tier eligible for testing (t3.micro replication instance)</li>
+      <li><strong>AWS CLI:</strong> Installed and configured with credentials</li>
+      <li><strong>Terraform:</strong> Version 1.0+ (optional, for infrastructure-as-code approach)</li>
+      <li><strong>Source Database:</strong> RDS MySQL or PostgreSQL instance with binlog/WAL enabled</li>
+      <li><strong>IAM Permissions:</strong> Permissions to create DMS, RDS, S3, and IAM resources</li>
+    </ul>
+  </section>
+
+  <section class="box" id="architecture">
+    <h2>Architecture</h2>
+    <p>We'll build a CDC pipeline that:</p>
+    <ol>
+      <li>Captures changes from an <strong>RDS MySQL</strong> source database</li>
+      <li>Uses <strong>AWS DMS</strong> replication instance to stream changes</li>
+      <li>Writes CDC events to <strong>S3</strong> in Parquet format (for analytics)</li>
+      <li>Optionally loads data into <strong>Redshift</strong> for querying</li>
+    </ol>
+    <pre><code>┌─────────────┐      ┌──────────────┐      ┌─────────┐
+│ RDS MySQL   │─────▶│  DMS Task    │─────▶│   S3    │
+│ (Source)    │      │ (CDC Mode)   │      │ Bucket  │
+└─────────────┘      └──────────────┘      └─────────┘
+                            │
+                            │ (Optional)
+                            ▼
+                     ┌──────────────┐
+                     │  Redshift    │
+                     │  (Target)    │
+                     └──────────────┘</code></pre>
+  </section>
+
+  <section class="box" id="setup">
+    <h2>Lab Setup</h2>
+    
+    <h3>Step 1: Prepare Source Database (RDS MySQL)</h3>
+    <p>
+      First, ensure your RDS MySQL instance has binary logging enabled. This is required for DMS to capture changes.
+    </p>
+    <pre><code># Check binlog status in MySQL
+SHOW VARIABLES LIKE 'log_bin';
+-- Should return 'ON'
+
+# Verify binlog format is ROW
+SHOW VARIABLES LIKE 'binlog_format';
+-- Should return 'ROW'
+
+# Check binlog retention
+CALL mysql.rds_show_configuration;
+-- binlog retention hours should be > 0 (default: 24 hours)</code></pre>
+    
+    <p>If binlog is not enabled, update your RDS parameter group:</p>
+    <pre><code># Create custom parameter group (AWS CLI)
+aws rds create-db-parameter-group \
+  --db-parameter-group-name mysql-cdc-params \
+  --db-parameter-group-family mysql8.0 \
+  --description "MySQL parameters for CDC"
+
+# Enable binlog with ROW format
+aws rds modify-db-parameter-group \
+  --db-parameter-group-name mysql-cdc-params \
+  --parameters "ParameterName=binlog_format,ParameterValue=ROW,ApplyMethod=immediate"
+
+# Apply parameter group to RDS instance
+aws rds modify-db-instance \
+  --db-instance-identifier my-source-db \
+  --db-parameter-group-name mysql-cdc-params \
+  --apply-immediately</code></pre>
+
+    <h3>Step 2: Create IAM Roles</h3>
+    <p>
+      DMS needs IAM roles to access your source database, target S3 bucket, and CloudWatch for logging.
+    </p>
+    
+    <details>
+      <summary><strong>Terraform: IAM Roles (Click to expand)</strong></summary>
+      <pre><code># iam.tf
+# DMS VPC Management Role
+resource "aws_iam_role" "dms_vpc_role" {
+  name = "dms-vpc-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "dms.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "dms_vpc_policy" {
+  role       = aws_iam_role.dms_vpc_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+}
+
+# DMS CloudWatch Logs Role
+resource "aws_iam_role" "dms_cloudwatch_role" {
+  name = "dms-cloudwatch-logs-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "dms.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "dms_cloudwatch_policy" {
+  role       = aws_iam_role.dms_cloudwatch_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonDMSCloudWatchLogsRole"
+}
+
+# S3 Target Role
+resource "aws_iam_role" "dms_s3_role" {
+  name = "dms-s3-target-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "dms.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "dms_s3_policy" {
+  name = "dms-s3-access"
+  role = aws_iam_role.dms_s3_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:PutObjectTagging"
+        ]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.cdc_target.bucket}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.cdc_target.bucket}"
+      }
+    ]
+  })
+}</code></pre>
+    </details>
+
+    <h3>Step 3: Create S3 Target Bucket</h3>
+    <pre><code># Create S3 bucket for CDC data
+aws s3 mb s3://my-cdc-target-bucket --region us-east-1
+
+# Enable versioning (recommended)
+aws s3api put-bucket-versioning \
+  --bucket my-cdc-target-bucket \
+  --versioning-configuration Status=Enabled</code></pre>
+
+    <details>
+      <summary><strong>Terraform: S3 Bucket (Click to expand)</strong></summary>
+      <pre><code># s3.tf
+resource "aws_s3_bucket" "cdc_target" {
+  bucket = "my-cdc-target-bucket"
+  
+  tags = {
+    Purpose = "DMS CDC Target"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "cdc_target" {
+  bucket = aws_s3_bucket.cdc_target.id
+  
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "cdc_target" {
+  bucket = aws_s3_bucket.cdc_target.id
+  
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}</code></pre>
+    </details>
+
+    <h3>Step 4: Create DMS Replication Instance</h3>
+    <p>
+      The replication instance is the compute resource that performs the actual data replication.
+    </p>
+    <pre><code># AWS CLI: Create replication instance (t3.micro for testing)
+aws dms create-replication-instance \
+  --replication-instance-identifier dms-cdc-instance \
+  --replication-instance-class dms.t3.micro \
+  --engine-version 3.5.2 \
+  --allocated-storage 20 \
+  --vpc-security-group-ids sg-xxxxxxxxx \
+  --replication-subnet-group-identifier default \
+  --publicly-accessible \
+  --tags Key=Purpose,Value=CDC-Lab
+
+# Check status (takes 5-10 minutes to become available)
+aws dms describe-replication-instances \
+  --filters Name=replication-instance-id,Values=dms-cdc-instance</code></pre>
+
+    <details>
+      <summary><strong>Terraform: Replication Instance (Click to expand)</strong></summary>
+      <pre><code># dms.tf
+resource "aws_dms_replication_subnet_group" "main" {
+  replication_subnet_group_id          = "dms-subnet-group"
+  replication_subnet_group_description = "DMS replication subnet group"
+  subnet_ids                           = var.private_subnet_ids
+  
+  tags = {
+    Name = "dms-subnet-group"
+  }
+}
+
+resource "aws_dms_replication_instance" "main" {
+  replication_instance_id   = "dms-cdc-instance"
+  replication_instance_class = "dms.t3.micro"
+  engine_version            = "3.5.2"
+  allocated_storage         = 20
+  
+  vpc_security_group_ids = [aws_security_group.dms.id]
+  replication_subnet_group_id = aws_dms_replication_subnet_group.main.id
+  
+  publicly_accessible = false
+  multi_az            = false
+  
+  tags = {
+    Name    = "dms-cdc-instance"
+    Purpose = "CDC-Lab"
+  }
+}</code></pre>
+    </details>
+
+    <h3>Step 5: Create Source and Target Endpoints</h3>
+    <p>Endpoints define connection details for your source database and target S3 bucket.</p>
+    
+    <h4>Source Endpoint (RDS MySQL)</h4>
+    <pre><code>aws dms create-endpoint \
+  --endpoint-identifier mysql-source \
+  --endpoint-type source \
+  --engine-name mysql \
+  --server-name my-rds-instance.xxxx.us-east-1.rds.amazonaws.com \
+  --port 3306 \
+  --username admin \
+  --password 'YourSecurePassword' \
+  --database-name mydb \
+  --ssl-mode require</code></pre>
+
+    <h4>Target Endpoint (S3)</h4>
+    <pre><code>aws dms create-endpoint \
+  --endpoint-identifier s3-target \
+  --endpoint-type target \
+  --engine-name s3 \
+  --s3-settings '{
+    "BucketName": "my-cdc-target-bucket",
+    "BucketFolder": "cdc-data",
+    "CompressionType": "GZIP",
+    "DataFormat": "parquet",
+    "ServiceAccessRoleArn": "arn:aws:iam::ACCOUNT:role/dms-s3-target-role",
+    "TimestampColumnName": "cdc_timestamp",
+    "ParquetVersion": "parquet-2-0",
+    "EnableStatistics": true
+  }'</code></pre>
+
+    <details>
+      <summary><strong>Terraform: Endpoints (Click to expand)</strong></summary>
+      <pre><code># dms-endpoints.tf
+resource "aws_dms_endpoint" "source" {
+  endpoint_id   = "mysql-source"
+  endpoint_type = "source"
+  engine_name   = "mysql"
+  
+  server_name = aws_db_instance.source.address
+  port        = 3306
+  username    = var.db_username
+  password    = var.db_password
+  database_name = var.db_name
+  
+  ssl_mode = "require"
+  
+  tags = {
+    Name = "mysql-source-endpoint"
+  }
+}
+
+resource "aws_dms_endpoint" "target" {
+  endpoint_id   = "s3-target"
+  endpoint_type = "target"
+  engine_name   = "s3"
+  
+  s3_settings {
+    bucket_name              = aws_s3_bucket.cdc_target.bucket
+    bucket_folder            = "cdc-data"
+    compression_type         = "GZIP"
+    data_format              = "parquet"
+    service_access_role_arn  = aws_iam_role.dms_s3_role.arn
+    timestamp_column_name    = "cdc_timestamp"
+    parquet_version          = "parquet-2-0"
+    enable_statistics        = true
+  }
+  
+  tags = {
+    Name = "s3-target-endpoint"
+  }
+}</code></pre>
+    </details>
+
+    <h3>Step 6: Test Endpoints</h3>
+    <pre><code># Test source endpoint
+aws dms test-connection \
+  --replication-instance-arn arn:aws:dms:region:account:rep:xxx \
+  --endpoint-arn arn:aws:dms:region:account:endpoint:xxx
+
+# Test target endpoint
+aws dms test-connection \
+  --replication-instance-arn arn:aws:dms:region:account:rep:xxx \
+  --endpoint-arn arn:aws:dms:region:account:endpoint:yyy
+
+# Check test results
+aws dms describe-connections \
+  --filters Name=replication-instance-arn,Values=arn:aws:dms:xxx</code></pre>
+
+    <h3>Step 7: Create DMS Replication Task</h3>
+    <p>
+      The replication task defines what data to replicate and how. We'll use <strong>CDC mode</strong> to capture ongoing changes.
+    </p>
+    
+    <p>Create a table mappings file (<code>table-mappings.json</code>):</p>
+    <pre><code>{
+  "rules": [
+    {
+      "rule-type": "selection",
+      "rule-id": "1",
+      "rule-name": "include-all-tables",
+      "object-locator": {
+        "schema-name": "mydb",
+        "table-name": "%"
+      },
+      "rule-action": "include"
+    },
+    {
+      "rule-type": "transformation",
+      "rule-id": "2",
+      "rule-name": "add-cdc-metadata",
+      "rule-target": "column",
+      "object-locator": {
+        "schema-name": "%",
+        "table-name": "%"
+      },
+      "rule-action": "add-column",
+      "value": "cdc_operation",
+      "expression": "$operation",
+      "data-type": {
+        "type": "string",
+        "length": 10
+      }
+    }
+  ]
+}</code></pre>
+
+    <p>Create the task:</p>
+    <pre><code>aws dms create-replication-task \
+  --replication-task-identifier cdc-task-mysql-to-s3 \
+  --source-endpoint-arn arn:aws:dms:region:account:endpoint:source-id \
+  --target-endpoint-arn arn:aws:dms:region:account:endpoint:target-id \
+  --replication-instance-arn arn:aws:dms:region:account:rep:instance-id \
+  --migration-type cdc \
+  --table-mappings file://table-mappings.json \
+  --replication-task-settings '{
+    "Logging": {
+      "EnableLogging": true,
+      "LogComponents": [
+        {"Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_INFO"},
+        {"Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_INFO"}
+      ]
+    },
+    "ChangeProcessingTuning": {
+      "BatchApplyEnabled": true,
+      "BatchApplyTimeoutMin": 1,
+      "BatchApplyTimeoutMax": 30,
+      "MinTransactionSize": 1000,
+      "CommitTimeout": 1
+    }
+  }'</code></pre>
+
+    <details>
+      <summary><strong>Terraform: Replication Task (Click to expand)</strong></summary>
+      <pre><code># dms-task.tf
+resource "aws_dms_replication_task" "main" {
+  replication_task_id       = "cdc-task-mysql-to-s3"
+  migration_type            = "cdc"
+  replication_instance_arn  = aws_dms_replication_instance.main.replication_instance_arn
+  source_endpoint_arn       = aws_dms_endpoint.source.endpoint_arn
+  target_endpoint_arn       = aws_dms_endpoint.target.endpoint_arn
+  
+  table_mappings = jsonencode({
+    rules = [
+      {
+        rule-type = "selection"
+        rule-id   = "1"
+        rule-name = "include-all-tables"
+        object-locator = {
+          schema-name = "mydb"
+          table-name  = "%"
+        }
+        rule-action = "include"
+      }
+    ]
+  })
+  
+  replication_task_settings = jsonencode({
+    Logging = {
+      EnableLogging = true
+      LogComponents = [
+        {Id = "SOURCE_CAPTURE", Severity = "LOGGER_SEVERITY_INFO"},
+        {Id = "TARGET_LOAD", Severity = "LOGGER_SEVERITY_INFO"}
+      ]
+    }
+    ChangeProcessingTuning = {
+      BatchApplyEnabled    = true
+      BatchApplyTimeoutMin = 1
+      BatchApplyTimeoutMax = 30
+      MinTransactionSize   = 1000
+      CommitTimeout        = 1
+    }
+  })
+  
+  tags = {
+    Name = "cdc-task-mysql-to-s3"
+  }
+}</code></pre>
+    </details>
+
+    <h3>Step 8: Start the Replication Task</h3>
+    <pre><code># Start the CDC task
+aws dms start-replication-task \
+  --replication-task-arn arn:aws:dms:region:account:task:task-id \
+  --start-replication-task-type start-replication
+
+# Monitor task progress
+aws dms describe-replication-tasks \
+  --filters Name=replication-task-arn,Values=arn:aws:dms:xxx
+
+# Watch CloudWatch Logs for detailed progress
+aws logs tail /aws/dms/tasks/cdc-task-mysql-to-s3 --follow</code></pre>
+  </section>
+
+  <section class="box" id="verify">
+    <h2>Verification</h2>
+    
+    <h3>1. Insert Test Data</h3>
+    <pre><code>-- Connect to source RDS MySQL
+mysql -h my-rds-instance.xxxx.rds.amazonaws.com -u admin -p
+
+-- Create test table and insert data
+USE mydb;
+
+CREATE TABLE customers (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100),
+  email VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO customers (name, email) VALUES 
+  ('Alice Johnson', 'alice@example.com'),
+  ('Bob Smith', 'bob@example.com'),
+  ('Carol White', 'carol@example.com');
+
+-- Update a record
+UPDATE customers SET email = 'alice.j@example.com' WHERE id = 1;
+
+-- Delete a record
+DELETE FROM customers WHERE id = 3;</code></pre>
+
+    <h3>2. Check S3 for CDC Files</h3>
+    <pre><code># List CDC files in S3
+aws s3 ls s3://my-cdc-target-bucket/cdc-data/mydb/customers/ --recursive
+
+# Download and inspect a Parquet file
+aws s3 cp s3://my-cdc-target-bucket/cdc-data/mydb/customers/LOAD00000001.parquet .
+
+# Use parquet-tools to read (install: pip install parquet-tools)
+parquet-tools show LOAD00000001.parquet</code></pre>
+
+    <h3>3. Monitor DMS Metrics</h3>
+    <p>Key CloudWatch metrics to monitor:</p>
+    <ul>
+      <li><strong>CDCLatencySource:</strong> Time lag between source change and capture (should be < 10s)</li>
+      <li><strong>CDCLatencyTarget:</strong> Time lag between capture and target write</li>
+      <li><strong>FullLoadThroughputRowsSource:</strong> Rows per second being read</li>
+      <li><strong>FullLoadThroughputRowsTarget:</strong> Rows per second being written</li>
+    </ul>
+    <pre><code># Query CDC lag metric
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/DMS \
+  --metric-name CDCLatencySource \
+  --dimensions Name=ReplicationTaskIdentifier,Value=cdc-task-mysql-to-s3 \
+  --start-time 2024-01-01T00:00:00Z \
+  --end-time 2024-01-01T23:59:59Z \
+  --period 300 \
+  --statistics Average</code></pre>
+  </section>
+
+  <section class="box" id="gotchas">
+    <h2>Vendor-Specific Gotchas</h2>
+    
+    <h3>⚠️ Common Issues and Solutions</h3>
+    
+    <div class="callout callout-warning">
+      <h4>1. Binlog Retention Too Short</h4>
+      <p>
+        <strong>Issue:</strong> DMS task fails with "binlog position no longer available" after replication instance restart.
+      </p>
+      <p>
+        <strong>Solution:</strong> Increase binlog retention on RDS:
+      </p>
+      <pre><code>CALL mysql.rds_set_configuration('binlog retention hours', 168); -- 7 days</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>2. IAM Role Trust Relationship</h4>
+      <p>
+        <strong>Issue:</strong> "Access Denied" when DMS tries to write to S3.
+      </p>
+      <p>
+        <strong>Solution:</strong> Ensure IAM role has correct trust relationship with <code>dms.amazonaws.com</code>. Check assume role policy:
+      </p>
+      <pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Service": "dms.amazonaws.com"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>3. VPC Connectivity</h4>
+      <p>
+        <strong>Issue:</strong> DMS cannot connect to RDS even with correct credentials.
+      </p>
+      <p>
+        <strong>Solution:</strong> Verify security group rules allow traffic from DMS replication instance security group to RDS on port 3306. Use VPC Flow Logs to debug.
+      </p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>4. LOB (Large Object) Handling</h4>
+      <p>
+        <strong>Issue:</strong> Tasks stall when replicating tables with BLOB/TEXT columns.
+      </p>
+      <p>
+        <strong>Solution:</strong> Adjust LOB settings in task configuration:
+      </p>
+      <pre><code>"TargetMetadata": {
+  "SupportLobs": true,
+  "FullLobMode": false,
+  "LobChunkSize": 64,
+  "LimitedSizeLobMode": true,
+  "LobMaxSize": 32
+}</code></pre>
+    </div>
+
+    <div class="callout callout-info">
+      <h4>5. S3 Parquet File Organization</h4>
+      <p>
+        DMS creates files with timestamps in UTC. Use partitioning to organize by date for efficient querying:
+      </p>
+      <pre><code>"BucketFolder": "cdc-data",
+"DatePartitionEnabled": true,
+"DatePartitionSequence": "YYYYMMDD",
+"DatePartitionDelimiter": "/"</code></pre>
+      <p>Results in: <code>s3://bucket/cdc-data/mydb/customers/20240615/LOAD00001.parquet</code></p>
+    </div>
+  </section>
+
+  <section class="box" id="cost">
+    <h2>Cost Considerations</h2>
+    <p>AWS DMS pricing includes:</p>
+    <ul>
+      <li><strong>Replication Instance:</strong> ~$0.036/hour for dms.t3.micro (~$26/month)</li>
+      <li><strong>S3 Storage:</strong> $0.023/GB per month (Standard tier)</li>
+      <li><strong>Data Transfer:</strong> Free within same region; $0.09/GB for cross-region</li>
+      <li><strong>CloudWatch Logs:</strong> $0.50/GB ingested</li>
+    </ul>
+    <p>
+      <strong>Tip:</strong> Use t3.micro for development/testing. For production, choose instance size based on expected change volume and latency requirements.
+    </p>
+  </section>
+
+  <section class="box" id="next-steps">
+    <h2>Next Steps</h2>
+    <ul>
+      <li><strong>Query CDC Data:</strong> Load Parquet files into Athena or Redshift Spectrum for SQL analysis</li>
+      <li><strong>Set Up Alerts:</strong> Create CloudWatch alarms for CDCLatency > threshold</li>
+      <li><strong>Implement Retry Logic:</strong> Handle transient failures with task restart automation</li>
+      <li><strong>Add More Tables:</strong> Expand table mappings to include additional schemas</li>
+      <li><strong>Optimize Performance:</strong> Tune BatchApplyEnabled and CommitTimeout for your workload</li>
+    </ul>
+  </section>
+
+  <section class="box" id="comparison">
+    <h2>DMS vs. Debezium: When to Choose Each</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>AWS DMS</th>
+          <th>Debezium</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Infrastructure</strong></td>
+          <td>Fully managed, no ops overhead</td>
+          <td>Self-managed Kafka + Connect cluster</td>
+        </tr>
+        <tr>
+          <td><strong>Target Flexibility</strong></td>
+          <td>AWS services (S3, Redshift, Kinesis)</td>
+          <td>Kafka topics (any downstream consumer)</td>
+        </tr>
+        <tr>
+          <td><strong>Event Format</strong></td>
+          <td>Proprietary or Parquet/CSV</td>
+          <td>Rich JSON with before/after, metadata</td>
+        </tr>
+        <tr>
+          <td><strong>Customization</strong></td>
+          <td>Limited (table mappings, filters)</td>
+          <td>High (SMTs, custom connectors)</td>
+        </tr>
+        <tr>
+          <td><strong>Cost</strong></td>
+          <td>Pay-per-instance-hour (~$26-500+/mo)</td>
+          <td>Infrastructure costs (EC2, storage)</td>
+        </tr>
+        <tr>
+          <td><strong>Best For</strong></td>
+          <td>AWS-native stacks, simple pipelines</td>
+          <td>Event-driven architectures, Kafka ecosystems</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="qs-verify" aria-labelledby="resources-heading">
+    <div class="qs-verify__inner">
+      <div>
+        <h2 id="resources-heading">Additional Resources</h2>
+        <ul>
+          <li><a href="https://docs.aws.amazon.com/dms/latest/userguide/">AWS DMS User Guide</a></li>
+          <li><a href="https://aws.amazon.com/dms/pricing/">DMS Pricing Calculator</a></li>
+          <li><a href="https://github.com/aws-samples/aws-dms-terraform">DMS Terraform Examples (GitHub)</a></li>
+        </ul>
+      </div>
+      <a class="button" href="/cloud-labs/">View All Cloud Labs</a>
+    </div>
+  </section>
+</div>

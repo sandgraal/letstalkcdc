@@ -1,0 +1,223 @@
+/* Cloud Labs Page Styling */
+
+.intro-section {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.intro-section .text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75;
+  color: var(--color-text-muted);
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.card-features {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.card-features li {
+  margin: 0.25rem 0;
+}
+
+.comparison-section {
+  margin: 4rem 0;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  font-size: 0.95rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border: 1px solid var(--color-border);
+}
+
+.comparison-table th {
+  background-color: var(--color-bg-secondary);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.comparison-table tbody tr:nth-child(even) {
+  background-color: var(--color-bg-tertiary);
+}
+
+.comparison-table tbody tr:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.decision-guide {
+  margin: 4rem 0;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.guide-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.guide-card h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--color-accent);
+  font-size: 1.1rem;
+}
+
+.guide-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-card ul li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.guide-card ul li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--color-accent);
+}
+
+.resources-section {
+  margin: 4rem 0;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.resource-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.resource-card h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+.resource-card p {
+  margin-bottom: 1.5rem;
+  color: var(--color-text-muted);
+}
+
+.resource-card .button {
+  display: inline-block;
+  text-decoration: none;
+}
+
+/* Callout boxes for gotchas */
+.callout {
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-left: 4px solid;
+  border-radius: 4px;
+  background-color: var(--color-bg-secondary);
+}
+
+.callout h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.callout-warning {
+  border-left-color: #f59e0b;
+  background-color: #fffbeb;
+}
+
+.callout-info {
+  border-left-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.callout pre {
+  margin: 0.5rem 0;
+}
+
+/* Details/Summary styling */
+details {
+  margin: 1.5rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  padding: 0.5rem 0;
+}
+
+summary:hover {
+  color: var(--color-accent);
+}
+
+details[open] summary {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Code blocks in cloud labs */
+.cloud-labs pre {
+  background: var(--color-bg-code);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.cloud-labs code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .comparison-table {
+    font-size: 0.85rem;
+  }
+  
+  .comparison-table th,
+  .comparison-table td {
+    padding: 0.5rem;
+  }
+  
+  .guide-grid,
+  .resources-grid {
+    grid-template-columns: 1fr;
+  }
+}
