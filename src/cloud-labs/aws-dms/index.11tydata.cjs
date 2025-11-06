@@ -1,3 +1,7 @@
+const { getPathPrefix } = require('../../../lib/path-prefix.cjs');
+
+const pathPrefix = getPathPrefix().replace(/\/$/, ''); // Remove trailing slash
+
 module.exports = {
   seriesKey: 'lab-aws-dms',
   heroConfig: {
@@ -8,5 +12,6 @@ module.exports = {
       { href: '#prereqs', label: 'Check Prerequisites' },
       { href: '#setup', label: 'Start Building', variant: 'ghost' }
     ]
-  }
+  },
+  head_extra: `<link rel="stylesheet" href="${pathPrefix}/assets/css/pages/cloud-labs.css">`
 };
