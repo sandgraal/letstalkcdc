@@ -1,3 +1,6 @@
+## 2025-11-06
+- Initial changelog
+
 # Changelog
 
 All notable changes to Let's Talk CDC will be documented in this file.
