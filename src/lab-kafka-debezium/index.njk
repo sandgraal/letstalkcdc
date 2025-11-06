@@ -225,6 +225,158 @@ docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c 
                 </li>
             </ol>
 
+            <h2 id="verify-sink">Verify Your Sink</h2>
+            <p>Beyond basic visual inspection, it's essential to validate that your CDC pipeline maintains perfect parity between source and sink. Here are SQL verification snippets that confirm end-to-end consistency:</p>
+
+            <h3>1. Row Count Check</h3>
+            <p>Verify that both databases have the same number of records:</p>
+            <pre><code>-- Source database
+docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c \
+  "SELECT COUNT(*) as source_count FROM products;"
+
+-- Sink database
+docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c \
+  "SELECT COUNT(*) as sink_count FROM products;"</code></pre>
+            <p><strong>Expected output:</strong> Both queries should return the same count. For example:</p>
+            <pre><code> source_count 
+--------------
+            2
+(1 row)
+
+ sink_count 
+------------
+         2
+(1 row)</code></pre>
+            <p>If counts differ, investigate missing or duplicate records by comparing primary keys.</p>
+
+            <h3>2. Primary Key Diff Check</h3>
+            <p>Identify records that exist in one database but not the other:</p>
+            <pre><code>-- Find IDs in source but missing from sink
+docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c \
+  "COPY (SELECT id FROM products) TO STDOUT;" > /tmp/source_ids.txt
+
+docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c \
+  "COPY (SELECT id FROM products) TO STDOUT;" > /tmp/sink_ids.txt
+
+# Compare the files
+comm -23 <(sort /tmp/source_ids.txt) <(sort /tmp/sink_ids.txt)
+# Output shows IDs in source but not in sink
+
+comm -13 <(sort /tmp/source_ids.txt) <(sort /tmp/sink_ids.txt)
+# Output shows IDs in sink but not in source</code></pre>
+            <p><strong>Expected output:</strong> Both commands should produce no output, indicating perfect parity:</p>
+            <pre><code># No missing records in either direction
+(empty output)</code></pre>
+            <p><strong>Alternative SQL-only approach:</strong> If you have a shared database or can use foreign data wrappers:</p>
+            <pre><code>-- This example assumes you can query both databases simultaneously
+-- (requires dblink or similar cross-database query capability)
+
+-- Records in source not in sink
+SELECT s.id 
+FROM source_schema.products s 
+LEFT JOIN sink_schema.products k ON s.id = k.id 
+WHERE k.id IS NULL;
+
+-- Records in sink not in source
+SELECT k.id 
+FROM sink_schema.products k 
+LEFT JOIN source_schema.products s ON k.id = s.id 
+WHERE s.id IS NULL;</code></pre>
+
+            <h3>3. MD5 Hash Parity Check</h3>
+            <p>Verify that record contents are identical by comparing hash values. This catches subtle data inconsistencies like truncation or type conversion errors:</p>
+            <pre><code>-- Source database: compute hash of all column values
+docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c \
+  "SELECT id, md5(CAST((id, name, description, weight, price) AS text)) as content_hash 
+   FROM products 
+   ORDER BY id;"
+
+-- Sink database: compute same hash
+docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c \
+  "SELECT id, md5(CAST((id, name, description, weight, price) AS text)) as content_hash 
+   FROM products 
+   ORDER BY id;"</code></pre>
+            <p><strong>Expected output:</strong> Hash values should match for each ID:</p>
+            <pre><code> id |           content_hash           
+----+----------------------------------
+  1 | 5f7c3d8e9a2b1c4d6e8f0a1b2c3d4e5f
+  2 | 8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p
+(2 rows)</code></pre>
+            <p>Any hash mismatch indicates a data inconsistency that requires investigation.</p>
+
+            <h3>4. Aggregate Consistency Check</h3>
+            <p>Compare aggregate statistics to catch subtle data drift:</p>
+            <pre><code>-- Source database
+docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c \
+  "SELECT 
+     COUNT(*) as total_rows,
+     COUNT(DISTINCT id) as unique_ids,
+     SUM(weight) as total_weight,
+     AVG(price) as avg_price,
+     MIN(price) as min_price,
+     MAX(price) as max_price
+   FROM products;"
+
+-- Sink database
+docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c \
+  "SELECT 
+     COUNT(*) as total_rows,
+     COUNT(DISTINCT id) as unique_ids,
+     SUM(weight) as total_weight,
+     AVG(price) as avg_price,
+     MIN(price) as min_price,
+     MAX(price) as max_price
+   FROM products;"</code></pre>
+            <p><strong>Expected output:</strong> All aggregates should match exactly:</p>
+            <pre><code> total_rows | unique_ids | total_weight |      avg_price      | min_price | max_price 
+------------+------------+--------------+---------------------+-----------+-----------
+          2 |          2 |          7.3 | 499.9900000000000000|    499.99 |    499.99
+(1 row)</code></pre>
+            <p>Discrepancies in aggregates often indicate missing records, duplicate inserts, or failed updates.</p>
+
+            <h3>5. Null Value Consistency</h3>
+            <p>Ensure NULL handling is consistent across source and sink:</p>
+            <pre><code>-- Source database
+docker-compose exec -u postgres postgres psql -U start_data_engineer -d inventory -c \
+  "SELECT 
+     COUNT(*) FILTER (WHERE price IS NULL) as null_prices,
+     COUNT(*) FILTER (WHERE description IS NULL) as null_descriptions
+   FROM products;"
+
+-- Sink database
+docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c \
+  "SELECT 
+     COUNT(*) FILTER (WHERE price IS NULL) as null_prices,
+     COUNT(*) FILTER (WHERE description IS NULL) as null_descriptions
+   FROM products;"</code></pre>
+            <p><strong>Expected output:</strong> NULL counts should be identical:</p>
+            <pre><code> null_prices | null_descriptions 
+-------------+-------------------
+           1 |                 0
+(1 row)</code></pre>
+
+            <div class="callout callout-info">
+                <h4>💡 Verification Best Practices</h4>
+                <ul>
+                    <li><strong>Automate checks:</strong> Run these queries in a monitoring script or CI/CD pipeline</li>
+                    <li><strong>Schedule regular validation:</strong> Don't wait for user complaints—proactively verify parity</li>
+                    <li><strong>Test with deletes:</strong> Ensure DELETE operations propagate correctly (requires additional sink configuration)</li>
+                    <li><strong>Monitor lag:</strong> Use Kafka consumer lag metrics to detect replication delays</li>
+                    <li><strong>Handle schema evolution:</strong> When columns are added or removed, update your verification queries</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <h4>⚠️ Common Validation Pitfalls</h4>
+                <ul>
+                    <li><strong>Timestamp precision:</strong> Timestamps may lose microsecond precision depending on database and connector settings</li>
+                    <li><strong>Floating-point rounding:</strong> DECIMAL/NUMERIC types may round differently; use epsilon comparisons for floating-point values</li>
+                    <li><strong>Character encoding:</strong> Ensure both databases use the same encoding (UTF-8 recommended)</li>
+                    <li><strong>Time zones:</strong> Timestamps should be stored in UTC to avoid daylight saving time issues</li>
+                    <li><strong>Default values:</strong> Check if sink applies different defaults than source for NULL columns</li>
+                </ul>
+            </div>
+
             <h2 id="cleanup">Cleanup</h2>
             <p>When you're done experimenting, you can tear down all the services:</p>
             <pre><code>docker-compose down -v</code></pre>
