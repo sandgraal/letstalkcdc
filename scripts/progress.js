@@ -10,7 +10,8 @@ const config = {
   eventsCollectionId: globalScope.COL_EVENTS_ID ?? "",
   journeySlug:
     globalScope.CDC_JOURNEY_SLUG ??
-    (globalScope.document?.body?.dataset?.journeySlug ?? ""),
+    globalScope.document?.body?.dataset?.journeySlug ??
+    "",
 };
 
 const LOCAL_STORAGE_KEY = "cdc-progress-store";
@@ -54,10 +55,7 @@ const moduleTitleLookup = new Map(
 const persistDashboardDocs = (docs) => {
   if (typeof globalScope.localStorage === "undefined") return;
   try {
-    globalScope.localStorage.setItem(
-      "lastProgressDocs",
-      JSON.stringify(docs)
-    );
+    globalScope.localStorage.setItem("lastProgressDocs", JSON.stringify(docs));
   } catch (_) {
     /* ignore */
   }
@@ -103,7 +101,10 @@ const transformDocsForDashboard = (docs = []) =>
       ? Math.min(100, Math.max(0, rawPercent))
       : 0;
     const updatedAt =
-      doc.updatedAt ?? doc.$updatedAt ?? doc.$createdAt ?? new Date().toISOString();
+      doc.updatedAt ??
+      doc.$updatedAt ??
+      doc.$createdAt ??
+      new Date().toISOString();
 
     return {
       moduleId: doc.journeySlug,
@@ -318,7 +319,10 @@ const dispatchProgressChange = (slug) => {
       })
     );
   } catch (error) {
-    console.warn("CDCProgress: Unable to dispatch progress change event", error);
+    console.warn(
+      "CDCProgress: Unable to dispatch progress change event",
+      error
+    );
   }
 };
 
@@ -392,16 +396,22 @@ const toolbarNodes = () => {
     status: Array.from(doc.querySelectorAll("[data-progress-status]")),
     login: Array.from(doc.querySelectorAll("[data-progress-login]")),
     logout: Array.from(doc.querySelectorAll("[data-progress-logout]")),
+    fill: Array.from(doc.querySelectorAll("[data-progress-fill]")),
   };
 };
 
 const renderToolbar = (slug) => {
-  const { percent, status, login, logout } = toolbarNodes();
+  const { percent, status, login, logout, fill } = toolbarNodes();
   const entry = slug ? state.progress.get(slug) : null;
   const percentValue = entry ? Math.round(entry.percent ?? 0) : 0;
 
   percent.forEach((node) => {
     node.textContent = `${percentValue}%`;
+  });
+
+  // Update progress bar fill
+  fill.forEach((node) => {
+    node.style.width = `${percentValue}%`;
   });
 
   const hasSdk = Boolean(AppwriteExports);
@@ -417,6 +427,16 @@ const renderToolbar = (slug) => {
     }
     return "Not signed in";
   })();
+
+  // Update status data attribute for styling
+  status.forEach((node) => {
+    node.textContent = statusMessage;
+    if (state.isAuthenticated) {
+      node.setAttribute("data-status", "synced");
+    } else {
+      node.setAttribute("data-status", "");
+    }
+  });
 
   status.forEach((node) => {
     node.textContent = statusMessage;
@@ -589,7 +609,11 @@ const onStepChangeInternal = async (payload) => {
   const previousEvent = lastStepEvents.get(slug) ?? { step: null, bucket: -1 };
   if (previousEvent.step !== step || previousEvent.bucket !== eventBucket) {
     lastStepEvents.set(slug, { step, bucket: eventBucket });
-    logEvent("step-change", { journeySlug: slug, step, percent: clampedPercent });
+    logEvent("step-change", {
+      journeySlug: slug,
+      step,
+      percent: clampedPercent,
+    });
   }
 };
 
@@ -666,10 +690,7 @@ const offerResumeInternal = ({ journeySlug, onResume, message } = {}) => {
   toast.resume.onclick = () => {
     hideToast();
     if (typeof globalScope.sessionStorage !== "undefined") {
-      globalScope.sessionStorage.setItem(
-        RESUME_SESSION_KEY(slug),
-        "completed"
-      );
+      globalScope.sessionStorage.setItem(RESUME_SESSION_KEY(slug), "completed");
     }
     if (typeof onResume === "function") {
       onResume(entry);
@@ -682,10 +703,7 @@ const offerResumeInternal = ({ journeySlug, onResume, message } = {}) => {
   toast.dismiss.onclick = () => {
     hideToast();
     if (typeof globalScope.sessionStorage !== "undefined") {
-      globalScope.sessionStorage.setItem(
-        RESUME_SESSION_KEY(slug),
-        "dismissed"
-      );
+      globalScope.sessionStorage.setItem(RESUME_SESSION_KEY(slug), "dismissed");
     }
   };
 
@@ -738,7 +756,7 @@ const migrateAnonymousProgress = async (fromUserId, toUserId) => {
   if (!fromUserId || !toUserId || fromUserId === toUserId) return;
   try {
     // TODO: Update this endpoint URL when deploying the serverless function
-    // to a different platform (e.g., Vercel: /api/migrateUser, 
+    // to a different platform (e.g., Vercel: /api/migrateUser,
     // Cloudflare Workers: https://your-worker.workers.dev/migrateUser,
     // AWS Lambda: https://your-api-gateway-url/migrateUser)
     // See docs/HOSTING.md for details on serverless function deployment.
@@ -879,7 +897,9 @@ const bootstrap = async () => {
     return;
   }
 
-  state.client = new Client().setEndpoint(config.endpoint).setProject(config.project);
+  state.client = new Client()
+    .setEndpoint(config.endpoint)
+    .setProject(config.project);
   state.account = new Account(state.client);
   state.databases = new Databases(state.client);
 
@@ -934,14 +954,12 @@ const bootstrap = async () => {
   maybeAutoResume();
 };
 
-const refreshProgressInternal = async ({ remote = true, forceDashboard = false } = {}) => {
+const refreshProgressInternal = async ({
+  remote = true,
+  forceDashboard = false,
+} = {}) => {
   await ensureReadyPromise();
-  if (
-    remote &&
-    AppwriteExports &&
-    state.user &&
-    state.databases
-  ) {
+  if (remote && AppwriteExports && state.user && state.databases) {
     await loadRemoteProgress({ clearStaleRemoteDocs: true });
   }
   const docs = getDashboardDocsFromState();
@@ -958,7 +976,8 @@ const bindAuthButtons = () => {
   doc.addEventListener("click", (event) => {
     const loginButton = event.target.closest("[data-progress-login]");
     if (loginButton) {
-      const provider = loginButton.getAttribute("data-progress-login") || "github";
+      const provider =
+        loginButton.getAttribute("data-progress-login") || "github";
       signInWithOAuthInternal(provider);
       return;
     }

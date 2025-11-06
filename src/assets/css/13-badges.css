@@ -1,0 +1,453 @@
+/**
+ * 13-badges.css
+ * Enhanced badge system with sizes, semantic variants, and special indicators
+ */
+
+/* ==========================================================================
+   Base Badge Component
+   ========================================================================== */
+
+.badge {
+  --badge-bg: var(--color-bg-elevated, rgba(30, 41, 59, 0.8));
+  --badge-color: var(--color-text-secondary, rgba(148, 163, 233, 0.8));
+  --badge-padding: var(--space-2xs, 0.25rem) var(--space-sm, 0.75rem);
+  --badge-font-size: var(--text-xs, 0.75rem);
+  --badge-radius: var(--radius-full, 9999px);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs, 0.25rem);
+  padding: var(--badge-padding);
+  font-size: var(--badge-font-size);
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: var(--badge-radius);
+  white-space: nowrap;
+  background-color: var(--badge-bg);
+  color: var(--badge-color);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* ==========================================================================
+   Badge Sizes
+   ========================================================================== */
+
+.badge--xs {
+  --badge-padding: 0.125rem 0.5rem;
+  --badge-font-size: 0.625rem;
+}
+
+.badge--sm {
+  --badge-padding: 0.25rem 0.625rem;
+  --badge-font-size: 0.6875rem;
+}
+
+.badge--md {
+  --badge-padding: 0.25rem 0.75rem;
+  --badge-font-size: 0.75rem;
+}
+
+.badge--lg {
+  --badge-padding: 0.375rem 1rem;
+  --badge-font-size: 0.875rem;
+}
+
+.badge--xl {
+  --badge-padding: 0.5rem 1.25rem;
+  --badge-font-size: 1rem;
+}
+
+/* ==========================================================================
+   Badge Variants - Semantic Colors
+   ========================================================================== */
+
+.badge.default,
+.badge--default {
+  --badge-bg: var(--color-bg-elevated, rgba(30, 41, 59, 0.8));
+  --badge-color: var(--color-text-secondary, rgba(148, 163, 233, 0.8));
+}
+
+.badge.accent,
+.badge--accent {
+  --badge-bg: var(--color-accent-subtle, rgba(56, 189, 248, 0.1));
+  --badge-color: var(--color-accent-primary, #38bdf8);
+  border: 1px solid var(--color-accent-primary, rgba(56, 189, 248, 0.3));
+}
+
+.badge.success,
+.badge--success {
+  --badge-bg: rgba(34, 197, 94, 0.1);
+  --badge-color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge.warning,
+.badge--warning {
+  --badge-bg: rgba(245, 158, 11, 0.1);
+  --badge-color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge.error,
+.badge--error {
+  --badge-bg: rgba(239, 68, 68, 0.1);
+  --badge-color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge.info,
+.badge--info {
+  --badge-bg: rgba(59, 130, 246, 0.1);
+  --badge-color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge.recommended,
+.badge--recommended {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-primary, #38bdf8) 0%,
+    var(--color-accent-hover, #0ea5e9) 100%
+  );
+  color: white;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3),
+    0 4px 12px rgba(56, 189, 248, 0.25);
+  border: none;
+}
+
+/* ==========================================================================
+   Badge Styles - Visual Variants
+   ========================================================================== */
+
+/* Solid badges */
+.badge--solid {
+  --badge-bg: var(--color-accent-primary, #38bdf8);
+  --badge-color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+}
+
+.badge--solid.badge--success {
+  --badge-bg: #22c55e;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+}
+
+.badge--solid.badge--warning {
+  --badge-bg: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.badge--solid.badge--error {
+  --badge-bg: #ef4444;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* Outline badges */
+.badge--outline {
+  background-color: transparent;
+  border: 2px solid var(--badge-color);
+}
+
+/* Ghost badges */
+.badge--ghost {
+  background-color: transparent;
+  border: none;
+  padding-inline: 0.5rem;
+}
+
+/* Pill badges (rounded rectangle) */
+.badge--pill {
+  --badge-radius: var(--radius-lg, 0.5rem);
+  padding-inline: 1rem;
+}
+
+/* ==========================================================================
+   Badge with Icons
+   ========================================================================== */
+
+.badge__icon {
+  display: inline-flex;
+  align-items: center;
+  width: 1em;
+  height: 1em;
+  font-size: 1.125em;
+}
+
+.badge__icon--left {
+  margin-right: -0.125rem;
+}
+
+.badge__icon--right {
+  margin-left: -0.125rem;
+}
+
+/* Built-in icon styles */
+.badge__icon--dot::before {
+  content: "●";
+  font-size: 0.625em;
+}
+
+.badge__icon--check::before {
+  content: "✓";
+}
+
+.badge__icon--cross::before {
+  content: "✕";
+}
+
+.badge__icon--star::before {
+  content: "★";
+}
+
+.badge__icon--new::before {
+  content: "NEW";
+  font-size: 0.6em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+/* ==========================================================================
+   Special Badge Types
+   ========================================================================== */
+
+/* Status badges with pulse animation */
+.badge--status {
+  position: relative;
+}
+
+.badge--status::before {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.badge--status.badge--active::before {
+  background-color: #22c55e;
+  animation: pulse-status 2s ease-in-out infinite;
+}
+
+@keyframes pulse-status {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+  }
+}
+
+.badge--status {
+  padding-left: 1.25rem;
+}
+
+/* New/Beta/Deprecated badges */
+.badge--new {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.625rem;
+  padding: 0.25rem 0.5rem;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.badge--beta {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.625rem;
+  padding: 0.25rem 0.5rem;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.badge--deprecated {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+/* Count badges (notification style) */
+.badge--count {
+  --badge-radius: 50%;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  justify-content: center;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 0.625rem;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.badge--count--lg {
+  min-width: 2rem;
+  height: 2rem;
+  font-size: 0.75rem;
+}
+
+/* Interactive badges */
+.badge--interactive {
+  cursor: pointer;
+  user-select: none;
+}
+
+.badge--interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  filter: brightness(1.1);
+}
+
+.badge--interactive:active {
+  transform: translateY(0);
+}
+
+/* Removable badges */
+.badge--removable {
+  padding-right: 0.375rem;
+}
+
+.badge__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.25rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  color: currentColor;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.badge__remove:hover {
+  background: rgba(0, 0, 0, 0.3);
+  transform: scale(1.1);
+}
+
+.badge__remove::before {
+  content: "×";
+}
+
+/* ==========================================================================
+   Badge Groups
+   ========================================================================== */
+
+.badge-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge-group--tight {
+  gap: 0.25rem;
+}
+
+.badge-group--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ==========================================================================
+   Badge with Tooltip
+   ========================================================================== */
+
+.badge[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+.badge[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: rgba(15, 23, 42, 0.95);
+  color: rgba(226, 232, 255, 0.95);
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.badge[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-8px);
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .badge {
+    font-size: 0.6875rem;
+  }
+
+  .badge--lg,
+  .badge--xl {
+    --badge-font-size: 0.75rem;
+    --badge-padding: 0.25rem 0.75rem;
+  }
+
+  .badge-group {
+    gap: 0.375rem;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .badge--interactive:hover,
+  .badge__remove:hover,
+  .badge--status::before {
+    animation: none;
+    transform: none;
+  }
+
+  .badge[data-tooltip]::after {
+    transition: opacity 0.1s ease;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+/* ==========================================================================
+   Dark Theme Adjustments
+   ========================================================================== */
+
+[data-theme="dark"] .badge--solid {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .badge--recommended {
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4),
+    0 4px 16px rgba(56, 189, 248, 0.3);
+}
