@@ -385,6 +385,10 @@
   --status-color: rgba(148, 163, 233, 0.5);
 }
 
+.series-progress__status[data-status="initialized"]::before {
+  --status-color: rgba(148, 163, 233, 0.7);
+}
+
 @keyframes pulse-dot {
   0%,
   100% {
