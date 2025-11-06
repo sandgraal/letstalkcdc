@@ -104,8 +104,12 @@ receivers:
     pagerduty_configs:
       # Configure your PagerDuty integration key here
       # Get this from: PagerDuty > Services > Your Service > Integrations > Events API v2
-      # SECURITY: Use environment variable substitution or Docker secrets in production
-      # Example with env var: service_key: '${PAGERDUTY_INTEGRATION_KEY}'
+      # 
+      # SECURITY RECOMMENDATION for production:
+      # Use environment variable substitution: service_key: '${PAGERDUTY_INTEGRATION_KEY}'
+      # Or use Docker secrets for better security
+      # 
+      # For testing/local development, replace the placeholder below:
       - service_key: '<YOUR_PAGERDUTY_INTEGRATION_KEY>'
         # Optional: Add custom details to PagerDuty incidents
         description: '{{ .GroupLabels.alertname }}: {{ .GroupLabels.connector }}'
@@ -124,8 +128,12 @@ receivers:
     slack_configs:
       # Configure your Slack webhook URL
       # Get this from: Slack > Apps > Incoming Webhooks > Add New Webhook
-      # SECURITY: Use environment variable substitution or Docker secrets in production
-      # Example with env var: api_url: '${SLACK_WEBHOOK_URL}'
+      # 
+      # SECURITY RECOMMENDATION for production:
+      # Use environment variable substitution: api_url: '${SLACK_WEBHOOK_URL}'
+      # Or use Docker secrets for better security
+      # 
+      # For testing/local development, replace the placeholder below:
       - api_url: '<YOUR_SLACK_WEBHOOK_URL>'
         channel: '#cdc-alerts-warnings'
         # Optional: Customize message appearance
@@ -150,7 +158,9 @@ receivers:
   # Slack receiver for SLO alerts
   - name: 'slack-slo'
     slack_configs:
-      # SECURITY: Use environment variable substitution or Docker secrets in production
+      # SECURITY RECOMMENDATION for production:
+      # Use environment variable substitution: api_url: '${SLACK_WEBHOOK_URL}'
+      # Or use Docker secrets for better security
       - api_url: '<YOUR_SLACK_WEBHOOK_URL>'
         channel: '#cdc-slo-tracking'
         title: ':chart_with_downwards_trend: {{ .GroupLabels.alertname }}'
