@@ -1,0 +1,518 @@
+/**
+ * 15-accordions.css
+ * Accordion and collapsible section components for FAQs and expandable content
+ */
+
+/* ==========================================================================
+   Accordion Container
+   ========================================================================== */
+
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 2rem 0;
+}
+
+.accordion--compact {
+  gap: 0;
+}
+
+.accordion--compact .accordion-item {
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+}
+
+.accordion--compact .accordion-item:first-child {
+  border-top-left-radius: var(--radius-lg, 0.5rem);
+  border-top-right-radius: var(--radius-lg, 0.5rem);
+}
+
+.accordion--compact .accordion-item:last-child {
+  border-bottom-left-radius: var(--radius-lg, 0.5rem);
+  border-bottom-right-radius: var(--radius-lg, 0.5rem);
+  border-bottom: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+}
+
+/* ==========================================================================
+   Accordion Item
+   ========================================================================== */
+
+.accordion-item {
+  background: var(--color-bg-elevated, rgba(30, 41, 59, 0.6));
+  border: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+  border-radius: var(--radius-lg, 0.5rem);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.accordion-item.is-open {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 41, 59, 0.8) 0%,
+    rgba(51, 65, 85, 0.6) 100%
+  );
+  border-color: var(--color-accent-primary, rgba(56, 189, 248, 0.3));
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.1);
+}
+
+/* ==========================================================================
+   Accordion Header
+   ========================================================================== */
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  color: var(--color-text-primary, rgba(226, 232, 255, 0.95));
+}
+
+.accordion-header:hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.accordion-header:focus-visible {
+  outline: 2px solid var(--color-focus, #38bdf8);
+  outline-offset: -2px;
+}
+
+.accordion-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+  flex: 1;
+}
+
+.accordion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: 1rem;
+  color: var(--color-accent-primary, #38bdf8);
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.accordion-icon::before {
+  content: "+";
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.accordion-item.is-open .accordion-icon {
+  transform: rotate(45deg);
+}
+
+/* Chevron variant */
+.accordion-icon--chevron::before {
+  content: "›";
+  font-size: 1.75rem;
+}
+
+.accordion-item.is-open .accordion-icon--chevron {
+  transform: rotate(90deg);
+}
+
+/* Arrow variant */
+.accordion-icon--arrow::before {
+  content: "↓";
+  font-size: 1.25rem;
+}
+
+.accordion-item.is-open .accordion-icon--arrow {
+  transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   Accordion Content
+   ========================================================================== */
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-item.is-open .accordion-content {
+  max-height: 1000px; /* Adjust based on content needs */
+}
+
+.accordion-body {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  color: var(--color-text-secondary, rgba(148, 163, 233, 0.8));
+  line-height: 1.7;
+}
+
+.accordion-body > *:first-child {
+  margin-top: 0;
+}
+
+.accordion-body > *:last-child {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Collapsible Section (Simple Toggle)
+   ========================================================================== */
+
+.collapsible {
+  margin: 2rem 0;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+  border-radius: var(--radius-lg, 0.5rem);
+  background: var(--color-bg-elevated, rgba(30, 41, 59, 0.6));
+  overflow: hidden;
+}
+
+.collapsible-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, rgba(226, 232, 255, 0.95));
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-toggle:hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.collapsible-toggle:focus-visible {
+  outline: 2px solid var(--color-focus, #38bdf8);
+  outline-offset: -2px;
+}
+
+.collapsible-indicator {
+  display: inline-block;
+  margin-left: 0.5rem;
+  transition: transform 0.3s ease;
+  color: var(--color-accent-primary, #38bdf8);
+}
+
+.collapsible-indicator::before {
+  content: "▼";
+  font-size: 0.75rem;
+}
+
+.collapsible.is-open .collapsible-indicator {
+  transform: rotate(180deg);
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collapsible.is-open .collapsible-content {
+  max-height: 1000px;
+}
+
+.collapsible-body {
+  padding: 0 1.25rem 1.25rem 1.25rem;
+  color: var(--color-text-secondary, rgba(148, 163, 233, 0.8));
+  line-height: 1.7;
+}
+
+/* ==========================================================================
+   Details/Summary Native Element
+   ========================================================================== */
+
+details {
+  margin: 1rem 0;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+  border-radius: var(--radius-lg, 0.5rem);
+  background: var(--color-bg-elevated, rgba(30, 41, 59, 0.6));
+  overflow: hidden;
+}
+
+summary {
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-primary, rgba(226, 232, 255, 0.95));
+  list-style: none;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::after {
+  content: "+";
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  color: var(--color-accent-primary, #38bdf8);
+  transition: transform 0.3s ease;
+}
+
+details[open] summary::after {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+summary:hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+summary:focus-visible {
+  outline: 2px solid var(--color-focus, #38bdf8);
+  outline-offset: -2px;
+}
+
+details > *:not(summary) {
+  padding: 0 1.25rem 1.25rem 1.25rem;
+  color: var(--color-text-secondary, rgba(148, 163, 233, 0.8));
+  line-height: 1.7;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   FAQ Component (Special Accordion Style)
+   ========================================================================== */
+
+.faq {
+  margin: 2rem 0;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+  padding: 1.5rem 0;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  gap: 1rem;
+}
+
+.faq-question:focus-visible {
+  outline: 2px solid var(--color-focus, #38bdf8);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm, 0.25rem);
+}
+
+.faq-q-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary, rgba(226, 232, 255, 0.95));
+  line-height: 1.5;
+  flex: 1;
+}
+
+.faq-q-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-accent-subtle, rgba(56, 189, 248, 0.1));
+  color: var(--color-accent-primary, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  font-weight: 300;
+}
+
+.faq-q-icon::before {
+  content: "+";
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.faq-item.is-open .faq-q-icon {
+  transform: rotate(45deg);
+  background: var(--color-accent-primary, #38bdf8);
+  color: white;
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.faq-item.is-open .faq-answer {
+  max-height: 800px;
+}
+
+.faq-a-text {
+  padding-top: 1rem;
+  color: var(--color-text-secondary, rgba(148, 163, 233, 0.8));
+  line-height: 1.7;
+}
+
+/* ==========================================================================
+   Expandable Card
+   ========================================================================== */
+
+.expandable-card {
+  background: var(--color-bg-elevated, rgba(30, 41, 59, 0.6));
+  border: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+  border-radius: var(--radius-lg, 0.5rem);
+  margin: 1rem 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.expandable-card.is-expanded {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.expandable-card__header {
+  padding: 1.25rem 1.5rem;
+}
+
+.expandable-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary, rgba(226, 232, 255, 0.95));
+  margin-bottom: 0.5rem;
+}
+
+.expandable-card__excerpt {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, rgba(148, 163, 233, 0.7));
+  line-height: 1.6;
+}
+
+.expandable-card__content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expandable-card.is-expanded .expandable-card__content {
+  max-height: 1200px;
+}
+
+.expandable-card__body {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--color-border-subtle, rgba(148, 163, 233, 0.1));
+}
+
+.expandable-card__toggle {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: rgba(56, 189, 248, 0.05);
+  border: none;
+  border-top: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
+  color: var(--color-accent-primary, #38bdf8);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expandable-card__toggle:hover {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.expandable-card__toggle::after {
+  content: " ↓";
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.expandable-card.is-expanded .expandable-card__toggle::after {
+  transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .accordion-header,
+  .collapsible-toggle,
+  summary,
+  .faq-question {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .accordion-body,
+  .collapsible-body,
+  details > *:not(summary),
+  .faq-a-text {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .accordion-title,
+  .faq-q-text {
+    font-size: 1rem;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-content,
+  .collapsible-content,
+  .faq-answer,
+  .expandable-card__content,
+  .accordion-icon,
+  .collapsible-indicator,
+  details > *:not(summary) {
+    transition: none;
+    animation: none;
+  }
+
+  .accordion-item.is-open .accordion-content,
+  .collapsible.is-open .collapsible-content,
+  .faq-item.is-open .faq-answer,
+  .expandable-card.is-expanded .expandable-card__content {
+    transition: none;
+  }
+}
