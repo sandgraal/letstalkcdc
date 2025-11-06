@@ -231,9 +231,11 @@ const statusTextForEntry = (entry) => {
       status: "in-progress",
     };
   }
+  // Entry exists but has no explicit status (or status is "not-started")
+  // Use "initialized" to distinguish from null entries
   return {
     text: "Tracking started",
-    status: "not-started",
+    status: "initialized",
   };
 };
 
