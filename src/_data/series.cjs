@@ -95,8 +95,8 @@ module.exports = [
   },
   {
     key: 'lab-kafka-debezium',
-    title: 'Hands-On Lab: Kafka + Debezium',
-    description: 'Stand up Kafka, Connect, and Postgres locally with guided copy-paste commands.',
+    title: 'Hands-On Lab: Kafka + Debezium + Sinks',
+    description: 'Stand up Kafka, Connect, Postgres source & sink with guided copy-paste commands. Includes upsert patterns and schema evolution.',
     href: '/lab-kafka-debezium/',
     ctaLabel: 'Start the Lab',
     tags: [ { label: 'Lab', variant: 'tag-labs' } ]

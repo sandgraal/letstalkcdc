@@ -1,7 +1,7 @@
 ---
 layout: base.njk
-title: "Hands-On Lab: CDC with Kafka, Debezium, and Postgres | CDC: The Missing Manual"
-description: "A step-by-step guide to building a real-time Change Data Capture pipeline using Docker, Postgres, Kafka, and Debezium."
+title: "Hands-On Lab: CDC with Kafka, Debezium, and Postgres (with Sinks) | CDC: The Missing Manual"
+description: "A complete guide to building a real-time Change Data Capture pipeline using Docker, Postgres, Kafka, Debezium, and JDBC Sink connector—from source to destination."
 canonicalPath: "/lab-kafka-debezium/"
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/lab-kafka-debezium.css' | url }}">
@@ -12,7 +12,7 @@ head_extra: |
 {{ ui.hero(heroConfig) | safe }}
 
         <p class="text-xl text-slate-600">
-            In this lab, you'll build a complete, end-to-end Change Data Capture (CDC) pipeline from scratch. We'll use Docker Compose to orchestrate a Postgres database, Kafka, and the Debezium Postgres connector to stream row-level changes in real time.
+            In this lab, you'll build a complete, end-to-end Change Data Capture (CDC) pipeline from scratch. We'll use Docker Compose to orchestrate Postgres databases (source and sink), Kafka, the Debezium Postgres connector, and a JDBC Sink connector to demonstrate real-time change streaming and materialization.
         </p>
 
         <section aria-labelledby="prereqs" class="lab-steps">
@@ -92,7 +92,19 @@ services:
       CONFIG_STORAGE_TOPIC: my_connect_configs
       OFFSET_STORAGE_TOPIC: my_connect_offsets
       STATUS_STORAGE_TOPIC: my_connect_statuses
+
+  postgres-sink:
+    image: debezium/postgres:14
+    hostname: postgres-sink
+    container_name: postgres-sink
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=sink_user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=warehouse
                     </code></pre>
+                    <p><strong>Security Note:</strong> This lab uses hardcoded credentials for simplicity. In production environments, use environment variables, Docker secrets, or a secrets management solution like HashiCorp Vault to protect sensitive information.</p>
                 </li>
                 <li>
                     <h3>Start the Services</h3>
@@ -131,9 +143,98 @@ services:
                 </li>
                  <li>
                     <h3>Observe the Change Event in Kafka</h3>
-                    <p>Finally, let's consume from the Kafka topic to see the change event that Debezium generated. The topic name is based on the `database.server.name` and the table name (`dbserver1.public.products`).</p>
-                    <pre><code>docker-compose exec kafka kafka-console-consumer --bootstrap-server kafka:29092 --topic dbserver1.public.products --from-beginning --property print.key=true</code></pre>
-                    <p>You will see a detailed JSON payload representing the `INSERT` operation you just performed. Congratulations, you've built a working CDC pipeline!</p>
+                    <p>Let's consume from the Kafka topic to see the change event that Debezium generated. The topic name is based on the `database.server.name` and the table name (`dbserver1.public.products`).</p>
+                    <pre><code>docker-compose exec kafka kafka-console-consumer --bootstrap-server kafka:29092 --topic dbserver1.public.products --from-beginning --max-messages 1 --property print.key=true</code></pre>
+                    <p>You will see a detailed JSON payload representing the `INSERT` operation you just performed. Press <code>Ctrl+C</code> if you want to see more messages, or use <code>--timeout-ms 10000</code> instead of <code>--max-messages 1</code> to view all messages within a time window.</p>
+                </li>
+                <li>
+                    <h3>Configure the JDBC Sink Connector</h3>
+                    <p>Now we'll add a downstream sink to write these changes into another Postgres database (our "data warehouse"). First, create the destination table in the sink database:</p>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "CREATE TABLE products (id INTEGER PRIMARY KEY, name VARCHAR(255), description VARCHAR(512), weight FLOAT);"</code></pre>
+                    <p><strong>Note:</strong> The sink table schema must match the source table columns that will be replicated. Alternatively, you can set <code>auto.create=true</code> in the connector config to let it create the table automatically, though manual creation gives you more control over data types and constraints.</p>
+                    <p>Create a file named <code>register-sink.json</code> with the JDBC Sink Connector configuration:</p>
+                    <pre><code>{
+  "name": "jdbc-sink-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "dbserver1.public.products",
+    "connection.url": "jdbc:postgresql://postgres-sink:5432/warehouse",
+    "connection.user": "sink_user",
+    "connection.password": "password",
+    "auto.create": "false",
+    "auto.evolve": "true",
+    "insert.mode": "upsert",
+    "pk.mode": "record_key",
+    "pk.fields": "id",
+    "table.name.format": "products",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite"
+  }
+}</code></pre>
+                    <p>Register the sink connector:</p>
+                    <pre><code>curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @register-sink.json</code></pre>
+                    <p><strong>Note:</strong> The sink connector uses Debezium's <code>ExtractNewRecordState</code> transform to unwrap the event envelope and extract just the <code>after</code> state, making it suitable for simple upserts.</p>
+                    <p><strong>Production Tip:</strong> For production deployments, externalize credentials using environment variables or secure credential stores instead of hardcoding them in the connector configuration.</p>
+                </li>
+                <li>
+                    <h3>Verify Data Replication</h3>
+                    <p>Check that the data has been replicated to the sink database:</p>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products;"</code></pre>
+                    <p>You should see the same laptop record that was inserted in the source database. The JDBC sink connector consumed the change event from Kafka and inserted it into the destination table.</p>
+                </li>
+                <li>
+                    <h3>Test the Upsert Pattern</h3>
+                    <p>Let's update the product in the source database to see how the sink handles updates:</p>
+                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "UPDATE products SET weight = 1.8, description = 'A powerful gaming laptop' WHERE id = 1;"</code></pre>
+                    <p>Wait a moment for the change to propagate, then verify the sink reflects the update:</p>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products WHERE id = 1;"</code></pre>
+                    <p>The sink should show the updated values. Because we configured the sink with <code>insert.mode=upsert</code>, it performs an UPDATE if the record exists, or an INSERT if it doesn't—implementing a MERGE pattern automatically.</p>
+                </li>
+                <li>
+                    <h3>Test Schema Evolution</h3>
+                    <p>Let's add a new column to the source table and see how the pipeline handles schema changes:</p>
+                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "ALTER TABLE products ADD COLUMN price DECIMAL(10,2);"</code></pre>
+                    <p>Insert a new product with the price column:</p>
+                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "INSERT INTO products (name, description, weight, price) VALUES ('Monitor', '27-inch 4K display', 5.5, 499.99);"</code></pre>
+                    <p>The sink connector's <code>auto.evolve=true</code> setting will automatically add the new column to the sink table. Verify the schema evolution:</p>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "\d products"</code></pre>
+                    <p>Then check that both products are present:</p>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products;"</code></pre>
+                    <p>You should see the <code>price</code> column has been added, and both products are present—demonstrating seamless schema evolution!</p>
+                </li>
+                <li>
+                    <h3>Validate End-to-End Consistency</h3>
+                    <p>Finally, let's verify that the source and sink databases are in sync. First, check the source database:</p>
+                    <pre><code>docker-compose exec -u postgres postgres psql -d inventory -c "SELECT COUNT(*), MAX(id), MIN(id) FROM products;"
+docker-compose exec -u postgres postgres psql -d inventory -c "SELECT * FROM products ORDER BY id;"</code></pre>
+                    <p>Then check the sink database:</p>
+                    <pre><code>docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT COUNT(*), MAX(id), MIN(id) FROM products;"
+docker-compose exec -u postgres postgres-sink psql -d warehouse -c "SELECT * FROM products ORDER BY id;"</code></pre>
+                    <p>Both databases should show the same counts and data. Congratulations! You've built a complete end-to-end CDC pipeline with:</p>
+                    <ul>
+                        <li>✅ Real-time change capture from a source database</li>
+                        <li>✅ Event streaming through Kafka</li>
+                        <li>✅ Automatic materialization in a sink database</li>
+                        <li>✅ Upsert pattern handling for updates</li>
+                        <li>✅ Schema evolution support</li>
+                    </ul>
                 </li>
             </ol>
+
+            <h2 id="cleanup">Cleanup</h2>
+            <p>When you're done experimenting, you can tear down all the services:</p>
+            <pre><code>docker-compose down -v</code></pre>
+            <p>The <code>-v</code> flag removes the volumes, ensuring a clean slate for next time.</p>
+
+            <h2 id="next-steps">Next Steps</h2>
+            <p>Now that you understand the complete CDC flow, consider exploring:</p>
+            <ul>
+                <li><strong><a href="/materialization/">Materialization patterns</a></strong> for handling deletes and late-arriving data</li>
+                <li><strong><a href="/schema-evolution/">Schema evolution strategies</a></strong> for production environments</li>
+                <li><strong><a href="/exactly-once/">Exactly-once semantics</a></strong> for critical pipelines</li>
+                <li><strong><a href="/observability/">Observability best practices</a></strong> for monitoring your CDC pipeline</li>
+            </ul>
         </section>
