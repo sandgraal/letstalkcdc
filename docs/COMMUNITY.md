@@ -46,7 +46,34 @@ Create the following categories to organize community conversations:
 
 ### Seed Discussion Topics
 
-To kickstart community engagement, create these initial discussions:
+To kickstart community engagement, use the automated seeding script or manually create these initial discussions:
+
+#### Automated Seeding (Recommended)
+
+Use the `seed-discussions.mjs` script to automatically create all starter threads:
+
+```bash
+# Generate a GitHub token with 'repo' and 'discussion' permissions
+# Then run:
+GITHUB_TOKEN=ghp_your_token_here node scripts/seed-discussions.mjs
+```
+
+The script will:
+- Create 4 pinned starter discussions
+- Skip any discussions that already exist
+- Automatically categorize each thread
+- Provide a summary of created/skipped discussions
+
+**For detailed instructions, see [DISCUSSIONS_SEED.md](DISCUSSIONS_SEED.md)**
+
+**Prerequisites:**
+- GitHub Discussions must be enabled for the repository
+- GitHub personal access token with `repo` and `discussion` scopes
+- Discussion categories must exist (see above section)
+
+#### Manual Creation
+
+Alternatively, manually create these discussions:
 
 #### Show Your CDC Stack
 ```markdown
@@ -100,23 +127,57 @@ Share your experience with:
 What patterns have worked well for your use case?
 ```
 
-#### Tool Comparisons
+#### Tool Requests / Future Labs
 ```markdown
-**Title:** Tool comparison: What CDC solution do you use and why?
+**Title:** Tool Requests / Future Labs - What would you like to see?
 
 **Body:**
-There are many CDC tools available. Which one(s) do you use and why did you choose them?
+Help shape the future of this learning platform!
 
-Popular options include:
-- Debezium (open source, log-based)
-- Maxwell's Daemon (open source, MySQL)
-- AWS DMS (managed service)
-- Striim (commercial)
-- Qlik Replicate (commercial)
-- Fivetran (SaaS)
-- Airbyte (open source)
+What would you like to see added?
+- New CDC tool tutorials or quick starts
+- Hands-on labs for specific scenarios
+- Deep dives into advanced topics
+- Troubleshooting guides for common issues
+- Integration patterns and examples
+- Video content or interactive demos
 
-Share your evaluation criteria, pros/cons, and lessons learned!
+Popular CDC tools we could cover:
+- Debezium (PostgreSQL, MySQL, MongoDB, SQL Server, Oracle)
+- AWS DMS (Database Migration Service)
+- Google Datastream
+- Azure Data Factory CDC
+- Matillion CDC
+- Qlik Replicate / Attunity
+- Striim
+- Airbyte
+- Fivetran
+
+Tell us what you want to learn, and we'll prioritize based on community interest!
+```
+
+#### Got Stuck in a Lab?
+```markdown
+**Title:** Got stuck in a lab? Ask for help here!
+
+**Body:**
+Running into issues with one of the hands-on labs or quick starts? This is the place to get help!
+
+When asking for help, please include:
+1. Which lab or module you're working on
+2. What step you're stuck at
+3. What error message or unexpected behavior you're seeing
+4. What you've already tried
+5. Your environment details (OS, Docker version, database version, etc.)
+
+The more details you provide, the easier it is for others to help troubleshoot.
+
+Before posting:
+- Check the troubleshooting section for common issues
+- Verify prerequisites are met (Docker installed, required ports available, etc.)
+- Try the "clean slate" approach: `docker compose down -v` and restart
+
+Don't hesitate to ask - we're all learning together!
 ```
 
 ## Community Moderation
