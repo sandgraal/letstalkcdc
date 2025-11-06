@@ -181,6 +181,113 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
+/* Series Cards - Enhanced module cards for overview */
+.series-card {
+  background: var(--gradient-subtle), var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Accent bar on top - appears on hover */
+.series-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.series-card:hover::before,
+.series-card:focus-within::before {
+  opacity: 1;
+}
+
+/* Hover effects */
+.series-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl), 0 0 0 1px var(--color-border-strong);
+  border-color: var(--color-accent-primary);
+}
+
+.series-card:focus-within {
+  box-shadow: var(--shadow-lg);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Recommended card - special styling */
+.series-card.is-recommended {
+  border-color: var(--color-accent-primary);
+  background: var(--gradient-subtle),
+    linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.05) 0%,
+      var(--color-bg-secondary) 50%
+    );
+}
+
+.series-card.is-recommended::before {
+  opacity: 1;
+  background: var(--gradient-accent);
+}
+
+/* Disabled state */
+.series-card.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Card meta (badges and tags) */
+.series-card .card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+
+.series-card .card-tags {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+/* Card title */
+.series-card .card-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-md);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+
+/* Card description */
+.series-card .card-description {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-lg);
+  flex-grow: 1; /* Push button to bottom */
+}
+
+/* Card button at bottom */
+.series-card .button {
+  margin-top: auto;
+  width: 100%;
+}
+
 /* Badge/Pill */
 .badge {
   display: inline-flex;
@@ -203,6 +310,12 @@
   color: var(--color-accent-primary);
 }
 
+.badge.recommended {
+  background: var(--gradient-accent);
+  color: white;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3), var(--shadow-glow-sm);
+}
+
 .badge.success {
   background-color: var(--color-success-subtle);
   color: var(--color-success);
@@ -216,6 +329,52 @@
 .badge.error {
   background-color: var(--color-error-subtle);
   color: var(--color-error);
+}
+
+/* Tags - Similar to badges but more subtle */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* Tag variants for series cards */
+.tag.tag-concept {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-accent-primary);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.tag.tag-pattern {
+  background-color: rgba(20, 184, 166, 0.1);
+  color: var(--color-secondary);
+  border-color: rgba(20, 184, 166, 0.2);
+}
+
+.tag.tag-ops {
+  background-color: rgba(251, 146, 60, 0.1);
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.2);
+}
+
+.tag.tag-tooling {
+  background-color: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.tag.tag-strategy {
+  background-color: rgba(236, 72, 153, 0.1);
+  color: #ec4899;
+  border-color: rgba(236, 72, 153, 0.2);
 }
 
 /* Alert/Notice */
