@@ -7,11 +7,17 @@ const appwriteConfig = {
   collectionId: globalScope.COL_ASSISTANT_ID ?? "",
 };
 
-const hasAllConfig = Object.values(appwriteConfig).every((value) => Boolean(value));
+// Only require the core fields (endpoint, project, databaseId) for Appwrite SDK initialization
+// The collectionId is optional and used only for assistant feedback
+const hasRequiredConfig = Boolean(
+  appwriteConfig.endpoint &&
+  appwriteConfig.project &&
+  appwriteConfig.databaseId
+);
 
 let AppwriteSDK = null;
 
-if (hasAllConfig) {
+if (hasRequiredConfig) {
   try {
     // Import Appwrite SDK from CDN to avoid bundler configuration
     AppwriteSDK = await import("https://cdn.jsdelivr.net/npm/appwrite@13.0.0/dist/esm/appwrite.js");
@@ -24,7 +30,7 @@ if (hasAllConfig) {
 
 let databases = null;
 
-if (AppwriteSDK && hasAllConfig) {
+if (AppwriteSDK && hasRequiredConfig) {
   try {
     const { Client, Databases } = AppwriteSDK;
     const client = new Client()
@@ -42,4 +48,4 @@ export const dbConfig = {
   collectionId: appwriteConfig.collectionId || "assistant_feedback",
 };
 export const isAppwriteReady = Boolean(databases);
-export const isAppwriteConfigured = hasAllConfig;
+export const isAppwriteConfigured = hasRequiredConfig;
