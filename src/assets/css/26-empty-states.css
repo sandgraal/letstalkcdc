@@ -1,0 +1,716 @@
+/* =============================================================
+   26-empty-states.css
+   Comprehensive empty state components with:
+   - No results found (search contexts)
+   - No data available (table/list contexts)
+   - 404 page not found
+   - Getting started prompts (onboarding)
+   - Empty list states
+   - Icon placeholders (large SVG icons)
+   - Illustration support (image backgrounds)
+   - Descriptive text (title + subtitle)
+   - Call-to-action buttons
+   - Suggested actions (bullet list)
+   - Link lists (related resources)
+   - Animated entry
+   - Friendly messaging tone
+   ============================================================= */
+
+/* ==============================
+   Base Empty State Structure
+   ============================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  animation: emptyStateFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes emptyStateFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================
+   Icon/Illustration
+   ============================== */
+
+.empty-state__icon {
+  width: 6rem;
+  height: 6rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-text-tertiary);
+  opacity: 0.6;
+}
+
+.empty-state__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-state__illustration {
+  max-width: 24rem;
+  margin-bottom: 2rem;
+}
+
+.empty-state__illustration img {
+  width: 100%;
+  height: auto;
+  opacity: 0.8;
+}
+
+/* ==============================
+   Text Content
+   ============================== */
+
+.empty-state__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
+}
+
+.empty-state__subtitle {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 2rem;
+  max-width: 32rem;
+  line-height: 1.5;
+}
+
+.empty-state__description {
+  font-size: 0.9375rem;
+  color: var(--color-text-tertiary);
+  margin-bottom: 1.5rem;
+  max-width: 36rem;
+  line-height: 1.6;
+}
+
+/* ==============================
+   Action Buttons
+   ============================== */
+
+.empty-state__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.empty-state__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-accent-primary);
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-state__action:hover {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.empty-state__action--secondary {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.empty-state__action--secondary:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  box-shadow: none;
+}
+
+.empty-state__action-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ==============================
+   Suggested Actions List
+   ============================== */
+
+.empty-state__suggestions {
+  max-width: 32rem;
+  margin: 0 auto 2rem;
+}
+
+.empty-state__suggestions-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.empty-state__suggestions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.empty-state__suggestion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-state__suggestion:hover {
+  border-color: var(--color-accent-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.empty-state__suggestion-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  color: var(--color-accent-primary);
+  margin-top: 0.125rem;
+}
+
+.empty-state__suggestion-text {
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+/* ==============================
+   Resource Links
+   ============================== */
+
+.empty-state__links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.empty-state__links-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.empty-state__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-accent-primary);
+  text-decoration: none;
+  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-state__link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.empty-state__link-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ==============================
+   Contextual Variants
+   ============================== */
+
+/* Search - No Results */
+.empty-state--no-results .empty-state__icon {
+  color: #8b5cf6; /* Purple for search */
+}
+
+.empty-state--no-results .empty-state__title {
+  margin-bottom: 1rem;
+}
+
+/* Data - Empty List/Table */
+.empty-state--no-data .empty-state__icon {
+  color: #6366f1; /* Indigo for data */
+}
+
+/* 404 - Page Not Found */
+.empty-state--404 {
+  min-height: 60vh;
+  padding: 4rem 1.5rem;
+}
+
+.empty-state--404 .empty-state__icon {
+  width: 8rem;
+  height: 8rem;
+  color: #ef4444; /* Red for error */
+}
+
+.empty-state--404 .empty-state__title {
+  font-size: 2rem;
+}
+
+/* Onboarding - Getting Started */
+.empty-state--onboarding {
+  padding: 4rem 1.5rem;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.05),
+    rgba(139, 92, 246, 0.05)
+  );
+  border-radius: 0.75rem;
+}
+
+.empty-state--onboarding .empty-state__icon {
+  color: #3b82f6; /* Blue for onboarding */
+}
+
+/* Success - Completed State */
+.empty-state--success .empty-state__icon {
+  color: #22c55e; /* Green for success */
+}
+
+/* ==============================
+   Size Variants
+   ============================== */
+
+.empty-state--compact {
+  padding: 2rem 1rem;
+}
+
+.empty-state--compact .empty-state__icon {
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state--compact .empty-state__title {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state--compact .empty-state__subtitle {
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.empty-state--large {
+  padding: 5rem 2rem;
+  min-height: 70vh;
+}
+
+.empty-state--large .empty-state__icon {
+  width: 8rem;
+  height: 8rem;
+  margin-bottom: 2rem;
+}
+
+.empty-state--large .empty-state__title {
+  font-size: 2rem;
+}
+
+.empty-state--large .empty-state__subtitle {
+  font-size: 1.125rem;
+}
+
+/* ==============================
+   Background Variants
+   ============================== */
+
+.empty-state--bordered {
+  border: 2px dashed var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-bg-secondary);
+}
+
+.empty-state--card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ==============================
+   Split Layout (Icon on Left)
+   ============================== */
+
+.empty-state--split {
+  flex-direction: row;
+  text-align: left;
+  gap: 2rem;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.empty-state--split .empty-state__icon {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.empty-state--split .empty-state__content {
+  flex: 1;
+}
+
+.empty-state--split .empty-state__actions {
+  justify-content: flex-start;
+}
+
+/* ==============================
+   Loading State (Before Empty)
+   ============================== */
+
+.empty-state--loading {
+  opacity: 0.6;
+}
+
+.empty-state__loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent-primary);
+  border-radius: 50%;
+  margin-bottom: 1.5rem;
+  animation: emptyStateSpinner 0.8s linear infinite;
+}
+
+@keyframes emptyStateSpinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==============================
+   Error State
+   ============================== */
+
+.empty-state--error .empty-state__icon {
+  color: #ef4444; /* Red for error */
+}
+
+.empty-state--error .empty-state__title {
+  color: #ef4444;
+}
+
+.empty-state__error-details {
+  padding: 1rem 1.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+  max-width: 36rem;
+}
+
+.empty-state__error-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ==============================
+   Mobile Responsive
+   ============================== */
+
+@media (max-width: 768px) {
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .empty-state__icon {
+    width: 5rem;
+    height: 5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .empty-state__title {
+    font-size: 1.25rem;
+  }
+
+  .empty-state__subtitle {
+    font-size: 0.9375rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .empty-state__actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .empty-state__action {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .empty-state--split {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .empty-state--split .empty-state__icon {
+    margin-bottom: 1.25rem;
+  }
+
+  .empty-state--split .empty-state__actions {
+    justify-content: center;
+  }
+
+  .empty-state--404 {
+    min-height: 50vh;
+    padding: 3rem 1rem;
+  }
+
+  .empty-state--404 .empty-state__icon {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .empty-state--404 .empty-state__title {
+    font-size: 1.5rem;
+  }
+
+  .empty-state--large {
+    padding: 3rem 1rem;
+    min-height: 50vh;
+  }
+
+  .empty-state--large .empty-state__icon {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .empty-state--large .empty-state__title {
+    font-size: 1.5rem;
+  }
+
+  .empty-state--large .empty-state__subtitle {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .empty-state {
+    padding: 1.5rem 1rem;
+  }
+
+  .empty-state__icon {
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state__illustration {
+    max-width: 16rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .empty-state__title {
+    font-size: 1.125rem;
+  }
+
+  .empty-state__subtitle {
+    font-size: 0.875rem;
+  }
+
+  .empty-state__description {
+    font-size: 0.875rem;
+  }
+
+  .empty-state__action {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .empty-state__suggestion {
+    padding: 0.625rem;
+  }
+
+  .empty-state__suggestion-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .empty-state__suggestion-text {
+    font-size: 0.875rem;
+  }
+}
+
+/* ==============================
+   Reduced Motion
+   ============================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-state {
+    animation: none;
+  }
+
+  .empty-state__action:hover {
+    transform: none;
+  }
+
+  .empty-state__loading-spinner {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* ==============================
+   Light Theme Variants
+   ============================== */
+
+@media (prefers-color-scheme: light) {
+  .empty-state--bordered {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  .empty-state--card {
+    background: white;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .empty-state__suggestion {
+    background: white;
+    border-color: #e2e8f0;
+  }
+
+  .empty-state__suggestion:hover {
+    background: #f8fafc;
+  }
+
+  .empty-state--onboarding {
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.03),
+      rgba(139, 92, 246, 0.03)
+    );
+  }
+
+  .empty-state__error-details {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+}
+
+/* ==============================
+   Print Styles
+   ============================== */
+
+@media print {
+  .empty-state {
+    page-break-inside: avoid;
+  }
+
+  .empty-state__action {
+    display: none;
+  }
+
+  .empty-state__loading-spinner {
+    display: none;
+  }
+}
+
+/* ==============================
+   Accessibility Enhancements
+   ============================== */
+
+.empty-state[role="status"] {
+  /* Live region for dynamic empty states */
+}
+
+.empty-state__action:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* ==============================
+   Advanced Features
+   ============================== */
+
+/* Animated icon */
+.empty-state__icon--animated {
+  animation: emptyStateIconFloat 3s ease-in-out infinite;
+}
+
+@keyframes emptyStateIconFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.5rem);
+  }
+}
+
+/* Progress indicator for onboarding */
+.empty-state__progress {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+
+.empty-state__progress-step {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--color-border);
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-state__progress-step.is-active {
+  background: var(--color-accent-primary);
+  width: 1.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Dismissible empty state */
+.empty-state__dismiss {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-state__dismiss:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.empty-state--dismissible {
+  position: relative;
+}

@@ -1,0 +1,843 @@
+/* =============================================================
+   22-tabs.css
+   Comprehensive tab navigation system with:
+   - Horizontal tabs (default)
+   - Vertical tabs
+   - Pill style
+   - Underline style
+   - Mobile horizontal scroll with fade indicators
+   - Overflow detection
+   - Icon + text tabs
+   - Badges on tabs
+   - Disabled tabs
+   - Keyboard navigation (arrow keys)
+   - Tab panels with lazy loading
+   - Animated tab indicator
+   ============================================================= */
+
+/* ==============================
+   Base Tab Structure
+   ============================== */
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tabs__list {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+}
+
+.tabs__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.tabs__tab:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+.tabs__tab:focus {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.tabs__tab.is-active {
+  color: var(--color-accent-primary);
+}
+
+/* Tab indicator (underline) */
+.tabs__indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--color-accent-primary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+/* Tab content area */
+.tabs__panels {
+  padding: 1.5rem 0;
+}
+
+.tabs__panel {
+  display: none;
+  animation: tabFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__panel.is-active {
+  display: block;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================
+   Tab Icon Support
+   ============================== */
+
+.tabs__tab-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__tab.is-active .tabs__tab-icon {
+  color: var(--color-accent-primary);
+}
+
+/* ==============================
+   Tab Badge Support
+   ============================== */
+
+.tabs__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  background: var(--color-bg-tertiary);
+  border-radius: 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__tab.is-active .tabs__tab-badge {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
+/* Badge color variants */
+.tabs__tab-badge--primary {
+  background: rgba(var(--color-accent-primary-rgb), 0.2);
+  color: var(--color-accent-primary);
+}
+
+.tabs__tab-badge--success {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.tabs__tab-badge--warning {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+}
+
+.tabs__tab-badge--error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* ==============================
+   Disabled State
+   ============================== */
+
+.tabs__tab:disabled,
+.tabs__tab.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ==============================
+   Pill Style Variant
+   ============================== */
+
+.tabs--pills .tabs__list {
+  border-bottom: none;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--color-bg-secondary);
+  border-radius: 0.5rem;
+}
+
+.tabs--pills .tabs__tab {
+  border-radius: 0.375rem;
+  padding: 0.625rem 1rem;
+}
+
+.tabs--pills .tabs__tab.is-active {
+  background: var(--color-bg-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tabs--pills .tabs__indicator {
+  display: none;
+}
+
+/* ==============================
+   Boxed Style Variant
+   ============================== */
+
+.tabs--boxed .tabs__list {
+  border-bottom: none;
+  gap: 0.25rem;
+}
+
+.tabs--boxed .tabs__tab {
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem 0.375rem 0 0;
+  border-bottom: none;
+  margin-bottom: -1px;
+}
+
+.tabs--boxed .tabs__tab.is-active {
+  background: var(--color-bg-primary);
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-bg-primary);
+  z-index: 1;
+}
+
+.tabs--boxed .tabs__panels {
+  border: 1px solid var(--color-border);
+  border-radius: 0 0.375rem 0.375rem 0.375rem;
+  padding: 1.5rem;
+}
+
+.tabs--boxed .tabs__indicator {
+  display: none;
+}
+
+/* ==============================
+   Underline Style Variant (Enhanced)
+   ============================== */
+
+.tabs--underline .tabs__list {
+  gap: 2rem;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.tabs--underline .tabs__tab {
+  padding: 0.75rem 0;
+  position: relative;
+}
+
+.tabs--underline .tabs__tab::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs--underline .tabs__tab.is-active::after {
+  background: var(--color-accent-primary);
+}
+
+.tabs--underline .tabs__tab:hover {
+  background: transparent;
+}
+
+.tabs--underline .tabs__indicator {
+  display: none;
+}
+
+/* ==============================
+   Vertical Tabs Variant
+   ============================== */
+
+.tabs--vertical {
+  flex-direction: row;
+  gap: 1.5rem;
+}
+
+.tabs--vertical .tabs__list {
+  flex-direction: column;
+  align-items: stretch;
+  border-bottom: none;
+  border-right: 1px solid var(--color-border);
+  min-width: 12rem;
+  max-width: 16rem;
+}
+
+.tabs--vertical .tabs__tab {
+  justify-content: flex-start;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  text-align: left;
+}
+
+.tabs--vertical .tabs__tab.is-active {
+  background: var(--color-bg-secondary);
+}
+
+.tabs--vertical .tabs__indicator {
+  display: none; /* Vertical doesn't use animated indicator */
+}
+
+.tabs--vertical .tabs__panels {
+  flex: 1;
+  padding: 0;
+}
+
+/* ==============================
+   Full Width Variant
+   ============================== */
+
+.tabs--full-width .tabs__list {
+  gap: 0;
+}
+
+.tabs--full-width .tabs__tab {
+  flex: 1;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* ==============================
+   Centered Variant
+   ============================== */
+
+.tabs--centered .tabs__list {
+  justify-content: center;
+}
+
+/* ==============================
+   Small Size Variant
+   ============================== */
+
+.tabs--sm .tabs__tab {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.tabs--sm .tabs__tab-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.tabs--sm .tabs__tab-badge {
+  min-width: 1rem;
+  height: 1rem;
+  font-size: 0.625rem;
+}
+
+/* ==============================
+   Large Size Variant
+   ============================== */
+
+.tabs--lg .tabs__tab {
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+}
+
+.tabs--lg .tabs__tab-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.tabs--lg .tabs__tab-badge {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+}
+
+/* ==============================
+   Scrollable Tabs with Fade Indicators
+   ============================== */
+
+.tabs__scroll-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.tabs__scroll-container .tabs__list {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  scroll-behavior: smooth;
+}
+
+.tabs__scroll-container .tabs__list::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Fade indicators */
+.tabs__scroll-fade {
+  position: absolute;
+  top: 0;
+  bottom: 1px;
+  width: 3rem;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__scroll-fade--left {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--color-bg-primary) 0%,
+    transparent 100%
+  );
+}
+
+.tabs__scroll-fade--right {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    var(--color-bg-primary) 0%,
+    transparent 100%
+  );
+}
+
+.tabs__scroll-container.has-overflow-left .tabs__scroll-fade--left,
+.tabs__scroll-container.has-overflow-right .tabs__scroll-fade--right {
+  opacity: 1;
+}
+
+/* Scroll buttons (optional) */
+.tabs__scroll-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 3;
+  opacity: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__scroll-button:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-accent-primary);
+}
+
+.tabs__scroll-button--left {
+  left: 0.5rem;
+}
+
+.tabs__scroll-button--right {
+  right: 0.5rem;
+}
+
+.tabs__scroll-container.has-overflow-left .tabs__scroll-button--left,
+.tabs__scroll-container.has-overflow-right .tabs__scroll-button--right {
+  opacity: 1;
+}
+
+.tabs__scroll-button-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-text-secondary);
+}
+
+/* ==============================
+   Tab Loading State
+   ============================== */
+
+.tabs__panel--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+}
+
+.tabs__panel-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent-primary);
+  border-radius: 50%;
+  animation: tabSpinner 0.8s linear infinite;
+}
+
+@keyframes tabSpinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==============================
+   Lazy Loading Indicator
+   ============================== */
+
+.tabs__panel[data-lazy="true"]:not(.is-loaded) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+}
+
+.tabs__panel[data-lazy="true"]:not(.is-loaded)::after {
+  content: "Loading...";
+  color: var(--color-text-tertiary);
+  font-size: 0.875rem;
+}
+
+/* ==============================
+   Tab Panel with Padding Variants
+   ============================== */
+
+.tabs__panel--padded {
+  padding: 1.5rem;
+}
+
+.tabs__panel--no-padding {
+  padding: 0;
+}
+
+/* ==============================
+   Tab Group with Actions
+   ============================== */
+
+.tabs__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tabs__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tabs__action-button {
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__action-button:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-accent-primary);
+}
+
+/* ==============================
+   Tab Count Indicator
+   ============================== */
+
+.tabs__tab-count {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  margin-left: 0.25rem;
+}
+
+/* ==============================
+   Tab with Close Button
+   ============================== */
+
+.tabs__tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabs__tab-close:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-accent-primary);
+}
+
+.tabs__tab-close-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ==============================
+   Nested Tabs
+   ============================== */
+
+.tabs--nested {
+  margin-top: 1rem;
+}
+
+.tabs--nested .tabs__list {
+  border-bottom-color: var(--color-border-secondary);
+}
+
+.tabs--nested .tabs__tab {
+  font-size: 0.8125rem;
+  padding: 0.625rem 0.875rem;
+}
+
+/* ==============================
+   Animated Tab Indicator (Advanced)
+   ============================== */
+
+.tabs--animated .tabs__indicator {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glow effect for active tab */
+.tabs--glow .tabs__tab.is-active {
+  text-shadow: 0 0 20px rgba(var(--color-accent-primary-rgb), 0.5);
+}
+
+.tabs--glow .tabs__indicator {
+  box-shadow: 0 0 10px var(--color-accent-primary),
+    0 0 20px rgba(var(--color-accent-primary-rgb), 0.5);
+}
+
+/* ==============================
+   Mobile Responsive Behavior
+   ============================== */
+
+@media (max-width: 768px) {
+  .tabs__tab {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  /* Stack vertical tabs on mobile */
+  .tabs--vertical {
+    flex-direction: column;
+  }
+
+  .tabs--vertical .tabs__list {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    min-width: 100%;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .tabs--vertical .tabs__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Enable horizontal scroll by default on mobile */
+  .tabs__list {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Make tabs full width on mobile for better touch */
+  .tabs--mobile-full-width .tabs__tab {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  /* Reduce gaps on mobile */
+  .tabs__list {
+    gap: 0.25rem;
+  }
+
+  .tabs--underline .tabs__list {
+    gap: 1rem;
+  }
+
+  /* Smaller badges on mobile */
+  .tabs__tab-badge {
+    min-width: 1rem;
+    height: 1rem;
+    font-size: 0.625rem;
+    padding: 0 0.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tabs__tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .tabs__tab-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Convert to dropdown on very small screens */
+  .tabs--mobile-dropdown .tabs__list {
+    display: none;
+  }
+
+  .tabs--mobile-dropdown::before {
+    content: "";
+    display: block;
+    padding: 0.75rem 1rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+  }
+}
+
+/* ==============================
+   Reduced Motion
+   ============================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs__tab,
+  .tabs__indicator,
+  .tabs__panel {
+    transition: none;
+    animation: none;
+  }
+
+  .tabs__panel {
+    animation: none;
+  }
+}
+
+/* ==============================
+   Light Theme Variants
+   ============================== */
+
+@media (prefers-color-scheme: light) {
+  .tabs__list {
+    border-color: #e2e8f0;
+  }
+
+  .tabs__tab:hover {
+    background: #f8fafc;
+  }
+
+  .tabs--pills .tabs__list {
+    background: #f8fafc;
+  }
+
+  .tabs--pills .tabs__tab.is-active {
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .tabs--boxed .tabs__tab {
+    border-color: #e2e8f0;
+  }
+
+  .tabs--boxed .tabs__tab.is-active {
+    background: white;
+  }
+
+  .tabs--boxed .tabs__panels {
+    border-color: #e2e8f0;
+  }
+
+  .tabs__scroll-fade--left {
+    background: linear-gradient(to right, white 0%, transparent 100%);
+  }
+
+  .tabs__scroll-fade--right {
+    background: linear-gradient(to left, white 0%, transparent 100%);
+  }
+
+  .tabs__scroll-button {
+    background: white;
+    border-color: #e2e8f0;
+  }
+
+  .tabs__scroll-button:hover {
+    background: #f8fafc;
+  }
+}
+
+/* ==============================
+   Keyboard Navigation Focus
+   ============================== */
+
+.tabs__tab:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* ==============================
+   Print Styles
+   ============================== */
+
+@media print {
+  .tabs__list {
+    border-bottom: 2px solid #000;
+  }
+
+  .tabs__tab {
+    color: #000;
+  }
+
+  .tabs__tab.is-active {
+    font-weight: 700;
+  }
+
+  .tabs__indicator,
+  .tabs__scroll-fade,
+  .tabs__scroll-button {
+    display: none;
+  }
+
+  /* Show all panels when printing */
+  .tabs__panel {
+    display: block !important;
+    page-break-inside: avoid;
+  }
+
+  .tabs__panel:not(:first-child) {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #ccc;
+  }
+}
