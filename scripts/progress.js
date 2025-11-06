@@ -1,44 +1,22 @@
-import { renderProgressDashboard, appendAgentLog } from "./dashboard.js";
+import { renderProgressDashboard } from "./dashboard.js";
 
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 
+const STORAGE_KEY = "cdc-progress-store";
+const DASHBOARD_STORAGE_KEY = "lastProgressDocs";
+
 const config = {
-  endpoint: globalScope.APPWRITE_ENDPOINT ?? "",
-  project: globalScope.APPWRITE_PROJECT ?? "",
-  databaseId: globalScope.APPWRITE_DB_ID ?? "",
-  progressCollectionId: globalScope.COL_PROGRESS_ID ?? "",
-  eventsCollectionId: globalScope.COL_EVENTS_ID ?? "",
   journeySlug:
     globalScope.CDC_JOURNEY_SLUG ??
     globalScope.document?.body?.dataset?.journeySlug ??
     "",
 };
 
-const LOCAL_STORAGE_KEY = "cdc-progress-store";
-const LOCAL_ANON_KEY = "cdc-progress-anon";
-const RESUME_SESSION_KEY = (slug) => `cdc-progress-resume-${slug}`;
-
-const state = {
-  client: null,
-  account: null,
-  databases: null,
-  user: null,
-  session: null,
-  isAuthenticated: false,
-  isAnonymous: true,
-  ready: false,
-  progress: new Map(),
-  remoteDocs: new Map(),
-  readyResolvers: [],
-  pendingStepChanges: [],
-};
-
-let readyEventDispatched = false;
-
-const rawDashboardModules = Array.isArray(globalScope.CDC_MODULES)
+const rawModules = Array.isArray(globalScope.CDC_MODULES)
   ? globalScope.CDC_MODULES
   : [];
-const dashboardModules = rawDashboardModules
+
+const dashboardModules = rawModules
   .filter((module) => module && (module.key || module.id || module.slug))
   .map((module, index) => ({
     id: module.key || module.id || module.slug || `module-${index + 1}`,
@@ -48,14 +26,90 @@ const dashboardModules = rawDashboardModules
         ? module.totalSteps
         : 1,
   }));
+
 const moduleTitleLookup = new Map(
   dashboardModules.map((module) => [module.id, module.title])
 );
 
+const state = {
+  ready: false,
+  readyResolvers: [],
+  progress: new Map(),
+};
+
+let readyEventDispatched = false;
+
+const clampPercent = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  if (number < 0) return 0;
+  if (number > 100) return 100;
+  return Math.round(number);
+};
+
+const safeParseState = (value) => {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return null;
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return value;
+  }
+};
+
+const normalizeEntry = (slug, entry = {}) => {
+  const percent = clampPercent(entry.percent ?? entry.percentComplete ?? 0);
+  const stepRaw = Number(entry.step ?? entry.completed ?? 0);
+  const step = Number.isFinite(stepRaw) ? stepRaw : 0;
+  const updatedAt =
+    entry.updatedAt ?? entry.$updatedAt ?? entry.$createdAt ?? new Date().toISOString();
+  const parsedState = safeParseState(entry.state);
+  const status = percent >= 100 ? "completed" : percent > 0 ? "in-progress" : "not-started";
+  return {
+    journeySlug: slug,
+    percent,
+    step,
+    updatedAt,
+    state: parsedState,
+    status,
+  };
+};
+
+const readStoredProgress = () => {
+  if (typeof globalScope.localStorage === "undefined") return {};
+  try {
+    const raw = globalScope.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+};
+
+const writeStoredProgress = () => {
+  if (typeof globalScope.localStorage === "undefined") return;
+  const plainObject = {};
+  state.progress.forEach((value, key) => {
+    plainObject[key] = {
+      percent: value.percent,
+      step: value.step,
+      updatedAt: value.updatedAt,
+      state: value.state,
+    };
+  });
+  try {
+    globalScope.localStorage.setItem(STORAGE_KEY, JSON.stringify(plainObject));
+  } catch (_) {
+    /* ignore storage write errors */
+  }
+};
+
 const persistDashboardDocs = (docs) => {
   if (typeof globalScope.localStorage === "undefined") return;
   try {
-    globalScope.localStorage.setItem("lastProgressDocs", JSON.stringify(docs));
+    globalScope.localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(docs));
   } catch (_) {
     /* ignore */
   }
@@ -64,196 +118,12 @@ const persistDashboardDocs = (docs) => {
 const readPersistedDashboardDocs = () => {
   if (typeof globalScope.localStorage === "undefined") return [];
   try {
-    const raw = globalScope.localStorage.getItem("lastProgressDocs");
+    const raw = globalScope.localStorage.getItem(DASHBOARD_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (_) {
     return [];
-  }
-};
-
-const resetDashboardView = () => {
-  const doc = globalScope.document;
-  if (!doc) return;
-  const boot = doc.getElementById("cdcDashboardBoot");
-  const board = doc.getElementById("cdcDashboard");
-  if (board) {
-    board.setAttribute("hidden", "hidden");
-  }
-  if (boot) {
-    boot.removeAttribute("hidden");
-  }
-};
-
-const canRenderDashboard = () => {
-  const doc = globalScope.document;
-  if (!doc) return false;
-  const overall = doc.getElementById("cdc-progress-overall");
-  const modulesCanvas = doc.getElementById("cdc-progress-modules");
-  return Boolean(overall && modulesCanvas && dashboardModules.length);
-};
-
-const transformDocsForDashboard = (docs = []) =>
-  docs.map((doc) => {
-    const rawPercent = Number(doc.percent ?? 0);
-    const percent = Number.isFinite(rawPercent)
-      ? Math.min(100, Math.max(0, rawPercent))
-      : 0;
-    const updatedAt =
-      doc.updatedAt ??
-      doc.$updatedAt ??
-      doc.$createdAt ??
-      new Date().toISOString();
-
-    return {
-      moduleId: doc.journeySlug,
-      moduleTitle:
-        moduleTitleLookup.get(doc.journeySlug) ?? doc.journeySlug ?? "",
-      percent,
-      status:
-        percent >= 99
-          ? "completed"
-          : percent > 0
-          ? "in-progress"
-          : "not-started",
-      updatedAt,
-      step: typeof doc.step === "number" ? doc.step : null,
-    };
-  });
-
-const updateDashboardView = (docs = []) => {
-  if (!canRenderDashboard()) return;
-  renderProgressDashboard("cdc-progress", dashboardModules, docs);
-  const doc = globalScope.document;
-  if (!doc) return;
-  const boot = doc.getElementById("cdcDashboardBoot");
-  const board = doc.getElementById("cdcDashboard");
-  if (boot) {
-    boot.setAttribute("hidden", "hidden");
-  }
-  if (board) {
-    board.removeAttribute("hidden");
-  }
-};
-
-let lastAuthState = null;
-
-const snapshotDashboardDocs = () =>
-  Array.from(state.progress.entries()).map(([journeySlug, entry]) => ({
-    journeySlug,
-    percent: Number(entry.percent ?? 0),
-    step: typeof entry.step === "number" ? entry.step : 0,
-    updatedAt: entry.updatedAt ?? new Date().toISOString(),
-    state: entry.state ?? null,
-  }));
-
-const getDashboardDocsFromState = () =>
-  transformDocsForDashboard(snapshotDashboardDocs());
-
-const syncDashboardFromState = ({ force = false } = {}) => {
-  if (!force && !state.isAuthenticated) return;
-  const normalized = getDashboardDocsFromState();
-  persistDashboardDocs(normalized);
-  updateDashboardView(normalized);
-};
-
-const logAgentMessage = (message, type = "info", source = "CDC_AGENT") => {
-  if (typeof appendAgentLog !== "function") return;
-  appendAgentLog(message, type, source);
-};
-
-const hasAppwriteConfig =
-  Boolean(config.endpoint) &&
-  Boolean(config.project) &&
-  Boolean(config.databaseId) &&
-  Boolean(config.progressCollectionId);
-
-let AppwriteExports = null;
-if (hasAppwriteConfig) {
-  try {
-    AppwriteExports = await import(
-      "https://cdn.jsdelivr.net/npm/appwrite@13.0.0/dist/esm/appwrite.js"
-    );
-  } catch (error) {
-    console.warn("CDCProgress: Failed to load Appwrite SDK", error);
-  }
-}
-
-const Client = AppwriteExports?.Client;
-const Account = AppwriteExports?.Account;
-const Databases = AppwriteExports?.Databases;
-const ID = AppwriteExports?.ID;
-const Query = AppwriteExports?.Query;
-const Permission = AppwriteExports?.Permission;
-const Role = AppwriteExports?.Role;
-
-const inFlightSaves = new Map();
-const lastStepEvents = new Map();
-
-const safeJsonParse = (value) => {
-  if (!value) return null;
-  try {
-    return JSON.parse(value);
-  } catch (error) {
-    console.warn("CDCProgress: Unable to parse stored state", error);
-    return null;
-  }
-};
-
-const readLocalProgress = () => {
-  if (typeof globalScope.localStorage === "undefined") return {};
-  try {
-    const raw = globalScope.localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return {};
-    return parsed;
-  } catch (_) {
-    return {};
-  }
-};
-
-const writeLocalProgress = () => {
-  if (typeof globalScope.localStorage === "undefined") return;
-  const entries = {};
-  state.progress.forEach((value, slug) => {
-    entries[slug] = {
-      step: value.step,
-      percent: value.percent,
-      updatedAt: value.updatedAt,
-      state: value.state ?? null,
-    };
-  });
-  try {
-    globalScope.localStorage.setItem(
-      LOCAL_STORAGE_KEY,
-      JSON.stringify(entries)
-    );
-  } catch (_) {
-    /* ignore */
-  }
-};
-
-const setAnonUserId = (userId) => {
-  if (typeof globalScope.localStorage === "undefined") return;
-  try {
-    if (userId) {
-      globalScope.localStorage.setItem(LOCAL_ANON_KEY, userId);
-    } else {
-      globalScope.localStorage.removeItem(LOCAL_ANON_KEY);
-    }
-  } catch (_) {
-    /* ignore */
-  }
-};
-
-const getAnonUserId = () => {
-  if (typeof globalScope.localStorage === "undefined") return "";
-  try {
-    return globalScope.localStorage.getItem(LOCAL_ANON_KEY) ?? "";
-  } catch (_) {
-    return "";
   }
 };
 
@@ -281,8 +151,8 @@ const resolveReady = () => {
           detail: { progress: globalScope.CDCProgress ?? null },
         })
       );
-    } catch (error) {
-      console.warn("CDCProgress: Unable to dispatch ready event", error);
+    } catch (_) {
+      /* ignore */
     }
   }
 };
@@ -296,20 +166,20 @@ const dispatchProgressChange = (slug) => {
     return;
   }
 
-  try {
-    const entry = state.progress.get(slug) ?? null;
-    let detailEntry = null;
-    if (entry) {
-      detailEntry = { ...entry };
-      if (detailEntry.state && typeof detailEntry.state !== "string") {
-        try {
-          detailEntry.state = JSON.stringify(detailEntry.state);
-        } catch (_) {
-          detailEntry.state = null;
-        }
+  const entry = state.progress.get(slug) ?? null;
+  let detailEntry = null;
+  if (entry) {
+    detailEntry = { ...entry };
+    if (detailEntry.state && typeof detailEntry.state !== "string") {
+      try {
+        detailEntry.state = JSON.stringify(detailEntry.state);
+      } catch (_) {
+        detailEntry.state = null;
       }
     }
+  }
 
+  try {
     globalScope.dispatchEvent(
       new CustomEvent("cdc-progress-change", {
         detail: {
@@ -318,695 +188,236 @@ const dispatchProgressChange = (slug) => {
         },
       })
     );
-  } catch (error) {
-    console.warn(
-      "CDCProgress: Unable to dispatch progress change event",
-      error
-    );
+  } catch (_) {
+    /* ignore */
   }
 };
 
-const ensureToastElements = () => {
-  const root = globalScope.document?.querySelector("[data-progress-toast]");
-  if (!root) return null;
-  return {
-    root,
-    message: root.querySelector("[data-progress-toast-message]"),
-    resume: root.querySelector("[data-progress-toast-resume]"),
-    dismiss: root.querySelector("[data-progress-toast-dismiss]"),
-  };
-};
-
-const hideToast = () => {
-  const toast = ensureToastElements();
-  if (!toast) return;
-  toast.root.classList.remove("is-visible");
-  toast.root.setAttribute("hidden", "hidden");
-};
-
-const showToast = () => {
-  const toast = ensureToastElements();
-  if (!toast) return;
-  toast.root.removeAttribute("hidden");
-  requestAnimationFrame(() => {
-    toast.root.classList.add("is-visible");
-  });
-};
-
-const defaultResumeBehavior = (entry) => {
-  if (!entry || !entry.state) return;
-  if (typeof entry.state === "string") {
-    entry = { ...entry, state: safeJsonParse(entry.state) ?? {} };
-  }
-  const { state } = entry;
-  if (!state) return;
-
-  if (state.url) {
-    globalScope.location.href = state.url;
-    return;
-  }
-  if (state.hash) {
-    globalScope.location.hash = state.hash;
-    return;
-  }
-  if (state.selector) {
-    const node = globalScope.document?.querySelector(state.selector);
-    if (node) {
-      node.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-  }
-  if (typeof state.scrollY === "number") {
-    globalScope.scrollTo({ top: state.scrollY, behavior: "smooth" });
-  }
-};
-
-const toolbarNodes = () => {
+const getToolbarNodes = () => {
   const doc = globalScope.document;
   if (!doc) {
     return {
       percent: [],
       status: [],
-      login: [],
-      logout: [],
+      fill: [],
+      note: [],
     };
   }
+
   return {
     percent: Array.from(doc.querySelectorAll("[data-progress-percent]")),
     status: Array.from(doc.querySelectorAll("[data-progress-status]")),
-    login: Array.from(doc.querySelectorAll("[data-progress-login]")),
-    logout: Array.from(doc.querySelectorAll("[data-progress-logout]")),
     fill: Array.from(doc.querySelectorAll("[data-progress-fill]")),
+    note: Array.from(doc.querySelectorAll("[data-progress-note]")),
+  };
+};
+
+const statusTextForEntry = (entry) => {
+  if (!entry) {
+    return {
+      text: "No progress yet",
+      status: "not-started",
+    };
+  }
+  if (entry.status === "completed") {
+    return {
+      text: "Module completed (saved locally)",
+      status: "completed",
+    };
+  }
+  if (entry.status === "in-progress") {
+    return {
+      text: "Progress saved locally",
+      status: "in-progress",
+    };
+  }
+  return {
+    text: "Tracking started",
+    status: "not-started",
   };
 };
 
 const renderToolbar = (slug) => {
-  const { percent, status, login, logout, fill } = toolbarNodes();
+  const nodes = getToolbarNodes();
   const entry = slug ? state.progress.get(slug) : null;
-  const percentValue = entry ? Math.round(entry.percent ?? 0) : 0;
+  const percentValue = entry ? clampPercent(entry.percent) : 0;
+  const statusDescriptor = statusTextForEntry(entry);
 
-  percent.forEach((node) => {
+  nodes.percent.forEach((node) => {
     node.textContent = `${percentValue}%`;
   });
 
-  // Update progress bar fill
-  fill.forEach((node) => {
+  nodes.fill.forEach((node) => {
     node.style.width = `${percentValue}%`;
+    node.setAttribute("aria-valuenow", String(percentValue));
   });
 
-  const hasSdk = Boolean(AppwriteExports);
-  const statusMessage = (() => {
-    if (!hasSdk) {
-      return "Offline progress only";
-    }
-    if (state.isAuthenticated) {
-      return "Synced across devices";
-    }
-    if (state.isAnonymous) {
-      return "Saving to this device";
-    }
-    return "Not signed in";
-  })();
+  nodes.status.forEach((node) => {
+    node.textContent = statusDescriptor.text;
+    node.setAttribute("data-status", statusDescriptor.status);
+  });
 
-  // Update status data attribute for styling
-  status.forEach((node) => {
-    node.textContent = statusMessage;
-    if (state.isAuthenticated) {
-      node.setAttribute("data-status", "synced");
+  const updatedAt = entry?.updatedAt
+    ? new Date(entry.updatedAt).toLocaleString()
+    : null;
+  nodes.note.forEach((node) => {
+    if (updatedAt) {
+      node.textContent = `Progress is stored locally. Last updated ${updatedAt}.`;
     } else {
-      node.setAttribute("data-status", "");
+      node.textContent = "Progress is stored locally in this browser.";
     }
   });
-
-  status.forEach((node) => {
-    node.textContent = statusMessage;
-  });
-
-  login.forEach((button) => {
-    button.toggleAttribute("disabled", !hasSdk);
-    if (state.isAuthenticated) {
-      button.setAttribute("hidden", "hidden");
-    } else {
-      button.removeAttribute("hidden");
-    }
-  });
-
-  logout.forEach((button) => {
-    if (state.isAuthenticated) {
-      button.removeAttribute("hidden");
-    } else {
-      button.setAttribute("hidden", "hidden");
-    }
-  });
-
-  if (globalScope.document?.body) {
-    const mode = state.isAuthenticated
-      ? "authenticated"
-      : state.isAnonymous
-      ? "anonymous"
-      : "unknown";
-    globalScope.document.body.dataset.progressAuth = mode;
-  }
 };
 
-const logEvent = async (type, payload = {}) => {
-  if (!AppwriteExports || !state.databases || !state.user) return;
-  if (!config.eventsCollectionId) return;
-  try {
-    await state.databases.createDocument(
-      config.databaseId,
-      config.eventsCollectionId,
-      ID.unique(),
-      {
-        userId: state.user.$id,
-        type,
-        journeySlug: payload.journeySlug ?? payload.slug ?? null,
-        metadata: payload ? JSON.stringify(payload) : null,
-        createdAt: new Date().toISOString(),
-      },
-      [Permission.read(Role.user(state.user.$id))]
-    );
-  } catch (error) {
-    console.warn("CDCProgress: Unable to record event", error);
-  }
+const canRenderDashboard = () => {
+  const doc = globalScope.document;
+  if (!doc) return false;
+  const overall = doc.getElementById("cdc-progress-overall");
+  const modulesCanvas = doc.getElementById("cdc-progress-modules");
+  return Boolean(overall && modulesCanvas && dashboardModules.length);
 };
 
-const mergeProgressEntry = (slug, next) => {
-  if (!slug) return null;
-  const existing = state.progress.get(slug);
-  if (!existing) {
-    state.progress.set(slug, { ...next });
-    return state.progress.get(slug);
-  }
-  const newer =
-    !existing.updatedAt ||
-    !next.updatedAt ||
-    new Date(next.updatedAt).getTime() >=
-      new Date(existing.updatedAt).getTime();
-  if (newer) {
-    const merged = {
-      ...existing,
-      ...next,
+const snapshotProgressDocs = () =>
+  Array.from(state.progress.entries()).map(([journeySlug, entry]) => ({
+    journeySlug,
+    percent: clampPercent(entry.percent ?? 0),
+    step: Number.isFinite(Number(entry.step)) ? Number(entry.step) : 0,
+    updatedAt: entry.updatedAt ?? new Date().toISOString(),
+    status: entry.status ?? "not-started",
+  }));
+
+const transformDocsForDashboard = (docs = []) =>
+  docs.map((doc) => {
+    const rawPercent = Number(doc.percent ?? 0);
+    const percent = Number.isFinite(rawPercent)
+      ? Math.min(100, Math.max(0, rawPercent))
+      : 0;
+    const updatedAt = doc.updatedAt ?? new Date().toISOString();
+
+    return {
+      moduleId: doc.journeySlug,
+      moduleTitle:
+        moduleTitleLookup.get(doc.journeySlug) ?? doc.journeySlug ?? "",
+      percent,
+      status:
+        percent >= 100
+          ? "completed"
+          : percent > 0
+          ? "in-progress"
+          : "not-started",
+      updatedAt,
+      step: typeof doc.step === "number" ? doc.step : null,
     };
-    state.progress.set(slug, merged);
-    return merged;
-  }
-  return existing;
-};
-
-const persistRemote = async (slug) => {
-  if (!AppwriteExports || !state.databases || !state.user) return;
-  const entry = state.progress.get(slug);
-  if (!entry) return;
-
-  if (inFlightSaves.has(slug)) {
-    clearTimeout(inFlightSaves.get(slug));
-  }
-
-  const timer = setTimeout(async () => {
-    inFlightSaves.delete(slug);
-    const data = {
-      userId: state.user.$id,
-      journeySlug: slug,
-      step: entry.step ?? 0,
-      percent: entry.percent ?? 0,
-      updatedAt: entry.updatedAt ?? new Date().toISOString(),
-      state: entry.state ? JSON.stringify(entry.state) : null,
-    };
-    const permissions = [
-      Permission.read(Role.user(state.user.$id)),
-      Permission.update(Role.user(state.user.$id)),
-      Permission.delete(Role.user(state.user.$id)),
-    ];
-
-    try {
-      if (state.remoteDocs.has(slug)) {
-        const docId = state.remoteDocs.get(slug);
-        await state.databases.updateDocument(
-          config.databaseId,
-          config.progressCollectionId,
-          docId,
-          data,
-          permissions
-        );
-      } else {
-        const doc = await state.databases.createDocument(
-          config.databaseId,
-          config.progressCollectionId,
-          ID.unique(),
-          data,
-          permissions
-        );
-        state.remoteDocs.set(slug, doc.$id);
-      }
-    } catch (error) {
-      console.warn("CDCProgress: Failed to persist progress", error);
-    }
-  }, 400);
-
-  inFlightSaves.set(slug, timer);
-};
-
-const onStepChangeInternal = async (payload) => {
-  const normalized = { ...payload };
-  const slug =
-    normalized.journeySlug || config.journeySlug || normalized.slug || "";
-  if (!slug) {
-    console.warn("CDCProgress: Missing journeySlug in onStepChange");
-    return;
-  }
-
-  if (!state.ready) {
-    state.pendingStepChanges.push(normalized);
-    return;
-  }
-
-  const percent = Number(normalized.percent ?? 0);
-  const clampedPercent = Number.isFinite(percent)
-    ? Math.min(100, Math.max(0, percent))
-    : 0;
-  const step = normalized.step ?? 0;
-  mergeProgressEntry(slug, {
-    step,
-    percent: clampedPercent,
-    updatedAt: new Date().toISOString(),
-    state: normalized.state ?? null,
   });
 
-  writeLocalProgress();
-  renderToolbar(slug);
-  dispatchProgressChange(slug);
-
-  if (state.isAuthenticated) {
-    syncDashboardFromState();
-  }
-
-  if (AppwriteExports && state.user) {
-    await persistRemote(slug);
-  }
-
-  const eventBucket = Math.floor(clampedPercent / 5);
-  const previousEvent = lastStepEvents.get(slug) ?? { step: null, bucket: -1 };
-  if (previousEvent.step !== step || previousEvent.bucket !== eventBucket) {
-    lastStepEvents.set(slug, { step, bucket: eventBucket });
-    logEvent("step-change", {
-      journeySlug: slug,
-      step,
-      percent: clampedPercent,
-    });
+const updateDashboardView = (docs = []) => {
+  if (!canRenderDashboard()) return;
+  renderProgressDashboard("cdc-progress", dashboardModules, docs);
+  const doc = globalScope.document;
+  if (!doc) return;
+  const boot = doc.getElementById("cdcDashboardBoot");
+  const board = doc.getElementById("cdcDashboard");
+  if (docs.length > 0) {
+    boot?.setAttribute("hidden", "hidden");
+    board?.removeAttribute("hidden");
+  } else {
+    board?.setAttribute("hidden", "hidden");
+    boot?.removeAttribute("hidden");
   }
 };
 
-const processPendingStepChanges = () => {
-  if (!state.ready || !state.pendingStepChanges.length) return;
-  const queue = state.pendingStepChanges.splice(0);
-  queue.forEach((item) => {
-    onStepChangeInternal(item);
-  });
-};
-
-const getProgressInternal = (journeySlug) => {
-  if (!journeySlug) return null;
-  return state.progress.get(journeySlug) ?? null;
-};
-
-const signInWithOAuthInternal = async (provider = "github") => {
-  if (!AppwriteExports || !state.account) {
-    console.warn("CDCProgress: OAuth unavailable");
-    return;
+const refreshDashboard = ({ force } = {}) => {
+  const docs = transformDocsForDashboard(snapshotProgressDocs());
+  if (force || docs.length) {
+    persistDashboardDocs(docs);
   }
-  try {
-    if (state.isAnonymous && state.user?.$id) {
-      setAnonUserId(state.user.$id);
-    }
-    const successUrl = new URL(globalScope.location.href);
-    successUrl.searchParams.set("auth", "success");
-    const failureUrl = new URL(globalScope.location.href);
-    failureUrl.searchParams.set("auth", "failed");
-    await state.account.createOAuth2Session(
-      provider,
-      successUrl.toString(),
-      failureUrl.toString()
-    );
-    await logEvent("login", { provider });
-  } catch (error) {
-    console.warn("CDCProgress: OAuth login failed", error);
-  }
-};
-
-const signOutInternal = async () => {
-  if (!AppwriteExports || !state.account) return;
-  try {
-    await state.account.deleteSession("current");
-    await logEvent("logout", { journeySlug: config.journeySlug });
-  } catch (error) {
-    console.warn("CDCProgress: Sign out failed", error);
-  }
-  state.user = null;
-  state.session = null;
-  state.isAuthenticated = false;
-  state.isAnonymous = true;
-  persistDashboardDocs([]);
-  resetDashboardView();
-  await bootstrap();
-};
-
-const offerResumeInternal = ({ journeySlug, onResume, message } = {}) => {
-  const slug = journeySlug || config.journeySlug;
-  if (!slug) return false;
-  const entry = state.progress.get(slug);
-  if (!entry) return false;
-  const percent = Math.round(entry.percent ?? 0);
-  if (percent < 5 || percent >= 99) return false;
-
-  const toast = ensureToastElements();
-  if (!toast) return false;
-
-  const text =
-    message ||
-    `Resume where you left off? You were ${percent}% through this journey.`;
-  toast.message.textContent = text;
-
-  toast.resume.onclick = () => {
-    hideToast();
-    if (typeof globalScope.sessionStorage !== "undefined") {
-      globalScope.sessionStorage.setItem(RESUME_SESSION_KEY(slug), "completed");
-    }
-    if (typeof onResume === "function") {
-      onResume(entry);
-    } else {
-      defaultResumeBehavior(entry);
-    }
-    logEvent("resume", { journeySlug: slug, percent });
-  };
-
-  toast.dismiss.onclick = () => {
-    hideToast();
-    if (typeof globalScope.sessionStorage !== "undefined") {
-      globalScope.sessionStorage.setItem(RESUME_SESSION_KEY(slug), "dismissed");
-    }
-  };
-
-  showToast();
-  return true;
-};
-
-const updateSessionDetails = async () => {
-  if (!AppwriteExports || !state.account) return;
-  try {
-    const session = await state.account.getSession("current");
-    state.session = session;
-    state.isAnonymous = session?.provider === "anonymous";
-    state.isAuthenticated = !state.isAnonymous;
-  } catch (_) {
-    state.session = null;
-    state.isAnonymous = true;
-    state.isAuthenticated = false;
-  }
-  const previous = lastAuthState;
-  lastAuthState = state.isAuthenticated;
-  if (previous === null) {
-    if (state.isAuthenticated) {
-      const identity =
-        state.user?.name ?? state.user?.email ?? state.user?.$id ?? "user";
-      logAgentMessage(`Session restored for ${identity}.`, "info", "CDC_AGENT");
-    } else {
-      persistDashboardDocs([]);
-      resetDashboardView();
-      logAgentMessage(
-        "Anonymous session active. Sign in to sync your dashboard.",
-        "info",
-        "CDC_AGENT"
-      );
-    }
-    return;
-  }
-  if (state.isAuthenticated && !previous) {
-    const identity =
-      state.user?.name ?? state.user?.email ?? state.user?.$id ?? "user";
-    logAgentMessage(`Signed in as ${identity}.`, "info", "CDC_AGENT");
-  } else if (!state.isAuthenticated && previous) {
-    persistDashboardDocs([]);
-    resetDashboardView();
-    logAgentMessage("Signed out of CDC session.", "info", "CDC_AGENT");
-  }
-};
-
-const migrateAnonymousProgress = async (fromUserId, toUserId) => {
-  if (!fromUserId || !toUserId || fromUserId === toUserId) return;
-  try {
-    // TODO: Update this endpoint URL when deploying the serverless function
-    // to a different platform (e.g., Vercel: /api/migrateUser,
-    // Cloudflare Workers: https://your-worker.workers.dev/migrateUser,
-    // AWS Lambda: https://your-api-gateway-url/migrateUser)
-    // See docs/HOSTING.md for details on serverless function deployment.
-    const response = await fetch("/.netlify/functions/migrateUser", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fromUserId, toUserId }),
-    });
-    if (!response.ok) {
-      const message = await response.text();
-      throw new Error(message || "Migration failed");
-    }
-    const payload = await response.json().catch(() => ({}));
-    await logEvent("migration", { fromUserId, toUserId, payload });
-    return payload;
-  } catch (error) {
-    console.warn("CDCProgress: Migration failed", error);
-  }
-};
-
-const listAllDocuments = async (collectionId, filters = []) => {
-  if (!AppwriteExports || !state.databases) return [];
-  const documents = [];
-  let hasMore = true;
-  let cursor = null;
-
-  while (hasMore) {
-    const queries = [...filters, Query.limit(100)];
-    if (cursor) {
-      queries.push(Query.cursorAfter(cursor));
-    }
-    const response = await state.databases.listDocuments(
-      config.databaseId,
-      collectionId,
-      queries
-    );
-    documents.push(...response.documents);
-    if (response.documents.length === 0 || documents.length >= response.total) {
-      hasMore = false;
-    } else {
-      cursor = response.documents[response.documents.length - 1].$id;
-    }
-  }
-
-  return documents;
-};
-
-const loadRemoteProgress = async ({ clearStaleRemoteDocs = false } = {}) => {
-  if (!AppwriteExports || !state.user || !state.databases) return;
-  try {
-    const docs = await listAllDocuments(config.progressCollectionId, [
-      Query.equal("userId", state.user.$id),
-    ]);
-    const seenSlugs = new Set();
-    const relevantDocs = [];
-    docs.forEach((doc) => {
-      if (!doc?.journeySlug) {
-        return;
-      }
-      seenSlugs.add(doc.journeySlug);
-      relevantDocs.push(doc);
-      const parsedState = doc.state ? safeJsonParse(doc.state) : null;
-      const entry = {
-        step: doc.step ?? 0,
-        percent: doc.percent ?? 0,
-        updatedAt: doc.updatedAt ?? doc.$updatedAt,
-        state: parsedState,
-      };
-      mergeProgressEntry(doc.journeySlug, entry);
-      state.remoteDocs.set(doc.journeySlug, doc.$id);
-      dispatchProgressChange(doc.journeySlug);
-    });
-    if (clearStaleRemoteDocs && state.remoteDocs.size) {
-      const removed = [];
-      state.remoteDocs.forEach((_, slug) => {
-        if (!seenSlugs.has(slug)) {
-          removed.push(slug);
-        }
-      });
-      removed.forEach((slug) => {
-        state.remoteDocs.delete(slug);
-        if (state.progress.delete(slug)) {
-          dispatchProgressChange(slug);
-        }
-        lastStepEvents.delete(slug);
-      });
-    }
-    const normalizedDocs = transformDocsForDashboard(relevantDocs);
-    persistDashboardDocs(normalizedDocs);
-    if (!state.isAnonymous) {
-      updateDashboardView(normalizedDocs);
-      const completedCount = normalizedDocs.filter(
-        (doc) => doc.status === "completed"
-      ).length;
-      logAgentMessage(
-        `Synced ${normalizedDocs.length} progress record(s); ${completedCount} completed.`,
-        "info",
-        "SYNC"
-      );
-    }
-    writeLocalProgress();
-  } catch (error) {
-    console.warn("CDCProgress: Unable to load remote progress", error);
-  }
-};
-
-const maybeAutoResume = () => {
-  if (!config.journeySlug) return;
-  const entry = state.progress.get(config.journeySlug);
-  if (!entry) return;
-  const percent = Math.round(entry.percent ?? 0);
-  if (percent < 5 || percent >= 99) return;
-
-  if (typeof globalScope.sessionStorage !== "undefined") {
-    const key = RESUME_SESSION_KEY(config.journeySlug);
-    const flag = globalScope.sessionStorage.getItem(key);
-    if (flag === "dismissed" || flag === "completed") {
-      return;
-    }
-    globalScope.sessionStorage.setItem(key, "offered");
-  }
-
-  offerResumeInternal({ journeySlug: config.journeySlug });
-};
-
-const bootstrap = async () => {
-  const local = readLocalProgress();
-  Object.entries(local).forEach(([slug, entry]) => {
-    mergeProgressEntry(slug, entry);
-  });
-
-  renderToolbar(config.journeySlug ?? "");
-
-  if (!AppwriteExports) {
-    resolveReady();
-    processPendingStepChanges();
-    maybeAutoResume();
-    return;
-  }
-
-  state.client = new Client()
-    .setEndpoint(config.endpoint)
-    .setProject(config.project);
-  state.account = new Account(state.client);
-  state.databases = new Databases(state.client);
-
-  try {
-    state.user = await state.account.get();
-  } catch (_) {
-    state.user = null;
-  }
-
-  if (!state.user) {
-    try {
-      const session = await state.account.createAnonymousSession();
-      if (session?.userId) {
-        setAnonUserId(session.userId);
-      }
-      state.user = await state.account.get();
-    } catch (error) {
-      console.warn("CDCProgress: Failed to establish anonymous session", error);
-    }
-  }
-
-  await updateSessionDetails();
-
-  if (state.isAuthenticated) {
-    const cachedDashboardDocs = readPersistedDashboardDocs();
-    if (cachedDashboardDocs.length) {
-      updateDashboardView(cachedDashboardDocs);
-      logAgentMessage(
-        `Loaded ${cachedDashboardDocs.length} cached dashboard record(s).`,
-        "info",
-        "CDC_AGENT"
-      );
-    }
-  }
-
-  if (state.user) {
-    if (state.isAnonymous) {
-      setAnonUserId(state.user.$id);
-    } else {
-      const storedAnon = getAnonUserId();
-      if (storedAnon && storedAnon !== state.user.$id) {
-        await migrateAnonymousProgress(storedAnon, state.user.$id);
-        setAnonUserId("");
-      }
-    }
-  }
-
-  await loadRemoteProgress();
-  resolveReady();
-  renderToolbar(config.journeySlug ?? "");
-  processPendingStepChanges();
-  maybeAutoResume();
-};
-
-const refreshProgressInternal = async ({
-  remote = true,
-  forceDashboard = false,
-} = {}) => {
-  await ensureReadyPromise();
-  if (remote && AppwriteExports && state.user && state.databases) {
-    await loadRemoteProgress({ clearStaleRemoteDocs: true });
-  }
-  const docs = getDashboardDocsFromState();
-  persistDashboardDocs(docs);
-  if (state.isAuthenticated || forceDashboard) {
+  if (force || docs.length) {
     updateDashboardView(docs);
+  } else {
+    const cachedDocs = readPersistedDashboardDocs();
+    if (cachedDocs.length) {
+      updateDashboardView(cachedDocs);
+    }
   }
   return docs;
 };
 
-const bindAuthButtons = () => {
-  const doc = globalScope.document;
-  if (!doc) return;
-  doc.addEventListener("click", (event) => {
-    const loginButton = event.target.closest("[data-progress-login]");
-    if (loginButton) {
-      const provider =
-        loginButton.getAttribute("data-progress-login") || "github";
-      signInWithOAuthInternal(provider);
-      return;
-    }
-    const logoutButton = event.target.closest("[data-progress-logout]");
-    if (logoutButton) {
-      signOutInternal();
-    }
+const getProgressInternal = (slug) => {
+  if (!slug) return null;
+  return state.progress.get(slug) ?? null;
+};
+
+const onStepChangeInternal = ({
+  journeySlug,
+  step = 0,
+  percent = 0,
+  state: entryState = null,
+} = {}) => {
+  if (!journeySlug) {
+    console.warn("CDCProgress: Missing journeySlug in onStepChange");
+    return null;
+  }
+
+  const normalized = normalizeEntry(journeySlug, {
+    percent,
+    step,
+    state: entryState,
+    updatedAt: new Date().toISOString(),
   });
+
+  state.progress.set(journeySlug, normalized);
+  writeStoredProgress();
+  renderToolbar(journeySlug);
+  refreshDashboard({ force: true });
+  dispatchProgressChange(journeySlug);
+  return normalized;
+};
+
+const refreshProgressInternal = async () => {
+  await ensureReadyPromise();
+  return refreshDashboard({ force: true });
+};
+
+const loadStoredEntries = () => {
+  const stored = readStoredProgress();
+  Object.entries(stored).forEach(([slug, entry]) => {
+    if (!slug) return;
+    state.progress.set(slug, normalizeEntry(slug, entry));
+  });
+};
+
+const bootstrap = () => {
+  loadStoredEntries();
+  renderToolbar(config.journeySlug ?? "");
+  const docs = transformDocsForDashboard(snapshotProgressDocs());
+  if (docs.length) {
+    persistDashboardDocs(docs);
+  }
+  updateDashboardView(docs);
+  resolveReady();
 };
 
 const CDCProgress = {
   ready: ensureReadyPromise(),
-  getCurrentUser: () => state.user,
-  isAuthenticated: () => state.isAuthenticated,
+  getCurrentUser: () => null,
+  isAuthenticated: () => false,
   getProgress: getProgressInternal,
-  getDashboardDocs: getDashboardDocsFromState,
-  signInWithOAuth: signInWithOAuthInternal,
-  signOut: signOutInternal,
+  getDashboardDocs: () =>
+    transformDocsForDashboard(snapshotProgressDocs()),
+  signInWithOAuth: () => {
+    return Promise.resolve(false);
+  },
+  signOut: () => {
+    console.info("CDCProgress: OAuth sign-out has been removed.");
+    return Promise.resolve(false);
+  },
   onStepChange: onStepChangeInternal,
-  offerResume: offerResumeInternal,
+  offerResume: () => false,
   refresh: refreshProgressInternal,
 };
 
 globalScope.CDCProgress = CDCProgress;
 
-renderToolbar(config.journeySlug ?? "");
-
-await bootstrap();
-
-bindAuthButtons();
+bootstrap();
 
 export default CDCProgress;

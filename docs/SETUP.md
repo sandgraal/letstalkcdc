@@ -43,11 +43,9 @@ cp .env.example .env
 APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 APPWRITE_PROJECT=your_project_id_here
 APPWRITE_DB_ID=main
-COL_PROGRESS_ID=progress
-COL_EVENTS_ID=events
 COL_ASSISTANT_ID=assistant_feedback
 
-# Server-side only (for serverless function)
+# Server-side only (for optional backend helpers)
 APPWRITE_API_KEY=your_secret_api_key_here
 
 # Site configuration (for GitHub Pages deployment)
@@ -103,26 +101,21 @@ The site uses a **lightweight tracing implementation** (`src/assets/js/tracing-l
 
 ---
 
-### 2. Appwrite Progress Tracking & Authentication (Optional)
+### 2. Optional Appwrite Assistant Feedback
 
-**Status**: ✅ **Code Complete** — Requires environment configuration
+**Status**: ✅ **Code Complete** — Only needed if you want to sync assistant feedback to Appwrite.
 
-Enables cloud-based progress sync and GitHub OAuth authentication.
+Progress tracking now runs entirely in the browser with no authentication. Appwrite is purely optional for storing answers/feedback gathered through the assistant widget.
 
-#### Features Enabled
+#### What you get
 
-- ✅ Anonymous sessions with cloud backup
-- ✅ GitHub OAuth login
-- ✅ Progress synced across devices
-- ✅ User migration (anonymous → authenticated)
-- ✅ Resume functionality
-- ✅ Interactive dashboard
-- ✅ Analytics events
+- ✅ Assistant feedback synced to Appwrite when credentials are present
+- ✅ Graceful fallback to local storage if Appwrite details are missing
+- 🚫 No user authentication or GitHub OAuth required
 
 #### Prerequisites
 
 - [Appwrite Cloud account](https://cloud.appwrite.io) (free) or self-hosted instance
-- GitHub OAuth App (for authentication)
 
 #### Setup Steps
 
@@ -140,45 +133,10 @@ Enables cloud-based progress sync and GitHub OAuth authentication.
 3. Name it `main`
 4. Click the database to open it
 5. Click "**Import Collections**"
-6. Upload `appwrite.collections.json` from this repo
-7. Confirm these collections are created:
-   - `progress` — Tracks user journey completion
-   - `events` — Logs user activity for analytics
-   - `assistant_feedback` — (Optional) AI assistant feedback
+6. Upload `appwrite.collections.json`
+7. Confirm the `assistant_feedback` collection exists (the progress and events collections are no longer required).
 
-**If import fails**, create collections manually using the schema in `appwrite.collections.json`.
-
-##### Step 3: Generate API Key
-
-1. In Appwrite Console, go to **Settings → API Keys**
-2. Click "Create API Key"
-3. Name: "Server Migration Function"
-4. Scopes: Check **Database → Read** and **Database → Write**
-5. **Copy the generated key** (you won't see it again!)
-
-##### Step 4: Configure GitHub OAuth
-
-1. Go to **GitHub Settings → Developer settings → OAuth Apps**
-2. Click "New OAuth App"
-3. Fill in:
-   - Application name: `CDC Playground Local Dev`
-   - Homepage URL: `http://localhost:8080`
-   - Authorization callback URL: `http://localhost:8080/?auth=success`
-4. Click "Register application"
-5. **Note your Client ID**
-6. Click "Generate a new client secret"
-7. **Note your Client Secret**
-
-8. In Appwrite Console, go to **Authentication → Providers → GitHub**
-9. Enter your GitHub Client ID and Client Secret
-10. Add these Success URLs:
-    - `http://localhost:8080/?auth=success`
-    - `http://localhost:8080/?auth=failed`
-    - `https://letstalkcdc.github.io/?auth=success` (for production)
-    - `https://letstalkcdc.github.io/?auth=failed`
-11. Click "Update" and ensure GitHub provider is **enabled**
-
-##### Step 5: Configure Environment Variables
+##### Step 3: Configure Environment Variables
 
 Edit your `.env` file:
 
@@ -186,57 +144,41 @@ Edit your `.env` file:
 APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 APPWRITE_PROJECT=YOUR_PROJECT_ID_FROM_STEP_1
 APPWRITE_DB_ID=main
-COL_PROGRESS_ID=progress
-COL_EVENTS_ID=events
 COL_ASSISTANT_ID=assistant_feedback
-APPWRITE_API_KEY=YOUR_API_KEY_FROM_STEP_3
 ```
 
-##### Step 6: Test Locally
+> The assistant automatically stores feedback locally if any of these values are missing. You only need `APPWRITE_API_KEY` if a backend worker posts feedback on your behalf; the static site does not expose the key.
+
+##### Step 4: Test Locally
 
 ```bash
-# Test Appwrite connection
+# Test Appwrite connection (optional helper)
 node test-appwrite.cjs
-
-# Should show:
-# ✓ Database: main
-# ✓ Collection: progress
-# ✓ Collection: events
-# ✓ Collection: assistant_feedback
 
 # Start dev server
 npm run dev
 
 # Visit http://localhost:8080/intro/
-# Check browser console for "CDCProgress" messages
-# Test "Sign in with GitHub" button
+# Submit assistant feedback and check the Appwrite collection
 ```
 
 #### Troubleshooting
 
-**Appwrite SDK fails to load**
-
-- Check browser console for network errors
-- Verify environment variables are set
+- Ensure the `assistant_feedback` collection permissions allow anonymous document creation.
+- Confirm network access to `APPWRITE_ENDPOINT` from the browser.
 - Confirm CDN is accessible: https://cdn.jsdelivr.net/npm/appwrite@13.0.0
 
-**OAuth redirect fails**
+**Assistant feedback not syncing**
 
-- Verify callback URLs are whitelisted in Appwrite Console
-- Check GitHub OAuth app configuration
-- Look for `?auth=failed` in URL after redirect
+- Verify the `assistant_feedback` collection allows anonymous document creation.
+- Confirm the Appwrite credentials in `.env` match your project IDs.
+- Check browser console for Appwrite SDK warnings.
 
 **Progress not persisting**
 
-- Verify collections exist in Appwrite
-- Check browser console for database permission errors
-- Confirm API key has database read/write permissions
-
-**Migration fails after login**
-
-- Verify serverless function is deployed (see [HOSTING.md](HOSTING.md))
-- Check function logs for errors
-- Test function endpoint directly
+- Ensure `localStorage` is available (disable private browsing modes that block storage).
+- Check for console warnings from `CDCProgress`.
+- Clear `localStorage` to reset and try again.
 
 #### Documentation
 
@@ -304,47 +246,11 @@ The site deploys automatically to GitHub Pages via GitHub Actions.
 
 4. Push to `main` branch to trigger deployment
 
-### Serverless Function (Appwrite Migration)
+### No Serverless Function Required
 
-The `migrateUser` serverless function handles anonymous-to-authenticated user migration. Since GitHub Pages only serves static content, you need a separate serverless provider.
+Progress now stays entirely in the browser. You can remove any existing `migrateUser` deployments and skip the serverless setup steps that were previously needed for GitHub OAuth.
 
-#### Recommended Options
-
-1. **Vercel** (recommended) — Free tier, simple setup
-2. **Cloudflare Workers** — Generous free tier (100k requests/day)
-3. **AWS Lambda** — Industry standard, flexible
-4. **Netlify** — Existing configuration in repo
-
-#### Quick Setup (Vercel)
-
-```bash
-# Install Vercel CLI
-npm install -g vercel
-
-# Deploy function
-vercel
-# Follow prompts to link project
-
-# Add environment variables in Vercel dashboard:
-# - APPWRITE_ENDPOINT
-# - APPWRITE_PROJECT
-# - APPWRITE_API_KEY
-# - APPWRITE_DB_ID
-# - COL_PROGRESS_ID
-# - COL_EVENTS_ID
-```
-
-Update `scripts/progress.js` (line ~750) with your Vercel function URL:
-
-```javascript
-const response = await fetch("/api/migrateUser", {
-  /* ... */
-});
-```
-
-#### Full Documentation
-
-- **Hosting guide**: [docs/HOSTING.md](HOSTING.md)
+Refer to [docs/HOSTING.md](HOSTING.md) for an updated overview of the hosting architecture.
 
 ---
 
@@ -375,34 +281,23 @@ Should output:
 ```
 ✓ Connected to Appwrite
 ✓ Database: main
-✓ Collection: progress
-✓ Collection: events
 ✓ Collection: assistant_feedback
 ```
 
 ### Feature Testing Checklist
 
-#### Anonymous Session
+#### Local Progress (default)
 
 - [ ] Visit `/intro/` page
-- [ ] Progress persists in browser localStorage
-- [ ] Check Appwrite Console → Database → progress collection
-- [ ] Should see document with anonymous userId
+- [ ] Interact with a checklist or completion button
+- [ ] Refresh the page and confirm the toolbar still shows your progress
+- [ ] Clear `localStorage` (`cdc-progress-store`) to reset
 
-#### OAuth Authentication
+#### Assistant Feedback (optional)
 
-- [ ] Click "Sign in with GitHub"
-- [ ] Authorize on GitHub
-- [ ] Return to site with `?auth=success`
-- [ ] Status changes to "Synced across devices"
-- [ ] Anonymous progress migrated to authenticated user
-
-#### Progress Persistence
-
-- [ ] Make progress on a journey while authenticated
-- [ ] Close browser completely
-- [ ] Reopen site and sign in
-- [ ] Progress is restored
+- [ ] Trigger the assistant prompt
+- [ ] Submit thumbs-up or thumbs-down feedback
+- [ ] Confirm a new document appears in Appwrite → Database → `assistant_feedback`
 
 #### Tracing
 
@@ -464,16 +359,16 @@ The site follows a **layered architecture**:
 
 **Appwrite connection fails**: Run `node test-appwrite.cjs` to diagnose
 
-**Progress not syncing**: Check browser console for Appwrite SDK errors
+**Progress not updating**: Ensure `localStorage` is enabled and not cleared automatically
 
 ---
 
 ## Next Steps
 
 1. ✅ Complete basic setup (clone, install, run)
-2. ⚠️ Optional: Configure Appwrite for cloud sync
+2. ⚠️ Optional: Configure Appwrite for assistant feedback sync
 3. ⚠️ Optional: Enable tracing with AI Toolkit
-4. ⚠️ Optional: Deploy to production (GitHub Pages + serverless function)
+4. ⚠️ Optional: Deploy to production (GitHub Pages)
 5. 📖 Read [docs/adding-modules.md](adding-modules.md) to contribute content
 
 ---

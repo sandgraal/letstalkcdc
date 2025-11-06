@@ -35,16 +35,15 @@
       <div class="series-progress__info">
         <span class="series-progress__label">Progress</span>
         <span class="series-progress__value" data-progress-percent>0%</span>
-        <span class="series-progress__status" data-progress-status data-status="">Not signed in</span>
+        <span class="series-progress__status" data-progress-status data-status="not-started">No progress yet</span>
         <div class="series-progress__bar">
           <div class="progress-bar progress-bar--md">
-            <div class="progress-bar-fill" data-progress-fill style="width: 0%"></div>
+            <div class="progress-bar-fill" data-progress-fill style="width: 0%" aria-valuenow="0"></div>
           </div>
         </div>
       </div>
-      <div class="series-progress__auth">
-        <button type="button" class="button ghost" data-progress-login="github">Sign in with GitHub</button>
-        <button type="button" class="button ghost" data-progress-logout hidden>Sign out</button>
+      <div class="series-progress__note" data-progress-note>
+        Progress is stored locally in this browser.
       </div>
     </div>
   </div>
