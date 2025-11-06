@@ -1,0 +1,49 @@
+version: "3.8"
+
+# Enhanced CDC monitoring stack with Alertmanager for external alert routing
+# This extends docker-compose-observability.yml with Alertmanager integration
+#
+# Usage:
+#   docker-compose -f docker-compose-observability.yml -f docker-compose.alerts.yml up -d
+#
+# Services added:
+#   - Alertmanager for alert routing and deduplication
+#
+# Access:
+#   - Alertmanager UI: http://localhost:9093
+
+services:
+  # Override Prometheus to enable Alertmanager integration
+  prometheus:
+    volumes:
+      - ./prometheus-with-alertmanager.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+
+  # Alertmanager for routing alerts to external systems
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: cdc-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url=http://localhost:9093"
+      - "--cluster.advertise-address=0.0.0.0:9093"
+    networks:
+      - cdc-network
+    restart: unless-stopped
+
+volumes:
+  alertmanager-data:
+    driver: local

@@ -190,6 +190,48 @@ canonicalPath: "/observability/"
         Download Prometheus Alert Rules
       </a>
     </p>
+    
+    <h3>Routing Alerts to External Systems</h3>
+    <p>
+      While Prometheus alerts appear in the Prometheus UI, you'll want to route them to 
+      external systems for real-world operations. We provide an Alertmanager configuration 
+      that adds support for:
+    </p>
+    <ul>
+      <li><strong>Slack</strong> — Send warning alerts to dedicated channels</li>
+      <li><strong>PagerDuty</strong> — Wake up on-call for critical issues</li>
+      <li><strong>Email</strong> — Notify stakeholders via SMTP</li>
+      <li><strong>Custom webhooks</strong> — Integrate with any system via HTTP</li>
+    </ul>
+    <p>
+      The Alertmanager configuration includes production-ready features:
+    </p>
+    <ul>
+      <li><strong>Alert grouping</strong> by connector and severity to reduce noise</li>
+      <li><strong>Intelligent inhibition</strong> rules (e.g., connector down suppresses lag alerts)</li>
+      <li><strong>Rate limiting</strong> with smart repeat intervals (1h for critical, 12h for warnings)</li>
+      <li><strong>Maintenance windows</strong> for planned downtime</li>
+      <li><strong>Deduplication</strong> to prevent alert storms</li>
+    </ul>
+    <details>
+      <summary>Cloud-managed alerting alternatives</summary>
+      <p>For production deployments, consider using managed services instead of self-hosting Alertmanager:</p>
+      <ul>
+        <li><strong>Grafana Cloud Alerting</strong> — Built-in integrations, mobile app, escalation chains</li>
+        <li><strong>AWS CloudWatch</strong> — Native AWS integration via Prometheus remote_write</li>
+        <li><strong>Datadog</strong> — APM tracing, log correlation, incident management</li>
+        <li><strong>PagerDuty Event Intelligence</strong> — ML-based noise reduction, on-call management</li>
+        <li><strong>Opsgenie</strong> — Advanced routing, incident response, status pages</li>
+      </ul>
+    </details>
+    <p>
+      <a href="/downloads/docker-compose.alerts.yml" download class="btn-primary">
+        Download Alertmanager Extension
+      </a>
+      <a href="/downloads/alertmanager.yml" download class="btn-secondary">
+        Alert Routing Config
+      </a>
+    </p>
   </section>
 
   <section id="slo" aria-labelledby="slo-title">
@@ -235,6 +277,7 @@ canonicalPath: "/observability/"
       <li><strong>JMX Exporter</strong> to bridge JMX metrics to Prometheus format</li>
       <li><strong>Prometheus</strong> with our alert rules pre-loaded</li>
       <li><strong>Grafana</strong> with the CDC dashboard automatically provisioned</li>
+      <li><strong>Alertmanager (optional)</strong> for routing alerts to Slack, PagerDuty, email</li>
       <li><strong>PostgreSQL</strong> source database (Debezium example)</li>
       <li><strong>kcat</strong> for Kafka CLI operations</li>
     </ul>
@@ -247,6 +290,10 @@ canonicalPath: "/observability/"
       <li>Watch metrics flow in real-time</li>
     </ol>
     <p>
+      <strong>Want external alerting?</strong> Add the Alertmanager extension to route alerts to Slack, 
+      PagerDuty, or email. See the Alert Policy section above for details.
+    </p>
+    <p>
       The stack comes with everything wired up: datasources, dashboards, alert rules,
       and JMX metric mappings. No manual configuration required.
     </p>
@@ -254,8 +301,11 @@ canonicalPath: "/observability/"
       <summary>Files included in the monitoring stack</summary>
       <ul>
         <li><code>docker-compose-observability.yml</code> — Main orchestration file</li>
+        <li><code>docker-compose.alerts.yml</code> — Optional Alertmanager extension</li>
         <li><code>prometheus.yml</code> — Scrape configuration and targets</li>
+        <li><code>prometheus-with-alertmanager.yml</code> — Prometheus config with Alertmanager enabled</li>
         <li><code>prometheus-alerts.yml</code> — Alert rule definitions</li>
+        <li><code>alertmanager.yml</code> — Alert routing and receiver configuration</li>
         <li><code>jmx-exporter-config.yml</code> — JMX to Prometheus metric mappings</li>
         <li><code>grafana-datasources.yml</code> — Prometheus datasource config</li>
         <li><code>grafana-dashboards.yml</code> — Dashboard provisioning</li>

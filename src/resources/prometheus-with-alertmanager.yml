@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'cdc-monitoring'
+    environment: 'dev'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # JMX Exporter for Kafka Connect metrics
+  - job_name: 'kafka-connect'
+    static_configs:
+      - targets: ['jmx-exporter:5556']
+        labels:
+          service: 'kafka-connect'
+          component: 'cdc'
+    metric_relabel_configs:
+      # Add connector label from metric name patterns
+      - source_labels: [__name__]
+        regex: 'kafka_connect_.*connector_metrics.*'
+        target_label: component
+        replacement: 'connector'
+      # Add task label from metric name patterns
+      - source_labels: [__name__]
+        regex: 'kafka_connect_.*task_metrics.*'
+        target_label: component
+        replacement: 'task'
+
+  # Kafka broker metrics (if exposed via JMX exporter)
+  - job_name: 'kafka-broker'
+    static_configs:
+      - targets: ['kafka:9101']
+        labels:
+          service: 'kafka'
+          component: 'broker'
+
+  # Alertmanager metrics (self-monitoring)
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  # Additional targets can be added here
+  # - job_name: 'postgres-exporter'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
