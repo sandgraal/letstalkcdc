@@ -1,0 +1,81 @@
+{% macro quiz(config) -%}
+  {% set quizId = config.id | default('quiz-' ~ (config.title | slugify)) %}
+  <section class="quiz-container" id="{{ quizId }}" data-quiz-id="{{ quizId }}">
+    {% if config.title %}
+      <header class="quiz-header">
+        <h3 class="quiz-title">{{ config.title }}</h3>
+        {% if config.description %}
+          <p class="quiz-description">{{ config.description }}</p>
+        {% endif %}
+      </header>
+    {% endif %}
+
+    <div class="quiz-questions" role="group" aria-labelledby="{{ quizId }}-title">
+      {% for question in config.questions %}
+        {% set questionId = quizId ~ '-q' ~ loop.index %}
+        <div class="quiz-question" data-question-id="{{ questionId }}" data-correct="{{ question.correct }}">
+          <div class="question-header">
+            <span class="question-number" aria-label="Question {{ loop.index }}">Q{{ loop.index }}</span>
+            <h4 class="question-text" id="{{ questionId }}-text">{{ question.question }}</h4>
+          </div>
+
+          <div class="question-options" role="radiogroup" aria-labelledby="{{ questionId }}-text">
+            {% for option in question.options %}
+              {% set optionId = questionId ~ '-opt' ~ loop.index %}
+              <div class="option-wrapper">
+                <input
+                  type="radio"
+                  id="{{ optionId }}"
+                  name="{{ questionId }}"
+                  value="{{ loop.index }}"
+                  class="option-input"
+                  {% if loop.index == question.correct %}data-correct="true"{% endif %}
+                >
+                <label for="{{ optionId }}" class="option-label">
+                  <span class="option-letter">{{ ['A', 'B', 'C', 'D', 'E'][loop.index - 1] }}</span>
+                  <span class="option-text">{{ option }}</span>
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="question-feedback" role="alert" aria-live="polite" aria-atomic="true">
+            <div class="feedback-correct" hidden>
+              <span class="feedback-icon" aria-hidden="true">✓</span>
+              <div class="feedback-content">
+                <strong>Correct!</strong>
+                {% if question.explanation %}
+                  <p>{{ question.explanation }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <div class="feedback-incorrect" hidden>
+              <span class="feedback-icon" aria-hidden="true">✗</span>
+              <div class="feedback-content">
+                <strong>Not quite.</strong>
+                {% if question.hint %}
+                  <p>{{ question.hint }}</p>
+                {% else %}
+                  <p>Review the correct answer and explanation.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="quiz-summary" role="status" aria-live="polite">
+      <div class="summary-content">
+        <span class="summary-score">
+          <strong><span data-score-current>0</span>/<span data-score-total>{{ config.questions | length }}</span></strong>
+          <span class="summary-label">correct</span>
+        </span>
+        <button type="button" class="quiz-reset-button" hidden>
+          <span aria-hidden="true">↻</span> Try Again
+        </button>
+      </div>
+      <div class="summary-message" data-summary-message></div>
+    </div>
+  </section>
+{%- endmacro %}
