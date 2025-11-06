@@ -100,8 +100,29 @@ try {
   if (!homepage.includes('twitter:card" content="summary_large_image')) {
     failures.push('Homepage is missing Twitter card type (summary_large_image).');
   }
+  if (!homepage.includes('id="askBtn"')) {
+    failures.push('Homepage is missing the assistant trigger button (#askBtn).');
+  }
+  if (!homepage.includes('/js/assistant.js')) {
+    failures.push('Homepage is not loading the assistant module script.');
+  }
 } catch (error) {
   failures.push(`Failed to read index.html: ${error.message}`);
+}
+
+// Verify assistant knowledge base output exists and is well-formed
+const assistantDataPath = join(outputDir, 'data', 'assistant.json');
+if (!existsSync(assistantDataPath)) {
+  failures.push('Assistant knowledge base JSON (data/assistant.json) is missing from the build output.');
+} else {
+  try {
+    const assistantData = JSON.parse(readFileSync(assistantDataPath, 'utf8'));
+    if (!assistantData || !Array.isArray(assistantData.intents) || assistantData.intents.length === 0) {
+      failures.push('Assistant knowledge base JSON does not include any intents.');
+    }
+  } catch (error) {
+    failures.push(`Assistant knowledge base JSON is not valid: ${error.message}`);
+  }
 }
 
 const htaccessPath = join(root, '.htaccess');

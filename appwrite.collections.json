@@ -126,6 +126,51 @@
           "orders": ["ASC", "DESC"]
         }
       ]
+    },
+    {
+      "resource": "collection",
+      "databaseId": "main",
+      "$id": "assistant_feedback",
+      "name": "assistant_feedback",
+      "documentSecurity": true,
+      "enabled": true,
+      "permissions": [],
+      "attributes": [
+        {
+          "key": "question",
+          "type": "string",
+          "size": 512,
+          "required": true,
+          "array": false
+        },
+        {
+          "key": "intentId",
+          "type": "string",
+          "size": 128,
+          "required": false,
+          "array": false
+        },
+        {
+          "key": "helpful",
+          "type": "boolean",
+          "required": true,
+          "array": false
+        },
+        {
+          "key": "ts",
+          "type": "datetime",
+          "required": true,
+          "array": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "byTime",
+          "type": "key",
+          "attributes": ["ts"],
+          "orders": ["DESC"]
+        }
+      ]
     }
   ]
 }
