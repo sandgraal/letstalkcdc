@@ -104,6 +104,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=warehouse
                     </code></pre>
+                    <p><strong>Security Note:</strong> This lab uses hardcoded credentials for simplicity. In production environments, use environment variables, Docker secrets, or a secrets management solution like HashiCorp Vault to protect sensitive information.</p>
                 </li>
                 <li>
                     <h3>Start the Services</h3>
@@ -144,7 +145,7 @@ services:
                     <h3>Observe the Change Event in Kafka</h3>
                     <p>Let's consume from the Kafka topic to see the change event that Debezium generated. The topic name is based on the `database.server.name` and the table name (`dbserver1.public.products`).</p>
                     <pre><code>docker-compose exec kafka kafka-console-consumer --bootstrap-server kafka:29092 --topic dbserver1.public.products --from-beginning --max-messages 1 --property print.key=true</code></pre>
-                    <p>You will see a detailed JSON payload representing the `INSERT` operation you just performed.</p>
+                    <p>You will see a detailed JSON payload representing the `INSERT` operation you just performed. Press <code>Ctrl+C</code> if you want to see more messages, or use <code>--timeout-ms 10000</code> instead of <code>--max-messages 1</code> to view all messages within a time window.</p>
                 </li>
                 <li>
                     <h3>Configure the JDBC Sink Connector</h3>
@@ -176,6 +177,7 @@ services:
                     <p>Register the sink connector:</p>
                     <pre><code>curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @register-sink.json</code></pre>
                     <p><strong>Note:</strong> The sink connector uses Debezium's <code>ExtractNewRecordState</code> transform to unwrap the event envelope and extract just the <code>after</code> state, making it suitable for simple upserts.</p>
+                    <p><strong>Production Tip:</strong> For production deployments, externalize credentials using environment variables or secure credential stores instead of hardcoding them in the connector configuration.</p>
                 </li>
                 <li>
                     <h3>Verify Data Replication</h3>
