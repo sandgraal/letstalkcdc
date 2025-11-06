@@ -1,0 +1,707 @@
+---
+layout: base.njk
+title: "Failure Scenario Drills — CDC Troubleshooting Practice"
+canonicalPath: "/troubleshooting/failure-drills/"
+description: "Hands-on failure scenario drills to build CDC troubleshooting fluency. Practice backpressure, DLQ handling, schema drift, and offset replays in a safe lab environment."
+head_extra: |
+  <meta
+    content="Hands-on failure scenario drills to build CDC troubleshooting fluency. Practice backpressure, DLQ handling, schema drift, and offset replays in a safe lab environment."
+    name="description"
+  />
+  <link rel="stylesheet" href="/letstalkcdc/assets/css/pages/failure-drills.css">
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: 'Failure Scenario Drills',
+  description: '<p>Build troubleshooting fluency by intentionally breaking your CDC pipeline in controlled ways. These drills teach you what to look for when things go wrong in production.</p>',
+  align: 'left',
+  actions: [
+    { href: '/troubleshooting/', label: 'Back to Troubleshooting', variant: 'ghost' },
+    { href: '/lab-kafka-debezium/', label: 'Lab Setup', variant: 'secondary' }
+  ]
+}) | safe }}
+
+<div class="prose">
+  <section class="box callout">
+    <h2>Why Run Failure Drills?</h2>
+    <ul>
+      <li><strong>Build muscle memory:</strong> Know what metrics spike before stakeholders notice</li>
+      <li><strong>Validate monitoring:</strong> Confirm your dashboards catch real problems</li>
+      <li><strong>Test recovery procedures:</strong> Practice rewinds and replays without pressure</li>
+      <li><strong>Document patterns:</strong> Create runbooks based on actual behavior, not guesswork</li>
+    </ul>
+    <p class="muted">
+      Run these in a dedicated lab environment. Never execute failure drills in production unless 
+      part of a controlled chaos engineering exercise with stakeholder approval.
+    </p>
+  </section>
+
+  <section id="prerequisites" aria-labelledby="prereqs-title">
+    <h2 id="prereqs-title">Prerequisites</h2>
+    <ul class="checklist">
+      <li>Working CDC lab setup (see <a href="/lab-kafka-debezium/">Hands-On Lab</a>)</li>
+      <li>Docker Compose stack running (Postgres, Kafka, Connect)</li>
+      <li>Active Debezium connector streaming changes</li>
+      <li>Access to Kafka CLI tools (<code>kafka-console-consumer</code>, <code>kafka-consumer-groups</code>)</li>
+      <li>Monitoring dashboard or ability to query connector metrics</li>
+    </ul>
+  </section>
+
+  <section id="drill-1" class="drill-section" aria-labelledby="drill-1-title">
+    <div class="drill-header">
+      <span class="drill-number">Drill #1</span>
+      <h2 id="drill-1-title">Backpressure Simulation: Sink Shutdown</h2>
+      <span class="drill-badge">Duration: 15 min</span>
+    </div>
+    
+    <div class="drill-content">
+      <h3>Learning Goals</h3>
+      <ul>
+        <li>Observe consumer lag metrics when downstream systems are unavailable</li>
+        <li>Understand how Kafka buffers changes during sink outages</li>
+        <li>Identify at what point lag becomes critical</li>
+        <li>Practice monitoring and alerting thresholds</li>
+      </ul>
+
+      <h3>Setup</h3>
+      <ol>
+        <li>
+          <strong>Baseline metrics:</strong> Record current consumer lag and throughput
+          <pre><button class="copy">copy</button><code>kafka-consumer-groups --bootstrap-server localhost:29092 \
+  --describe --group sink-group-inventory</code></pre>
+        </li>
+        <li>
+          <strong>Enable DLQ (optional but recommended):</strong> Configure your sink connector with DLQ settings
+        </li>
+      </ol>
+
+      <h3>Execute</h3>
+      <ol>
+        <li>
+          <strong>Stop the sink connector:</strong>
+          <pre><button class="copy">copy</button><code># If using JDBC Sink
+curl -X DELETE http://localhost:8083/connectors/jdbc-sink-connector
+
+# Or pause it
+curl -X PUT http://localhost:8083/connectors/jdbc-sink-connector/pause</code></pre>
+        </li>
+        <li>
+          <strong>Generate source changes:</strong> Insert, update, or delete rows in source database
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "INSERT INTO public.app_customer (name, email) VALUES ('Test User', 'test@example.com');"</code></pre>
+        </li>
+        <li>
+          <strong>Watch lag grow:</strong> Monitor consumer group lag every 30 seconds
+          <pre><button class="copy">copy</button><code># Watch lag in real-time (Ctrl+C to stop)
+watch -n 5 "kafka-consumer-groups --bootstrap-server localhost:29092 \
+  --describe --group sink-group-inventory | grep -v 'Consumer group'"</code></pre>
+        </li>
+      </ol>
+
+      <h3>Observe & Document</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Expected Behavior</th>
+            <th>Your Observation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Consumer Lag</td>
+            <td>Increases with each source change</td>
+            <td><input type="text" class="observation-field" placeholder="What did you see?" /></td>
+          </tr>
+          <tr>
+            <td>Source Connector Status</td>
+            <td>Remains RUNNING (still producing to Kafka)</td>
+            <td><input type="text" class="observation-field" placeholder="Connector state?" /></td>
+          </tr>
+          <tr>
+            <td>Topic Size</td>
+            <td>Messages accumulate in topic</td>
+            <td><input type="text" class="observation-field" placeholder="Offset growth rate?" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Recovery</h3>
+      <pre><button class="copy">copy</button><code># Resume or recreate the sink connector
+curl -X PUT http://localhost:8083/connectors/jdbc-sink-connector/resume
+
+# Or re-register it
+curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d @sink-config.json</code></pre>
+
+      <h3>Validation Checklist</h3>
+      <ul class="checklist">
+        <li><input type="checkbox" /> Lag returns to zero within expected time</li>
+        <li><input type="checkbox" /> All accumulated changes applied to sink</li>
+        <li><input type="checkbox" /> No duplicate rows in sink (if using idempotent writes)</li>
+        <li><input type="checkbox" /> Monitoring alerts fired when lag exceeded threshold</li>
+      </ul>
+
+      <details class="drill-notes">
+        <summary><strong>Production Implications</strong></summary>
+        <p>
+          In production, backpressure from a slow or unavailable sink is one of the most common failure modes.
+          Key considerations:
+        </p>
+        <ul>
+          <li><strong>Retention limits:</strong> Kafka topic retention must exceed maximum expected sink downtime</li>
+          <li><strong>Disk pressure:</strong> Monitor broker disk usage during extended sink outages</li>
+          <li><strong>Alert tuning:</strong> Set lag alerts based on acceptable data freshness SLAs</li>
+          <li><strong>Circuit breakers:</strong> Consider auto-pausing connectors if lag exceeds critical threshold</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section id="drill-2" class="drill-section" aria-labelledby="drill-2-title">
+    <div class="drill-header">
+      <span class="drill-number">Drill #2</span>
+      <h2 id="drill-2-title">Dead Letter Queue: Serialization Errors</h2>
+      <span class="drill-badge">Duration: 20 min</span>
+    </div>
+    
+    <div class="drill-content">
+      <h3>Learning Goals</h3>
+      <ul>
+        <li>Trigger and identify serialization errors in the pipeline</li>
+        <li>Configure and monitor Dead Letter Queue (DLQ) topics</li>
+        <li>Practice DLQ triage and message recovery</li>
+        <li>Understand error tolerance policies</li>
+      </ul>
+
+      <h3>Setup</h3>
+      <ol>
+        <li>
+          <strong>Enable DLQ on sink connector:</strong> Update connector config
+          <pre><button class="copy">copy</button><code>{
+  "name": "jdbc-sink-connector",
+  "config": {
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "dlq.sink.inventory",
+    "errors.deadletterqueue.context.headers.enable": "true",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true"
+  }
+}</code></pre>
+        </li>
+        <li>
+          <strong>Create a consumer for DLQ monitoring:</strong>
+          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic dlq.sink.inventory --from-beginning \
+  --property print.headers=true \
+  --property print.timestamp=true</code></pre>
+        </li>
+      </ol>
+
+      <h3>Execute</h3>
+      <ol>
+        <li>
+          <strong>Method 1: Inject incompatible data type</strong>
+          <pre><button class="copy">copy</button><code># Assuming sink expects integer but source sends string
+docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "INSERT INTO public.problematic_table (id, age) VALUES (999, 'not-a-number');"</code></pre>
+        </li>
+        <li>
+          <strong>Method 2: Create missing target table scenario</strong>
+          <pre><button class="copy">copy</button><code># Rename target table to simulate missing destination
+docker exec -it postgres-sink psql -U start_data_engineer -d inventory -c \
+  "ALTER TABLE public.app_customer RENAME TO app_customer_backup;"</code></pre>
+        </li>
+        <li>
+          <strong>Method 3: Insert oversized payload</strong>
+          <pre><button class="copy">copy</button><code># Insert a very large text field that exceeds sink column limit
+docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "INSERT INTO public.app_customer (name, email) VALUES ('$(head -c 100000 /dev/zero | tr '\0' 'A')', 'large@example.com');"</code></pre>
+        </li>
+      </ol>
+
+      <h3>Observe & Triage</h3>
+      <ol>
+        <li>
+          <strong>Check connector status:</strong>
+          <pre><button class="copy">copy</button><code>curl -s http://localhost:8083/connectors/jdbc-sink-connector/status | jq '.tasks[].trace'</code></pre>
+        </li>
+        <li>
+          <strong>Inspect DLQ messages:</strong>
+          <pre><button class="copy">copy</button><code># List messages with error context
+kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic dlq.sink.inventory --from-beginning \
+  --property print.headers=true \
+  --max-messages 5 | jq -C '.'</code></pre>
+        </li>
+        <li>
+          <strong>Identify error pattern:</strong> Look for headers like:
+          <ul>
+            <li><code>__connect.errors.topic</code> — Original topic</li>
+            <li><code>__connect.errors.partition</code> — Partition number</li>
+            <li><code>__connect.errors.offset</code> — Original offset</li>
+            <li><code>__connect.errors.exception.class.name</code> — Error type</li>
+            <li><code>__connect.errors.exception.message</code> — Error details</li>
+          </ul>
+        </li>
+      </ol>
+
+      <h3>Recovery Strategies</h3>
+      <div class="two">
+        <div class="box">
+          <h4>Option A: Fix and Replay</h4>
+          <ol>
+            <li>Fix the root cause (restore table, fix schema)</li>
+            <li>Re-drive DLQ messages to original topic</li>
+            <li>Let connector reprocess</li>
+          </ol>
+          <pre><button class="copy">copy</button><code># Use kafka-console-producer with headers
+# Or use a DLQ replay tool</code></pre>
+        </div>
+        <div class="box">
+          <h4>Option B: Transform and Retry</h4>
+          <ol>
+            <li>Write script to transform bad records</li>
+            <li>Publish corrected versions to bypass DLQ</li>
+            <li>Archive original DLQ messages</li>
+          </ol>
+        </div>
+      </div>
+
+      <h3>Validation Checklist</h3>
+      <ul class="checklist">
+        <li><input type="checkbox" /> DLQ captured poison pill messages</li>
+        <li><input type="checkbox" /> Connector remained running (didn't crash-loop)</li>
+        <li><input type="checkbox" /> Error headers contain actionable diagnostics</li>
+        <li><input type="checkbox" /> Good messages continued processing normally</li>
+        <li><input type="checkbox" /> DLQ alerts fired when messages arrived</li>
+      </ul>
+
+      <details class="drill-notes">
+        <summary><strong>Production Best Practices</strong></summary>
+        <ul>
+          <li><strong>Retention:</strong> Set DLQ topic retention to 7+ days for triage time</li>
+          <li><strong>Monitoring:</strong> Alert when DLQ message count exceeds zero</li>
+          <li><strong>Compaction:</strong> Disable log compaction on DLQ topics to preserve all errors</li>
+          <li><strong>Partitioning:</strong> Match DLQ partition count to source topic for easier correlation</li>
+          <li><strong>Privacy:</strong> Consider PII scrubbing in DLQ error context headers</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section id="drill-3" class="drill-section" aria-labelledby="drill-3-title">
+    <div class="drill-header">
+      <span class="drill-number">Drill #3</span>
+      <h2 id="drill-3-title">Schema Drift: Incompatible Column Changes</h2>
+      <span class="drill-badge">Duration: 25 min</span>
+    </div>
+    
+    <div class="drill-content">
+      <h3>Learning Goals</h3>
+      <ul>
+        <li>Understand how schema changes propagate through CDC pipelines</li>
+        <li>Identify breaking vs. non-breaking schema changes</li>
+        <li>Practice schema evolution strategies</li>
+        <li>Test schema registry integration (if applicable)</li>
+      </ul>
+
+      <h3>Setup</h3>
+      <ol>
+        <li>
+          <strong>Document current schema:</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "\d public.app_customer"</code></pre>
+        </li>
+        <li>
+          <strong>Baseline a known-good record:</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "SELECT * FROM public.app_customer LIMIT 1;"</code></pre>
+        </li>
+      </ol>
+
+      <h3>Execute: Breaking Changes</h3>
+      <ol>
+        <li>
+          <strong>Scenario A: Drop a column with active data</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "ALTER TABLE public.app_customer DROP COLUMN email;"</code></pre>
+          <p class="muted">Impact: Sink may fail if it expects <code>email</code> column; Debezium emits event without field</p>
+        </li>
+        <li>
+          <strong>Scenario B: Change column type (incompatible)</strong>
+          <pre><button class="copy">copy</button><code># Change integer to text (potentially lossy)
+docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "ALTER TABLE public.app_customer ALTER COLUMN id TYPE TEXT USING id::TEXT;"</code></pre>
+          <p class="muted">Impact: Type mismatch may cause sink errors if target schema is strict</p>
+        </li>
+        <li>
+          <strong>Scenario C: Add NOT NULL constraint on existing nullable column</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "ALTER TABLE public.app_customer ADD COLUMN phone VARCHAR(20) NOT NULL DEFAULT '';"</code></pre>
+          <p class="muted">Impact: Existing rows get default; new inserts must provide value</p>
+        </li>
+      </ol>
+
+      <h3>Execute: Compatible Changes</h3>
+      <ol>
+        <li>
+          <strong>Scenario D: Add nullable column (forward-compatible)</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "ALTER TABLE public.app_customer ADD COLUMN loyalty_points INTEGER DEFAULT 0;"</code></pre>
+          <p class="muted success">✓ Safe: Sink ignores unknown columns or auto-adds if using schema sync</p>
+        </li>
+        <li>
+          <strong>Scenario E: Increase column width</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "ALTER TABLE public.app_customer ALTER COLUMN name TYPE VARCHAR(500);"</code></pre>
+          <p class="muted success">✓ Safe: Widening columns rarely breaks downstream systems</p>
+        </li>
+      </ol>
+
+      <h3>Observe Behavior</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Change Type</th>
+            <th>Connector Status</th>
+            <th>Message Schema</th>
+            <th>Sink Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Drop column</td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+          <tr>
+            <td>Type change</td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+          <tr>
+            <td>Add NOT NULL</td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+          <tr>
+            <td>Add nullable</td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Recovery Patterns</h3>
+      <div class="box callout">
+        <h4>When Schema Drift Breaks the Pipeline</h4>
+        <ol>
+          <li><strong>Stop ingestion:</strong> Pause connector to prevent cascading failures</li>
+          <li><strong>Assess impact:</strong> Check how many messages are affected</li>
+          <li><strong>Choose strategy:</strong>
+            <ul>
+              <li><strong>Rollback:</strong> Revert schema change if caught early</li>
+              <li><strong>Forward fix:</strong> Align sink schema, restart connector</li>
+              <li><strong>Transform:</strong> Add SMT (Single Message Transform) to handle migration</li>
+            </ul>
+          </li>
+          <li><strong>Validate:</strong> Confirm historical data integrity after fix</li>
+        </ol>
+      </div>
+
+      <h3>Validation Checklist</h3>
+      <ul class="checklist">
+        <li><input type="checkbox" /> Documented which changes are safe vs. breaking</li>
+        <li><input type="checkbox" /> Tested sink resilience to unknown fields</li>
+        <li><input type="checkbox" /> Verified DLQ captures schema mismatches</li>
+        <li><input type="checkbox" /> Confirmed schema registry versioning (if using)</li>
+        <li><input type="checkbox" /> Created runbook for schema change approval process</li>
+      </ul>
+
+      <details class="drill-notes">
+        <summary><strong>Schema Evolution Guidelines</strong></summary>
+        <p><strong>Safe changes (forward-compatible):</strong></p>
+        <ul>
+          <li>Add nullable columns with defaults</li>
+          <li>Widen column types (VARCHAR(50) → VARCHAR(200))</li>
+          <li>Add indexes (no CDC impact)</li>
+          <li>Add optional columns to sink (if sink auto-adapts)</li>
+        </ul>
+        <p><strong>Risky changes (require coordination):</strong></p>
+        <ul>
+          <li>Drop columns (data loss; sink may error)</li>
+          <li>Rename columns (appears as drop + add)</li>
+          <li>Change types (requires transformation logic)</li>
+          <li>Add NOT NULL without defaults on high-volume tables</li>
+        </ul>
+        <p><strong>Best practice:</strong> Use a schema change approval process with CDC impact assessment before DDL execution.</p>
+      </details>
+    </div>
+  </section>
+
+  <section id="drill-4" class="drill-section" aria-labelledby="drill-4-title">
+    <div class="drill-header">
+      <span class="drill-number">Drill #4</span>
+      <h2 id="drill-4-title">Offset Wipe & Replay: Snapshot + Stream Behavior</h2>
+      <span class="drill-badge">Duration: 30 min</span>
+    </div>
+    
+    <div class="drill-content">
+      <h3>Learning Goals</h3>
+      <ul>
+        <li>Understand how CDC connectors manage offsets and state</li>
+        <li>Observe snapshot vs. streaming mode behavior</li>
+        <li>Practice safe offset resets and replays</li>
+        <li>Validate idempotency of sink writes during replays</li>
+      </ul>
+
+      <h3>Setup</h3>
+      <ol>
+        <li>
+          <strong>Ensure idempotent sink:</strong> Verify sink uses UPSERT/MERGE, not INSERT
+          <pre><button class="copy">copy</button><code># Check sink connector config
+curl -s http://localhost:8083/connectors/jdbc-sink-connector/config | \
+  jq '.["insert.mode"]'  # should be "upsert"</code></pre>
+        </li>
+        <li>
+          <strong>Backup current state:</strong>
+          <pre><button class="copy">copy</button><code># Export connector offsets (Kafka Connect stores in internal topic)
+kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic my_connect_offsets --from-beginning --timeout-ms 5000 > offsets-backup.json</code></pre>
+        </li>
+        <li>
+          <strong>Record sink row count:</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres-sink psql -U start_data_engineer -d inventory -c \
+  "SELECT COUNT(*) FROM public.app_customer;"</code></pre>
+        </li>
+      </ol>
+
+      <h3>Execute: Offset Reset</h3>
+      <ol>
+        <li>
+          <strong>Stop connector gracefully:</strong>
+          <pre><button class="copy">copy</button><code>curl -X DELETE http://localhost:8083/connectors/inventory-connector
+curl -X DELETE http://localhost:8083/connectors/jdbc-sink-connector</code></pre>
+        </li>
+        <li>
+          <strong>Wipe connector offsets:</strong>
+          <pre><button class="copy">copy</button><code># Delete Postgres replication slot (forces new snapshot)
+docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "SELECT pg_drop_replication_slot('debezium');"
+
+# Delete Connect offsets for this connector
+# (In production, use offset management APIs; for lab, recreate with new name)</code></pre>
+        </li>
+        <li>
+          <strong>Re-register source connector with fresh snapshot:</strong>
+          <pre><button class="copy">copy</button><code>curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+  "name": "inventory-connector-v2",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "snapshot.mode": "initial",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "start_data_engineer",
+    "database.password": "password",
+    "database.dbname": "inventory",
+    "database.server.name": "server2",
+    "table.include.list": "public.app_customer",
+    "slot.name": "debezium_v2"
+  }
+}'</code></pre>
+        </li>
+      </ol>
+
+      <h3>Observe Snapshot Phase</h3>
+      <ol>
+        <li>
+          <strong>Watch connector task state:</strong>
+          <pre><button class="copy">copy</button><code>watch -n 2 "curl -s http://localhost:8083/connectors/inventory-connector-v2/status | jq '.tasks[0].state'"</code></pre>
+        </li>
+        <li>
+          <strong>Monitor snapshot progress:</strong>
+          <pre><button class="copy">copy</button><code># Check connector logs for snapshot messages
+docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
+        </li>
+        <li>
+          <strong>Count messages during snapshot:</strong>
+          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic server2.public.app_customer --from-beginning \
+  --timeout-ms 10000 | wc -l</code></pre>
+        </li>
+      </ol>
+
+      <h3>Observe Streaming Phase</h3>
+      <ol>
+        <li>
+          <strong>Make a live change:</strong>
+          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+  "UPDATE public.app_customer SET name = 'Updated After Snapshot' WHERE id = 1;"</code></pre>
+        </li>
+        <li>
+          <strong>Verify streaming event arrives:</strong>
+          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+  --topic server2.public.app_customer \
+  --offset latest --partition 0 --timeout-ms 5000 | jq '.payload.op'  # should be 'u' for update</code></pre>
+        </li>
+      </ol>
+
+      <h3>Validate Idempotency</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Check</th>
+            <th>Expected Result</th>
+            <th>Actual Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sink row count after replay</td>
+            <td>Same as before (no duplicates)</td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+          <tr>
+            <td>Duplicate PK query</td>
+            <td><code>SELECT COUNT(*), COUNT(DISTINCT id)</code> → equal</td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+          <tr>
+            <td>Latest values preserved</td>
+            <td>Most recent updates not overwritten by snapshot</td>
+            <td><input type="text" class="observation-field" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Duplicate Detection Query</h3>
+      <pre><button class="copy">copy</button><code>-- Run on sink database
+SELECT id, COUNT(*) AS occurrences
+FROM public.app_customer
+GROUP BY id
+HAVING COUNT(*) > 1;</code></pre>
+      <p class="muted">Expected: Zero rows (no duplicates)</p>
+
+      <h3>Validation Checklist</h3>
+      <ul class="checklist">
+        <li><input type="checkbox" /> Connector completed snapshot phase (check logs)</li>
+        <li><input type="checkbox" /> Streaming mode activated after snapshot</li>
+        <li><input type="checkbox" /> Sink has no duplicate primary keys</li>
+        <li><input type="checkbox" /> Latest updates preserved (not overwritten by snapshot data)</li>
+        <li><input type="checkbox" /> Offset reset procedure documented in runbook</li>
+      </ul>
+
+      <details class="drill-notes">
+        <summary><strong>Production Offset Management</strong></summary>
+        <p><strong>When to reset offsets:</strong></p>
+        <ul>
+          <li>Sink data corruption requires full reload</li>
+          <li>Connector offset corruption (rare)</li>
+          <li>Major schema migration requiring resnapshot</li>
+          <li>Testing disaster recovery procedures</li>
+        </ul>
+        <p><strong>Safeguards:</strong></p>
+        <ul>
+          <li><strong>Backup:</strong> Always export offsets before deletion</li>
+          <li><strong>Downtime window:</strong> Coordinate with stakeholders</li>
+          <li><strong>Idempotency:</strong> Ensure sink writes are idempotent (UPSERT/MERGE)</li>
+          <li><strong>Validation:</strong> Run duplicate-PK queries post-replay</li>
+          <li><strong>Monitoring:</strong> Watch lag and error rates during replay</li>
+        </ul>
+        <p><strong>Alternatives to full reset:</strong></p>
+        <ul>
+          <li>Partial offset rewind (set offset to specific timestamp/LSN)</li>
+          <li>Incremental resync (backfill only affected partitions)</li>
+          <li>Shadow sync (parallel connector for validation before cutover)</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section id="drill-progression" class="box callout">
+    <h2>Drill Progression & Mastery</h2>
+    <p>Track your troubleshooting readiness across all four drills:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Drill</th>
+          <th>First Run</th>
+          <th>Independent Repeat</th>
+          <th>Production Ready</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backpressure (Sink Shutdown)</td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+        </tr>
+        <tr>
+          <td>DLQ (Serialization Errors)</td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+        </tr>
+        <tr>
+          <td>Schema Drift</td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+        </tr>
+        <tr>
+          <td>Offset Wipe & Replay</td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+          <td><input type="checkbox" /></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted">
+      <strong>Mastery criteria:</strong> Execute each drill independently, document observations, 
+      and create runbooks without referring to this guide.
+    </p>
+  </section>
+
+  <section id="next-steps" class="box">
+    <h2>Next Steps</h2>
+    <ul>
+      <li>
+        <strong>Create runbooks:</strong> Document your observations and recovery procedures for your team
+      </li>
+      <li>
+        <strong>Automate checks:</strong> Script the validation queries for CI/CD integration
+      </li>
+      <li>
+        <strong>Schedule regular drills:</strong> Run quarterly to maintain muscle memory
+      </li>
+      <li>
+        <strong>Expand scenarios:</strong> Add org-specific failure modes (network partitions, cloud provider outages)
+      </li>
+      <li>
+        <strong>Share learnings:</strong> Present findings to broader team to build collective knowledge
+      </li>
+    </ul>
+    <div class="actions">
+      <a href="/troubleshooting/" class="button">Troubleshooting Guide</a>
+      <a href="/observability/" class="button secondary">Observability Basics</a>
+      <a href="/ops-offsets/" class="button secondary">Offset Management</a>
+    </div>
+  </section>
+
+  <section class="box callout warn">
+    <h2>Safety Reminders</h2>
+    <ul>
+      <li>🔒 <strong>Never run drills in production</strong> without formal chaos engineering approval</li>
+      <li>📋 <strong>Document everything:</strong> Screenshots, metrics, timestamps, error messages</li>
+      <li>👥 <strong>Pair up:</strong> Run drills with a colleague to compare observations</li>
+      <li>⏱️ <strong>Set time limits:</strong> Don't let exploration derail planned work</li>
+      <li>🔄 <strong>Clean up thoroughly:</strong> Restore lab to known-good state after each drill</li>
+    </ul>
+  </section>
+</div>

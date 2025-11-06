@@ -282,6 +282,23 @@ HAVING COUNT(*) &lt;&gt; 1 AND MAX(op_ts) &lt; NOW() - INTERVAL '0 seconds';</co
           </li>
         </ul>
       </section>
+      <section class="box callout">
+        <h2>Build Troubleshooting Muscle Memory</h2>
+        <p>
+          Want to practice these scenarios in a safe lab environment? Check out our 
+          <a href="/troubleshooting/failure-drills/"><strong>Failure Scenario Drills</strong></a> — 
+          hands-on exercises that let you intentionally break your CDC pipeline and learn how to fix it.
+        </p>
+        <ul>
+          <li><strong>Backpressure simulation:</strong> Shut down sink, observe lag metrics</li>
+          <li><strong>DLQ exercise:</strong> Inject bad data, trigger serialization errors</li>
+          <li><strong>Schema drift:</strong> Test incompatible column changes</li>
+          <li><strong>Offset replay:</strong> Wipe offsets, observe snapshot + stream behavior</li>
+        </ul>
+        <p class="muted">
+          Running these drills quarterly keeps your incident response sharp and validates your monitoring setup.
+        </p>
+      </section>
       <section class="box">
         <h2>Acceptance for “Stabilized”</h2>
         <ul class="checklist">
