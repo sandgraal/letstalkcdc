@@ -367,7 +367,7 @@ const onStepChangeInternal = ({
 
   state.progress.set(journeySlug, normalized);
   writeStoredProgress();
-  renderToolbar(config.journeySlug || journeySlug);
+  renderToolbar(journeySlug);
   refreshDashboard({ force: true });
   dispatchProgressChange(journeySlug);
   return normalized;
