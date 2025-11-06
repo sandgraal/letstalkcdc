@@ -2,6 +2,9 @@
 # JMX Exporter configuration for Kafka Connect
 # This configuration exposes Kafka Connect metrics to Prometheus
 
+# Remote JMX endpoint to scrape
+hostPort: connect:9102
+
 # Lowercase metric names
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
