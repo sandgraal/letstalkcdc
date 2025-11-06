@@ -1,0 +1,315 @@
+groups:
+  - name: kafka_connect_cdc_alerts
+    interval: 30s
+    rules:
+      # Primary Alerts - Wake up on-call
+      - alert: KafkaConnectHighLag
+        expr: |
+          (kafka_connect_source_connector_metrics_source_record_poll_total - 
+           kafka_connect_sink_connector_metrics_sink_record_send_total) > 300000
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect replication lag is high for connector {{ $labels.connector }}"
+          description: |
+            Replication lag has exceeded 5 minutes (300,000ms) for connector {{ $labels.connector }}.
+            Current lag: {{ $value }}ms
+            
+            Impact: Downstream consumers are seeing stale data.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-lag
+            
+            Actions:
+            1. Check connector status and logs
+            2. Verify source database health
+            3. Review sink capacity and performance
+            4. Check for schema changes or data issues
+
+      - alert: KafkaConnectNoOffsetCommits
+        expr: |
+          increase(kafka_connect_source_connector_metrics_source_record_poll_total[5m]) > 0
+          and
+          increase(kafka_connect_connector_task_metrics_offset_commit_success_total[5m]) == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect connector {{ $labels.connector }} is not committing offsets"
+          description: |
+            Connector {{ $labels.connector }} is receiving events but has not committed offsets in 5 minutes.
+            
+            Impact: Risk of data loss or duplicate processing on restart.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-offset-issues
+            
+            Actions:
+            1. Check connector logs for errors
+            2. Verify Kafka broker connectivity
+            3. Review offset storage topic health
+            4. Check for task failures
+
+      - alert: KafkaConnectDLQVolumeSpike
+        expr: |
+          increase(kafka_topic_partition_current_offset{topic=~".*dlq.*"}[5m]) > 
+          (avg_over_time(increase(kafka_topic_partition_current_offset{topic=~".*dlq.*"}[5m])[1h:5m]) * 3)
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "Dead Letter Queue volume spike detected for topic {{ $labels.topic }}"
+          description: |
+            DLQ growth rate is 3x above baseline for topic {{ $labels.topic }}.
+            Current rate: {{ $value | humanize }} messages/sec
+            
+            Impact: Potential data quality issues or downstream processing failures.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-dlq
+            
+            Actions:
+            1. Sample DLQ messages to identify error patterns
+            2. Check for schema changes or data format issues
+            3. Review connector transformation logic
+            4. Verify sink system compatibility
+
+      - alert: KafkaConnectorNotRunning
+        expr: kafka_connect_connector_status{state!="RUNNING"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect connector {{ $labels.connector }} is not running"
+          description: |
+            Connector {{ $labels.connector }} is in {{ $labels.state }} state.
+            
+            Impact: Change data capture is halted for this connector.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-status
+            
+            Actions:
+            1. Check connector status via REST API
+            2. Review connector and task logs
+            3. Restart connector if in FAILED state
+            4. Check for configuration issues
+
+      - alert: KafkaConnectHighErrorRate
+        expr: |
+          rate(kafka_connect_connector_task_metrics_total_errors_logged_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "High error rate for Kafka Connect connector {{ $labels.connector }}"
+          description: |
+            Connector {{ $labels.connector }} task {{ $labels.task }} is logging errors at {{ $value | humanize }}/sec.
+            
+            Impact: Potential data loss or processing delays.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-errors
+            
+            Actions:
+            1. Review connector task logs
+            2. Check for poison pill messages
+            3. Verify sink system availability
+            4. Review error patterns for schema issues
+
+      # Warning Alerts - Follow up during business hours
+      - alert: KafkaConnectSourceLogRetentionLow
+        expr: |
+          (kafka_server_log_log_size - kafka_server_log_log_start_offset) / 
+          (kafka_server_log_log_end_offset - kafka_server_log_log_start_offset) < 0.2
+        for: 15m
+        labels:
+          severity: warning
+          component: kafka-connect
+        annotations:
+          summary: "Source log retention is low for topic {{ $labels.topic }}"
+          description: |
+            Only {{ $value | humanizePercentage }} of log retention remains for topic {{ $labels.topic }}.
+            
+            Impact: Risk of losing ability to replay events if connector fails.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-retention
+            
+            Actions:
+            1. Verify log retention settings
+            2. Check if backlog is growing
+            3. Consider increasing retention period
+            4. Review connector throughput
+
+      - alert: KafkaConnectExcessiveRestarts
+        expr: |
+          increase(kafka_connect_connector_task_metrics_total_restarts_total[1h]) > 3
+        for: 15m
+        labels:
+          severity: warning
+          component: kafka-connect
+        annotations:
+          summary: "Connector {{ $labels.connector }} is restarting frequently"
+          description: |
+            Connector {{ $labels.connector }} has restarted {{ $value }} times in the last hour.
+            
+            Impact: Potential processing delays and inconsistent behavior.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-stability
+            
+            Actions:
+            1. Review connector logs for recurring errors
+            2. Check for resource constraints (CPU, memory)
+            3. Verify network connectivity to source/sink
+            4. Review connector configuration for issues
+
+      - alert: KafkaConnectLowThroughput
+        expr: |
+          rate(kafka_connect_source_connector_metrics_source_record_poll_total[5m]) < 
+          (avg_over_time(rate(kafka_connect_source_connector_metrics_source_record_poll_total[24h])[1h:1m]) * 0.1)
+        for: 15m
+        labels:
+          severity: warning
+          component: kafka-connect
+        annotations:
+          summary: "Low throughput for connector {{ $labels.connector }}"
+          description: |
+            Connector {{ $labels.connector }} throughput is 90% below 24h average.
+            Current rate: {{ $value | humanize }} records/sec
+            
+            Impact: Potential issue with source database or connector performance.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-throughput
+            
+            Actions:
+            1. Check source database activity
+            2. Verify connector task health
+            3. Review connector configuration (batch size, poll interval)
+            4. Check for network issues
+
+      - alert: KafkaConnectTaskSaturation
+        expr: |
+          kafka_connect_connector_task_metrics_running_ratio < 0.7
+        for: 15m
+        labels:
+          severity: warning
+          component: kafka-connect
+        annotations:
+          summary: "Connector {{ $labels.connector }} task {{ $labels.task }} may be saturated"
+          description: |
+            Task running ratio is {{ $value | humanizePercentage }}, indicating potential saturation.
+            
+            Impact: Reduced throughput and increased lag.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-saturation
+            
+            Actions:
+            1. Review task configuration (parallelism, batch size)
+            2. Check for CPU or memory constraints
+            3. Monitor sink system performance
+            4. Consider scaling out tasks
+
+      - alert: KafkaConnectBatchProcessingSlowing
+        expr: |
+          kafka_connect_connector_task_metrics_batch_size_avg > 
+          (avg_over_time(kafka_connect_connector_task_metrics_batch_size_avg[1h]) * 2)
+        for: 15m
+        labels:
+          severity: warning
+          component: kafka-connect
+        annotations:
+          summary: "Batch processing time increasing for connector {{ $labels.connector }}"
+          description: |
+            Batch processing time is 2x above baseline for connector {{ $labels.connector }}.
+            Current average: {{ $value }}ms
+            
+            Impact: Potential saturation or downstream performance issues.
+            
+            Runbook: https://yourorg.com/runbooks/kafka-connect-performance
+            
+            Actions:
+            1. Review sink system performance
+            2. Check for large or complex transformations
+            3. Monitor network latency
+            4. Review batch size configuration
+
+  - name: kafka_connect_slo_alerts
+    interval: 5m
+    rules:
+      # SLO-based alerts
+      - alert: KafkaConnectFreshnessSLOBreach
+        expr: |
+          (
+            kafka_connect_source_connector_metrics_source_record_poll_total - 
+            kafka_connect_sink_connector_metrics_sink_record_send_total
+          ) > 300000
+        for: 10m
+        labels:
+          severity: warning
+          component: kafka-connect
+          slo: freshness
+        annotations:
+          summary: "CDC freshness SLO breached for connector {{ $labels.connector }}"
+          description: |
+            99th percentile lag exceeds 5 minute SLO for connector {{ $labels.connector }}.
+            Current P99: {{ $value }}ms
+            
+            Impact: Downstream consumers seeing stale data beyond SLA.
+            
+            Actions:
+            1. Review error budget remaining
+            2. Prioritize stability work if budget nearly spent
+            3. Investigate root cause of increased latency
+
+      - alert: KafkaConnectAvailabilitySLOBreach
+        expr: |
+          (
+            sum(kafka_connect_connector_status{state="RUNNING"}) / 
+            count(kafka_connect_connector_status)
+          ) < 0.99
+        for: 15m
+        labels:
+          severity: warning
+          component: kafka-connect
+          slo: availability
+        annotations:
+          summary: "CDC availability SLO breached"
+          description: |
+            Less than 99% of connectors are running.
+            Current availability: {{ $value | humanizePercentage }}
+            
+            Impact: Change stream downtime affecting multiple pipelines.
+            
+            Actions:
+            1. Identify and restart failed connectors
+            2. Review cluster health
+            3. Update incident timeline
+            4. Communicate with stakeholders
+
+      - alert: KafkaConnectCompletenessRisk
+        expr: |
+          (
+            kafka_connect_source_connector_metrics_source_record_poll_total - 
+            kafka_connect_sink_connector_metrics_sink_record_send_total
+          ) > 
+          (
+            rate(kafka_connect_source_connector_metrics_source_record_poll_total[1h]) * 3600
+          )
+        for: 30m
+        labels:
+          severity: warning
+          component: kafka-connect
+          slo: completeness
+        annotations:
+          summary: "Data completeness at risk for connector {{ $labels.connector }}"
+          description: |
+            Lag exceeds 1 hour of throughput for connector {{ $labels.connector }}.
+            Risk of missing 99.99% completeness SLO within 1 hour window.
+            
+            Impact: Potential data completeness violations.
+            
+            Actions:
+            1. Accelerate lag reduction efforts
+            2. Notify stakeholders of potential SLO breach
+            3. Review capacity and scaling options

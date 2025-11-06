@@ -1,0 +1,126 @@
+---
+# JMX Exporter configuration for Kafka Connect
+# This configuration exposes Kafka Connect metrics to Prometheus
+
+# Lowercase metric names
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+# Whitelist patterns for Kafka Connect metrics
+whitelistObjectNames:
+  - "kafka.connect:type=connect-worker-metrics,*"
+  - "kafka.connect:type=connect-worker-rebalance-metrics,*"
+  - "kafka.connect:type=connector-metrics,*"
+  - "kafka.connect:type=task-metrics,*"
+  - "kafka.connect:type=source-task-metrics,*"
+  - "kafka.connect:type=sink-task-metrics,*"
+  - "kafka.connect:type=connector-task-metrics,*"
+  - "kafka.consumer:type=*,*"
+  - "kafka.producer:type=*,*"
+  - "java.lang:type=Memory"
+  - "java.lang:type=GarbageCollector,*"
+  - "java.lang:type=Threading"
+
+# Rules to transform JMX metrics to Prometheus format
+rules:
+  # Connector-level metrics
+  - pattern: 'kafka.connect<type=connector-metrics, connector=([^,]+)><>(.+): (.+)'
+    name: kafka_connect_connector_metrics_$2
+    labels:
+      connector: "$1"
+    value: "$3"
+    valueFactor: 1
+    type: GAUGE
+
+  # Task-level metrics
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=([^,]+), task=([^,]+)><>(.+): (.+)'
+    name: kafka_connect_connector_task_metrics_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    value: "$4"
+    valueFactor: 1
+    type: GAUGE
+
+  # Source connector metrics
+  - pattern: 'kafka.connect<type=source-task-metrics, connector=([^,]+), task=([^,]+)><>(.+): (.+)'
+    name: kafka_connect_source_connector_metrics_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    value: "$4"
+    valueFactor: 1
+    type: COUNTER
+
+  # Sink connector metrics
+  - pattern: 'kafka.connect<type=sink-task-metrics, connector=([^,]+), task=([^,]+)><>(.+): (.+)'
+    name: kafka_connect_sink_connector_metrics_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    value: "$4"
+    valueFactor: 1
+    type: COUNTER
+
+  # Worker metrics
+  - pattern: 'kafka.connect<type=connect-worker-metrics><>(.+): (.+)'
+    name: kafka_connect_worker_metrics_$1
+    value: "$2"
+    valueFactor: 1
+    type: GAUGE
+
+  # Worker rebalance metrics
+  - pattern: 'kafka.connect<type=connect-worker-rebalance-metrics><>(.+): (.+)'
+    name: kafka_connect_worker_rebalance_metrics_$1
+    value: "$2"
+    valueFactor: 1
+    type: GAUGE
+
+  # Kafka consumer metrics
+  - pattern: 'kafka.consumer<type=(.+), client-id=(.+), (.+)=(.+)><>(.+): (.+)'
+    name: kafka_consumer_$1_$5
+    labels:
+      client_id: "$2"
+      $3: "$4"
+    value: "$6"
+    valueFactor: 1
+
+  # Kafka producer metrics
+  - pattern: 'kafka.producer<type=(.+), client-id=(.+), (.+)=(.+)><>(.+): (.+)'
+    name: kafka_producer_$1_$5
+    labels:
+      client_id: "$2"
+      $3: "$4"
+    value: "$6"
+    valueFactor: 1
+
+  # JVM Memory metrics
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(.+)'
+    name: jvm_memory_heap_$1
+    value: 1
+    valueFactor: 1
+    type: GAUGE
+
+  - pattern: 'java.lang<type=Memory><NonHeapMemoryUsage>(.+)'
+    name: jvm_memory_nonheap_$1
+    value: 1
+    valueFactor: 1
+    type: GAUGE
+
+  # JVM GC metrics
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionCount'
+    name: jvm_gc_collection_count
+    labels:
+      gc: "$1"
+    type: COUNTER
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionTime'
+    name: jvm_gc_collection_time_ms
+    labels:
+      gc: "$1"
+    type: COUNTER
+
+  # JVM Threading
+  - pattern: 'java.lang<type=Threading><>(.+)'
+    name: jvm_threading_$1
+    type: GAUGE
