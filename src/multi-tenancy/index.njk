@@ -3,6 +3,8 @@ layout: base.njk
 title: "Multi-Tenancy — Isolation vs Cost | CDC: The Missing Manual"
 description: "Interactive explorer for multi-tenant CDC: isolation levels, topic strategy, consumer groups, and egress sizing with shareable presets."
 canonicalPath: "/multi-tenancy/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <meta
         name="description"
@@ -79,6 +81,7 @@ scripts:
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -544,3 +547,5 @@ scripts:
           </p>
         </details>
       </section>
+
+{{ quizMacro.quiz(quizConfig) | safe }}

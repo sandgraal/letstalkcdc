@@ -3,6 +3,8 @@ layout: base.njk
 title: "Exactly-Once Semantics"
 description: "A deep dive into at-least-once vs. exactly-once semantics, idempotency, and the transactional outbox pattern for reliable data pipelines."
 canonicalPath: "/exactly-once/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/exactly-once.css' | url }}">
   <script type="application/ld+json">
@@ -47,6 +49,7 @@ scripts:
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -286,4 +289,6 @@ WHEN MATCHED THEN
           you still need idempotent consumers at the sinks.
         </p>
       </article>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
 </div>
