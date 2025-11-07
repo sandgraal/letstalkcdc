@@ -187,7 +187,7 @@ CREATE TABLESPACE ggadmin_tbs
 DATAFILE '/u01/oradata/ORCL/ggadmin01.dbf' 
 SIZE 500M AUTOEXTEND ON;
 
-CREATE USER ggadmin IDENTIFIED BY "SecurePassword123"
+CREATE USER ggadmin IDENTIFIED BY "YOUR_SECURE_PASSWORD"
 DEFAULT TABLESPACE ggadmin_tbs
 QUOTA UNLIMITED ON ggadmin_tbs;
 
@@ -238,7 +238,7 @@ GGSCI> EXIT</code></pre>
     <p>Create parameter file <code>$OGG_HOME/dirprm/ext1.prm</code> on the source system:</p>
     <pre><code>-- Extract parameter file (ext1.prm)
 EXTRACT ext1
-USERID ggadmin, PASSWORD SecurePassword123
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 EXTTRAIL ./dirdat/aa
 DISCARDFILE ./dirrpt/ext1.dsc, PURGE
 WARNLONGTRANS 2h, CHECKINTERVAL 30m
@@ -255,7 +255,7 @@ TABLE hr.job_history;</code></pre>
     <p>Register Extract with the database (for Integrated Extract mode - recommended for Oracle 11g+):</p>
     <pre><code>./ggsci
 
-GGSCI> DBLOGIN USERID ggadmin, PASSWORD SecurePassword123
+GGSCI> DBLOGIN USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 
 -- Register Extract with LogMiner server
 GGSCI> REGISTER EXTRACT ext1 DATABASE
@@ -278,7 +278,7 @@ GGSCI> EXIT</code></pre>
     <p>Create parameter file <code>$OGG_HOME/dirprm/dpump1.prm</code> on the source system:</p>
     <pre><code>-- Data Pump parameter file (dpump1.prm)
 EXTRACT dpump1
-USERID ggadmin, PASSWORD SecurePassword123
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 RMTHOST target-hostname, MGRPORT 7809, COMPRESS
 RMTTRAIL ./dirdat/bb
 PASSTHRU
@@ -309,11 +309,11 @@ GGSCI> EXIT</code></pre>
     <pre><code>-- For Oracle target
 sqlplus / as sysdba
 
-CREATE USER ggadmin IDENTIFIED BY "SecurePassword123";
+CREATE USER ggadmin IDENTIFIED BY "YOUR_SECURE_PASSWORD";
 GRANT CONNECT, RESOURCE, DBA TO ggadmin;
 
 -- Create target schema if it doesn't exist
-CREATE USER hr IDENTIFIED BY "HrPassword123";
+CREATE USER hr IDENTIFIED BY "YOUR_HR_PASSWORD";
 GRANT CONNECT, RESOURCE TO hr;
 GRANT UNLIMITED TABLESPACE TO hr;
 
@@ -325,7 +325,7 @@ GRANT UNLIMITED TABLESPACE TO hr;
     <pre><code>-- Replicat parameter file (rep1.prm)
 REPLICAT rep1
 ASSUMETARGETDEFS
-USERID ggadmin, PASSWORD SecurePassword123
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 DISCARDFILE ./dirrpt/rep1.dsc, PURGE
 REPERROR (DEFAULT, DISCARD)
 
@@ -341,7 +341,7 @@ MAP hr.job_history, TARGET hr.job_history;</code></pre>
 
     <pre><code>./ggsci
 
-GGSCI> DBLOGIN USERID ggadmin, PASSWORD SecurePassword123
+GGSCI> DBLOGIN USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 
 -- Add Replicat
 GGSCI> ADD REPLICAT rep1, EXTTRAIL ./dirdat/bb, BEGIN NOW
@@ -486,7 +486,7 @@ STARTUP;</code></pre>
 
 # defgen.prm contents:
 DEFSFILE ./dirdef/hr.def
-USERID ggadmin, PASSWORD SecurePassword123
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 TABLE hr.*;</code></pre>
       <p>Then update Replicat parameter file:</p>
       <pre><code>REPLICAT rep1
@@ -563,7 +563,7 @@ GGSCI> ADD REPLICAT rep1, COORDINATED, EXTTRAIL ./dirdat/bb, BEGIN NOW
 
 -- Parameter file with parallel threads
 REPLICAT rep1
-USERID ggadmin, PASSWORD SecurePassword123
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
 MAP hr.*, TARGET hr.*, THREAD(4);
 -- Uses 4 parallel threads for apply</code></pre>
     </div>
@@ -669,7 +669,7 @@ oci goldengate deployment create \
   --deployment-type OGGCORE
 
 # Connect via web console
-https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/&lt;deployment-id&gt;</code></pre>
+https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/<deployment-id></code></pre>
   </section>
 
   <section class="box" id="cost">
