@@ -1,0 +1,112 @@
+{# 
+  Video Embed Component
+  
+  Responsive video embed with lazy loading and accessibility support.
+  Supports YouTube, Vimeo, and direct video sources.
+  
+  Usage:
+  {% from "components/video-embed.njk" import videoEmbed %}
+  {{ videoEmbed({
+    src: "https://www.youtube.com/embed/VIDEO_ID",
+    title: "Video Title",
+    description: "Optional description for context",
+    thumbnail: "/path/to/thumbnail.jpg" (optional - for lazy loading)
+  }) }}
+#}
+
+{% macro videoEmbed(config) -%}
+  {% set videoId = config.id | default('video-' ~ loop.index | default(1)) %}
+  {% set hasLazyLoad = config.thumbnail %}
+  {% set aspectRatio = config.aspectRatio | default('16/9') %}
+  {% set allowFeatures = config.allow | default('accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share') %}
+  
+  <div class="video-embed-container" data-video-container>
+    {% if config.title or config.description %}
+      <div class="video-embed-header">
+        {% if config.title %}
+          <h3 class="video-embed-title">{{ config.title }}</h3>
+        {% endif %}
+        {% if config.description %}
+          <p class="video-embed-description">{{ config.description }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+    
+    <div 
+      class="video-embed-wrapper{% if hasLazyLoad %} video-embed-wrapper--lazy{% endif %}"
+      style="aspect-ratio: {{ aspectRatio }};"
+      data-video-wrapper
+      {% if hasLazyLoad %}data-video-src="{{ config.src }}"{% endif %}
+    >
+      {% if hasLazyLoad %}
+        {# Lazy load with thumbnail and play button #}
+        <img 
+          src="{{ config.thumbnail | url }}" 
+          alt="{{ config.title | default('Video thumbnail') }}"
+          class="video-embed-thumbnail"
+          loading="lazy"
+        />
+        <button 
+          class="video-embed-play-btn"
+          aria-label="Play video: {{ config.title | default('video') }}"
+          data-video-play-btn
+        >
+          <svg class="video-embed-play-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68 48" aria-hidden="true">
+            <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"/>
+            <path d="M 45,24 27,14 27,34" fill="#fff"/>
+          </svg>
+          <span class="sr-only">Play video</span>
+        </button>
+      {% else %}
+        {# Direct iframe embed #}
+        <iframe 
+          src="{{ config.src }}"
+          title="{{ config.title | default('Video player') }}"
+          frameborder="0"
+          allow="{{ allowFeatures }}"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+          class="video-embed-iframe"
+          loading="lazy"
+        ></iframe>
+      {% endif %}
+    </div>
+    
+    {% if config.caption %}
+      <p class="video-embed-caption">{{ config.caption | safe }}</p>
+    {% endif %}
+    
+    {% if config.transcript %}
+      <details class="video-embed-transcript">
+        <summary>View Transcript</summary>
+        <div class="video-embed-transcript-content">
+          {{ config.transcript | safe }}
+        </div>
+      </details>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro youtubeEmbed(videoId, config={}) -%}
+  {% set embedConfig = {
+    src: 'https://www.youtube.com/embed/' ~ videoId,
+    title: config.title,
+    description: config.description,
+    caption: config.caption,
+    transcript: config.transcript,
+    thumbnail: config.thumbnail | default('https://img.youtube.com/vi/' ~ videoId ~ '/maxresdefault.jpg')
+  } %}
+  {{ videoEmbed(embedConfig) }}
+{%- endmacro %}
+
+{% macro vimeoEmbed(videoId, config={}) -%}
+  {% set embedConfig = {
+    src: 'https://player.vimeo.com/video/' ~ videoId,
+    title: config.title,
+    description: config.description,
+    caption: config.caption,
+    transcript: config.transcript,
+    thumbnail: config.thumbnail
+  } %}
+  {{ videoEmbed(embedConfig) }}
+{%- endmacro %}

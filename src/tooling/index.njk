@@ -14,6 +14,7 @@ head_extra: |
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quiz.njk" as quizMacro %}
+{% from "components/video-embed.njk" import videoEmbed, youtubeEmbed %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -37,6 +38,12 @@ head_extra: |
           the Apache Kafka Connect framework, providing high-performance,
           low-latency connectors for a wide range of popular databases.
         </p>
+        
+        {{ youtubeEmbed('QYbXDp4Vu-8', {
+          title: 'Debezium in Action',
+          description: 'Watch a hands-on demonstration of setting up Debezium connectors for real-time data streaming.',
+          caption: 'Learn how to configure and deploy Debezium for production CDC pipelines.'
+        }) }}
         <ul>
           <li>
             <strong>Pros:</strong> Free to use (Apache 2.0 license), highly
