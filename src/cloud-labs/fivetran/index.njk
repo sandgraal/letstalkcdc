@@ -1,0 +1,772 @@
+---
+layout: base.njk
+title: "Fivetran CDC Pipeline Lab | CDC: The Missing Manual"
+description: "Learn to build fully managed CDC pipelines using Fivetran to replicate data from MySQL or PostgreSQL to Snowflake or BigQuery with zero infrastructure."
+canonicalPath: "/cloud-labs/fivetran/"
+ai-generated: true
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section class="box" id="overview">
+    <h2>Overview</h2>
+    <p>
+      Fivetran is a fully managed data integration platform that automates data pipelines from sources to destinations. Unlike infrastructure-heavy solutions like Debezium or AWS DMS, Fivetran requires zero infrastructure management—no servers, no Kafka clusters, no replication instances.
+    </p>
+    <p>
+      <strong>Key features:</strong>
+    </p>
+    <ul>
+      <li>Fully managed SaaS platform—no infrastructure to provision or maintain</li>
+      <li>500+ pre-built connectors for databases, SaaS apps, files, and events</li>
+      <li>Automatic schema drift detection and propagation</li>
+      <li>Log-based CDC where available (MySQL binlog, Postgres WAL), polling fallback otherwise</li>
+      <li>Built-in data type conversions and normalization</li>
+      <li>Usage-based pricing (Monthly Active Rows - MAR)</li>
+    </ul>
+    <p>
+      <strong>CDC Approaches in Fivetran:</strong>
+    </p>
+    <ol>
+      <li><strong>Log-based CDC:</strong> Reads MySQL binlog or Postgres WAL for real-time capture (sub-minute latency)</li>
+      <li><strong>Incremental updates:</strong> Polls source using updated_at or similar column (minutes latency)</li>
+      <li><strong>Full table refresh:</strong> Re-imports entire table (for sources without CDC or incremental columns)</li>
+    </ol>
+  </section>
+
+  <section class="box" id="prereqs">
+    <h2>Prerequisites</h2>
+    <ul class="checklist">
+      <li><strong>Fivetran Account:</strong> Free trial available (14 days, no credit card required)</li>
+      <li><strong>Source Database:</strong> MySQL 5.6+ or PostgreSQL 10+ with network access</li>
+      <li><strong>Destination:</strong> Snowflake, BigQuery, Redshift, or Databricks account</li>
+      <li><strong>Network Access:</strong> Fivetran IPs whitelisted on source database firewall</li>
+      <li><strong>Database Permissions:</strong> Read access on source, write access on destination</li>
+    </ul>
+  </section>
+
+  <section class="box" id="architecture">
+    <h2>Architecture</h2>
+    <pre><code>┌────────────────┐      ┌─────────────────┐      ┌──────────────┐
+│   PostgreSQL   │      │   Fivetran      │      │  Snowflake   │
+│   (Source)     │─────▶│   Connector     │─────▶│  (Target)    │
+│   + WAL        │      │   (Managed)     │      │              │
+└────────────────┘      └─────────────────┘      └──────────────┘
+                              │
+                              │ Monitoring
+                              ▼
+                        ┌─────────────┐
+                        │  Dashboard  │
+                        │  (Web UI)   │
+                        └─────────────┘</code></pre>
+    <p>Fivetran runs entirely on its own infrastructure—you only configure connectors via the web UI or API.</p>
+  </section>
+
+  <section class="box" id="setup">
+    <h2>Lab Setup</h2>
+    
+    <h3>Step 1: Sign Up for Fivetran Trial</h3>
+    <ol>
+      <li>Visit <a href="https://fivetran.com/signup" target="_blank">https://fivetran.com/signup</a></li>
+      <li>Create account with email (no credit card required for 14-day trial)</li>
+      <li>Complete onboarding wizard</li>
+      <li>You'll land on the Fivetran dashboard at <code>https://fivetran.com/dashboard</code></li>
+    </ol>
+
+    <h3>Step 2: Prepare Source Database (PostgreSQL Example)</h3>
+    <p>Enable logical replication for log-based CDC:</p>
+    <pre><code>-- Check current replication setting
+SHOW wal_level;
+-- Should be 'logical' for CDC. If not, update postgresql.conf:
+
+-- In postgresql.conf:
+wal_level = logical
+max_replication_slots = 5
+max_wal_senders = 5
+
+-- Restart PostgreSQL
+sudo systemctl restart postgresql
+
+-- Verify
+SHOW wal_level;
+-- Should return 'logical'</code></pre>
+
+    <h4>Create Fivetran User</h4>
+    <pre><code>-- Create read-only user for Fivetran
+CREATE USER fivetran_user WITH PASSWORD '${FIVETRAN_PASSWORD}';
+
+-- Grant schema access
+GRANT USAGE ON SCHEMA public TO fivetran_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO fivetran_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO fivetran_user;
+
+-- Grant replication privileges for CDC
+ALTER USER fivetran_user WITH REPLICATION;</code></pre>
+
+    <h4>Create Publication (for log-based CDC)</h4>
+    <pre><code>-- Create publication for all tables
+CREATE PUBLICATION fivetran_publication FOR ALL TABLES;
+
+-- Or create for specific tables
+CREATE PUBLICATION fivetran_publication FOR TABLE customers, orders, products;
+
+-- Verify publication
+SELECT * FROM pg_publication;</code></pre>
+
+    <h4>Whitelist Fivetran IPs</h4>
+    <p>Add Fivetran's IP addresses to your database firewall/security group. Get the list from:</p>
+    <ul>
+      <li><strong>Fivetran Dashboard → Setup Guide → Connection Details</strong></li>
+      <li>Or visit: <a href="https://fivetran.com/docs/getting-started/ips" target="_blank">Fivetran IP whitelist documentation</a></li>
+    </ul>
+
+    <h3>Step 3: Prepare Destination (Snowflake Example)</h3>
+    <p>In Snowflake, create objects for Fivetran to load data:</p>
+    <pre><code>-- Connect to Snowflake
+USE ROLE ACCOUNTADMIN;
+
+-- Create database and schema
+CREATE DATABASE IF NOT EXISTS FIVETRAN_DB;
+CREATE SCHEMA IF NOT EXISTS FIVETRAN_DB.PUBLIC;
+
+-- Create warehouse
+CREATE WAREHOUSE IF NOT EXISTS FIVETRAN_WH 
+  WITH WAREHOUSE_SIZE = 'XSMALL' 
+  AUTO_SUSPEND = 300 
+  AUTO_RESUME = TRUE;
+
+-- Create Fivetran user
+CREATE USER IF NOT EXISTS fivetran_user 
+  PASSWORD = '${FIVETRAN_PASSWORD}' 
+  DEFAULT_WAREHOUSE = FIVETRAN_WH 
+  DEFAULT_NAMESPACE = FIVETRAN_DB.PUBLIC;
+
+-- Create role and grant permissions
+CREATE ROLE IF NOT EXISTS FIVETRAN_ROLE;
+GRANT USAGE ON WAREHOUSE FIVETRAN_WH TO ROLE FIVETRAN_ROLE;
+GRANT USAGE ON DATABASE FIVETRAN_DB TO ROLE FIVETRAN_ROLE;
+GRANT ALL ON SCHEMA FIVETRAN_DB.PUBLIC TO ROLE FIVETRAN_ROLE;
+GRANT CREATE TABLE ON SCHEMA FIVETRAN_DB.PUBLIC TO ROLE FIVETRAN_ROLE;
+GRANT CREATE VIEW ON SCHEMA FIVETRAN_DB.PUBLIC TO ROLE FIVETRAN_ROLE;
+
+-- Assign role to user
+GRANT ROLE FIVETRAN_ROLE TO USER fivetran_user;
+
+-- Set role as default
+ALTER USER fivetran_user SET DEFAULT_ROLE = FIVETRAN_ROLE;</code></pre>
+
+    <h3>Step 4: Create Destination Connector in Fivetran</h3>
+    <ol>
+      <li>In Fivetran dashboard, click <strong>+ Connector</strong> (top right)</li>
+      <li>Search for and select <strong>Snowflake</strong></li>
+      <li>Click <strong>Continue</strong> in "Setup as Destination" dialog</li>
+      <li>Configure connection details:</li>
+    </ol>
+
+    <h4>Snowflake Destination Settings</h4>
+    <ul>
+      <li><strong>Destination schema:</strong> <code>fivetran_db</code> (lowercase, Fivetran convention)</li>
+      <li><strong>Host:</strong> <code>xy12345.us-east-1.snowflakecomputing.com</code></li>
+      <li><strong>Port:</strong> <code>443</code></li>
+      <li><strong>User:</strong> <code>fivetran_user</code></li>
+      <li><strong>Password:</strong> (your password)</li>
+      <li><strong>Database:</strong> <code>FIVETRAN_DB</code></li>
+      <li><strong>Warehouse:</strong> <code>FIVETRAN_WH</code></li>
+      <li><strong>Role:</strong> <code>FIVETRAN_ROLE</code> (optional)</li>
+    </ul>
+    <p>Click <strong>Save & Test</strong>. Fivetran will validate connectivity.</p>
+
+    <h3>Step 5: Create Source Connector (PostgreSQL)</h3>
+    <ol>
+      <li>Click <strong>+ Connector</strong></li>
+      <li>Search for and select <strong>PostgreSQL</strong></li>
+      <li>Click <strong>Continue</strong> in "Setup as Source" dialog</li>
+      <li>Configure connection details:</li>
+    </ol>
+
+    <h4>PostgreSQL Source Settings</h4>
+    <ul>
+      <li><strong>Destination schema prefix:</strong> <code>postgres_prod</code> (will appear as <code>postgres_prod</code> schema in Snowflake)</li>
+      <li><strong>Host:</strong> <code>postgres.example.com</code> or IP address</li>
+      <li><strong>Port:</strong> <code>5432</code></li>
+      <li><strong>User:</strong> <code>fivetran_user</code></li>
+      <li><strong>Password:</strong> (your password)</li>
+      <li><strong>Database:</strong> <code>production_db</code></li>
+    </ul>
+
+    <h4>Advanced Settings</h4>
+    <ul>
+      <li><strong>Update Method:</strong> Select <code>Detect Changes via Log-based (CDC)</code></li>
+      <li><strong>Publication Name:</strong> <code>fivetran_publication</code></li>
+      <li><strong>Replication Slot:</strong> Leave as default (Fivetran auto-creates: <code>fivetran_&lt;connector_id&gt;</code>)</li>
+      <li><strong>Sync Frequency:</strong> <code>5 minutes</code> (or higher for testing)</li>
+    </ul>
+    <p>Click <strong>Save & Test</strong>. Fivetran will verify database connectivity and CDC setup.</p>
+
+    <h3>Step 6: Configure Table Selection</h3>
+    <p>After connection test passes:</p>
+    <ol>
+      <li>Fivetran auto-discovers all tables in the source database</li>
+      <li>Review the <strong>Schema</strong> tab showing all tables</li>
+      <li>Toggle tables/columns you want to sync (all are selected by default)</li>
+      <li>Review column hashing options for sensitive data (e.g., <code>email</code>, <code>ssn</code>)</li>
+    </ol>
+
+    <h4>Special Fivetran Columns</h4>
+    <p>Fivetran automatically adds metadata columns to each table:</p>
+    <ul>
+      <li><code>_fivetran_synced</code>: Timestamp when row was last synced to destination</li>
+      <li><code>_fivetran_deleted</code>: Boolean flag for soft-deleted rows (true = deleted)</li>
+      <li><code>_fivetran_id</code>: Internal unique identifier (for deduplication)</li>
+    </ul>
+
+    <h3>Step 7: Trigger Initial Sync</h3>
+    <ol>
+      <li>Click <strong>Start Initial Sync</strong> button</li>
+      <li>Fivetran performs full table load for all selected tables</li>
+      <li>Monitor progress in the connector's <strong>Status</strong> tab</li>
+      <li>Initial sync time depends on table size (estimate: 1M rows ≈ 2-5 minutes)</li>
+    </ol>
+
+    <h4>What Happens During Initial Sync?</h4>
+    <ul>
+      <li>Fivetran snapshots each table (full SELECT * equivalent)</li>
+      <li>Creates replication slot in PostgreSQL</li>
+      <li>Captures current WAL position as baseline</li>
+      <li>Begins tailing WAL for subsequent changes</li>
+    </ul>
+
+    <h3>Step 8: Enable Incremental CDC</h3>
+    <p>After initial sync completes:</p>
+    <ol>
+      <li>Connector automatically switches to incremental CDC mode</li>
+      <li>Reads PostgreSQL WAL for INSERT, UPDATE, DELETE operations</li>
+      <li>Syncs changes every 5 minutes (or per configured frequency)</li>
+      <li>No further configuration needed—CDC is automatic</li>
+    </ol>
+  </section>
+
+  <section class="box" id="schema-changes">
+    <h2>Schema Change Handling</h2>
+    <p>
+      Fivetran automatically detects and propagates schema changes. Here's how it handles common DDL operations:
+    </p>
+
+    <h3>Column Addition</h3>
+    <pre><code>-- In source PostgreSQL
+ALTER TABLE customers ADD COLUMN loyalty_tier VARCHAR(20);
+
+-- Fivetran automatically:
+-- 1. Detects new column during next sync
+-- 2. Adds column to Snowflake table: ALTER TABLE customers ADD COLUMN loyalty_tier VARCHAR(20)
+-- 3. Backfills NULL for existing rows
+-- 4. Syncs new values going forward</code></pre>
+    <p><strong>Result:</strong> Zero downtime, automatic propagation.</p>
+
+    <h3>Column Type Change</h3>
+    <pre><code>-- In source PostgreSQL
+ALTER TABLE customers ALTER COLUMN age TYPE BIGINT;
+
+-- Fivetran behavior:
+-- 1. Detects incompatible type change
+-- 2. Creates NEW column: age__v2 BIGINT
+-- 3. Retains old column: age INTEGER (for historical data)
+-- 4. New syncs populate age__v2</code></pre>
+    <p><strong>Note:</strong> Non-destructive approach preserves historical data. You'll need to handle column migration in downstream queries.</p>
+
+    <h3>Column Rename</h3>
+    <pre><code>-- In source PostgreSQL
+ALTER TABLE customers RENAME COLUMN email TO email_address;
+
+-- Fivetran behavior:
+-- 1. Treats as column DROP + column ADD
+-- 2. Stops syncing 'email' column
+-- 3. Creates new 'email_address' column
+-- 4. Backfills from source (NULL for old rows if data moved)</code></pre>
+    <p><strong>Best Practice:</strong> Avoid renames. Instead, add new column, backfill, then drop old.</p>
+
+    <h3>Table Rename</h3>
+    <pre><code>-- In source PostgreSQL
+ALTER TABLE customers RENAME TO clients;
+
+-- Fivetran behavior:
+-- 1. Creates NEW table 'clients' in destination
+-- 2. Performs full re-sync
+-- 3. Stops syncing 'customers' (becomes stale)
+-- 4. Does NOT auto-drop old 'customers' table</code></pre>
+    <p><strong>Manual cleanup required:</strong> Drop old table in Snowflake if no longer needed.</p>
+
+    <h3>Schema Change Best Practices</h3>
+    <ul>
+      <li>Test schema changes in dev/staging connector first</li>
+      <li>Use <strong>additive changes</strong> (add column, deprecate old) instead of renames/drops</li>
+      <li>Monitor Fivetran's <strong>Schema Changes</strong> log after DDL operations</li>
+      <li>Set up alerts for unexpected schema drift (Fivetran webhook → Slack/PagerDuty)</li>
+    </ul>
+  </section>
+
+  <section class="box" id="delete-handling">
+    <h2>Delete Handling</h2>
+    <p>Fivetran supports two modes for handling deletes:</p>
+
+    <h3>1. Soft Deletes (Default)</h3>
+    <p>Deleted rows are marked with <code>_fivetran_deleted = true</code> but retained in destination.</p>
+    <pre><code>-- In source PostgreSQL
+DELETE FROM customers WHERE id = 42;
+
+-- In Snowflake (after sync)
+SELECT * FROM customers WHERE id = 42;
+-- Returns:
+-- id | name        | email             | _fivetran_deleted | _fivetran_synced
+-- 42 | John Smith  | john@example.com  | true              | 2024-06-15 10:32:00</code></pre>
+
+    <h4>Querying Without Deleted Rows</h4>
+    <pre><code>-- Exclude soft-deleted rows in queries
+SELECT * FROM customers WHERE _fivetran_deleted = false;
+
+-- Or create view for convenience
+CREATE VIEW customers_active AS
+SELECT * FROM customers WHERE _fivetran_deleted = false;</code></pre>
+
+    <h4>Advantages of Soft Deletes</h4>
+    <ul>
+      <li>Preserves historical data for audit/compliance</li>
+      <li>Enables point-in-time analysis</li>
+      <li>Simplifies accidental delete recovery</li>
+      <li>Required for Type 2 Slowly Changing Dimensions (SCD2)</li>
+    </ul>
+
+    <h3>2. Hard Deletes (Opt-in)</h3>
+    <p>Enable via connector settings: <strong>Advanced → Delete Mode → Hard Delete</strong></p>
+    <pre><code>-- In source PostgreSQL
+DELETE FROM customers WHERE id = 42;
+
+-- In Snowflake (after sync)
+SELECT * FROM customers WHERE id = 42;
+-- Returns: 0 rows (record physically deleted)</code></pre>
+
+    <h4>When to Use Hard Deletes</h4>
+    <ul>
+      <li>GDPR/CCPA compliance (right to be forgotten)</li>
+      <li>Reduce storage costs for high-churn tables</li>
+      <li>Simplify queries (no need to filter <code>_fivetran_deleted</code>)</li>
+    </ul>
+
+    <h4>Gotcha: Hard Deletes + Resyncs</h4>
+    <div class="callout callout-warning">
+      <p>
+        If you trigger a <strong>Historical Re-sync</strong> with hard deletes enabled, deleted rows will NOT be restored (source no longer has them). Plan accordingly.
+      </p>
+    </div>
+  </section>
+
+  <section class="box" id="verify">
+    <h2>Verification</h2>
+    
+    <h3>1. Test INSERT (Create New Row)</h3>
+    <pre><code>-- In source PostgreSQL
+INSERT INTO customers (name, email, created_at) 
+VALUES ('Alice Johnson', 'alice@example.com', NOW());
+
+-- Wait for next sync (check connector Status tab for "Synced" timestamp)
+
+-- In Snowflake destination
+SELECT * FROM postgres_prod.customers 
+WHERE email = 'alice@example.com';
+
+-- Should show new row with _fivetran_synced timestamp within last 5 min</code></pre>
+
+    <h3>2. Test UPDATE (Modify Existing Row)</h3>
+    <pre><code>-- In source PostgreSQL
+UPDATE customers 
+SET email = 'alice.j@example.com' 
+WHERE name = 'Alice Johnson';
+
+-- After sync
+
+-- In Snowflake destination
+SELECT name, email, _fivetran_synced 
+FROM postgres_prod.customers 
+WHERE name = 'Alice Johnson';
+
+-- Should show updated email with new _fivetran_synced timestamp</code></pre>
+
+    <h3>3. Test DELETE (Remove Row)</h3>
+    <pre><code>-- In source PostgreSQL
+DELETE FROM customers WHERE name = 'Alice Johnson';
+
+-- After sync
+
+-- In Snowflake (soft delete mode)
+SELECT name, email, _fivetran_deleted 
+FROM postgres_prod.customers 
+WHERE name = 'Alice Johnson';
+
+-- Should show: _fivetran_deleted = true</code></pre>
+
+    <h3>4. Monitor Sync Metrics</h3>
+    <p>In Fivetran dashboard:</p>
+    <ul>
+      <li><strong>Status Tab:</strong> Last sync time, rows synced, errors</li>
+      <li><strong>Logs Tab:</strong> Detailed sync logs, warnings, schema changes detected</li>
+      <li><strong>Usage Tab:</strong> Monthly Active Rows (MAR) consumption</li>
+    </ul>
+
+    <h4>Key Metrics to Watch</h4>
+    <pre><code>Metric                  | Healthy Range      | Action if Outside Range
+------------------------|--------------------|--------------------------
+Sync Latency            | < 10 minutes       | Check network, increase frequency
+Rows Synced per Hour    | Matches source     | Investigate if low or zero
+Error Count             | 0                  | Review logs, fix auth/network
+Schema Changes Detected | Expected changes   | Alert if unexpected drift</code></pre>
+  </section>
+
+  <section class="box" id="gotchas">
+    <h2>Fivetran-Specific Gotchas</h2>
+    
+    <div class="callout callout-warning">
+      <h4>1. Column Name Normalization</h4>
+      <p>
+        <strong>Issue:</strong> Fivetran lowercases all column names and replaces special characters with underscores.
+      </p>
+      <p><strong>Example:</strong></p>
+      <pre><code>-- Source: CustomerEmail
+-- Destination: customeremail
+
+-- Source: user-id
+-- Destination: user_id</code></pre>
+      <p>
+        <strong>Solution:</strong> Use lowercase, snake_case column names in source. Or update queries to match Fivetran's normalization.
+      </p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>2. Replication Slot Growth</h4>
+      <p>
+        <strong>Issue:</strong> If Fivetran connector is paused or fails, PostgreSQL replication slot retains WAL logs, consuming disk space.
+      </p>
+      <p>
+        <strong>Solution:</strong> Monitor replication lag:
+      </p>
+      <pre><code>-- Check replication slot lag
+SELECT slot_name, active, pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS lag
+FROM pg_replication_slots
+WHERE slot_name LIKE 'fivetran%';
+
+-- If lag > 10GB and connector won't resume, drop slot:
+SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
+      <p><strong>Prevention:</strong> Set alerts for replication lag, resume connectors promptly.</p>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>3. Primary Key Requirements</h4>
+      <p>
+        <strong>Issue:</strong> Tables without primary keys sync slowly (full table refresh each cycle).
+      </p>
+      <p>
+        <strong>Solution:</strong> Add primary key or define unique column in Fivetran UI:
+      </p>
+      <ul>
+        <li>Connector → Schema tab → Table → Click gear icon → Set Primary Key</li>
+        <li>Or add PK in source: <code>ALTER TABLE customers ADD PRIMARY KEY (id);</code></li>
+      </ul>
+    </div>
+
+    <div class="callout callout-info">
+      <h4>4. Large Table Initial Sync</h4>
+      <p>
+        Initial sync of billion-row tables can take hours. Speed up with:
+      </p>
+      <ul>
+        <li><strong>Reduce row count:</strong> Sync recent data only (e.g., WHERE created_at > '2023-01-01')</li>
+        <li><strong>Partition table:</strong> Split into smaller tables, sync separately</li>
+        <li><strong>Bulk load:</strong> Export to S3/GCS, load via destination's native bulk import, then enable CDC</li>
+      </ul>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>5. Data Type Conversions</h4>
+      <p>
+        Fivetran auto-converts types but may not preserve precision:
+      </p>
+      <ul>
+        <li><strong>PostgreSQL NUMERIC(38,10) → Snowflake NUMBER(38,6)</strong> (precision loss)</li>
+        <li><strong>PostgreSQL JSON → Snowflake VARIANT</strong> (requires parsing in queries)</li>
+        <li><strong>PostgreSQL TIMESTAMP → Snowflake TIMESTAMP_NTZ</strong> (loses timezone info)</li>
+      </ul>
+      <p><strong>Mitigation:</strong> Review data types in destination after initial sync. Add transformations if needed.</p>
+    </div>
+  </section>
+
+  <section class="box" id="monitoring">
+    <h2>Monitoring & Alerting</h2>
+    
+    <h3>Built-in Dashboard Metrics</h3>
+    <p>Fivetran provides real-time metrics in the web UI:</p>
+    <ul>
+      <li><strong>Sync Success Rate:</strong> Percentage of successful syncs over last 7 days</li>
+      <li><strong>Sync Frequency:</strong> Average time between syncs</li>
+      <li><strong>Rows Synced:</strong> Total rows replicated (broken down by table)</li>
+      <li><strong>Data Latency:</strong> Time between source change and destination availability</li>
+    </ul>
+
+    <h3>Alerting Setup</h3>
+    <p>Configure alerts via <strong>Account Settings → Notifications</strong>:</p>
+    <ol>
+      <li>Email notifications for sync failures (default: enabled)</li>
+      <li>Webhook integration for custom alerting (Slack, PagerDuty, Datadog)</li>
+    </ol>
+
+    <h4>Webhook Example (Slack)</h4>
+    <pre><code>POST https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+{
+  "connector_id": "postgres_prod",
+  "event": "sync_failed",
+  "message": "Connector postgres_prod failed: Connection timeout",
+  "timestamp": "2024-06-15T10:32:00Z"
+}</code></pre>
+
+    <h3>Advanced Monitoring via API</h3>
+    <pre><code># Fetch connector status via Fivetran API
+curl -X GET \
+  -u "API_KEY:API_SECRET" \
+  https://api.fivetran.com/v1/connectors/postgres_prod
+
+# Response includes:
+# - succeeded_at: Last successful sync timestamp
+# - failed_at: Last failed sync timestamp  
+# - sync_state: "scheduled" | "syncing" | "paused"
+# - data_delay_sensitivity: Alerting threshold</code></pre>
+  </section>
+
+  <section class="box" id="best-practices">
+    <h2>Best Practices</h2>
+    
+    <h3>1. Use Schema Prefixes</h3>
+    <p>Organize connectors with meaningful prefixes:</p>
+    <pre><code>prod_postgres     → FIVETRAN_DB.PROD_POSTGRES.*
+staging_postgres  → FIVETRAN_DB.STAGING_POSTGRES.*
+analytics_mysql   → FIVETRAN_DB.ANALYTICS_MYSQL.*</code></pre>
+    <p>Avoids table name collisions, simplifies multi-environment setups.</p>
+
+    <h3>2. Implement Idempotent Downstream Transforms</h3>
+    <p>Since Fivetran can re-sync data, ensure downstream dbt/transformations are idempotent:</p>
+    <pre><code>-- Bad: Incremental without unique key
+INSERT INTO fact_orders SELECT * FROM staging.orders;
+
+-- Good: Idempotent merge
+MERGE INTO fact_orders AS target
+USING staging.orders AS source
+ON target.order_id = source.order_id
+WHEN MATCHED THEN UPDATE SET target.* = source.*
+WHEN NOT MATCHED THEN INSERT *;</code></pre>
+
+    <h3>3. Enable Column Hashing for PII</h3>
+    <p>Hash sensitive columns before replication:</p>
+    <ol>
+      <li>Connector → Schema → Table → Column gear icon</li>
+      <li>Enable <strong>Hash column</strong></li>
+      <li>Fivetran applies SHA-256 before loading to destination</li>
+    </ol>
+    <p><strong>Result:</strong> Destination contains <code>d2d2d2...</code> instead of <code>john@example.com</code>.</p>
+
+    <h3>4. Schedule Syncs During Low-Traffic Windows</h3>
+    <p>For large tables, sync during off-peak hours to reduce source DB load:</p>
+    <ul>
+      <li>Connector → Setup → Sync Frequency → <strong>Custom Schedule</strong></li>
+      <li>Example: Sync every 6 hours starting at 2 AM UTC</li>
+    </ul>
+
+    <h3>5. Monitor MAR Consumption</h3>
+    <p>Fivetran pricing is based on Monthly Active Rows (MAR):</p>
+    <ul>
+      <li><strong>MAR = Distinct rows synced per month</strong> (UPDATE counts once per month, not per change)</li>
+      <li>Dashboard → Usage → Review per-connector MAR</li>
+      <li>Optimize by excluding high-churn log tables (e.g., audit_logs)</li>
+    </ul>
+    <p><strong>Cost Example:</strong> 10M MAR/month ≈ $1.20-$2.00/MAR depending on plan.</p>
+
+    <h3>6. Use dbt with Fivetran</h3>
+    <p>Fivetran integrates natively with dbt Cloud for transformations:</p>
+    <ol>
+      <li>Enable dbt integration in Fivetran dashboard</li>
+      <li>Configure dbt to run after each Fivetran sync</li>
+      <li>Result: Automatic ELT pipeline (Extract, Load, Transform)</li>
+    </ol>
+  </section>
+
+  <section class="box" id="cost">
+    <h2>Cost Considerations</h2>
+    <p>Fivetran uses usage-based pricing (Monthly Active Rows - MAR):</p>
+    
+    <h3>Pricing Tiers</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>MAR Included</th>
+          <th>Price/MAR (additional)</th>
+          <th>Annual Cost Estimate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Starter</strong></td>
+          <td>500K</td>
+          <td>$1.00-1.50</td>
+          <td>$6,000-12,000</td>
+        </tr>
+        <tr>
+          <td><strong>Standard</strong></td>
+          <td>Custom</td>
+          <td>$1.50-2.00</td>
+          <td>$24,000-60,000</td>
+        </tr>
+        <tr>
+          <td><strong>Enterprise</strong></td>
+          <td>Custom</td>
+          <td>$1.00-1.50</td>
+          <td>$60,000-200,000+</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>MAR Calculation Example</h3>
+    <pre><code>Scenario: E-commerce database
+- Customers table: 1M rows, 10K updates/day → 1.3M MAR/month
+- Orders table: 5M rows, 50K new/day → 6.5M MAR/month
+- Products table: 100K rows, 100 updates/day → 130K MAR/month
+--------------------------------------------------------------------
+Total MAR/month: 7.93M
+Estimated cost: $11,895-15,860/month (Standard plan)</code></pre>
+
+    <h3>Cost Optimization Tips</h3>
+    <ul>
+      <li>Exclude high-churn, low-value tables (e.g., session logs, click streams)</li>
+      <li>Use longer sync intervals for slowly changing data (hourly vs. 5-min)</li>
+      <li>Archive old data in source before initial sync (e.g., > 2 years old)</li>
+      <li>Negotiate volume discounts for > 50M MAR/month</li>
+    </ul>
+  </section>
+
+  <section class="box" id="comparison">
+    <h2>Fivetran vs. Other CDC Tools</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>Fivetran</th>
+          <th>AWS DMS</th>
+          <th>Debezium</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Infrastructure</strong></td>
+          <td>Zero (fully managed SaaS)</td>
+          <td>Replication instance (managed)</td>
+          <td>Self-hosted Kafka + Connect</td>
+        </tr>
+        <tr>
+          <td><strong>Setup Time</strong></td>
+          <td>15-30 minutes</td>
+          <td>1-2 hours</td>
+          <td>4-8 hours</td>
+        </tr>
+        <tr>
+          <td><strong>Connectors</strong></td>
+          <td>500+ pre-built</td>
+          <td>AWS services only</td>
+          <td>10+ databases</td>
+        </tr>
+        <tr>
+          <td><strong>Schema Changes</strong></td>
+          <td>Auto-detected and propagated</td>
+          <td>Manual handling required</td>
+          <td>Manual handling required</td>
+        </tr>
+        <tr>
+          <td><strong>Latency</strong></td>
+          <td>1-5 minutes (log-based)</td>
+          <td>Seconds</td>
+          <td>Sub-second</td>
+        </tr>
+        <tr>
+          <td><strong>Cost Model</strong></td>
+          <td>Usage-based (MAR)</td>
+          <td>Instance hours</td>
+          <td>Infrastructure only</td>
+        </tr>
+        <tr>
+          <td><strong>Monitoring</strong></td>
+          <td>Built-in dashboard + API</td>
+          <td>CloudWatch metrics</td>
+          <td>Kafka metrics + custom</td>
+        </tr>
+        <tr>
+          <td><strong>Best For</strong></td>
+          <td>SaaS-first teams, rapid setup</td>
+          <td>AWS-native stacks</td>
+          <td>Event-driven architectures</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="box" id="troubleshooting">
+    <h2>Common Issues & Solutions</h2>
+    
+    <h3>"Connection timeout" during setup</h3>
+    <ul>
+      <li>Verify Fivetran IPs are whitelisted in source database firewall</li>
+      <li>Check database is publicly accessible (or use SSH tunnel/VPN)</li>
+      <li>Test connectivity: <code>psql -h HOST -p 5432 -U fivetran_user -d production_db</code></li>
+    </ul>
+
+    <h3>"Replication slot does not exist" error</h3>
+    <ul>
+      <li>Fivetran's auto-created replication slot was dropped (manual cleanup or DB restart)</li>
+      <li>Solution: In Fivetran UI, click <strong>Re-authenticate</strong> to recreate slot</li>
+      <li>Or manually create: <code>SELECT pg_create_logical_replication_slot('fivetran_xxx', 'pgoutput');</code></li>
+    </ul>
+
+    <h3>Sync shows "Delayed" status</h3>
+    <ul>
+      <li>Source database is under heavy load (Fivetran queries timing out)</li>
+      <li>Check source DB CPU/connections: <code>SELECT count(*) FROM pg_stat_activity;</code></li>
+      <li>Increase sync frequency or add read replica for Fivetran</li>
+    </ul>
+
+    <h3>Data not appearing in destination</h3>
+    <ul>
+      <li>Check connector status: Should show "Synced" not "Paused" or "Incomplete"</li>
+      <li>Verify table is selected: Connector → Schema tab → Table toggle</li>
+      <li>Review logs: Logs tab → Filter by table name for errors</li>
+    </ul>
+
+    <h3>Duplicate rows in destination</h3>
+    <ul>
+      <li>Table lacks primary key (Fivetran can't deduplicate)</li>
+      <li>Solution: Add PK in source or configure in Fivetran Schema tab</li>
+      <li>Temporary fix: Deduplicate with <code>QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY _fivetran_synced DESC) = 1</code></li>
+    </ul>
+  </section>
+
+  <section class="qs-verify" aria-labelledby="resources-heading">
+    <div class="qs-verify__inner">
+      <div>
+        <h2 id="resources-heading">Additional Resources</h2>
+        <ul>
+          <li><a href="https://fivetran.com/docs" target="_blank">Fivetran Documentation</a></li>
+          <li><a href="https://fivetran.com/docs/getting-started" target="_blank">Getting Started Guide</a></li>
+          <li><a href="https://fivetran.com/docs/databases/postgresql" target="_blank">PostgreSQL Connector Guide</a></li>
+          <li><a href="https://fivetran.com/docs/databases/mysql" target="_blank">MySQL Connector Guide</a></li>
+          <li><a href="https://community.fivetran.com/" target="_blank">Fivetran Community Forum</a></li>
+        </ul>
+      </div>
+      <a class="button" href="/cloud-labs/">View All Cloud Labs</a>
+    </div>
+  </section>
+</div>
