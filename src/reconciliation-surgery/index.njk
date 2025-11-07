@@ -1,0 +1,541 @@
+---
+layout: base.njk
+title: "Reconciliation & Offset Surgery"
+description: "Advanced CDC operations: repair out-of-sync sinks with SQL diffs, verify data integrity with checksums, and safely reset offsets using the Kafka Connect REST API."
+canonicalPath: "/reconciliation-surgery/"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quick-nav.njk" as quickNav %}
+{% import "components/scorecard.njk" as scorecard %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  {{ quickNav.render('Reconciliation & offset surgery quick nav', [
+    { id: 'tracker', label: 'Readiness tracker' },
+    { id: 'when-reconciliation', label: 'When to reconcile' },
+    { id: 'prerequisites', label: 'Prerequisites' },
+    { id: 'sql-diff', label: 'SQL diff patterns' },
+    { id: 'checksum-verification', label: 'Checksum verification' },
+    { id: 'offset-surgery', label: 'Offset surgery' },
+    { id: 'kafka-connect-rest', label: 'Kafka Connect REST API' },
+    { id: 'rollback-procedures', label: 'Rollback procedures' },
+    { id: 'warnings', label: 'Warnings & guardrails' },
+    { id: 'automation', label: 'Automation scripts' },
+    { id: 'scorecard', label: 'Readiness scorecard' },
+    { id: 'resources', label: 'Further resources' }
+  ]) | safe }}
+
+  {{
+    scorecard.summary('reconciliation-surgery', {
+      sectionId: 'tracker',
+      title: 'Reconciliation readiness tracker',
+      description: 'Track your progress as you build expertise in reconciliation and offset surgery operations.',
+      resetLabel: 'Reset all reconciliation checklists',
+      meterLabel: 'Reconciliation readiness progress'
+    })
+    | safe
+  }}
+
+  <section id="when-reconciliation" aria-labelledby="when-reconciliation-title">
+    <h2 id="when-reconciliation-title">When reconciliation is necessary</h2>
+    <p>
+      Reconciliation becomes critical when your sink has drifted from the source. This happens in several scenarios:
+    </p>
+    <ul>
+      <li><strong>Missed events:</strong> Connector downtime longer than log retention, causing data gaps.</li>
+      <li><strong>Failed transformations:</strong> SMTs or sink logic that silently dropped or corrupted records.</li>
+      <li><strong>Partial writes:</strong> Sink acknowledged success but only persisted some rows due to transient errors.</li>
+      <li><strong>Manual interventions:</strong> Direct edits to sink data that bypassed the CDC pipeline.</li>
+      <li><strong>Split-brain scenarios:</strong> Multiple pipelines or manual processes writing to the same sink tables.</li>
+    </ul>
+    <p class="callout">
+      <strong>Detection first:</strong> Set up automated drift detection before attempting reconciliation.
+      Monitor row counts, checksum mismatches, and lag spikes. Reconciliation is expensive—only run it when drift is confirmed.
+    </p>
+  </section>
+
+  <section id="prerequisites" aria-labelledby="prerequisites-title">
+    <h2 id="prerequisites-title">Prerequisites</h2>
+    <p>Before attempting reconciliation or offset surgery, ensure you have:</p>
+    <ul class="checklist">
+      <li><strong>Read-only access</strong> to source database for snapshot queries</li>
+      <li><strong>Write access</strong> to sink database for repairs (with approval and backup)</li>
+      <li><strong>Kafka Connect admin access</strong> for offset manipulation</li>
+      <li><strong>Backup of current offsets</strong> stored in version control or object storage</li>
+      <li><strong>Downtime window</strong> approved by stakeholders (or idempotent sink that tolerates replays)</li>
+      <li><strong>Runbook reviewed</strong> by at least one other engineer familiar with the pipeline</li>
+      <li><strong>Rollback plan</strong> documented with specific steps and decision points</li>
+    </ul>
+    <p class="callout">
+      <strong>Practice in staging first:</strong> Every reconciliation and offset surgery should be rehearsed
+      in a non-production environment with realistic data volumes and latency profiles.
+    </p>
+  </section>
+
+  <section id="sql-diff" aria-labelledby="sql-diff-title">
+    <h2 id="sql-diff-title">SQL diff patterns for source vs. sink</h2>
+    <p>
+      Compare source and sink using deterministic queries that highlight missing, extra, or mismatched rows.
+    </p>
+    
+    <h3>Pattern 1: Row count comparison</h3>
+    <p>Start with the simplest check—do both sides have the same number of rows?</p>
+    <pre><code class="language-sql">-- Source (PostgreSQL example)
+SELECT 'source' AS location, COUNT(*) AS row_count
+FROM source_schema.customers;
+
+-- Sink (destination database)
+SELECT 'sink' AS location, COUNT(*) AS row_count
+FROM sink_schema.customers;</code></pre>
+    <p class="muted">
+      <strong>Interpretation:</strong> If counts match, proceed to checksum verification.
+      If counts differ, identify which rows are missing or extra using the patterns below.
+    </p>
+
+    <h3>Pattern 2: Find missing rows in sink</h3>
+    <p>Identify primary keys present in source but absent from sink:</p>
+    <pre><code class="language-sql">-- PostgreSQL to PostgreSQL example using foreign data wrapper
+SELECT src.id, src.email, src.updated_at
+FROM source_schema.customers src
+LEFT JOIN sink_schema.customers snk ON src.id = snk.id
+WHERE snk.id IS NULL
+ORDER BY src.updated_at DESC
+LIMIT 100;</code></pre>
+    <p class="muted">
+      <strong>Cross-database setup:</strong> The example above assumes PostgreSQL foreign data wrappers
+      (<code>postgres_fdw</code>) are configured. For other databases, export both datasets to CSV
+      or a neutral format, then use <code>comm</code>, <code>diff</code>, Python pandas, or SQL
+      import into a staging database for comparison.
+    </p>
+
+    <h3>Pattern 3: Find extra rows in sink</h3>
+    <p>Detect rows that exist in sink but not in source (potential duplicates or orphaned records):</p>
+    <pre><code class="language-sql">SELECT snk.id, snk.email, snk.created_at
+FROM sink_schema.customers snk
+LEFT JOIN source_schema.customers src ON snk.id = src.id
+WHERE src.id IS NULL
+ORDER BY snk.created_at DESC
+LIMIT 100;</code></pre>
+
+    <h3>Pattern 4: Find mismatched columns</h3>
+    <p>For rows that exist on both sides, detect column value differences:</p>
+    <pre><code class="language-sql">-- Compare critical columns (adjust list for your schema)
+SELECT 
+  src.id,
+  CASE WHEN src.email != snk.email THEN 'email' END AS email_mismatch,
+  CASE WHEN src.status != snk.status THEN 'status' END AS status_mismatch,
+  CASE WHEN src.updated_at != snk.updated_at THEN 'updated_at' END AS ts_mismatch,
+  src.updated_at AS src_updated_at,
+  snk.updated_at AS snk_updated_at
+FROM source_schema.customers src
+INNER JOIN sink_schema.customers snk ON src.id = snk.id
+WHERE src.email != snk.email
+   OR src.status != snk.status
+   OR src.updated_at != snk.updated_at
+LIMIT 100;</code></pre>
+    <p class="callout">
+      <strong>Timestamp handling:</strong> CDC events include microsecond precision.
+      If your sink truncates to milliseconds or seconds, add <code>::timestamptz(3)</code>
+      casts to both sides to avoid false positives.
+    </p>
+  </section>
+
+  <section id="checksum-verification" aria-labelledby="checksum-verification-title">
+    <h2 id="checksum-verification-title">Checksum verification methods</h2>
+    <p>
+      When row counts match but you suspect silent corruption, compute deterministic
+      checksums over entire tables or partitions.
+    </p>
+
+    <h3>Method 1: Per-row checksums</h3>
+    <p>Hash each row and compare aggregates:</p>
+    <pre><code class="language-sql">-- PostgreSQL example using md5 over concatenated columns
+SELECT 
+  COUNT(*) AS row_count,
+  SUM(('x' || md5(id::text || email || COALESCE(status, '')))::bit(32)::bigint) AS checksum_sum
+FROM source_schema.customers;</code></pre>
+    <p class="muted">
+      Run the same query on both source and sink. If <code>row_count</code> and <code>checksum_sum</code> match,
+      data is identical. If only <code>row_count</code> matches, use per-row hashes to find divergent rows.
+    </p>
+
+    <h3>Method 2: Partition-level checksums</h3>
+    <p>For large tables, compute checksums per time window or partition key:</p>
+    <pre><code class="language-sql">-- Daily partition checksums
+SELECT 
+  DATE_TRUNC('day', updated_at) AS partition_day,
+  COUNT(*) AS row_count,
+  SUM(('x' || md5(id::text || email || COALESCE(status, '')))::bit(32)::bigint) AS checksum_sum
+FROM source_schema.customers
+GROUP BY DATE_TRUNC('day', updated_at)
+ORDER BY partition_day DESC;</code></pre>
+    <p class="callout">
+      <strong>Performance tip:</strong> Checksum queries are expensive. Run them during off-peak hours,
+      or pre-compute checksums in a materialized view that updates incrementally.
+    </p>
+
+    <h3>Method 3: Third-party reconciliation tools</h3>
+    <p>For production workloads, consider specialized tools:</p>
+    <ul>
+      <li><strong>Datafold:</strong> Cloud-native data diffing with column-level reconciliation reports.</li>
+      <li><strong>dbt-audit-helper:</strong> Open-source dbt package for comparing datasets.</li>
+      <li><strong>AWS DMS Data Validation:</strong> Built-in validation for DMS replication tasks.</li>
+      <li><strong>Debezium signaling:</strong> Trigger incremental snapshots to re-sync specific tables.</li>
+    </ul>
+  </section>
+
+  <section id="offset-surgery" aria-labelledby="offset-surgery-title">
+    <h2 id="offset-surgery-title">Offset surgery: when and how</h2>
+    <p>
+      Offset surgery means directly manipulating the position markers that tell Kafka Connect
+      "where to resume reading." This is dangerous—do it wrong and you'll duplicate or skip events.
+    </p>
+
+    <h3>Safe scenarios for offset surgery</h3>
+    <ul>
+      <li><strong>Rewind after failed transformation:</strong> Reset offsets to replay events through corrected SMTs.</li>
+      <li><strong>Skip poison pill:</strong> Advance offset past a single malformed message blocking progress.</li>
+      <li><strong>Resume from snapshot:</strong> After restoring sink from backup, align offsets with backup timestamp.</li>
+      <li><strong>Migrate connector:</strong> Copy offsets when moving a connector to a new cluster.</li>
+    </ul>
+
+    <h3>Unsafe scenarios (avoid or escalate)</h3>
+    <ul>
+      <li><strong>Editing offsets to hide data loss:</strong> If source logs expired, offsets can't fix it.</li>
+      <li><strong>Arbitrarily jumping to "now":</strong> Creates unbounded data gaps.</li>
+      <li><strong>Deleting offsets without understanding state:</strong> Forces full snapshot, which may overload source.</li>
+    </ul>
+
+    <p class="callout">
+      <strong>Golden rule:</strong> Never perform offset surgery without a pre-surgery offset backup and
+      a documented rollback plan. If you can't restore the original state in under 5 minutes, don't start.
+    </p>
+  </section>
+
+  <section id="kafka-connect-rest" aria-labelledby="kafka-connect-rest-title">
+    <h2 id="kafka-connect-rest-title">Kafka Connect REST API offset operations</h2>
+    <p>
+      Kafka Connect exposes a REST API for offset management. Below are the essential operations.
+    </p>
+
+    <h3>1. Backup current offsets</h3>
+    <p>Always start by exporting the current offset state:</p>
+    <pre><code class="language-bash"># List all connectors
+curl -s http://localhost:8083/connectors | jq
+
+# Get connector status and tasks
+curl -s http://localhost:8083/connectors/my-postgres-source/status | jq
+
+# Backup offsets from the internal Kafka topic
+kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic connect-offsets \
+  --from-beginning \
+  --timeout-ms 10000 \
+  --property print.key=true \
+  > offsets-backup-$(date +%Y%m%d-%H%M%S).json</code></pre>
+
+    <h3>2. Pause connector</h3>
+    <p>Stop processing before manipulating offsets:</p>
+    <pre><code class="language-bash">curl -X PUT http://localhost:8083/connectors/my-postgres-source/pause
+
+# Verify connector is paused
+curl -s http://localhost:8083/connectors/my-postgres-source/status | jq '.connector.state'</code></pre>
+
+    <h3>3. Reset offsets (Kafka Connect 2.6+)</h3>
+    <p>Delete stored offsets to force a fresh start:</p>
+    <pre><code class="language-bash"># Stop and delete the connector
+curl -X DELETE http://localhost:8083/connectors/my-postgres-source
+
+# Recreate with initial.snapshot.mode=initial or schema_only
+curl -X POST http://localhost:8083/connectors \
+  -H "Content-Type: application/json" \
+  -d @my-postgres-source-config.json</code></pre>
+    <p class="muted">
+      <strong>Warning:</strong> Deleting a connector removes its offsets permanently.
+      Ensure your connector config specifies the desired snapshot mode
+      (<code>initial</code>, <code>schema_only</code>, <code>never</code>).
+    </p>
+
+    <h3>4. Manually edit offsets (advanced)</h3>
+    <p>For surgical precision, produce new offset records to the <code>connect-offsets</code> topic:</p>
+    <pre><code class="language-bash"># Example: Rewind to a specific LSN for PostgreSQL
+# First, inspect current offset structure
+kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic connect-offsets \
+  --from-beginning \
+  --timeout-ms 5000 \
+  --property print.key=true \
+  | grep my-postgres-source
+
+# Produce a new offset record (REPLACE placeholders with actual values)
+echo '["<CONNECTOR_NAME>",{"server":"<SERVER_NAME>"}]	{"lsn":<LSN_VALUE>,"txId":null,"ts_usec":<TIMESTAMP_USEC>}' \
+  | kafka-console-producer \
+    --bootstrap-server localhost:9092 \
+    --topic connect-offsets \
+    --property "parse.key=true" \
+    --property "key.separator=	"</code></pre>
+    <p class="callout">
+      <strong>Extreme caution required:</strong> The offset format is connector-specific.
+      MySQL uses binlog file + position, PostgreSQL uses LSN, SQL Server uses change LSN.
+      Malformed offsets will cause the connector to fail on startup or silently skip/duplicate data.
+    </p>
+
+    <h3>5. Resume and verify</h3>
+    <pre><code class="language-bash"># Resume the connector
+curl -X PUT http://localhost:8083/connectors/my-postgres-source/resume
+
+# Watch the logs for offset confirmation
+docker logs -f connect-container-name | grep -i offset
+
+# Monitor lag and throughput
+curl -s http://localhost:8083/connectors/my-postgres-source/status | jq</code></pre>
+  </section>
+
+  <section id="rollback-procedures" aria-labelledby="rollback-procedures-title">
+    <h2 id="rollback-procedures-title">Rollback procedures</h2>
+    <p>
+      If reconciliation or offset surgery goes wrong, you need a rapid, deterministic path back to safety.
+    </p>
+
+    <h3>Rollback checklist</h3>
+    <ol>
+      <li><strong>Pause all affected connectors immediately.</strong> Use the REST API or stop the Connect workers.</li>
+      <li><strong>Restore offsets from pre-surgery backup.</strong> Produce the backup to <code>connect-offsets</code> or restore from database snapshot.</li>
+      <li><strong>Verify offset restoration.</strong> Inspect <code>connect-offsets</code> topic to confirm keys and values match backup.</li>
+      <li><strong>Roll back sink data if partially applied.</strong> If reconciliation wrote corrupted rows, restore from database backup or revert using SQL.</li>
+      <li><strong>Resume connectors and monitor closely.</strong> Watch lag, error logs, and DLQ for anomalies.</li>
+      <li><strong>Document the incident.</strong> Capture what failed, why, and what prevented early detection.</li>
+    </ol>
+
+    <h3>Example: Restore offsets from backup</h3>
+    <pre><code class="language-bash"># Pause connector
+curl -X PUT http://localhost:8083/connectors/my-postgres-source/pause
+
+# Produce backup offsets back to the topic
+kafka-console-producer \
+  --bootstrap-server localhost:9092 \
+  --topic connect-offsets \
+  --property "parse.key=true" \
+  --property "key.separator=	" \
+  < offsets-backup-20251106-143022.json
+
+# Verify restoration
+kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic connect-offsets \
+  --from-beginning \
+  --timeout-ms 5000 \
+  --property print.key=true \
+  | grep my-postgres-source
+
+# Resume connector
+curl -X PUT http://localhost:8083/connectors/my-postgres-source/resume</code></pre>
+
+    <p class="callout">
+      <strong>Time-to-recovery target:</strong> Practice rollback drills quarterly.
+      Your team should be able to restore offsets and resume normal operation within 15 minutes.
+    </p>
+  </section>
+
+  <section id="warnings" aria-labelledby="warnings-title">
+    <h2 id="warnings-title">Warnings & guardrails</h2>
+    <p>
+      Reconciliation and offset surgery are high-risk operations. Respect these guardrails:
+    </p>
+    <ul>
+      <li><strong>Never run reconciliation in production during business hours</strong> without stakeholder approval and a rollback plan.</li>
+      <li><strong>Never delete offsets ad-hoc</strong> without understanding the snapshot mode and data volume implications.</li>
+      <li><strong>Always validate checksums before declaring reconciliation complete.</strong> Mismatched checksums mean silent corruption persists.</li>
+      <li><strong>Test rollback procedures in staging</strong> before attempting surgery in production.</li>
+      <li><strong>Document every offset edit</strong> in version control with timestamps, reasons, and approvers.</li>
+      <li><strong>Monitor downstream consumers</strong> during and after surgery. Offset rewinds can cause duplicate processing.</li>
+      <li><strong>Coordinate with database administrators</strong> before running expensive diff queries on production databases.</li>
+    </ul>
+
+    <h3>Pre-flight checklist</h3>
+    <p>Before starting any offset surgery or reconciliation, confirm:</p>
+    <ul class="checklist">
+      <li>Offsets are backed up and validated</li>
+      <li>Downstream consumers can tolerate replays or are paused</li>
+      <li>Monitoring dashboards are live and alerting is enabled</li>
+      <li>At least one other engineer reviewed the runbook</li>
+      <li>Rollback plan is documented with specific commands and decision points</li>
+      <li>Stakeholders are notified of the maintenance window</li>
+    </ul>
+  </section>
+
+  <section id="automation" aria-labelledby="automation-title">
+    <h2 id="automation-title">Automation scripts</h2>
+    <p>Codify common offset surgery patterns into scripts to reduce human error.</p>
+
+    <h3>Script: Safe offset backup and restore</h3>
+    <pre><code class="language-bash">#!/usr/bin/env bash
+set -euo pipefail
+
+CONNECTOR_NAME="${1:?Connector name required}"
+ACTION="${2:?Action required: backup or restore}"
+BACKUP_FILE="offsets-${CONNECTOR_NAME}-$(date +%Y%m%d-%H%M%S-%N).json"
+KAFKA_BOOTSTRAP="localhost:9092"
+CONNECT_URL="http://localhost:8083"
+
+backup_offsets() {
+  echo "Backing up offsets for $CONNECTOR_NAME to $BACKUP_FILE"
+  # grep returns exit code 1 if no matches, handle gracefully
+  kafka-console-consumer \
+    --bootstrap-server "$KAFKA_BOOTSTRAP" \
+    --topic connect-offsets \
+    --from-beginning \
+    --timeout-ms 10000 \
+    --property print.key=true \
+    | grep "$CONNECTOR_NAME" > "$BACKUP_FILE" || true
+  
+  if [ -s "$BACKUP_FILE" ]; then
+    echo "Backup saved to $BACKUP_FILE ($(wc -l < "$BACKUP_FILE") lines)"
+  else
+    echo "Warning: No offsets found for connector $CONNECTOR_NAME"
+    rm -f "$BACKUP_FILE"
+    exit 1
+  fi
+}
+
+restore_offsets() {
+  local restore_file="${1:?Backup file required for restore}"
+  
+  echo "Pausing connector $CONNECTOR_NAME"
+  curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR_NAME/pause"
+  sleep 3
+  
+  echo "Restoring offsets from $restore_file"
+  kafka-console-producer \
+    --bootstrap-server "$KAFKA_BOOTSTRAP" \
+    --topic connect-offsets \
+    --property "parse.key=true" \
+    --property "key.separator=	" \
+    < "$restore_file"
+  
+  echo "Resuming connector $CONNECTOR_NAME"
+  curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR_NAME/resume"
+  
+  echo "Offset restoration complete. Monitor connector status."
+}
+
+case "$ACTION" in
+  backup)
+    backup_offsets
+    ;;
+  restore)
+    shift 2  # Remove CONNECTOR_NAME and ACTION from args
+    restore_offsets "$@"
+    ;;
+  *)
+    echo "Unknown action: $ACTION. Use 'backup' or 'restore'."
+    exit 1
+    ;;
+esac</code></pre>
+
+    <h3>Script: Row count reconciliation report</h3>
+    <pre><code class="language-bash">#!/usr/bin/env bash
+# Generate row count comparison report for source and sink
+# Requires: psql, jq
+
+SOURCE_CONN="postgresql://user:pass@source-db:5432/mydb"
+SINK_CONN="postgresql://user:pass@sink-db:5432/mydb"
+SCHEMA="${1:-public}"
+TABLES="${2:-customers,orders,products}"
+
+echo "Reconciliation Report - $(date)"
+echo "Schema: $SCHEMA"
+echo "Tables: $TABLES"
+echo "================================"
+
+IFS=',' read -ra TABLE_ARRAY <<< "$TABLES"
+for table in "${TABLE_ARRAY[@]}"; do
+  src_count=$(psql "$SOURCE_CONN" -t -c "SELECT COUNT(*) FROM $SCHEMA.$table")
+  snk_count=$(psql "$SINK_CONN" -t -c "SELECT COUNT(*) FROM $SCHEMA.$table")
+  
+  diff=$((src_count - snk_count))
+  status="✓ OK"
+  [ "$diff" -ne 0 ] && status="✗ MISMATCH"
+  
+  printf "%-20s | Source: %10d | Sink: %10d | Diff: %+6d | %s\n" \
+    "$table" "$src_count" "$snk_count" "$diff" "$status"
+done</code></pre>
+  </section>
+
+  <section id="scorecard" aria-labelledby="scorecard-title">
+    <h2 id="scorecard-title">Reconciliation readiness scorecard</h2>
+    <p>
+      Assess your team's preparedness for reconciliation and offset surgery operations.
+    </p>
+    {{
+      scorecard.render(
+        'reconciliation-surgery',
+        'Reconciliation operational maturity',
+        [
+          {
+            id: 'drift-detection',
+            title: 'Drift detection',
+            ready:
+              'Automated checksum validation runs daily, with alerts on mismatches exceeding threshold.',
+            action:
+              'Implement scheduled checksum queries, store results in a metrics database, and configure alerts.'
+          },
+          {
+            id: 'offset-backup',
+            title: 'Offset backup & restore',
+            ready:
+              'Offsets are backed up hourly, restore drills pass quarterly, and recovery completes within 15 minutes.',
+            action:
+              'Automate offset backups, document restore procedures, and schedule next drill with SRE team.'
+          },
+          {
+            id: 'reconciliation-runbooks',
+            title: 'Reconciliation runbooks',
+            ready:
+              'SQL diff patterns documented, tested in staging, and include rollback decision trees.',
+            action:
+              'Write runbooks for each connector type, validate with sample data, and review with database team.'
+          },
+          {
+            id: 'offset-surgery-approval',
+            title: 'Offset surgery approval workflow',
+            ready:
+              'Offset changes require two-person approval, pre-flight checklist, and post-surgery monitoring.',
+            action:
+              'Define approval policy, create checklist template, and configure monitoring dashboards.'
+          },
+          {
+            id: 'coordination',
+            title: 'Cross-team coordination',
+            ready:
+              'Database team, SRE, and data platform teams participate in reconciliation drills and review runbooks.',
+            action:
+              'Schedule kickoff meeting, assign roles, and establish communication channels for incidents.'
+          }
+        ],
+        {
+          capabilityHeading: 'Area',
+          actionHeading: 'If not, next step',
+          group: 'reconciliation-surgery',
+          summaryLabel: 'Reconciliation operational maturity scorecard'
+        }
+      )
+      | safe
+    }}
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="/ops-offsets/">Ops: Offsets & Replays</a> — Foundational offset management patterns</li>
+      <li><a href="/observability/">Observability Basics</a> — Monitoring dashboards for drift detection</li>
+      <li><a href="/troubleshooting/failure-drills/">Failure Scenario Drills</a> — Practice recovery procedures in safe environments</li>
+      <li><a href="/materialization/">Materialization 101</a> — Idempotent upsert patterns that tolerate replays</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/operations/signals.html" target="_blank" rel="noopener">Debezium Signaling</a> — Trigger incremental snapshots for reconciliation</li>
+      <li><a href="https://kafka.apache.org/documentation/#connect_rest" target="_blank" rel="noopener">Kafka Connect REST API</a> — Official documentation for connector management</li>
+    </ul>
+  </section>
+</div>

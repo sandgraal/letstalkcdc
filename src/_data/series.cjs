@@ -73,6 +73,13 @@ module.exports = [
     tags: [ { label: 'Ops', variant: 'tag-ops' } ]
   },
   {
+    key: 'reconciliation-surgery',
+    title: 'Reconciliation & Offset Surgery',
+    description: 'Repair out-of-sync sinks and safely reset offsets. SQL diff patterns, checksum verification, and Kafka Connect REST API offset operations.',
+    href: '/reconciliation-surgery/',
+    tags: [ { label: 'Advanced Pattern', variant: 'tag-pattern' }, { label: 'Ops', variant: 'tag-ops' } ]
+  },
+  {
     key: 'use-cases',
     title: 'Real-World Use Cases',
     description: 'Explore practical applications of CDC, from real-time analytics to cache invalidation.',
