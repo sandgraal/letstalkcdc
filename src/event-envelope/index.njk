@@ -3,10 +3,13 @@ layout: base.njk
 title: "Event Envelope & Delivery Guarantees"
 description: "Break down the structure of CDC change events and learn how at-least-once or exactly-once delivery affects consumers."
 canonicalPath: "/event-envelope/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -372,6 +375,8 @@ canonicalPath: "/event-envelope/"
       channel to pause downstream consumers if contract drift is detected.
     </p>
   </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
 
   <section id="resources" aria-labelledby="resources-title">
     <h2 id="resources-title">Further resources</h2>

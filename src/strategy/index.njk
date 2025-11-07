@@ -2,6 +2,8 @@
 layout: base.njk
 title: "The Strategic Value of CDC | CDC: The Missing Manual"
 canonicalPath: "/strategy/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <meta
         content="Learn about the strategic business advantages of adopting Change Data Capture, from enabling real-time analytics to fostering an event-driven culture."
@@ -10,6 +12,7 @@ head_extra: |
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -257,4 +260,6 @@ head_extra: |
           streams of business events, powering the responsive, intelligent, and
           competitive enterprises of the future.
         </p>
+
+        {{ quizMacro.quiz(quizConfig) | safe }}
       </article>

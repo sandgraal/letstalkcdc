@@ -3,10 +3,13 @@ layout: base.njk
 title: "Real-World CDC Case Study | CDC: The Missing Manual"
 canonicalPath: "/case-study/"
 description: A comprehensive walkthrough of a real-world CDC implementation for e-commerce analytics, covering architecture decisions, implementation challenges, and business outcomes.
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/case-study.css' | url }}">
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -854,6 +857,8 @@ revenueByCategory.toStream()
       </a>
     </div>
   </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
 </article>
 
 {% set seriesKey = 'case-study' %}

@@ -3,10 +3,13 @@ layout: base.njk
 title: "Observability Basics"
 description: "Monitor CDC connectors with golden signals, actionable dashboards, and alerting policies that keep downstream consumers safe."
 canonicalPath: "/observability/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -402,6 +405,8 @@ canonicalPath: "/observability/"
       | safe
     }}
   </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
 
   <section id="resources" aria-labelledby="resources-title">
     <h2 id="resources-title">Further resources</h2>

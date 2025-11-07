@@ -3,10 +3,13 @@ layout: base.njk
 title: "Reconciliation & Offset Surgery"
 description: "Advanced CDC operations: repair out-of-sync sinks with SQL diffs, verify data integrity with checksums, and safely reset offsets using the Kafka Connect REST API."
 canonicalPath: "/reconciliation-surgery/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -526,6 +529,8 @@ done</code></pre>
       | safe
     }}
   </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
 
   <section id="resources" aria-labelledby="resources-title">
     <h2 id="resources-title">Further resources</h2>
