@@ -13,6 +13,7 @@ import {
 } from './local-progress.js';
 
 let databases = null;
+let Query = null;
 let dbConfig = null;
 let isInitialized = false;
 
@@ -36,13 +37,14 @@ async function initCloudProgress() {
   
   try {
     const AppwriteSDK = await import('https://cdn.jsdelivr.net/npm/appwrite@13.0.0/dist/esm/appwrite.js');
-    const { Client, Databases } = AppwriteSDK;
+    const { Client, Databases, Query: AppwriteQuery } = AppwriteSDK;
     
     const client = new Client()
       .setEndpoint(endpoint)
       .setProject(project);
     
     databases = new Databases(client);
+    Query = AppwriteQuery;
     dbConfig = { databaseId };
     isInitialized = true;
     
@@ -67,7 +69,7 @@ async function fetchCloudProgress(userId) {
       dbConfig.databaseId,
       COLLECTION_PROGRESS,
       [
-        `userId=${userId}`
+        Query.equal('userId', userId)
       ]
     );
     
@@ -93,8 +95,8 @@ async function saveModuleProgress(userId, journeySlug, progressData) {
       dbConfig.databaseId,
       COLLECTION_PROGRESS,
       [
-        `userId=${userId}`,
-        `journeySlug=${journeySlug}`
+        Query.equal('userId', userId),
+        Query.equal('journeySlug', journeySlug)
       ]
     );
     
