@@ -196,12 +196,14 @@
         <script type="module" src="{{ script | url }}"></script>
       {% endfor %}
     {% endif %}
-    {% if appwrite.endpoint and appwrite.project and appwrite.databaseId and appwrite.assistantCollectionId %}
+    {% if appwrite.endpoint and appwrite.project and appwrite.databaseId %}
       <script>
         window.APPWRITE_ENDPOINT = {{ appwrite.endpoint | dump | safe }};
         window.APPWRITE_PROJECT = {{ appwrite.project | dump | safe }};
         window.APPWRITE_DB_ID = {{ appwrite.databaseId | dump | safe }};
+        {%- if appwrite.assistantCollectionId %}
         window.COL_ASSISTANT_ID = {{ appwrite.assistantCollectionId | dump | safe }};
+        {%- endif %}
       </script>
     {% endif %}
     {% if seriesKey %}

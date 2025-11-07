@@ -39,10 +39,12 @@ cp .env.example .env
 ### Edit `.env` with Your Values
 
 ```bash
-# Required for Appwrite features (optional otherwise)
+# Required for Appwrite integration (all optional otherwise)
 APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 APPWRITE_PROJECT=your_project_id_here
 APPWRITE_DB_ID=main
+
+# Optional - defaults to "assistant_feedback" if not set
 COL_ASSISTANT_ID=assistant_feedback
 
 # Server-side only (for optional backend helpers)
@@ -141,13 +143,16 @@ Progress tracking now runs entirely in the browser with no authentication. Appwr
 Edit your `.env` file:
 
 ```bash
+# Required for Appwrite integration
 APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 APPWRITE_PROJECT=YOUR_PROJECT_ID_FROM_STEP_1
 APPWRITE_DB_ID=main
+
+# Optional - defaults to "assistant_feedback" if not set
 COL_ASSISTANT_ID=assistant_feedback
 ```
 
-> The assistant automatically stores feedback locally if any of these values are missing. You only need `APPWRITE_API_KEY` if a backend worker posts feedback on your behalf; the static site does not expose the key.
+> **Note**: Only `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, and `APPWRITE_DB_ID` are required for Appwrite integration. `COL_ASSISTANT_ID` is optional and defaults to `assistant_feedback` if not set. The assistant automatically stores feedback locally if the required Appwrite credentials are missing. You only need `APPWRITE_API_KEY` if a backend worker posts feedback on your behalf; the static site does not expose the key.
 
 ##### Step 4: Test Locally
 
