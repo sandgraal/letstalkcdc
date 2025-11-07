@@ -52,6 +52,8 @@ For complete setup instructions including optional features (Appwrite progress t
 
 Recent additions to the platform:
 
+- 🔐 **User authentication** — Create an account and log in to sync progress across devices
+- ☁️ **Cloud progress sync** — Your learning progress automatically saved and synced via Appwrite
 - 🔍 **Client-side search** — Press `/` to search all content instantly
 - 📊 **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
 - 📦 **Print-ready exports** — Complete guide at `/downloads/cdc-complete-guide.html`
@@ -77,6 +79,8 @@ The site is built with progressive enhancement — core features work immediatel
 | ------------------------------------- | ----------- | ---------------------------------- |
 | **Static site** (educational content) | ✅ Ready    | This README                        |
 | **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage |
+| **User authentication**               | ✅ Ready    | [docs/auth-setup.md](docs/auth-setup.md) |
+| **Cloud progress sync**               | ✅ Ready    | [docs/auth-setup.md](docs/auth-setup.md) |
 | **OpenTelemetry tracing**             | ⚠️ Optional | [docs/TRACING.md](docs/TRACING.md) |
 | **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
 | **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |

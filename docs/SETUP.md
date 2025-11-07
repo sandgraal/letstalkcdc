@@ -24,6 +24,8 @@ The site is built with **progressive enhancement** — core features work immedi
 | ------------------------------------- | ----------- | ------------------------------------- |
 | **Static site** (educational content) | ✅ Ready    | None — works out of the box           |
 | **Local progress tracking**           | ✅ Ready    | None — uses browser localStorage      |
+| **User authentication**               | ✅ Ready    | Appwrite project + auth setup         |
+| **Cloud progress sync**               | ✅ Ready    | User authentication + collections     |
 | **AI Toolkit tracing**                | ⚠️ Optional | AI Toolkit + start dev server         |
 | **Appwrite (cloud sync + auth)**      | ⚠️ Optional | Appwrite project + environment config |
 | **Lightweight assistant**             | ⚠️ Optional | Appwrite collection setup             |
@@ -231,6 +233,83 @@ The site automatically converts YAML → JSON during build.
 
 - **Collection schema**: [docs/assistant-feedback-setup.md](assistant-feedback-setup.md)
 - **Contributing guide**: [AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)
+
+---
+
+### 4. User Authentication and Cloud Progress Sync (Optional)
+
+**Status**: ✅ **Implemented** — Requires Appwrite account setup
+
+Enables users to create accounts and sync their learning progress across devices.
+
+#### What you get
+
+- ✅ User signup and login with email/password
+- ✅ Cloud-synced progress across all devices
+- ✅ Automatic merge of local and cloud progress on login
+- ✅ Secure authentication via Appwrite Account SDK
+- ✅ Progressive enhancement - works offline with local storage
+
+#### Prerequisites
+
+- [Appwrite Cloud account](https://cloud.appwrite.io) (free) or self-hosted instance
+- Existing Appwrite project with database (from section 2 above)
+
+#### Setup Steps
+
+##### Step 1: Configure Collection Permissions
+
+In your Appwrite project:
+
+1. Go to **Databases → main → progress → Settings → Permissions**
+2. Add permission: **Any authenticated user** (`role:users`)
+   - Enable: Create, Read, Update, Delete (users can only access their own documents)
+
+3. Go to **Databases → main → events → Settings → Permissions**
+4. Add permission: **Any authenticated user** (`role:users`)
+   - Enable: Create, Read (users can only access their own documents)
+
+##### Step 2: Configure CORS for Your Domain
+
+1. In Appwrite Console, go to **Settings → Platforms**
+2. Add **Web Platform**:
+   - Name: `Let's Talk CDC`
+   - Hostname: `yourusername.github.io` (or your custom domain)
+
+##### Step 3: Test Locally
+
+```bash
+# Ensure .env is configured with Appwrite credentials
+npm run dev
+
+# Visit http://localhost:8080
+# Click "Log In" button in header
+# Test signup and login flows
+```
+
+#### Documentation
+
+- **Detailed setup guide**: [docs/auth-setup.md](auth-setup.md)
+- **Security considerations**: [docs/auth-setup.md#security-considerations](auth-setup.md#security-considerations)
+
+#### Troubleshooting
+
+**"Authentication not configured" error**
+
+- Verify `APPWRITE_ENDPOINT` and `APPWRITE_PROJECT` are set in `.env`
+- Rebuild site after changing environment variables
+
+**Login fails**
+
+- Check collection permissions are set for `role:users`
+- Verify CORS is configured for your domain
+- Check browser console for detailed error messages
+
+**Progress not syncing**
+
+- Verify user is logged in (profile button visible in header)
+- Check browser console for sync errors
+- Ensure collections exist and have correct permissions
 
 ---
 
