@@ -99,7 +99,7 @@ ai-generated: true
       <dd>Persistent, sequential files storing change data. Local trails store data on source system; remote trails store data on target system after network transfer. Trail files are versioned (e.g., <code>./dirdat/aa000001</code>, <code>aa000002</code>).</dd>
       
       <dt><strong>Data Pump (Optional)</strong></dt>
-      <dd>Secondary extract process that reads local trail files and sends data over network to remote system. Provides network-level buffering and compression. Can be omitted for simple configurations (Extract writes directly to remote trails).</dd>
+      <dd>Secondary extract process that reads local trail files and sends data over network to remote system. Provides network-level buffering and compression. Can be omitted for simple configurations where Extract and Replicat are on the same network with low latency.</dd>
       
       <dt><strong>Replicat Process</strong></dt>
       <dd>Reads remote trail files and applies transactions to target database. Handles data type conversions, filtering, transformation, and conflict detection. Supports parallel apply for high throughput.</dd>
@@ -313,7 +313,7 @@ CREATE USER ggadmin IDENTIFIED BY "YOUR_SECURE_PASSWORD";
 GRANT CONNECT, RESOURCE, DBA TO ggadmin;
 
 -- Create target schema if it doesn't exist
-CREATE USER hr IDENTIFIED BY "YOUR_HR_PASSWORD";
+CREATE USER hr IDENTIFIED BY "YOUR_SECURE_PASSWORD";
 GRANT CONNECT, RESOURCE TO hr;
 GRANT UNLIMITED TABLESPACE TO hr;
 
