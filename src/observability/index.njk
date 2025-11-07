@@ -7,27 +7,12 @@ scripts:
   - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
-{% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
 {% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
-  {{ quickNav.render('Observability quick nav', [
-    { id: 'tracker', label: 'Readiness tracker' },
-    { id: 'signals', label: 'Golden signals' },
-    { id: 'dashboards', label: 'Dashboards' },
-    { id: 'alerts', label: 'Alert policy' },
-    { id: 'slo', label: 'SLOs' },
-    { id: 'tracing', label: 'Tracing & logs' },
-    { id: 'monitoring-stack', label: 'Monitoring stack' },
-    { id: 'handbook', label: 'Runbook hygiene' },
-    { id: 'reviews', label: 'Post-incident reviews' },
-    { id: 'scorecard', label: 'Readiness scorecard' },
-    { id: 'resources', label: 'Further resources' }
-  ]) | safe }}
-
   {{
     scorecard.summary('observability', {
       sectionId: 'tracker',

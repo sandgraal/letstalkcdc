@@ -7,28 +7,12 @@ scripts:
   - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
-{% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
 {% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
-  {{ quickNav.render('Event envelope quick nav', [
-    { id: 'tracker', label: 'Readiness tracker' },
-    { id: 'anatomy', label: 'Event anatomy' },
-    { id: 'images', label: 'Before/after images' },
-    { id: 'delivery', label: 'Delivery guarantees' },
-    { id: 'ordering', label: 'Ordering implications' },
-    { id: 'schema', label: 'Schema contracts' },
-    { id: 'connectors', label: 'Connector crosswalk' },
-    { id: 'playbooks', label: 'Playbooks' },
-    { id: 'validation', label: 'Validation' },
-    { id: 'scorecard', label: 'Readiness scorecard' },
-    { id: 'monitoring', label: 'Monitoring & guardrails' },
-    { id: 'resources', label: 'Further resources' }
-  ]) | safe }}
-
   {{
     scorecard.summary('event-envelope', {
       sectionId: 'tracker',

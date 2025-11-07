@@ -7,26 +7,12 @@ scripts:
   - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
-{% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
 {% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
-  {{ quickNav.render('Offsets quick nav', [
-    { id: 'tracker', label: 'Readiness tracker' },
-    { id: 'checklist', label: 'Ops checklist' },
-    { id: 'storage', label: 'Offset storage patterns' },
-    { id: 'rewind', label: 'Safe rewind procedure' },
-    { id: 'drills', label: 'Replay drills' },
-    { id: 'alerts', label: 'Monitoring' },
-    { id: 'automation', label: 'Automation' },
-    { id: 'audits', label: 'Quarterly audits' },
-    { id: 'scorecard', label: 'Readiness scorecard' },
-    { id: 'resources', label: 'Further resources' }
-  ]) | safe }}
-
   {{
     scorecard.summary('ops-offsets', {
       sectionId: 'tracker',

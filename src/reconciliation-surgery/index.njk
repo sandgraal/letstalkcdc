@@ -7,28 +7,12 @@ scripts:
   - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
-{% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
 {% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
-  {{ quickNav.render('Reconciliation & offset surgery quick nav', [
-    { id: 'tracker', label: 'Readiness tracker' },
-    { id: 'when-reconciliation', label: 'When to reconcile' },
-    { id: 'prerequisites', label: 'Prerequisites' },
-    { id: 'sql-diff', label: 'SQL diff patterns' },
-    { id: 'checksum-verification', label: 'Checksum verification' },
-    { id: 'offset-surgery', label: 'Offset surgery' },
-    { id: 'kafka-connect-rest', label: 'Kafka Connect REST API' },
-    { id: 'rollback-procedures', label: 'Rollback procedures' },
-    { id: 'warnings', label: 'Warnings & guardrails' },
-    { id: 'automation', label: 'Automation scripts' },
-    { id: 'scorecard', label: 'Readiness scorecard' },
-    { id: 'resources', label: 'Further resources' }
-  ]) | safe }}
-
   {{
     scorecard.summary('reconciliation-surgery', {
       sectionId: 'tracker',
