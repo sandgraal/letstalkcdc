@@ -1,0 +1,860 @@
+---
+layout: base.njk
+title: "Real-World CDC Case Study | CDC: The Missing Manual"
+canonicalPath: "/case-study/"
+description: A comprehensive walkthrough of a real-world CDC implementation for e-commerce analytics, covering architecture decisions, implementation challenges, and business outcomes.
+head_extra: |
+  <link rel="stylesheet" href="{{ '/assets/css/pages/case-study.css' | url }}">
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<article class="prose">
+  <section class="case-study-intro">
+    <p class="lead">
+      This case study follows <strong>ShopStream</strong>, a mid-sized e-commerce company, 
+      as they implement Change Data Capture to transform their data infrastructure. 
+      Their journey illustrates the real-world decision points, trade-offs, and challenges 
+      that teams face when moving from batch ETL to real-time data streaming.
+    </p>
+  </section>
+
+  <section id="context" class="case-study-section">
+    <h2>Part 1: The Business Context</h2>
+    
+    <h3>Company Profile</h3>
+    <div class="company-card">
+      <ul>
+        <li><strong>Industry:</strong> E-commerce (fashion & accessories)</li>
+        <li><strong>Scale:</strong> 5M orders/year, 2M active customers, 50K SKUs</li>
+        <li><strong>Tech Stack:</strong> PostgreSQL (OLTP), Snowflake (warehouse), Tableau (BI)</li>
+        <li><strong>Team:</strong> 8 data engineers, 20 analysts, 200 total engineering</li>
+      </ul>
+    </div>
+
+    <h3>The Pain Points</h3>
+    <p>
+      ShopStream's analytics ran on a nightly batch ETL pipeline. Every night at 2 AM, 
+      a series of complex SQL queries would extract data from the production PostgreSQL 
+      database, transform it, and load it into Snowflake. This architecture had served 
+      them well during early growth, but was now causing significant problems:
+    </p>
+
+    <div class="pain-points">
+      <div class="pain-point">
+        <h4>❌ Decision Latency (24+ Hours)</h4>
+        <p>
+          The marketing team couldn't respond to real-time campaign performance. 
+          A flash sale that underperformed wouldn't be detected until the next day, 
+          missing the critical window for adjustments. Customer support couldn't see 
+          real-time order status, leading to frustrated customers and increased call volume.
+        </p>
+      </div>
+
+      <div class="pain-point">
+        <h4>❌ Production Database Load</h4>
+        <p>
+          The ETL queries scanned entire tables every night, causing noticeable 
+          performance degradation. During peak shopping seasons (Black Friday, holidays), 
+          the ETL window would extend into business hours, causing customer-facing 
+          slowdowns. The team had to carefully schedule maintenance windows around the ETL.
+        </p>
+      </div>
+
+      <div class="pain-point">
+        <h4>❌ Operational Brittleness</h4>
+        <p>
+          Failed ETL jobs meant analysts started their day with stale data and no clear 
+          ETA for fixes. Schema changes required coordinated updates across extraction 
+          scripts, transformation logic, and target tables. The on-call rotation dreaded 
+          weekends, when failures might not be noticed until Monday.
+        </p>
+      </div>
+
+      <div class="pain-point">
+        <h4>❌ Growing Complexity</h4>
+        <p>
+          As the business added features (subscriptions, gift cards, international shipping), 
+          the ETL became increasingly complex. The team spent more time maintaining and 
+          debugging ETL code than building new analytics capabilities. Technical debt 
+          was accumulating faster than they could pay it down.
+        </p>
+      </div>
+    </div>
+
+    <h3>The Breaking Point</h3>
+    <p>
+      The decision to investigate CDC came after a Black Friday incident. A pricing 
+      error on a high-margin product went undetected for 8 hours because the dashboard 
+      showing "revenue per category" wouldn't refresh until the next morning's ETL run. 
+      By the time the team noticed, the company had lost over $150K in margin.
+    </p>
+    <blockquote class="case-study-quote">
+      "We realized we were flying blind. Our data was always yesterday's story, 
+      and in e-commerce, yesterday might as well be last year."
+      <cite>— Sarah Chen, VP of Data Engineering, ShopStream</cite>
+    </blockquote>
+
+    <h3>Business Requirements</h3>
+    <p>The leadership team set clear goals for a new data architecture:</p>
+    <ul class="requirements-list">
+      <li><strong>Sub-5-minute latency:</strong> Key metrics must reflect reality within 5 minutes</li>
+      <li><strong>Zero impact to OLTP:</strong> No additional load on the production database</li>
+      <li><strong>Incremental rollout:</strong> Migrate table-by-table, not a "big bang" cutover</li>
+      <li><strong>Cost-neutral:</strong> New infrastructure costs offset by retiring legacy ETL infrastructure</li>
+      <li><strong>6-month timeline:</strong> Full migration complete within two quarters</li>
+    </ul>
+  </section>
+
+  <section id="evaluation" class="case-study-section">
+    <h2>Part 2: Solution Evaluation</h2>
+    
+    <h3>The Requirements</h3>
+    <p>
+      The data engineering team evaluated solutions against a clear set of technical requirements:
+    </p>
+    <ul>
+      <li><strong>Log-based capture:</strong> Must read from PostgreSQL WAL, not polling</li>
+      <li><strong>Exactly-once delivery:</strong> No duplicate rows in Snowflake from replays</li>
+      <li><strong>Schema evolution support:</strong> Handle ADD COLUMN, data type changes gracefully</li>
+      <li><strong>Snapshot capability:</strong> Backfill historical data without impacting production</li>
+      <li><strong>Operational maturity:</strong> Monitoring, alerting, and runbooks available</li>
+    </ul>
+
+    <h3>Tool Comparison</h3>
+    <p>
+      The team evaluated three major approaches, considering both technical fit and 
+      total cost of ownership:
+    </p>
+
+    <div class="tool-comparison">
+      <div class="tool-option">
+        <h4>Option 1: Debezium (Open Source)</h4>
+        <p><strong>Architecture:</strong> Self-hosted Kafka + Kafka Connect + Debezium PostgreSQL connector + Snowflake Sink</p>
+        <div class="pros-cons">
+          <div class="pros">
+            <strong>Pros:</strong>
+            <ul>
+              <li>No licensing costs (Apache 2.0)</li>
+              <li>Full control over configuration and scaling</li>
+              <li>Battle-tested for PostgreSQL CDC</li>
+              <li>Large community and extensive documentation</li>
+              <li>Can handle complex transformations in Kafka Streams</li>
+            </ul>
+          </div>
+          <div class="cons">
+            <strong>Cons:</strong>
+            <ul>
+              <li>Requires Kafka expertise on the team</li>
+              <li>Operational burden: patching, upgrades, capacity planning</li>
+              <li>Need to build monitoring and alerting from scratch</li>
+              <li>Estimated 2 FTEs for ongoing operations</li>
+            </ul>
+          </div>
+        </div>
+        <p><strong>Estimated Cost:</strong> $15K/month (infrastructure) + 2 FTEs (~$35K/month fully loaded) = <strong>$50K/month</strong></p>
+      </div>
+
+      <div class="tool-option">
+        <h4>Option 2: Fivetran (Managed SaaS)</h4>
+        <p><strong>Architecture:</strong> Fivetran PostgreSQL connector → Fivetran cloud → Snowflake</p>
+        <div class="pros-cons">
+          <div class="pros">
+            <strong>Pros:</strong>
+            <ul>
+              <li>Zero infrastructure management</li>
+              <li>Fast time-to-value (setup in hours)</li>
+              <li>Built-in monitoring and alerting</li>
+              <li>Automatic schema drift handling</li>
+              <li>24/7 support from vendor</li>
+            </ul>
+          </div>
+          <div class="cons">
+            <strong>Cons:</strong>
+            <ul>
+              <li>Pricing based on Monthly Active Rows (MAR)</li>
+              <li>Less control over data transformations</li>
+              <li>Vendor lock-in concerns</li>
+              <li>Limited customization options</li>
+              <li>Data flows through third-party infrastructure</li>
+            </ul>
+          </div>
+        </div>
+        <p><strong>Estimated Cost:</strong> $25K/month (based on projected MAR) + 0.5 FTE (~$9K/month) = <strong>$34K/month</strong></p>
+      </div>
+
+      <div class="tool-option">
+        <h4>Option 3: AWS DMS (Cloud-Native)</h4>
+        <p><strong>Architecture:</strong> DMS PostgreSQL source → DMS replication instance → Snowflake via S3 staging</p>
+        <div class="pros-cons">
+          <div class="pros">
+            <strong>Pros:</strong>
+            <ul>
+              <li>Fully managed by AWS</li>
+              <li>Native integration with existing AWS infrastructure</li>
+              <li>Granular cost control (pay per instance hour)</li>
+              <li>CloudWatch integration for monitoring</li>
+            </ul>
+          </div>
+          <div class="cons">
+            <strong>Cons:</strong>
+            <ul>
+              <li>Less mature CDC support than Debezium</li>
+              <li>Limited transformation capabilities</li>
+              <li>Occasional consistency issues reported in community</li>
+              <li>Requires S3 staging bucket for Snowflake (added complexity)</li>
+              <li>Snowflake connector requires custom integration via S3</li>
+            </ul>
+          </div>
+        </div>
+        <p><strong>Estimated Cost:</strong> $12K/month (DMS + S3 + data transfer) + 1 FTE (~$18K/month) = <strong>$30K/month</strong></p>
+      </div>
+    </div>
+
+    <h3>The Decision: Debezium + Kafka</h3>
+    <p>
+      After careful evaluation, the team chose <strong>Debezium on Kafka</strong>, despite 
+      the higher operational complexity. The deciding factors were:
+    </p>
+    <ol>
+      <li>
+        <strong>Strategic Investment:</strong> Building Kafka expertise would pay dividends 
+        beyond CDC. The team had already identified multiple use cases for event streaming 
+        (inventory updates, order notifications, fraud detection).
+      </li>
+      <li>
+        <strong>Flexibility:</strong> Open-source meant no limits on customization. They could 
+        handle complex scenarios like multi-tenancy and custom transformations.
+      </li>
+      <li>
+        <strong>Cost Trajectory:</strong> While initially more expensive, costs would remain 
+        predictable as data volumes grew, unlike MAR-based pricing.
+      </li>
+      <li>
+        <strong>Team Skills:</strong> Two senior engineers had prior Kafka experience, reducing 
+        the ramp-up risk.
+      </li>
+    </ol>
+
+    <blockquote class="case-study-quote">
+      "We knew Debezium would be harder upfront, but we were building a capability, 
+      not just solving a point problem. Kafka would become our event backbone."
+      <cite>— Marcus Rodriguez, Principal Engineer, ShopStream</cite>
+    </blockquote>
+  </section>
+
+  <section id="architecture" class="case-study-section">
+    <h2>Part 3: Solution Architecture</h2>
+    
+    <h3>The End-to-End Pipeline</h3>
+    <p>
+      The final architecture consists of five major components, each playing a specific 
+      role in the data flow:
+    </p>
+
+    <div class="architecture-diagram" role="img" aria-label="ShopStream CDC Architecture: PostgreSQL flows through Debezium to Kafka, then to Snowflake and real-time dashboards">
+      <pre class="mermaid">
+graph LR
+    A[PostgreSQL OLTP<br/>Orders, Customers, Products] -->|WAL Stream| B[Debezium Connector<br/>Kafka Connect]
+    B -->|Change Events<br/>JSON/Avro| C[Kafka Topics<br/>orders.public.orders<br/>orders.public.customers]
+    C -->|Stream| D[Snowflake Sink<br/>Kafka Connect]
+    C -->|Real-time| E[Kafka Streams<br/>Aggregations]
+    D -->|MERGE/UPSERT| F[Snowflake<br/>Analytics Tables]
+    E -->|Live Metrics| G[Redis Cache<br/>Dashboard API]
+    F -->|Historical Analysis| H[Tableau<br/>BI Dashboards]
+    G -->|Current State| H
+
+    style A fill:#e1f5ff
+    style C fill:#fff3cd
+    style F fill:#d4edda
+    style G fill:#f8d7da
+      </pre>
+    </div>
+
+    <h3>Component Details</h3>
+    
+    <div class="component-detail">
+      <h4>1. Source: PostgreSQL (RDS)</h4>
+      <p>
+        The production database remained unchanged, except for enabling logical replication:
+      </p>
+      <pre><code>-- Enable logical replication (requires restart)
+ALTER SYSTEM SET wal_level = 'logical';
+ALTER SYSTEM SET max_replication_slots = 10;
+ALTER SYSTEM SET max_wal_senders = 10;
+
+-- Create replication slot for Debezium
+SELECT pg_create_logical_replication_slot('debezium_slot', 'pgoutput');
+
+-- Grant necessary permissions
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO debezium_user;
+GRANT USAGE ON SCHEMA public TO debezium_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO debezium_user;</code></pre>
+      <p>
+        <strong>Key Decision:</strong> They used RDS PostgreSQL (not Aurora) because Aurora's 
+        logical replication had known limitations with high-throughput workloads at the time.
+      </p>
+    </div>
+
+    <div class="component-detail">
+      <h4>2. Capture: Debezium PostgreSQL Connector</h4>
+      <p>
+        The Debezium connector reads the PostgreSQL WAL and publishes change events to Kafka:
+      </p>
+      <pre><code>{
+  "name": "orders-postgres-source",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "shopstream-prod.abcdef.us-east-1.rds.amazonaws.com",
+    "database.port": "5432",
+    "database.user": "debezium_user",
+    "database.password": "${file:/secrets/db-password.txt:password}",
+    "database.dbname": "orders",
+    "database.server.name": "orders",
+    "table.include.list": "public.orders,public.customers,public.line_items,public.products",
+    "slot.name": "debezium_slot",
+    "publication.name": "debezium_publication",
+    "plugin.name": "pgoutput",
+    "snapshot.mode": "initial",
+    "snapshot.locking.mode": "none",
+    "heartbeat.interval.ms": "30000",
+    "decimal.handling.mode": "precise",
+    "time.precision.mode": "adaptive",
+    "tombstones.on.delete": "true",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite"
+  }
+}</code></pre>
+      <p>
+        <strong>Key Decisions:</strong>
+      </p>
+      <ul>
+        <li><code>snapshot.locking.mode: none</code> prevents holding locks during initial snapshot</li>
+        <li><code>plugin.name: pgoutput</code> uses PostgreSQL's native logical decoding (no external plugin needed)</li>
+        <li><code>tombstones.on.delete: true</code> ensures deletes are properly propagated</li>
+        <li>Avro with Schema Registry for type safety and schema evolution</li>
+      </ul>
+    </div>
+
+    <div class="component-detail">
+      <h4>3. Stream: Kafka (MSK)</h4>
+      <p>
+        They chose AWS Managed Streaming for Kafka (MSK) to reduce operational burden:
+      </p>
+      <ul>
+        <li><strong>Cluster Size:</strong> 3 brokers (m5.large) across 3 AZs</li>
+        <li><strong>Storage:</strong> 1TB EBS per broker (gp3)</li>
+        <li><strong>Topic Config:</strong> 
+          <ul>
+            <li>3 partitions per topic (orders volume: ~2K events/sec peak)</li>
+            <li>Replication factor: 3 (for durability)</li>
+            <li>Retention: 7 days (compliance requirement)</li>
+            <li>Compression: lz4 (balance of speed and ratio)</li>
+          </ul>
+        </li>
+      </ul>
+      <p>
+        <strong>Topic Naming Convention:</strong> <code>{database}.{schema}.{table}</code>
+        <br/>Example: <code>orders.public.orders</code>, <code>orders.public.customers</code>
+      </p>
+    </div>
+
+    <div class="component-detail">
+      <h4>4. Sink: Snowflake Connector</h4>
+      <p>
+        The Snowflake Sink connector consumes from Kafka and applies changes to Snowflake:
+      </p>
+      <pre><code>{
+  "name": "snowflake-sink",
+  "config": {
+    "connector.class": "com.snowflake.kafka.connector.SnowflakeSinkConnector",
+    "topics": "orders.public.orders,orders.public.customers,orders.public.line_items,orders.public.products",
+    "snowflake.url.name": "shopstream.snowflakecomputing.com",
+    "snowflake.user.name": "kafka_loader",
+    "snowflake.private.key": "${file:/secrets/snowflake-key.pem:key}",
+    "snowflake.database.name": "ANALYTICS",
+    "snowflake.schema.name": "ORDERS_CDC",
+    "snowflake.role.name": "KAFKA_LOADER_ROLE",
+    "buffer.count.records": "10000",
+    "buffer.size.bytes": "5000000",
+    "buffer.flush.time": "60",
+    "snowflake.metadata.createtime": "false",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "snowflake.enable.schematization": "true",
+    "snowflake.topic2table.map": "orders.public.orders:ORDERS,orders.public.customers:CUSTOMERS"
+  }
+}</code></pre>
+      <p>
+        <strong>How it works:</strong> The connector stages micro-batches to S3, then loads 
+        them into Snowflake using <code>COPY INTO</code>. Snowflake then uses a stored procedure 
+        to <code>MERGE</code> staged records into the target tables.
+      </p>
+    </div>
+
+    <div class="component-detail">
+      <h4>5. Transformation: Kafka Streams (Optional)</h4>
+      <p>
+        For real-time aggregations, they built a Kafka Streams application:
+      </p>
+      <pre><code>// Real-time revenue by category (5-minute tumbling window)
+KStream&lt;String, Order&gt; orders = builder.stream("orders.public.orders");
+KStream&lt;String, LineItem&gt; lineItems = builder.stream("orders.public.line_items");
+
+// Join orders with line items, aggregate by product category
+KTable&lt;Windowed&lt;String&gt;, RevenueMetric&gt; revenueByCategory = orders
+    .join(lineItems, 
+        (order, lineItem) -> new OrderLineItem(order, lineItem),
+        JoinWindows.of(Duration.ofMinutes(5)))
+    .groupBy((key, orderLineItem) -> orderLineItem.getCategory())
+    .windowedBy(TimeWindows.of(Duration.ofMinutes(5)))
+    .aggregate(
+        RevenueMetric::new,
+        (key, orderLineItem, agg) -> agg.add(orderLineItem.getTotal()),
+        Materialized.with(Serdes.String(), new RevenueMetricSerde())
+    );
+
+// Expose via interactive queries for dashboard API
+revenueByCategory.toStream()
+    .to("revenue-by-category-windowed", Produced.with(WindowedSerdes.timeWindowedSerdeFrom(String.class), new RevenueMetricSerde()));</code></pre>
+    </div>
+  </section>
+
+  <section id="implementation" class="case-study-section">
+    <h2>Part 4: Implementation Journey</h2>
+    
+    <h3>Phase 1: Proof of Concept (2 Weeks)</h3>
+    <p>
+      The team started with a minimal viable pipeline to validate the approach:
+    </p>
+    <ul>
+      <li><strong>Goal:</strong> Replicate a single table (<code>orders</code>) to Snowflake</li>
+      <li><strong>Environment:</strong> Staging database, single-node Kafka (Docker Compose)</li>
+      <li><strong>Success Criteria:</strong> 
+        <ul>
+          <li>Initial snapshot completes without locking production</li>
+          <li>Change events appear in Snowflake within 60 seconds</li>
+          <li>Schema change (ADD COLUMN) handled gracefully</li>
+        </ul>
+      </li>
+    </ul>
+    <p><strong>Outcome:</strong> ✅ POC successful. Latency achieved: <strong>15-30 seconds</strong> average.</p>
+
+    <h3>Phase 2: Production Infrastructure (4 Weeks)</h3>
+    <p>
+      With POC validated, they built production-grade infrastructure:
+    </p>
+    <div class="implementation-tasks">
+      <div class="task">
+        <strong>Week 1-2: Kafka Setup</strong>
+        <ul>
+          <li>Provision MSK cluster (3 brokers, m5.large)</li>
+          <li>Set up Schema Registry (Confluent Cloud)</li>
+          <li>Configure networking (VPC peering, security groups)</li>
+          <li>Deploy Kafka Connect cluster (3 workers on ECS Fargate)</li>
+        </ul>
+      </div>
+      <div class="task">
+        <strong>Week 3: Monitoring & Alerting</strong>
+        <ul>
+          <li>CloudWatch dashboards for lag, throughput, error rate</li>
+          <li>PagerDuty alerts for connector failures and high lag</li>
+          <li>Custom Lambda to check replication slot growth</li>
+          <li>Runbooks for common failure scenarios</li>
+        </ul>
+      </div>
+      <div class="task">
+        <strong>Week 4: Testing & Validation</strong>
+        <ul>
+          <li>Chaos engineering: kill connectors, brokers, restart Postgres</li>
+          <li>Load testing: simulate Black Friday traffic (10x normal load)</li>
+          <li>Data quality checks: row counts, checksums, schema validation</li>
+          <li>Failover drills: practice recovery procedures</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Phase 3: Gradual Migration (12 Weeks)</h3>
+    <p>
+      Rather than a "big bang" cutover, they migrated table-by-table:
+    </p>
+    <div class="migration-timeline">
+      <div class="migration-phase">
+        <h4>Week 1-2: Core Tables (orders, line_items)</h4>
+        <ul>
+          <li>Run CDC pipeline in parallel with legacy ETL</li>
+          <li>Compare row counts and aggregate metrics daily</li>
+          <li>Analysts query both systems to verify consistency</li>
+        </ul>
+        <p><strong>Result:</strong> 0.02% discrepancy (due to timezone handling), fixed with transform</p>
+      </div>
+      <div class="migration-phase">
+        <h4>Week 3-4: Customer Tables (customers, addresses)</h4>
+        <ul>
+          <li>Handle PII fields (added field-level encryption in Kafka)</li>
+          <li>Validate GDPR delete propagation (tombstones → Snowflake DELETEs)</li>
+        </ul>
+        <p><strong>Result:</strong> Successfully replicated, compliance team approved</p>
+      </div>
+      <div class="migration-phase">
+        <h4>Week 5-8: Product & Inventory (products, inventory_levels)</h4>
+        <ul>
+          <li>High update frequency (inventory changes every few seconds)</li>
+          <li>Enabled compaction on Kafka topics to reduce storage</li>
+          <li>Tuned buffer sizes to balance latency and throughput</li>
+        </ul>
+        <p><strong>Challenge:</strong> Initial config caused 2-minute lag spikes during peak hours</p>
+        <p><strong>Solution:</strong> Increased partition count from 3 to 6, reduced lag to &lt;30s</p>
+      </div>
+      <div class="migration-phase">
+        <h4>Week 9-12: Long-Tail Tables & Decommission Legacy ETL</h4>
+        <ul>
+          <li>Migrated remaining 15 low-volume tables</li>
+          <li>Updated all Tableau dashboards to query CDC-populated tables</li>
+          <li>Ran dual systems for 2 weeks as a safety net</li>
+          <li>Decommissioned legacy ETL cron jobs and EC2 instances</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Challenges Encountered</h3>
+    <div class="challenges">
+      <div class="challenge">
+        <h4>Challenge 1: Schema Evolution Gotcha</h4>
+        <p>
+          <strong>Incident:</strong> An engineer added a <code>NOT NULL</code> column to the 
+          <code>orders</code> table with a default value. Debezium events included the new column, 
+          but Snowflake's auto-create feature made it nullable. Downstream queries started failing 
+          on <code>NULL</code> values that shouldn't exist.
+        </p>
+        <p>
+          <strong>Solution:</strong> Implemented a pre-deployment check requiring schema changes 
+          to be coordinated with the data team. Added Snowflake table definitions to version control. 
+          Created a schema evolution guide (see <a href="/schema-evolution/">Schema Evolution module</a>).
+        </p>
+      </div>
+
+      <div class="challenge">
+        <h4>Challenge 2: Replication Slot Bloat</h4>
+        <p>
+          <strong>Incident:</strong> During a Kafka Connect maintenance window, the Debezium 
+          connector was offline for 3 hours. The PostgreSQL replication slot accumulated 45GB 
+          of WAL files, causing disk space alerts.
+        </p>
+        <p>
+          <strong>Solution:</strong> Set <code>wal_keep_size = 10GB</code> on RDS to limit retention. 
+          Implemented monitoring to alert if slot lag exceeds 5GB. Created a runbook for safely 
+          dropping and recreating slots when lag is unrecoverable.
+        </p>
+      </div>
+
+      <div class="challenge">
+        <h4>Challenge 3: Exactly-Once Semantics Confusion</h4>
+        <p>
+          <strong>Incident:</strong> After a Kafka broker failure and rebalance, some rows appeared 
+          duplicated in Snowflake. Investigation revealed the Snowflake connector's idempotency 
+          only works within a single file load, not across batches.
+        </p>
+        <p>
+          <strong>Solution:</strong> Implemented a post-load deduplication step using Snowflake's 
+          <code>QUALIFY ROW_NUMBER() OVER (PARTITION BY primary_key ORDER BY _metadata_load_time DESC) = 1</code> 
+          pattern. Documented the limitation and created views that abstract the deduplication logic 
+          (see <a href="/exactly-once/">Exactly-Once module</a> for detailed patterns).
+        </p>
+      </div>
+
+      <div class="challenge">
+        <h4>Challenge 4: Monitoring Blind Spots</h4>
+        <p>
+          <strong>Incident:</strong> A silent failure in the Snowflake sink connector went unnoticed 
+          for 6 hours. The connector showed "RUNNING" status, but wasn't actually committing offsets 
+          or loading data. The team only discovered the issue when analysts reported stale dashboards.
+        </p>
+        <p>
+          <strong>Solution:</strong> Added end-to-end freshness checks: a canary record written to 
+          Postgres every minute, with an alert if it doesn't appear in Snowflake within 5 minutes. 
+          Implemented a "data heartbeat" table that gets updated continuously. Documented in 
+          <a href="/observability/">Observability module</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="outcomes" class="case-study-section">
+    <h2>Part 5: Outcomes & Impact</h2>
+    
+    <h3>Quantified Results</h3>
+    <div class="metrics-grid">
+      <div class="metric-card metric-success">
+        <div class="metric-value">24h → 3min</div>
+        <div class="metric-label">Data Latency (P95)</div>
+        <div class="metric-detail">From nightly batch to near-real-time</div>
+      </div>
+
+      <div class="metric-card metric-success">
+        <div class="metric-value">-72%</div>
+        <div class="metric-label">Production DB Load</div>
+        <div class="metric-detail">Eliminated nightly full-table scans</div>
+      </div>
+
+      <div class="metric-card metric-success">
+        <div class="metric-value">99.8%</div>
+        <div class="metric-label">Pipeline Uptime</div>
+        <div class="metric-detail">vs 95% for legacy ETL (monthly avg)</div>
+      </div>
+
+      <div class="metric-card metric-neutral">
+        <div class="metric-value">$50K/mo</div>
+        <div class="metric-label">Infrastructure Cost</div>
+        <div class="metric-detail">vs $42K/mo for legacy ETL (net +$8K)</div>
+      </div>
+
+      <div class="metric-card metric-success">
+        <div class="metric-value">-40%</div>
+        <div class="metric-label">Data Engineering Toil</div>
+        <div class="metric-detail">Freed up 1.5 FTEs for new projects</div>
+      </div>
+
+      <div class="metric-card metric-success">
+        <div class="metric-value">18</div>
+        <div class="metric-label">New Real-Time Use Cases</div>
+        <div class="metric-detail">Built on Kafka in first 6 months</div>
+      </div>
+    </div>
+
+    <h3>Business Impact Stories</h3>
+    <div class="impact-stories">
+      <div class="story">
+        <h4>📈 Marketing: Real-Time Campaign Optimization</h4>
+        <p>
+          The marketing team can now see campaign performance in real-time. During a recent 
+          flash sale, they noticed one product category underperforming within 10 minutes of 
+          launch and quickly adjusted ad spend to better-performing categories. 
+          <strong>Result: 18% increase in ROAS for that campaign.</strong>
+        </p>
+      </div>
+
+      <div class="story">
+        <h4>🛍️ Customer Experience: Live Order Tracking</h4>
+        <p>
+          Customer support agents now have access to real-time order status. When a customer 
+          calls asking "Where's my order?", agents see the latest information immediately, 
+          not yesterday's snapshot. 
+          <strong>Result: 15% reduction in "where is my order" call volume.</strong>
+        </p>
+      </div>
+
+      <div class="story">
+        <h4>🔒 Fraud Prevention: Faster Detection</h4>
+        <p>
+          By streaming order events to a fraud detection model in real-time, the risk team 
+          can now flag suspicious patterns within seconds instead of hours. 
+          <strong>Result: Blocked 3 large fraudulent orders totaling $28K in the first month.</strong>
+        </p>
+      </div>
+
+      <div class="story">
+        <h4>📊 Analytics: Self-Service Data Access</h4>
+        <p>
+          With Kafka topics as a canonical event stream, product teams can now subscribe 
+          to relevant data without filing tickets to the data engineering team. 
+          <strong>Result: 60% reduction in "data request" tickets.</strong>
+        </p>
+      </div>
+    </div>
+
+    <h3>Lessons Learned</h3>
+    <div class="lessons">
+      <div class="lesson">
+        <h4>✅ Start Small, Prove Value</h4>
+        <p>
+          The POC was critical for building confidence. By demonstrating value with a single 
+          table before committing to full migration, they secured buy-in from skeptical stakeholders.
+        </p>
+      </div>
+
+      <div class="lesson">
+        <h4>✅ Invest in Observability Early</h4>
+        <p>
+          End-to-end monitoring (not just component-level metrics) prevented silent failures. 
+          The canary record pattern proved invaluable for catching subtle issues.
+        </p>
+      </div>
+
+      <div class="lesson">
+        <h4>✅ Runbooks Are Worth Their Weight</h4>
+        <p>
+          Documenting recovery procedures before incidents meant faster MTTR and less panic. 
+          They practiced failure scenarios monthly to keep skills sharp.
+        </p>
+      </div>
+
+      <div class="lesson">
+        <h4>⚠️ Don't Underestimate Schema Changes</h4>
+        <p>
+          Schema evolution was the most common source of production incidents. They eventually 
+          built automated schema compatibility checks into their CI/CD pipeline.
+        </p>
+      </div>
+
+      <div class="lesson">
+        <h4>⚠️ Exactly-Once Is Harder Than It Looks</h4>
+        <p>
+          "Exactly-once" guarantees have subtle edge cases. Understanding where guarantees 
+          apply (and where they don't) is critical. Idempotent consumers are still necessary.
+        </p>
+      </div>
+
+      <div class="lesson">
+        <h4>⚠️ Operational Complexity Is Real</h4>
+        <p>
+          Running Kafka required new skills and new on-call responsibilities. The team grew, 
+          and they hired a dedicated Kafka expert after 6 months. Budget accordingly.
+        </p>
+      </div>
+    </div>
+
+    <blockquote class="case-study-quote">
+      "CDC transformed how we think about data. We went from asking 'What happened yesterday?' 
+      to 'What's happening right now?' That mindset shift unlocked opportunities we hadn't 
+      even imagined when we started."
+      <cite>— Sarah Chen, VP of Data Engineering, ShopStream</cite>
+    </blockquote>
+  </section>
+
+  <section id="next-steps" class="case-study-section">
+    <h2>Part 6: What's Next for ShopStream</h2>
+    
+    <p>
+      With the CDC pipeline successfully deployed, ShopStream is now exploring advanced patterns:
+    </p>
+    <ul>
+      <li>
+        <strong>Event-Driven Microservices:</strong> Migrating their monolithic order service 
+        to microservices using the <a href="/exactly-once/">Transactional Outbox pattern</a>
+      </li>
+      <li>
+        <strong>Real-Time Personalization:</strong> Feeding customer behavior events into a 
+        feature store for ML-powered recommendations
+      </li>
+      <li>
+        <strong>Multi-Region Replication:</strong> Using CDC to replicate data to a new EU 
+        datacenter for GDPR compliance and lower latency
+      </li>
+      <li>
+        <strong>Data Mesh:</strong> Enabling domain teams to own their data products, with 
+        Kafka as the backbone for data sharing
+      </li>
+    </ul>
+  </section>
+
+  <section id="takeaways" class="case-study-section">
+    <h2>Key Takeaways</h2>
+    
+    <div class="takeaways-grid">
+      <div class="takeaway">
+        <h3>🎯 Business Value First</h3>
+        <p>
+          ShopStream didn't adopt CDC for technical elegance—they did it to solve real business 
+          problems. The Black Friday incident gave them a clear ROI story to tell leadership.
+        </p>
+      </div>
+
+      <div class="takeaway">
+        <h3>🔧 Right Tool for the Job</h3>
+        <p>
+          They chose Debezium despite higher complexity because it aligned with their strategic 
+          direction. For teams without Kafka skills or different constraints, Fivetran or DMS 
+          might be the better choice.
+        </p>
+      </div>
+
+      <div class="takeaway">
+        <h3>📈 Incremental Migration</h3>
+        <p>
+          Table-by-table migration reduced risk and allowed learning from each phase. Running 
+          dual systems briefly was worth the redundancy for peace of mind.
+        </p>
+      </div>
+
+      <div class="takeaway">
+        <h3>👀 Observability Is Non-Negotiable</h3>
+        <p>
+          End-to-end monitoring caught issues that component metrics missed. The canary record 
+          pattern and freshness checks were game-changers.
+        </p>
+      </div>
+
+      <div class="takeaway">
+        <h3>📚 Documentation & Training</h3>
+        <p>
+          Runbooks, schema evolution guides, and failure drills made the team resilient. 
+          Investing in knowledge sharing paid dividends when incidents occurred.
+        </p>
+      </div>
+
+      <div class="takeaway">
+        <h3>🚀 CDC as a Platform</h3>
+        <p>
+          The real win wasn't just replacing ETL—it was building an event streaming platform 
+          that enabled 18 new use cases in 6 months. Think of CDC as infrastructure, not a 
+          point solution.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="related" class="case-study-section">
+    <h2>Explore Related Topics</h2>
+    <p>
+      This case study referenced concepts from across the CDC curriculum. Dive deeper into 
+      the specific patterns and practices that made ShopStream's implementation successful:
+    </p>
+    <div class="related-links">
+      <a href="/intro/" class="related-card">
+        <h3>📚 Introduction to CDC</h3>
+        <p>Core concepts and terminology referenced throughout this case study</p>
+      </a>
+      <a href="/snapshotting/" class="related-card">
+        <h3>📸 Snapshotting</h3>
+        <p>How ShopStream handled the initial historical data load</p>
+      </a>
+      <a href="/schema-evolution/" class="related-card">
+        <h3>🔄 Schema Evolution</h3>
+        <p>Handling ADD COLUMN and schema changes gracefully</p>
+      </a>
+      <a href="/exactly-once/" class="related-card">
+        <h3>✅ Exactly-Once Semantics</h3>
+        <p>Understanding idempotency and the Transactional Outbox pattern</p>
+      </a>
+      <a href="/observability/" class="related-card">
+        <h3>👁️ Observability</h3>
+        <p>Monitoring patterns including the canary record strategy</p>
+      </a>
+      <a href="/tooling/" class="related-card">
+        <h3>🛠️ CDC Tooling</h3>
+        <p>Detailed comparison of Debezium, Fivetran, DMS, and other tools</p>
+      </a>
+      <a href="/use-cases/" class="related-card">
+        <h3>💡 Real-World Use Cases</h3>
+        <p>More examples of CDC applications across industries</p>
+      </a>
+      <a href="/lab-kafka-debezium/" class="related-card">
+        <h3>🧪 Hands-On Lab</h3>
+        <p>Try building a CDC pipeline yourself with guided exercises</p>
+      </a>
+    </div>
+  </section>
+</article>
+
+{% set seriesKey = 'case-study' %}
+{% include "components/series-nav.njk" %}

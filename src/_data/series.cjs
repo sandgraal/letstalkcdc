@@ -101,6 +101,16 @@ module.exports = [
     tags: [ { label: 'Tooling', variant: 'tag-tooling' } ]
   },
   {
+    key: 'case-study',
+    title: 'Real-World Case Study',
+    description: 'Follow a mid-sized e-commerce company\'s journey from batch ETL to real-time CDC, including architecture decisions, implementation challenges, and business outcomes.',
+    href: '/case-study/',
+    ctaLabel: 'Read the Case Study',
+    isRecommended: true,
+    badge: { label: 'Featured', variant: 'recommended' },
+    tags: [ { label: 'Strategy', variant: 'tag-strategy' } ]
+  },
+  {
     key: 'lab-kafka-debezium',
     title: 'Hands-On Lab: Kafka + Debezium + Sinks',
     description: 'Stand up Kafka, Connect, Postgres source & sink with guided copy-paste commands. Includes upsert patterns and schema evolution.',
