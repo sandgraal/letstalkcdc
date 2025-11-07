@@ -29,6 +29,7 @@
     <meta name="theme-color" content="#0f172a">
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
     <link rel="stylesheet" href="{{ '/assets/css/styles.min.css' | url }}">
+    <link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}">
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -215,6 +216,8 @@
     <script type="module" src="{{ '/scripts/dashboard.js' | url }}"></script>
     <script type="module" src="{{ '/assets/js/app.js' | url }}"></script>
     <script type="module" src="{{ '/assets/js/progress-ui.js' | url }}"></script>
+    <script type="module" src="{{ '/assets/js/auth-ui.js' | url }}"></script>
+    <script type="module" src="{{ '/assets/js/cloud-progress.js' | url }}"></script>
     {% if scripts %}
       {% for script in scripts %}
         <script type="module" src="{{ script | url }}"></script>
