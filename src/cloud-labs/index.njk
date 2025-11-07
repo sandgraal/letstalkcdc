@@ -86,6 +86,22 @@ ai-generated: true
       </svg>
     </a>
 
+    <a class="qs-card" href="/cloud-labs/goldengate/">
+      <div>
+        <h2>Oracle GoldenGate</h2>
+        <p>
+          Enterprise-grade CDC with bidirectional replication, guaranteed delivery, and conflict resolution. Supports heterogeneous replication across Oracle, MySQL, PostgreSQL, and SQL Server.
+        </p>
+        <ul class="card-features">
+          <li>✓ Active-active replication</li>
+          <li>✓ Guaranteed delivery</li>
+          <li>✓ Heterogeneous databases</li>
+        </ul>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v20M2 12h20"/>
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 6v12M6 12h12"/>
     <a class="qs-card" href="/cloud-labs/fivetran/">
       <div>
         <h2>Fivetran</h2>
@@ -115,6 +131,7 @@ ai-generated: true
           <th>AWS DMS</th>
           <th>Snowflake</th>
           <th>Matillion</th>
+          <th>GoldenGate</th>
           <th>Fivetran</th>
           <th>Debezium</th>
         </tr>
@@ -125,6 +142,7 @@ ai-generated: true
           <td>Fully managed</td>
           <td>Fully managed</td>
           <td>EC2/VM instance</td>
+          <td>Self-hosted or OCI</td>
           <td>SaaS (zero infra)</td>
           <td>Self-hosted</td>
         </tr>
@@ -135,6 +153,7 @@ ai-generated: true
           <td>Timestamp/hash</td>
           <td>Log-based + polling</td>
           <td>Log-based</td>
+          <td>Log-based</td>
         </tr>
         <tr>
           <td><strong>Latency</strong></td>
@@ -143,12 +162,14 @@ ai-generated: true
           <td>Minutes</td>
           <td>1-5 minutes</td>
           <td>Sub-second</td>
+          <td>Sub-second</td>
         </tr>
         <tr>
           <td><strong>Targets</strong></td>
           <td>AWS services</td>
           <td>Snowflake only</td>
           <td>DW platforms</td>
+          <td>Heterogeneous DBs</td>
           <td>500+ destinations</td>
           <td>Any (via Kafka)</td>
         </tr>
@@ -159,6 +180,7 @@ ai-generated: true
           <td>2-4 hours</td>
           <td>15-30 minutes</td>
           <td>4-8 hours</td>
+          <td>4-8 hours</td>
         </tr>
         <tr>
           <td><strong>Complexity</strong></td>
@@ -167,12 +189,14 @@ ai-generated: true
           <td>Low</td>
           <td>Very Low</td>
           <td>High</td>
+          <td>High</td>
         </tr>
         <tr>
           <td><strong>Cost (monthly)</strong></td>
           <td>$26-500+</td>
           <td>$50-1000+</td>
           <td>$500-2000+</td>
+          <td>$365-730+ (OCI)</td>
           <td>$500-5000+</td>
           <td>$100-500</td>
         </tr>
@@ -181,6 +205,7 @@ ai-generated: true
           <td>AWS-native stacks</td>
           <td>Analytics workloads</td>
           <td>Business users</td>
+          <td>Enterprise Oracle</td>
           <td>Rapid setup, SaaS-first</td>
           <td>Event-driven apps</td>
         </tr>
@@ -226,6 +251,13 @@ ai-generated: true
       </div>
 
       <div class="guide-card">
+        <h3>Choose GoldenGate if you:</h3>
+        <ul>
+          <li>Have Oracle Database licenses or OCI subscription</li>
+          <li>Need bidirectional (active-active) replication</li>
+          <li>Require guaranteed delivery and conflict resolution</li>
+          <li>Zero-downtime migrations are critical</li>
+          <li>Heterogeneous replication (Oracle↔MySQL↔PostgreSQL)</li>
         <h3>Choose Fivetran if you:</h3>
         <ul>
           <li>Want zero infrastructure management</li>

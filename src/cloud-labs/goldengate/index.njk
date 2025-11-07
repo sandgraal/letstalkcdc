@@ -1,0 +1,823 @@
+---
+layout: base.njk
+title: "Oracle GoldenGate CDC Lab | CDC: The Missing Manual"
+description: "Step-by-step guide to implementing enterprise CDC with Oracle GoldenGate. Learn extract, replicat, trail files, conflict resolution, and bidirectional replication."
+canonicalPath: "/cloud-labs/goldengate/"
+ai-generated: true
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section class="box" id="overview">
+    <h2>Overview</h2>
+    <p>
+      Oracle GoldenGate (OGG) is an enterprise-grade, real-time data integration and replication platform that has been the gold standard for mission-critical CDC workloads for over two decades. Unlike open-source solutions, GoldenGate provides guaranteed delivery, active-active replication, and sophisticated conflict detection and resolution.
+    </p>
+    <p>
+      <strong>Key differences from Debezium and AWS DMS:</strong>
+    </p>
+    <ul>
+      <li><strong>Guaranteed Delivery:</strong> Transaction integrity with exactly-once semantics across complex topologies</li>
+      <li><strong>Bidirectional Replication:</strong> Active-active configurations with automatic conflict detection and resolution</li>
+      <li><strong>Heterogeneous Support:</strong> Replicate between different database platforms (Oracle to PostgreSQL, MySQL to SQL Server, etc.)</li>
+      <li><strong>Trail File Architecture:</strong> Persistent, replayable change logs for disaster recovery and data auditing</li>
+      <li><strong>Enterprise Features:</strong> Compression, encryption, data transformation, filtering, and mapping capabilities</li>
+      <li><strong>Zero Downtime:</strong> Database migrations and upgrades without application interruption</li>
+      <li><strong>Commercial Support:</strong> 24/7 Oracle support with SLAs and consulting services</li>
+    </ul>
+    <p>
+      <strong>Trade-offs:</strong> GoldenGate requires commercial licensing (starting at $17,500 per processor), has a steeper learning curve with proprietary configuration syntax, and typically requires dedicated infrastructure and DBA expertise.
+    </p>
+  </section>
+
+  <section class="box" id="prereqs">
+    <h2>Prerequisites</h2>
+    <ul class="checklist">
+      <li><strong>Oracle GoldenGate License:</strong> Commercial license or Oracle Cloud GoldenGate service subscription</li>
+      <li><strong>Source Database:</strong> Oracle Database 11g or later (XE edition works for testing)</li>
+      <li><strong>Target Database:</strong> Oracle, PostgreSQL, MySQL, SQL Server, or any supported target</li>
+      <li><strong>Operating System:</strong> Linux (RHEL/OEL/Ubuntu), Windows, or Solaris</li>
+      <li><strong>Disk Space:</strong> Minimum 10GB for trail files and GoldenGate binaries</li>
+      <li><strong>Network:</strong> Stable connection between source and target (Manager port 7809 by default)</li>
+      <li><strong>Database Privileges:</strong> DBA-level access for setting up supplemental logging and GoldenGate users</li>
+    </ul>
+    <div class="callout callout-info">
+      <h4>💡 Free Testing Options</h4>
+      <p>
+        <strong>Option 1:</strong> Oracle GoldenGate Free edition (limited to Oracle Database XE, max 4GB database size)<br>
+        <strong>Option 2:</strong> Oracle Cloud Free Tier includes GoldenGate service for 30 days<br>
+        <strong>Option 3:</strong> Download GoldenGate trial from Oracle Technology Network (OTN) - 30 days evaluation
+      </p>
+    </div>
+  </section>
+
+  <section class="box" id="architecture">
+    <h2>Architecture</h2>
+    <p>GoldenGate uses a distributed architecture with multiple specialized processes:</p>
+    
+    <pre><code>SOURCE SYSTEM                     TARGET SYSTEM
+┌─────────────────────┐           ┌─────────────────────┐
+│  Oracle Database    │           │  Target Database    │
+│                     │           │  (Oracle/PG/MySQL)  │
+│  ┌──────────────┐   │           │   ┌──────────────┐  │
+│  │ Redo Logs    │   │           │   │ Target Tables│  │
+│  └──────┬───────┘   │           │   └──────▲───────┘  │
+│         │           │           │          │          │
+│         ▼           │           │          │          │
+│  ┌──────────────┐   │           │   ┌──────────────┐  │
+│  │   EXTRACT    │───┼──────┐    │   │   REPLICAT   │  │
+│  │  (Capture)   │   │      │    │   │   (Apply)    │  │
+│  └──────┬───────┘   │      │    │   └──────▲───────┘  │
+│         │           │      │    │          │          │
+│         ▼           │      │    │          │          │
+│  ┌──────────────┐   │      │    │   ┌──────────────┐  │
+│  │  Trail File  │   │      │    │   │  Trail File  │  │
+│  │  (Local)     │   │      │    │   │  (Remote)    │  │
+│  └──────┬───────┘   │      │    │   └──────▲───────┘  │
+│         │           │      │    │          │          │
+│         ▼           │      │    │          │          │
+│  ┌──────────────┐   │      │    │   ┌──────────────┐  │
+│  │  DATA PUMP   │───┼──────┼────┼──▶│   SERVER     │  │
+│  │  (Transfer)  │   │      │    │   │  (Receive)   │  │
+│  └──────────────┘   │      │    │   └──────────────┘  │
+│                     │      │    │                     │
+│  ┌──────────────┐   │      │    │   ┌──────────────┐  │
+│  │   MANAGER    │◀──┼──────┴────┼──▶│   MANAGER    │  │
+│  │ (Port 7809)  │   │           │   │ (Port 7809)  │  │
+│  └──────────────┘   │           │   └──────────────┘  │
+└─────────────────────┘           └─────────────────────┘
+                Network Connection</code></pre>
+
+    <h3>Component Descriptions</h3>
+    <dl>
+      <dt><strong>Extract Process</strong></dt>
+      <dd>Reads transaction logs (redo logs for Oracle, binlog for MySQL) and captures DML and DDL operations. Writes captured data to local trail files in GoldenGate's proprietary format.</dd>
+      
+      <dt><strong>Trail Files</strong></dt>
+      <dd>Persistent, sequential files storing change data. Local trails store data on source system; remote trails store data on target system after network transfer. Trail files are versioned (e.g., <code>./dirdat/aa000001</code>, <code>aa000002</code>).</dd>
+      
+      <dt><strong>Data Pump (Optional)</strong></dt>
+      <dd>Secondary extract process that reads local trail files and sends data over network to remote system. Provides network-level buffering and compression. Can be omitted for simple configurations where Extract and Replicat are on the same network with low latency.</dd>
+      
+      <dt><strong>Replicat Process</strong></dt>
+      <dd>Reads remote trail files and applies transactions to target database. Handles data type conversions, filtering, transformation, and conflict detection. Supports parallel apply for high throughput.</dd>
+      
+      <dt><strong>Manager Process</strong></dt>
+      <dd>Control process that starts/stops other processes, allocates disk space for trail files, monitors process health, and handles network communication. Must be running on both source and target systems.</dd>
+      
+      <dt><strong>Collector (Server)</strong></dt>
+      <dd>Receiver process on target system that accepts data from Data Pump and writes to remote trail files. Started automatically by Manager when Data Pump connects.</dd>
+    </dl>
+  </section>
+
+  <section class="box" id="setup">
+    <h2>Lab Setup</h2>
+    
+    <h3>Step 1: Install Oracle GoldenGate</h3>
+    <p>
+      Download GoldenGate from Oracle Technology Network or Oracle Cloud. This example uses Oracle GoldenGate 21c for Oracle Database.
+    </p>
+    <pre><code># Extract GoldenGate binaries
+unzip 211000_fbo_ggs_Linux_x64_Oracle_shiphome.zip
+cd fbo_ggs_Linux_x64_Oracle_shiphome/Disk1
+
+# Run installer (GUI mode)
+./runInstaller
+
+# Or use silent installation
+./runInstaller -silent \
+  -responseFile /path/to/oggcore.rsp \
+  ORACLE_HOME=/u01/app/oracle/product/21.0.0/oggcore \
+  INSTALL_OPTION=ORA19c
+
+# Set environment variables
+export OGG_HOME=/u01/app/oracle/product/21.0.0/oggcore
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$OGG_HOME/lib
+export PATH=$OGG_HOME:$PATH</code></pre>
+
+    <h3>Step 2: Create GoldenGate Subdirectories</h3>
+    <pre><code># Navigate to GoldenGate home
+cd $OGG_HOME
+
+# Create required directories using GGSCI
+./ggsci
+
+GGSCI> CREATE SUBDIRS
+
+# This creates:
+# ./dirprm  - Parameter files
+# ./dirdat  - Trail files (local and remote)
+# ./dirchk  - Checkpoint files
+# ./dirdmp  - Dump files for troubleshooting
+# ./dirpcs  - Process status files
+# ./dirrpt  - Report files
+# ./dirwlt  - Wallet files for encryption
+# ./dirdef  - Data definition files
+
+GGSCI> EXIT</code></pre>
+
+    <h3>Step 3: Configure Source Database (Oracle)</h3>
+    <p>
+      Enable supplemental logging to capture before/after images of changed rows.
+    </p>
+    <pre><code>-- Connect as SYSDBA
+sqlplus / as sysdba
+
+-- Enable archive log mode (required for mining redo logs)
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER DATABASE ARCHIVELOG;
+ALTER DATABASE OPEN;
+
+-- Enable minimal supplemental logging
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+
+-- Enable force logging (recommended for production)
+ALTER DATABASE FORCE LOGGING;
+
+-- Verify settings
+SELECT LOG_MODE, SUPPLEMENTAL_LOG_DATA_MIN, FORCE_LOGGING 
+FROM V$DATABASE;
+-- Should show: ARCHIVELOG, YES, YES
+
+-- Create GoldenGate administrative user
+CREATE TABLESPACE ggadmin_tbs 
+DATAFILE '/u01/oradata/ORCL/ggadmin01.dbf' 
+SIZE 500M AUTOEXTEND ON;
+
+CREATE USER ggadmin IDENTIFIED BY "YOUR_SECURE_PASSWORD"
+DEFAULT TABLESPACE ggadmin_tbs
+QUOTA UNLIMITED ON ggadmin_tbs;
+
+-- Grant required privileges
+GRANT CREATE SESSION TO ggadmin;
+GRANT ALTER SESSION TO ggadmin;
+GRANT CONNECT TO ggadmin;
+GRANT RESOURCE TO ggadmin;
+GRANT SELECT ANY DICTIONARY TO ggadmin;
+GRANT FLASHBACK ANY TABLE TO ggadmin;
+GRANT SELECT ANY TABLE TO ggadmin;
+GRANT INSERT ANY TABLE TO ggadmin;
+GRANT UPDATE ANY TABLE TO ggadmin;
+GRANT DELETE ANY TABLE TO ggadmin;
+GRANT ALTER ANY TABLE TO ggadmin;
+GRANT LOCK ANY TABLE TO ggadmin;
+
+-- For Oracle 12c+ with PDBs, grant across CDB
+GRANT DBA TO ggadmin CONTAINER=ALL;
+
+-- Enable supplemental logging for specific schemas/tables
+ALTER TABLE hr.employees ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+ALTER TABLE hr.departments ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;</code></pre>
+
+    <h3>Step 4: Configure Manager Process</h3>
+    <p>Create parameter file <code>$OGG_HOME/dirprm/mgr.prm</code> on both source and target systems:</p>
+    <pre><code>-- Manager parameter file (mgr.prm)
+PORT 7809
+DYNAMICPORTLIST 7810-7820
+AUTOSTART ER *
+AUTORESTART ER *, RETRIES 3, WAITMINUTES 2
+PURGEOLDEXTRACTS ./dirdat/*, USECHECKPOINTS, MINKEEPDAYS 7
+LAGREPORTHOURS 1
+LAGINFOMINUTES 30
+LAGCRITICALMINUTES 60</code></pre>
+
+    <p>Start Manager:</p>
+    <pre><code>cd $OGG_HOME
+./ggsci
+
+GGSCI> START MANAGER
+GGSCI> INFO MANAGER
+-- Should show: Manager is running
+
+GGSCI> EXIT</code></pre>
+
+    <h3>Step 5: Configure Extract Process</h3>
+    <p>Create parameter file <code>$OGG_HOME/dirprm/ext1.prm</code> on the source system:</p>
+    <pre><code>-- Extract parameter file (ext1.prm)
+EXTRACT ext1
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+EXTTRAIL ./dirdat/aa
+DISCARDFILE ./dirrpt/ext1.dsc, PURGE
+WARNLONGTRANS 2h, CHECKINTERVAL 30m
+FETCHOPTIONS FETCHPKUPDATECOLS, USELATESTVERSION
+
+-- DDL support (optional)
+DDL INCLUDE MAPPED
+
+-- Table mappings with filtering
+TABLE hr.employees, SQLPREDICATE (department_id IN (10, 20, 30));
+TABLE hr.departments;
+TABLE hr.job_history;</code></pre>
+
+    <p>Register Extract with the database (for Integrated Extract mode - recommended for Oracle 11g+):</p>
+    <pre><code>./ggsci
+
+GGSCI> DBLOGIN USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+
+-- Register Extract with LogMiner server
+GGSCI> REGISTER EXTRACT ext1 DATABASE
+
+-- Add Extract
+GGSCI> ADD EXTRACT ext1, INTEGRATED TRANLOG, BEGIN NOW
+
+-- Add local trail file
+GGSCI> ADD EXTTRAIL ./dirdat/aa, EXTRACT ext1, MEGABYTES 500
+
+-- Start Extract
+GGSCI> START EXTRACT ext1
+
+-- Verify status
+GGSCI> INFO EXTRACT ext1, DETAIL
+
+GGSCI> EXIT</code></pre>
+
+    <h3>Step 6: Configure Data Pump (Optional but Recommended)</h3>
+    <p>Create parameter file <code>$OGG_HOME/dirprm/dpump1.prm</code> on the source system:</p>
+    <pre><code>-- Data Pump parameter file (dpump1.prm)
+EXTRACT dpump1
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+RMTHOST target-hostname, MGRPORT 7809, COMPRESS
+RMTTRAIL ./dirdat/bb
+PASSTHRU
+
+-- Source trail that Data Pump reads from
+TABLE hr.employees;
+TABLE hr.departments;
+TABLE hr.job_history;</code></pre>
+
+    <pre><code>./ggsci
+
+-- Add Data Pump process
+GGSCI> ADD EXTRACT dpump1, EXTTRAILSOURCE ./dirdat/aa
+
+-- Add remote trail on target
+GGSCI> ADD RMTTRAIL ./dirdat/bb, EXTRACT dpump1, MEGABYTES 500
+
+-- Start Data Pump
+GGSCI> START EXTRACT dpump1
+
+-- Verify
+GGSCI> INFO EXTRACT dpump1
+
+GGSCI> EXIT</code></pre>
+
+    <h3>Step 7: Configure Target Database</h3>
+    <p>On target system (can be different database type):</p>
+    <pre><code>-- For Oracle target
+sqlplus / as sysdba
+
+CREATE USER ggadmin IDENTIFIED BY "YOUR_SECURE_PASSWORD";
+GRANT CONNECT, RESOURCE, DBA TO ggadmin;
+
+-- Create target schema if it doesn't exist
+CREATE USER hr IDENTIFIED BY "YOUR_SECURE_PASSWORD";
+GRANT CONNECT, RESOURCE TO hr;
+GRANT UNLIMITED TABLESPACE TO hr;
+
+-- Create target tables (schema should match source or use COLMAP)
+-- Can use DDL replication or create manually</code></pre>
+
+    <h3>Step 8: Configure Replicat Process</h3>
+    <p>Create parameter file <code>$OGG_HOME/dirprm/rep1.prm</code> on the target system:</p>
+    <pre><code>-- Replicat parameter file (rep1.prm)
+REPLICAT rep1
+ASSUMETARGETDEFS
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+DISCARDFILE ./dirrpt/rep1.dsc, PURGE
+REPERROR (DEFAULT, DISCARD)
+
+-- Map source tables to target tables
+-- Can rename schemas/tables or transform data
+MAP hr.employees, TARGET hr.employees, &
+  COLMAP (USEDEFAULTS, &
+    salary = salary * 1.1, &
+    updated_at = @DATENOW());
+
+MAP hr.departments, TARGET hr.departments;
+MAP hr.job_history, TARGET hr.job_history;</code></pre>
+
+    <pre><code>./ggsci
+
+GGSCI> DBLOGIN USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+
+-- Add Replicat
+GGSCI> ADD REPLICAT rep1, EXTTRAIL ./dirdat/bb, BEGIN NOW
+
+-- Start Replicat
+GGSCI> START REPLICAT rep1
+
+-- Verify
+GGSCI> INFO REPLICAT rep1, DETAIL
+
+-- Check lag (should be minimal)
+GGSCI> LAG REPLICAT rep1
+
+GGSCI> EXIT</code></pre>
+  </section>
+
+  <section class="box" id="verify">
+    <h2>Verification</h2>
+    
+    <h3>1. Generate Test Data on Source</h3>
+    <pre><code>-- Connect to source database
+sqlplus hr/password@source_db
+
+-- Insert records
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, department_id)
+VALUES (1001, 'John', 'Doe', 'john.doe@example.com', SYSDATE, 'IT_PROG', 60);
+
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, department_id)
+VALUES (1002, 'Jane', 'Smith', 'jane.smith@example.com', SYSDATE, 'SA_REP', 80);
+
+COMMIT;
+
+-- Update record
+UPDATE employees SET salary = 75000 WHERE employee_id = 1001;
+COMMIT;
+
+-- Delete record
+DELETE FROM employees WHERE employee_id = 1002;
+COMMIT;</code></pre>
+
+    <h3>2. Verify Replication on Target</h3>
+    <pre><code>-- Connect to target database
+sqlplus hr/password@target_db
+
+-- Check if changes were replicated
+SELECT employee_id, first_name, last_name, salary 
+FROM employees 
+WHERE employee_id IN (1001, 1002);
+
+-- Should show employee 1001 with updated salary
+-- Employee 1002 should be deleted</code></pre>
+
+    <h3>3. Monitor GoldenGate Processes</h3>
+    <pre><code>./ggsci
+
+-- Check all processes
+GGSCI> INFO ALL
+
+-- Detailed status for specific process
+GGSCI> INFO EXTRACT ext1, DETAIL
+GGSCI> INFO EXTRACT dpump1, DETAIL
+GGSCI> INFO REPLICAT rep1, DETAIL
+
+-- Check lag (time difference between capture and apply)
+GGSCI> LAG EXTRACT ext1
+GGSCI> LAG REPLICAT rep1
+
+-- View statistics
+GGSCI> STATS EXTRACT ext1, TOTAL
+GGSCI> STATS REPLICAT rep1, TOTAL
+
+-- Check for errors
+GGSCI> VIEW REPORT ext1
+GGSCI> VIEW REPORT rep1
+
+GGSCI> EXIT</code></pre>
+
+    <h3>4. Monitor Trail Files</h3>
+    <pre><code># Check trail file sizes and sequence
+cd $OGG_HOME/dirdat
+ls -lh aa* bb*
+
+# View trail file contents
+cd $OGG_HOME
+./ggsci
+
+GGSCI> OBEY ./dirprm/logdump.prm
+
+# Or use logdump utility directly
+./logdump
+
+LOGDUMP> OPEN ./dirdat/aa000001
+LOGDUMP> GHDR ON
+LOGDUMP> DETAIL ON
+LOGDUMP> USERTOKEN ON
+LOGDUMP> NEXT 10
+-- Shows next 10 transactions
+
+LOGDUMP> EXIT</code></pre>
+
+    <h3>5. Check Database Statistics</h3>
+    <pre><code>-- Source database
+SELECT * FROM dba_capture WHERE capture_name LIKE '%EXT1%';
+
+-- Verify redo log generation
+SELECT name, value FROM v$sysstat 
+WHERE name LIKE '%redo%';
+
+-- Check GoldenGate heartbeat table (if configured)
+SELECT * FROM ggadmin.gg_heartbeat ORDER BY hb_timestamp DESC;</code></pre>
+  </section>
+
+  <section class="box" id="gotchas">
+    <h2>Vendor-Specific Gotchas</h2>
+    
+    <h3>⚠️ Common Issues and Solutions</h3>
+    
+    <div class="callout callout-warning">
+      <h4>1. OGG-00868: Cannot determine archive log location</h4>
+      <p>
+        <strong>Issue:</strong> Extract fails to start with "Cannot determine archive log location" error.
+      </p>
+      <p>
+        <strong>Solution:</strong> Ensure database is in ARCHIVELOG mode and LOG_ARCHIVE_DEST is set:
+      </p>
+      <pre><code>ALTER SYSTEM SET LOG_ARCHIVE_DEST_1='LOCATION=/u01/app/oracle/oradata/arch' SCOPE=BOTH;
+ALTER DATABASE ARCHIVELOG;
+-- Restart database
+SHUTDOWN IMMEDIATE;
+STARTUP;</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>2. OGG-01163: Bad column length</h4>
+      <p>
+        <strong>Issue:</strong> Replicat fails with "Bad column length" when replicating VARCHAR2(4000) columns.
+      </p>
+      <p>
+        <strong>Solution:</strong> Use DEFGEN utility to generate source definitions for target:
+      </p>
+      <pre><code>./defgen PARAMFILE dirprm/defgen.prm
+
+# defgen.prm contents:
+DEFSFILE ./dirdef/hr.def
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+TABLE hr.*;</code></pre>
+      <p>Then update Replicat parameter file:</p>
+      <pre><code>REPLICAT rep1
+SOURCEDEFS ./dirdef/hr.def
+-- rest of parameters</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>3. Extract Lag Increasing</h4>
+      <p>
+        <strong>Issue:</strong> Extract lag keeps growing, indicating Extract cannot keep up with transaction volume.
+      </p>
+      <p>
+        <strong>Solution:</strong> Tune Extract performance:
+      </p>
+      <pre><code>-- Add to ext1.prm
+TRANLOGOPTIONS INTEGRATEDPARAMS (MAX_SGA_SIZE 1024)
+BR_CHECKPOINT_INTERVAL 10
+-- Increase trail file size
+ADD EXTTRAIL ./dirdat/aa, EXTRACT ext1, MEGABYTES 1000</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>4. OGG-01668: Replicat REPERROR Table Not Found</h4>
+      <p>
+        <strong>Issue:</strong> Replicat stops when encountering table mapping errors.
+      </p>
+      <p>
+        <strong>Solution:</strong> Use HANDLECOLLISIONS during initial load, then remove:
+      </p>
+      <pre><code>-- For initial synchronization only
+REPLICAT rep1
+HANDLECOLLISIONS
+MAP hr.employees, TARGET hr.employees;
+
+-- After initial load, edit parameter file to remove HANDLECOLLISIONS
+-- and restart Replicat</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>5. Trail File Disk Space Exhaustion</h4>
+      <p>
+        <strong>Issue:</strong> Trail files fill up disk space, causing Extract to abend.
+      </p>
+      <p>
+        <strong>Solution:</strong> Configure automatic trail file purging in mgr.prm:
+      </p>
+      <pre><code>PORT 7809
+PURGEOLDEXTRACTS ./dirdat/*, USECHECKPOINTS, MINKEEPDAYS 2
+-- Keeps trail files for 2 days after checkpoint passes them</code></pre>
+    </div>
+
+    <div class="callout callout-info">
+      <h4>6. Conflict Detection and Resolution</h4>
+      <p>
+        For bidirectional (active-active) replication, use built-in conflict detection:
+      </p>
+      <pre><code>-- In Replicat parameter file
+REPLICAT rep1
+-- Use timestamps for conflict detection
+RESOLVECONFLICT (UPDATEROWEXISTS, (DEFAULT, USEMAX(updated_at)))
+RESOLVECONFLICT (INSERTROWEXISTS, (DEFAULT, OVERWRITE))
+RESOLVECONFLICT (DELETEROWMISSING, (DEFAULT, IGNORE))
+MAP hr.employees, TARGET hr.employees;</code></pre>
+    </div>
+
+    <div class="callout callout-info">
+      <h4>7. Performance Tuning: Parallel Replicat</h4>
+      <p>
+        For high-volume workloads, use Coordinated Replicat (parallel apply):
+      </p>
+      <pre><code>-- Add coordinated Replicat
+GGSCI> ADD REPLICAT rep1, COORDINATED, EXTTRAIL ./dirdat/bb, BEGIN NOW
+
+-- Parameter file with parallel threads
+REPLICAT rep1
+USERID ggadmin, PASSWORD YOUR_SECURE_PASSWORD
+MAP hr.*, TARGET hr.*, THREAD(4);
+-- Uses 4 parallel threads for apply</code></pre>
+    </div>
+
+    <div class="callout callout-warning">
+      <h4>8. OGG-01403: Max Cascade Depth Reached</h4>
+      <p>
+        <strong>Issue:</strong> Replication loop detected in multi-tier replication topology.
+      </p>
+      <p>
+        <strong>Solution:</strong> Use TRANLOGOPTIONS EXCLUDETAG to prevent loops:
+      </p>
+      <pre><code>-- On intermediate Extract
+EXTRACT ext_middle
+TRANLOGOPTIONS EXCLUDETAG 00
+-- rest of parameters</code></pre>
+    </div>
+  </section>
+
+  <section class="box" id="advanced">
+    <h2>Advanced Features</h2>
+    
+    <h3>Data Transformation and Filtering</h3>
+    <p>GoldenGate supports complex transformations using built-in functions:</p>
+    <pre><code>-- Column mapping with transformations
+MAP hr.employees, TARGET dwh.dim_employees, &
+  COLMAP (USEDEFAULTS, &
+    full_name = @STRCAT(first_name, ' ', last_name), &
+    salary_usd = salary * 1.0, &
+    etl_insert_date = @DATENOW(), &
+    is_active = 1);
+
+-- Row filtering with WHERE clause
+MAP hr.employees, TARGET hr.employees, &
+  WHERE (department_id IN (10, 20, 30) AND salary > 50000);
+
+-- Column filtering
+MAP hr.employees, TARGET hr.employees_light, &
+  COLMAP (employee_id, first_name, last_name, email);</code></pre>
+
+    <h3>DDL Replication</h3>
+    <p>Replicate schema changes automatically:</p>
+    <pre><code>-- Enable DDL capture (source)
+EXTRACT ext1
+DDL INCLUDE MAPPED OBJTYPE 'TABLE'
+DDL INCLUDE MAPPED OPTYPE CREATE, ALTER, DROP
+
+-- Enable DDL apply (target)
+REPLICAT rep1
+DDL INCLUDE MAPPED</code></pre>
+
+    <h3>Encryption and Compression</h3>
+    <pre><code>-- Encrypt trail files
+EXTRACT ext1
+ENCRYPTTRAIL AES256, KEYNAME master_key
+
+-- Compress network traffic
+EXTRACT dpump1
+RMTHOST target-host, MGRPORT 7809, COMPRESS</code></pre>
+
+    <h3>Monitoring and Alerting</h3>
+    <pre><code>-- Create heartbeat table for monitoring
+CREATE TABLE ggadmin.gg_heartbeat (
+  hb_timestamp TIMESTAMP,
+  lag_seconds NUMBER
+);
+
+-- Add heartbeat to Extract
+EXTRACT ext1
+TABLE ggadmin.gg_heartbeat, TOKENS (TK-TS = @GETENV('GGHEADER','TIMESTAMP'));
+
+-- Query lag from heartbeat
+SELECT 
+  EXTRACT(DAY FROM (SYSTIMESTAMP - hb_timestamp)) * 86400 +
+  EXTRACT(HOUR FROM (SYSTIMESTAMP - hb_timestamp)) * 3600 +
+  EXTRACT(MINUTE FROM (SYSTIMESTAMP - hb_timestamp)) * 60 +
+  EXTRACT(SECOND FROM (SYSTIMESTAMP - hb_timestamp)) AS lag_seconds
+FROM ggadmin.gg_heartbeat;</code></pre>
+  </section>
+
+  <section class="box" id="cloud">
+    <h2>Oracle Cloud GoldenGate</h2>
+    <p>
+      Oracle Cloud offers GoldenGate as a fully managed service (GoldenGate Cloud Service / GCS) that eliminates infrastructure management:
+    </p>
+    <ul>
+      <li><strong>Deployment Models:</strong> Oracle Cloud Infrastructure (OCI) native or hybrid (cloud + on-premises)</li>
+      <li><strong>Automatic Patching:</strong> Managed updates and security patches</li>
+      <li><strong>Built-in Monitoring:</strong> OCI Monitoring integration with metrics and alarms</li>
+      <li><strong>Web Console:</strong> GUI-based configuration instead of command-line GGSCI</li>
+      <li><strong>Pricing:</strong> Consumption-based (per OCPU-hour) or monthly subscription</li>
+    </ul>
+    
+    <h3>Quick Start with OCI GoldenGate</h3>
+    <pre><code># Using OCI CLI
+oci goldengate deployment create \
+  --compartment-id ocid1.compartment.oc1..xxx \
+  --display-name "gg-prod-deployment" \
+  --subnet-id ocid1.subnet.oc1.xxx \
+  --license-model LICENSE_INCLUDED \
+  --cpu-core-count 2 \
+  --is-auto-scaling-enabled true \
+  --deployment-type OGGCORE
+
+# Connect via web console
+https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/<deployment-id></code></pre>
+  </section>
+
+  <section class="box" id="cost">
+    <h2>Cost Considerations</h2>
+    <p>Oracle GoldenGate pricing:</p>
+    <ul>
+      <li><strong>On-Premises License:</strong> $17,500 per processor (perpetual) + 22% annual support (~$3,850/year per processor)</li>
+      <li><strong>Named User Plus:</strong> $350 per named user (minimum 25 users per processor)</li>
+      <li><strong>Oracle Cloud (OCI):</strong> $0.50-1.00 per OCPU-hour (~$365-730/month for 1 OCPU)</li>
+      <li><strong>GoldenGate Free Edition:</strong> Free (limited to Oracle XE, non-production use)</li>
+    </ul>
+    <p>
+      <strong>Infrastructure Costs:</strong>
+    </p>
+    <ul>
+      <li>Source system: Minimal CPU overhead (1-5% for Extract)</li>
+      <li>Target system: CPU for Replicat (depends on transaction volume)</li>
+      <li>Disk space: Plan for 7-30 days of trail file retention (estimate 1-5GB per million transactions)</li>
+      <li>Network bandwidth: ~10-50% of database transaction log size (with compression)</li>
+    </ul>
+    <p>
+      <strong>Tip:</strong> For testing, use GoldenGate Free edition with Oracle XE. For production, consider OCI GoldenGate if you're already in Oracle Cloud to avoid upfront licensing costs.
+    </p>
+  </section>
+
+  <section class="box" id="comparison">
+    <h2>GoldenGate vs. Debezium vs. DMS</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>Oracle GoldenGate</th>
+          <th>AWS DMS</th>
+          <th>Debezium</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Deployment</strong></td>
+          <td>Self-hosted or OCI managed</td>
+          <td>Fully managed</td>
+          <td>Self-hosted</td>
+        </tr>
+        <tr>
+          <td><strong>CDC Method</strong></td>
+          <td>Log-based (redo/archive logs)</td>
+          <td>Log-based</td>
+          <td>Log-based</td>
+        </tr>
+        <tr>
+          <td><strong>Latency</strong></td>
+          <td>Sub-second to seconds</td>
+          <td>Seconds</td>
+          <td>Sub-second</td>
+        </tr>
+        <tr>
+          <td><strong>Bidirectional</strong></td>
+          <td>Yes (built-in conflict resolution)</td>
+          <td>No</td>
+          <td>No (requires external logic)</td>
+        </tr>
+        <tr>
+          <td><strong>Heterogeneous</strong></td>
+          <td>Yes (Oracle↔MySQL↔PostgreSQL↔SQL Server)</td>
+          <td>Yes (limited combinations)</td>
+          <td>Limited (via Kafka to JDBC sink)</td>
+        </tr>
+        <tr>
+          <td><strong>Data Format</strong></td>
+          <td>Proprietary trail files</td>
+          <td>Parquet, CSV, or native</td>
+          <td>JSON (Kafka messages)</td>
+        </tr>
+        <tr>
+          <td><strong>Transformation</strong></td>
+          <td>Rich (COLMAP, filtering, functions)</td>
+          <td>Basic (table mappings, filters)</td>
+          <td>Medium (SMTs in Kafka Connect)</td>
+        </tr>
+        <tr>
+          <td><strong>Guaranteed Delivery</strong></td>
+          <td>Yes (exactly-once with trail files)</td>
+          <td>At-least-once</td>
+          <td>At-least-once (Kafka guarantees)</td>
+        </tr>
+        <tr>
+          <td><strong>Licensing</strong></td>
+          <td>Commercial ($17,500+ per processor)</td>
+          <td>Pay-per-use (~$26-500+/mo)</td>
+          <td>Open source (Apache 2.0)</td>
+        </tr>
+        <tr>
+          <td><strong>Best For</strong></td>
+          <td>Enterprise Oracle shops, active-active, zero-downtime migrations</td>
+          <td>AWS-native stacks, simple pipelines</td>
+          <td>Event-driven apps, Kafka ecosystems</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>When to Choose GoldenGate</h3>
+    <ul>
+      <li>✅ You have existing Oracle licenses or Oracle Cloud subscription</li>
+      <li>✅ Need active-active (bidirectional) replication with conflict resolution</li>
+      <li>✅ Require guaranteed exactly-once delivery across complex multi-tier topologies</li>
+      <li>✅ Zero-downtime database migrations or version upgrades are critical</li>
+      <li>✅ Heterogeneous replication between different database vendors</li>
+      <li>✅ Enterprise support with SLAs is required</li>
+      <li>✅ Need persistent, replayable change logs for auditing or disaster recovery</li>
+    </ul>
+
+    <h3>When NOT to Choose GoldenGate</h3>
+    <ul>
+      <li>❌ Budget-constrained projects (Debezium is free)</li>
+      <li>❌ Simple unidirectional replication (DMS or Debezium are easier)</li>
+      <li>❌ Event-driven microservices (Debezium + Kafka is better fit)</li>
+      <li>❌ Limited DBA resources (GoldenGate has steep learning curve)</li>
+      <li>❌ Cloud-native, serverless architecture preferred (DMS is simpler)</li>
+    </ul>
+  </section>
+
+  <section class="box" id="next-steps">
+    <h2>Next Steps</h2>
+    <ul>
+      <li><strong>Enable Monitoring:</strong> Set up OEM (Oracle Enterprise Manager) GoldenGate plug-in for centralized monitoring</li>
+      <li><strong>Implement Heartbeat:</strong> Create heartbeat tables to track end-to-end lag</li>
+      <li><strong>Configure Alerting:</strong> Set up SNMP traps or scripts to alert on lag thresholds, process failures</li>
+      <li><strong>Test Failover:</strong> Document and practice Extract/Replicat failover procedures</li>
+      <li><strong>Optimize Performance:</strong> Use Coordinated Replicat for parallel apply on high-volume tables</li>
+      <li><strong>Implement DDL Replication:</strong> Automate schema change propagation</li>
+      <li><strong>Security Hardening:</strong> Enable trail file encryption, use Oracle Wallet for password management</li>
+      <li><strong>Document Runbooks:</strong> Create operational procedures for common maintenance tasks</li>
+    </ul>
+  </section>
+
+  <section class="qs-verify" aria-labelledby="resources-heading">
+    <div class="qs-verify__inner">
+      <div>
+        <h2 id="resources-heading">Additional Resources</h2>
+        <ul>
+          <li><a href="https://docs.oracle.com/en/middleware/goldengate/">Oracle GoldenGate Documentation</a></li>
+          <li><a href="https://www.oracle.com/middleware/technologies/goldengate.html">GoldenGate Product Page</a></li>
+          <li><a href="https://blogs.oracle.com/dataintegration/">Oracle Data Integration Blog</a></li>
+          <li><a href="https://apexapps.oracle.com/pls/apex/f?p=44785:1">Oracle GoldenGate Forum (OTN)</a></li>
+          <li><a href="https://www.oracle.com/cloud/goldengate/">Oracle Cloud GoldenGate</a></li>
+        </ul>
+      </div>
+      <a class="button" href="/cloud-labs/">View All Cloud Labs</a>
+    </div>
+  </section>
+</div>
