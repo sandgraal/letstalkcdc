@@ -103,8 +103,10 @@ WHERE snk.id IS NULL
 ORDER BY src.updated_at DESC
 LIMIT 100;</code></pre>
     <p class="muted">
-      <strong>Alternative for different databases:</strong> Export both datasets to CSV,
-      then use <code>comm</code>, <code>diff</code>, or Python pandas for comparison.
+      <strong>Cross-database setup:</strong> The example above assumes PostgreSQL foreign data wrappers
+      (<code>postgres_fdw</code>) are configured. For other databases, export both datasets to CSV
+      or a neutral format, then use <code>comm</code>, <code>diff</code>, Python pandas, or SQL
+      import into a staging database for comparison.
     </p>
 
     <h3>Pattern 3: Find extra rows in sink</h3>
@@ -268,8 +270,8 @@ kafka-console-consumer \
   --property print.key=true \
   | grep my-postgres-source
 
-# Produce a new offset record (adjust key and value structure to match)
-echo '["my-postgres-source",{"server":"mydb"}]	{"lsn":123456789,"txId":null,"ts_usec":1699564800000000}' \
+# Produce a new offset record (REPLACE placeholders with actual values)
+echo '["<CONNECTOR_NAME>",{"server":"<SERVER_NAME>"}]	{"lsn":<LSN_VALUE>,"txId":null,"ts_usec":<TIMESTAMP_USEC>}' \
   | kafka-console-producer \
     --bootstrap-server localhost:9092 \
     --topic connect-offsets \
@@ -375,25 +377,32 @@ set -euo pipefail
 
 CONNECTOR_NAME="${1:?Connector name required}"
 ACTION="${2:?Action required: backup or restore}"
-BACKUP_FILE="offsets-${CONNECTOR_NAME}-$(date +%Y%m%d-%H%M%S).json"
+BACKUP_FILE="offsets-${CONNECTOR_NAME}-$(date +%Y%m%d-%H%M%S-%N).json"
 KAFKA_BOOTSTRAP="localhost:9092"
 CONNECT_URL="http://localhost:8083"
 
 backup_offsets() {
   echo "Backing up offsets for $CONNECTOR_NAME to $BACKUP_FILE"
+  # grep returns exit code 1 if no matches, handle gracefully
   kafka-console-consumer \
     --bootstrap-server "$KAFKA_BOOTSTRAP" \
     --topic connect-offsets \
     --from-beginning \
     --timeout-ms 10000 \
     --property print.key=true \
-    | grep "$CONNECTOR_NAME" > "$BACKUP_FILE"
+    | grep "$CONNECTOR_NAME" > "$BACKUP_FILE" || true
   
-  echo "Backup saved to $BACKUP_FILE ($(wc -l < "$BACKUP_FILE") lines)"
+  if [ -s "$BACKUP_FILE" ]; then
+    echo "Backup saved to $BACKUP_FILE ($(wc -l < "$BACKUP_FILE") lines)"
+  else
+    echo "Warning: No offsets found for connector $CONNECTOR_NAME"
+    rm -f "$BACKUP_FILE"
+    exit 1
+  fi
 }
 
 restore_offsets() {
-  local restore_file="${3:?Backup file required for restore}"
+  local restore_file="${1:?Backup file required for restore}"
   
   echo "Pausing connector $CONNECTOR_NAME"
   curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR_NAME/pause"
@@ -418,6 +427,7 @@ case "$ACTION" in
     backup_offsets
     ;;
   restore)
+    shift 2  # Remove CONNECTOR_NAME and ACTION from args
     restore_offsets "$@"
     ;;
   *)
