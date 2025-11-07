@@ -1,0 +1,21 @@
+{
+  "name": "jdbc-sink-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "server1.public.app_customer",
+    "connection.url": "jdbc:postgresql://postgres-sink:5432/warehouse",
+    "connection.user": "sink_user",
+    "connection.password": "sink_password",
+    "auto.create": "true",
+    "insert.mode": "upsert",
+    "pk.mode": "record_key",
+    "pk.fields": "id",
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "dlq.sink.inventory",
+    "errors.deadletterqueue.context.headers.enable": "true",
+    "errors.deadletterqueue.topic.replication.factor": "1",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true"
+  }
+}
