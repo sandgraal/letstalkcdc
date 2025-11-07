@@ -1,3 +1,6 @@
+## 2025-11-07
+- Initial changelog
+
 ## 2025-11-06
 - Initial changelog
 
