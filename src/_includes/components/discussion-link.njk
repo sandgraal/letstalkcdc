@@ -1,0 +1,39 @@
+{# 
+  Discussion Link Component
+  
+  Displays a contextual link to GitHub Discussions based on content type.
+  
+  Variables:
+  - discussionType: 'lab', 'general', or 'share' (defaults to 'general')
+  - community: Global community data with discussion threads
+#}
+
+{% set discussionType = discussionType | default('general') %}
+{% set thread = community.discussions.threads[discussionType] %}
+
+{% if community.discussions.enabled and thread %}
+<aside class="callout--enhanced callout--info discussion-callout" aria-label="Discussion link">
+  <div class="callout__header">
+    <svg class="callout__icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+    <h3 class="callout__title">Questions or comments?</h3>
+  </div>
+  <div class="callout__content">
+    <p>
+      Discuss this topic in our community forum: 
+      <a 
+        href="{{ thread.url }}" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="discussion-link__link"
+      >
+        {{ thread.title }}
+      </a>
+    </p>
+    <p class="discussion-link__note">
+      <em>(GitHub login required to post)</em>
+    </p>
+  </div>
+</aside>
+{% endif %}
