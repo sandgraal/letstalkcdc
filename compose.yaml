@@ -54,12 +54,10 @@ services:
     image: debezium/example-mysql:2.6
     environment:
       MYSQL_ROOT_PASSWORD: debezium
-      MYSQL_USER: debezium
-      MYSQL_PASSWORD: dbz
+      MYSQL_USER: mysqluser
+      MYSQL_PASSWORD: mysqlpw
       MYSQL_DATABASE: inventory
     ports: ["3306:3306"]
-    volumes:
-      - ./sandbox/init/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -74,5 +72,5 @@ services:
   kcat:
     image: edenhill/kcat:1.7.1
     depends_on: [kafka]
-    entrypoint: ["/bin/sh","-c","sleep infinity"]
+    entrypoint: ["/bin/sh","-c","while true; do sleep 3600; done"]
     environment: {}
