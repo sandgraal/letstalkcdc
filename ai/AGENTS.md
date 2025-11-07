@@ -6,15 +6,15 @@ Defines the autonomous agent system for this repository. Agents manage creative,
 ## 2. Agent Directory
 Use a short prefix for clarity. Set it in `.chatgpt-context.yml` under `agent_prefix`. Examples below use `site`.
 
-| Agent Name            | Role                                                               | Trigger                         | Linked Script/Workflow                         |
-|-----------------------|--------------------------------------------------------------------|---------------------------------|-----------------------------------------------|
-| `site-content`        | Builds and updates site pages, product catalog, docs, and blog     | On push, manual, schedule       | `.github/workflows/ai-agents.yml` (content job)  |
-| `site-content-review` | Tracks CDC tool versions and generates quarterly review checklists | Quarterly (Jan, Apr, Jul, Oct)  | `ai/scripts/content-review.mjs`               |
-| `site-image`          | Generates and optimizes images for responsive use                  | Manual or schedule              | `ai/scripts/image-optimize.mjs`               |
-| `site-packaging`      | Produces label exports and print-ready assets                      | On commit to `assets/labels/`   | `ai/scripts/package-render.mjs`               |
-| `site-data`           | Syncs structured data to collections and JSON caches               | On change to `/src/_data/`      | `ai/scripts/data-sync.mjs`                    |
-| `site-analytics`      | Aggregates build stats or traffic snapshots into `/ai/logs/`       | Nightly                         | `ai/scripts/analytics.mjs`                    |
-| `site-link-check`     | Validates internal links in the built site for 404s and broken refs| On schedule, manual             | `ai/scripts/link-check.mjs`                   |
+| Agent | Role | Trigger | Script/Workflow | Primary inputs | Outputs | Human owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `site-content` | Builds and updates site pages, product catalog, docs, and blog | On push, manual, schedule | `.github/workflows/ai-agents.yml` (content job) | `src/`, `lib/`, Eleventy config, `package.json` build script | Fresh `_site/` build, status lines in `ai/logs/site-content.jsonl` | Jordan Lee — Content Engineering |
+| `site-content-review` | Tracks CDC tool versions and generates quarterly review checklists | Quarterly (Jan, Apr, Jul, Oct) or manual dispatch | `ai/scripts/content-review.mjs` | `src/_data/toolVersions.cjs`, `docs/` metadata, GitHub Issues API | Checklist in `ai/reviews/`, optional issue payload, `ai/logs/site-content-review.jsonl` | Avery Morgan — Docs Program Manager |
+| `site-image` | Generates and optimizes images for responsive use | Manual or schedule | `ai/scripts/image-optimize.mjs` | Raster assets under `src/` (jpg, png, gif), optional `IMAGE_OPTIMIZE_ENABLED` flag | Optimization report, optional WebP assets, `ai/logs/site-image.jsonl` | Samira Patel — Design Systems |
+| `site-packaging` | Produces label exports and print-ready assets | On commit to packaging assets or manual run | `ai/scripts/package-render.mjs` | `_site/` HTML snapshots, `src/assets/` styles | `_site/downloads/cdc-complete-guide.html`, copied assets, `ai/logs/site-packaging.jsonl` | Diego Ramos — Enablement Ops |
+| `site-data` | Syncs structured data to collections and JSON caches | On change to `/src/_data/` or manual run | `ai/scripts/data-sync.mjs` | `src/_data/**/*.cjs|json`, cached data in `ai/_state/data/` | Normalized data caches, `ai/logs/site-data.jsonl` | Priya Shah — Data Platform |
+| `site-analytics` | Aggregates build stats or traffic snapshots into `/ai/logs/` | Nightly | `ai/scripts/analytics.mjs` | Build artifacts in `_site/`, Eleventy manifest, workflow context | Metrics appended to `ai/logs/site-analytics.jsonl` | Nate Coleman — Observability Lead |
+| `site-link-check` | Validates internal links in the built site for 404s and broken refs | On schedule, manual | `ai/scripts/link-check.mjs` | `_site/` build output, `ELEVENTY_PATH_PREFIX`, workflow inputs | Link-check reports, CI annotations, `ai/logs/site-link-check.jsonl` | Mara Chen — Web QA |
 
 ## 3. Capabilities Matrix
 Each agent specifies:

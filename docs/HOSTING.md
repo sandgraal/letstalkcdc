@@ -94,6 +94,16 @@ Before considering a deployment complete:
 3. ✅ Local progress persists across reloads (no authentication required).
 4. ⚠️ (Optional) Assistant feedback reaches Appwrite if credentials are supplied.
 
+## CI failure runbook
+
+Follow these steps before paging a human escalation channel when a GitHub Actions workflow fails:
+
+1. **Identify the agent:** Inspect the failing job in the Actions log. Match the job name to the oversight matrix in `ai/AGENTS.md` to confirm the responsible agent and human owner.
+2. **Review recent runs:** Pull the relevant `ai/logs/<agent>.jsonl` entries to spot recurring errors or timeouts. Share anomalies with the listed owner via the team channel noted in your ops notes.
+3. **Reproduce locally:** Run the matching script (`npm run agent:<name>` or `node ai/scripts/<file>.mjs`) in report mode. Capture console output and environment differences (e.g., missing `ELEVENTY_PATH_PREFIX`).
+4. **Apply the health checklist:** If the issue persists, run the monthly agent health steps in `ai/AUTOMATIONS.md` for that agent—log review, dry-run, and rollback rehearsal—to validate recovery paths.
+5. **Escalate with context:** Only after the above is complete, escalate to the human owner with links to the failing workflow, log excerpts, and notes on attempted remediations.
+
 ## Costs
 
 | Component | Platform | Cost |
