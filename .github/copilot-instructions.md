@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 2.x** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with optional serverless functions for user progress tracking via Appwrite.
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 2.x** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used only for storing assistant feedback.
 
 ### Key Architecture Decisions
 
@@ -196,15 +196,14 @@ Global site configuration derived from environment variables:
 
 ### Appwrite Data (`src/_data/appwrite.cjs`)
 
-Optional configuration for user progress tracking:
+Optional configuration for assistant feedback collection:
 
 ```javascript
 {
   endpoint: process.env.APPWRITE_ENDPOINT,
   project: process.env.APPWRITE_PROJECT,
   databaseId: process.env.APPWRITE_DB_ID,
-  progressCollectionId: process.env.COL_PROGRESS_ID,
-  eventsCollectionId: process.env.COL_EVENTS_ID
+  assistantCollectionId: process.env.COL_ASSISTANT_ID
 }
 ```
 
@@ -223,8 +222,7 @@ Provides prev/next navigation and progress tracking UI.
 
 - Previous/next module links (← / →)
 - "Back to Overview" link
-- Progress bar with percentage
-- GitHub sign-in/sign-out buttons
+- Progress bar with percentage (stored in browser localStorage)
 
 **Usage**:
 
@@ -247,62 +245,45 @@ Shared UI components (buttons, cards, badges) used across the site.
 
 ## Appwrite Integration (Optional)
 
-User progress tracking uses **Appwrite** (headless database) via:
+Assistant feedback collection uses **Appwrite** (headless database) via:
 
 - **Config**: `src/_data/appwrite.cjs` reads env vars (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, etc.)
-- **Serverless function**: `netlify/functions/migrateUser.js` (requires external hosting, not GitHub Pages)
-- **Collections**: Defined in `appwrite.collections.json`
+- **Collections**: `assistant_feedback` collection defined in `appwrite.collections.json`
 
 ### When Appwrite is Needed
 
 **Use Appwrite when**:
 
-- Tracking user progress through learning modules
-- Storing completion state per user/module
-- Recording learning events (page views, completions, quiz results)
-- Providing personalized "resume where you left off" functionality
+- Collecting assistant feedback (👍/👎 ratings on AI assistant responses)
+- Storing user questions and intents for analytics
+- Analyzing assistant effectiveness and improving knowledge base
 
 **Site works WITHOUT Appwrite**:
 
 - All educational content renders correctly
 - Navigation functions normally
 - Static search works via `search-index.json`
-- Only loses: persistent progress tracking across sessions
+- Progress tracking works via browser localStorage
+- Assistant works with local-only feedback storage
+- Only loses: centralized assistant feedback analytics
 
-### Collections Schema
+### Collection Schema
 
-**`progress` collection** (tracks module completion):
-
-```json
-{
-  "userId": "string(128)", // GitHub user ID
-  "journeySlug": "string(64)", // Module key (e.g., 'intro', 'snapshotting')
-  "step": "integer", // Current step number
-  "percent": "double(0-100)", // Completion percentage
-  "state": "string(16384)", // JSON-serialized state
-  "updatedAt": "datetime"
-}
-```
-
-- Indexed by: `userId + journeySlug`, `userId`
-
-**`events` collection** (tracks user activity):
+**`assistant_feedback` collection** (stores assistant interaction feedback):
 
 ```json
 {
-  "userId": "string(128)",
-  "type": "string(64)" // Event type (view, complete, quiz_submit, etc.)
-  // ... additional event metadata
+  "question": "string(512)", // User's question text
+  "intentId": "string(128)", // Matched intent identifier
+  "helpful": "boolean", // User feedback (👍 = true, 👎 = false)
+  "ts": "datetime" // Timestamp of feedback
 }
 ```
 
-### Serverless Function
+- Indexed by: `ts` (descending) for recent feedback queries
+- Permissions: Anonymous users can create documents; admins can read/update/delete
 
-**Purpose**: Migrates user progress when GitHub auth completes.
-
-**Deployment**: Must be hosted separately from GitHub Pages (e.g., Vercel, Cloudflare Workers, AWS Lambda).
-
-**Note**: GitHub Pages only serves static files. The serverless function must be deployed separately (Vercel/Cloudflare Workers/AWS Lambda).
+**Note**: The site previously used `progress` and `events` collections for user progress tracking and authentication. These have been removed as progress tracking is now entirely browser-based using localStorage.
 
 ## Common Patterns
 
