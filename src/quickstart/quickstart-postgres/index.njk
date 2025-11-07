@@ -8,10 +8,18 @@ head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/quickstart-shared.css' | url }}">
 ---
 {% import "components/ui.njk" as ui %}
+{% from "components/video-embed.njk" import videoEmbed, youtubeEmbed %}
 
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
+  
+  {{ youtubeEmbed('zYJn6GA5t1Q', {
+    title: 'Postgres CDC Setup Tutorial',
+    description: 'Step-by-step walkthrough of setting up Change Data Capture for PostgreSQL with Debezium.',
+    caption: 'Follow along as we configure logical replication, create connectors, and verify data streaming.'
+  }) }}
+
   <section class="box">
     <h2>Prerequisites (DB)</h2>
     <ul class="checklist">

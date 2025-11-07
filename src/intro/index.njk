@@ -60,6 +60,7 @@ scripts:
 
 {% import "components/ui.njk" as ui %}
 {% import "components/quiz.njk" as quizMacro %}
+{% from "components/video-embed.njk" import videoEmbed, youtubeEmbed %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -132,6 +133,13 @@ scripts:
         <li><strong>Practice and operationalize:</strong> Follow the labs and troubleshooting guides to validate your setup in real environments.</li>
       </ol>
     </section>
+
+    {{ youtubeEmbed('5CjPj9ShJVA', {
+      title: 'Introduction to Change Data Capture',
+      description: 'A visual overview of CDC fundamentals, explaining how log-based replication works and why it matters for modern data architectures.',
+      caption: 'Gunnar Morling from Red Hat explains the fundamentals of CDC and Debezium at Kafka Summit 2021.'
+    }) }}
+
     <h2 id="cdc-methods">CDC methods</h2>
     <p class="intro-muted">Choose the capture approach that matches your constraints. Each card highlights the trade-offs—expand any card for the full details.</p>
     <div class="cdc-methods-grid" role="list">
