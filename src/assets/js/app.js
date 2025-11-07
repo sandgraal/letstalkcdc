@@ -201,6 +201,7 @@ onReady(() => {
         if (toggle.getAttribute("aria-expanded") === "true") {
           const firstMenuItem = menu?.querySelector("a");
           if (firstMenuItem) {
+            // Small delay to ensure menu is rendered before focusing
             setTimeout(() => firstMenuItem.focus(), 50);
           }
         }

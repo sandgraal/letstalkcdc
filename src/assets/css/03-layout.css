@@ -434,7 +434,8 @@
   }
 
   .nav-dropdown-toggle[aria-expanded="true"] + .nav-dropdown-menu {
-    max-height: 500px;
+    /* Generous max-height to accommodate menu items (each ~48px) */
+    max-height: 300px;
   }
 
   .nav-dropdown-menu a {
