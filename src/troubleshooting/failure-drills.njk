@@ -518,6 +518,35 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   }
 }'</code></pre>
         </li>
+        <li>
+          <strong>Re-register sink connector to consume from new topic:</strong>
+          <pre><button class="copy">copy</button><code>curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+  "name": "jdbc-sink-connector-v2",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "server2.public.app_customer",
+    "connection.url": "jdbc:postgresql://postgres-sink:5432/warehouse",
+    "connection.user": "sink_user",
+    "connection.password": "password",
+    "auto.create": "false",
+    "auto.evolve": "true",
+    "insert.mode": "upsert",
+    "pk.mode": "record_key",
+    "pk.fields": "id",
+    "table.name.format": "app_customer",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite"
+  }
+}'</code></pre>
+          <p class="muted">
+            Note: The sink connector now consumes from <code>server2.public.app_customer</code> 
+            (matching the new source connector's topic). The <code>insert.mode=upsert</code> 
+            ensures idempotent writes during replay validation.
+          </p>
+        </li>
       </ol>
 
       <h3>Observe Snapshot Phase</h3>
