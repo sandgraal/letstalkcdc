@@ -1,0 +1,65 @@
+name: Analytics & Discussions Trend Capture
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  discussions: write
+
+jobs:
+  collect-and-seed:
+    name: Collect analytics and seed discussions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site for analytics snapshot
+        run: npm run build
+
+      - name: Run analytics agent
+        run: |
+          set -eo pipefail
+          mkdir -p ai/logs
+          npm run agent:analytics | tee "ai/logs/analytics-${GITHUB_RUN_ID}.log"
+
+      - name: Seed GitHub discussions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_FULL: ${{ github.repository }}
+        run: |
+          set -eo pipefail
+          mkdir -p ai/logs
+          export GITHUB_REPOSITORY_OWNER="${REPO_FULL%/*}"
+          export GITHUB_REPOSITORY_NAME="${REPO_FULL#*/}"
+          node scripts/seed-discussions.mjs | tee "ai/logs/discussion-seeding-${GITHUB_RUN_ID}.log"
+
+      - name: Snapshot analytics log for trends
+        run: |
+          mkdir -p ai/logs/archive
+          if [ -f ai/logs/site-analytics.jsonl ]; then
+            cp ai/logs/site-analytics.jsonl "ai/logs/archive/site-analytics-${GITHUB_RUN_ID}.jsonl"
+          fi
+
+      - name: Upload analytics artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-discussions-${{ github.run_id }}
+          path: |
+            ai/logs/site-analytics.jsonl
+            ai/logs/archive/site-analytics-${GITHUB_RUN_ID}.jsonl
+            ai/logs/analytics-${GITHUB_RUN_ID}.log
+            ai/logs/discussion-seeding-${GITHUB_RUN_ID}.log
+          if-no-files-found: warn
