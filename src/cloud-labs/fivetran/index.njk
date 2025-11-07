@@ -95,7 +95,7 @@ SHOW wal_level;
 
     <h4>Create Fivetran User</h4>
     <pre><code>-- Create read-only user for Fivetran
-CREATE USER fivetran_user WITH PASSWORD 'secure_password_here';
+CREATE USER fivetran_user WITH PASSWORD '${FIVETRAN_PASSWORD}';
 
 -- Grant schema access
 GRANT USAGE ON SCHEMA public TO fivetran_user;
@@ -139,7 +139,7 @@ CREATE WAREHOUSE IF NOT EXISTS FIVETRAN_WH
 
 -- Create Fivetran user
 CREATE USER IF NOT EXISTS fivetran_user 
-  PASSWORD = 'secure_password_here' 
+  PASSWORD = '${FIVETRAN_PASSWORD}' 
   DEFAULT_WAREHOUSE = FIVETRAN_WH 
   DEFAULT_NAMESPACE = FIVETRAN_DB.PUBLIC;
 
