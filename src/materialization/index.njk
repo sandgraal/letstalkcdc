@@ -7,27 +7,12 @@ scripts:
   - "/assets/js/lib/quiz.js"
 ---
 {% import "components/ui.njk" as ui %}
-{% import "components/quick-nav.njk" as quickNav %}
 {% import "components/scorecard.njk" as scorecard %}
 {% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
-  {{ quickNav.render('Materialization quick nav', [
-    { id: 'tracker', label: 'Readiness tracker' },
-    { id: 'patterns', label: 'Materialization patterns' },
-    { id: 'merge', label: 'Idempotent merge logic' },
-    { id: 'sql', label: 'SQL templates' },
-    { id: 'history', label: 'Maintaining history' },
-    { id: 'late-arrivals', label: 'Late arrivals' },
-    { id: 'ops', label: 'Operational guardrails' },
-    { id: 'quality', label: 'Data quality checks' },
-    { id: 'verification', label: 'Verification playbooks' },
-    { id: 'scorecard', label: 'Readiness scorecard' },
-    { id: 'resources', label: 'Further resources' }
-  ]) | safe }}
-
     {{ scorecard.summary('materialization', {
       sectionId: 'tracker',
       title: 'Materialization readiness tracker',
