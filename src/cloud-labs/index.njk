@@ -85,6 +85,25 @@ ai-generated: true
         <rect x="3" y="14" width="7" height="7"/>
       </svg>
     </a>
+
+    <a class="qs-card" href="/cloud-labs/fivetran/">
+      <div>
+        <h2>Fivetran</h2>
+        <p>
+          Set up fully managed CDC pipelines with zero infrastructure. 500+ pre-built connectors with automatic schema drift handling and usage-based pricing.
+        </p>
+        <ul class="card-features">
+          <li>✓ Zero infrastructure (SaaS)</li>
+          <li>✓ Auto schema evolution</li>
+          <li>✓ 500+ connectors</li>
+        </ul>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 16v-4"/>
+        <path d="M12 8h.01"/>
+      </svg>
+    </a>
   </div>
 
   <section class="comparison-section">
@@ -96,6 +115,7 @@ ai-generated: true
           <th>AWS DMS</th>
           <th>Snowflake</th>
           <th>Matillion</th>
+          <th>Fivetran</th>
           <th>Debezium</th>
         </tr>
       </thead>
@@ -105,6 +125,7 @@ ai-generated: true
           <td>Fully managed</td>
           <td>Fully managed</td>
           <td>EC2/VM instance</td>
+          <td>SaaS (zero infra)</td>
           <td>Self-hosted</td>
         </tr>
         <tr>
@@ -112,6 +133,7 @@ ai-generated: true
           <td>Log-based</td>
           <td>Stream/file ingest</td>
           <td>Timestamp/hash</td>
+          <td>Log-based + polling</td>
           <td>Log-based</td>
         </tr>
         <tr>
@@ -119,6 +141,7 @@ ai-generated: true
           <td>Seconds</td>
           <td>Seconds-minutes</td>
           <td>Minutes</td>
+          <td>1-5 minutes</td>
           <td>Sub-second</td>
         </tr>
         <tr>
@@ -126,6 +149,7 @@ ai-generated: true
           <td>AWS services</td>
           <td>Snowflake only</td>
           <td>DW platforms</td>
+          <td>500+ destinations</td>
           <td>Any (via Kafka)</td>
         </tr>
         <tr>
@@ -133,6 +157,7 @@ ai-generated: true
           <td>1-2 hours</td>
           <td>1-2 hours</td>
           <td>2-4 hours</td>
+          <td>15-30 minutes</td>
           <td>4-8 hours</td>
         </tr>
         <tr>
@@ -140,6 +165,7 @@ ai-generated: true
           <td>Medium</td>
           <td>Medium</td>
           <td>Low</td>
+          <td>Very Low</td>
           <td>High</td>
         </tr>
         <tr>
@@ -147,6 +173,7 @@ ai-generated: true
           <td>$26-500+</td>
           <td>$50-1000+</td>
           <td>$500-2000+</td>
+          <td>$500-5000+</td>
           <td>$100-500</td>
         </tr>
         <tr>
@@ -154,6 +181,7 @@ ai-generated: true
           <td>AWS-native stacks</td>
           <td>Analytics workloads</td>
           <td>Business users</td>
+          <td>Rapid setup, SaaS-first</td>
           <td>Event-driven apps</td>
         </tr>
       </tbody>
@@ -194,6 +222,17 @@ ai-generated: true
           <li>Use Snowflake, Redshift, or BigQuery</li>
           <li>Need complex transformations beyond CDC</li>
           <li>Want integrated orchestration/scheduling</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>Choose Fivetran if you:</h3>
+        <ul>
+          <li>Want zero infrastructure management</li>
+          <li>Need rapid setup (15-30 minutes)</li>
+          <li>Require broad connector library (500+)</li>
+          <li>Prefer SaaS/cloud-first solutions</li>
+          <li>Value automatic schema change handling</li>
         </ul>
       </div>
 
