@@ -1,0 +1,180 @@
+---
+layout: base.njk
+title: "Changelog & Version Support Matrix"
+description: "Current versions, release dates, and support status for CDC tools and platforms covered in this guide."
+canonicalPath: "/versions/"
+---
+{% import "components/ui.njk" as ui %}
+
+<div class="page-wrap prose">
+  <header class="page-header">
+    <h1>Changelog &amp; Version Support Matrix</h1>
+    <p class="text-xl">
+      This page tracks the current versions of CDC tools and platforms covered in our guides.
+      Last updated: <strong>{{ toolVersions.lastUpdated }}</strong>
+    </p>
+  </header>
+
+  <section id="version-matrix" aria-labelledby="version-matrix-title">
+    <h2 id="version-matrix-title">Supported Tool Versions</h2>
+    <p>
+      All guides and labs are tested against these versions. While CDC concepts remain consistent,
+      specific configuration syntax and features may vary between versions.
+    </p>
+
+    <table class="version-table">
+      <caption class="sr-only">CDC tool versions and release information</caption>
+      <thead>
+        <tr>
+          <th scope="col">Tool/Platform</th>
+          <th scope="col">Version</th>
+          <th scope="col">Release Date</th>
+          <th scope="col">Status</th>
+          <th scope="col">Release Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Debezium</th>
+          <td><code>{{ toolVersions.tools.debezium.version }}</code></td>
+          <td>{{ toolVersions.tools.debezium.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.debezium.status }}">{{ toolVersions.tools.debezium.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.debezium.releaseNotesUrl }}" target="_blank" rel="noopener">View Release Notes</a></td>
+        </tr>
+        <tr>
+          <th scope="row">Apache Kafka</th>
+          <td><code>{{ toolVersions.tools.kafka.version }}</code></td>
+          <td>{{ toolVersions.tools.kafka.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.kafka.status }}">{{ toolVersions.tools.kafka.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.kafka.releaseNotesUrl }}" target="_blank" rel="noopener">View Downloads</a></td>
+        </tr>
+        <tr>
+          <th scope="row">Kafka Connect</th>
+          <td><code>{{ toolVersions.tools.kafkaConnect.version }}</code></td>
+          <td>{{ toolVersions.tools.kafkaConnect.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.kafkaConnect.status }}">{{ toolVersions.tools.kafkaConnect.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.kafkaConnect.releaseNotesUrl }}" target="_blank" rel="noopener">View Documentation</a></td>
+        </tr>
+        <tr>
+          <th scope="row">Matillion</th>
+          <td><code>{{ toolVersions.tools.matillion.version }}</code></td>
+          <td>{{ toolVersions.tools.matillion.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.matillion.status }}">{{ toolVersions.tools.matillion.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.matillion.releaseNotesUrl }}" target="_blank" rel="noopener">View Release Notes</a></td>
+        </tr>
+        <tr>
+          <th scope="row">AWS DMS</th>
+          <td><code>{{ toolVersions.tools.awsDms.version }}</code></td>
+          <td>{{ toolVersions.tools.awsDms.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.awsDms.status }}">{{ toolVersions.tools.awsDms.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.awsDms.releaseNotesUrl }}" target="_blank" rel="noopener">View Release Notes</a></td>
+        </tr>
+        <tr>
+          <th scope="row">Fivetran</th>
+          <td><code>{{ toolVersions.tools.fivetran.version }}</code></td>
+          <td>{{ toolVersions.tools.fivetran.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.fivetran.status }}">{{ toolVersions.tools.fivetran.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.fivetran.releaseNotesUrl }}" target="_blank" rel="noopener">View Changelog</a></td>
+        </tr>
+        <tr>
+          <th scope="row">Oracle GoldenGate</th>
+          <td><code>{{ toolVersions.tools.goldenGate.version }}</code></td>
+          <td>{{ toolVersions.tools.goldenGate.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.goldenGate.status }}">{{ toolVersions.tools.goldenGate.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.goldenGate.releaseNotesUrl }}" target="_blank" rel="noopener">View Release Notes</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="support-policy" aria-labelledby="support-policy-title">
+    <h2 id="support-policy-title">Support Policy</h2>
+    <dl class="status-legend">
+      <dt><span class="status-badge status-stable">stable</span></dt>
+      <dd>
+        Production-ready release with stable APIs and comprehensive documentation.
+        Our guides are actively maintained for these versions.
+      </dd>
+      
+      <dt><span class="status-badge status-saas">saas</span></dt>
+      <dd>
+        Software-as-a-Service platforms that auto-update. Guides reflect current production behavior
+        as of the last update date.
+      </dd>
+      
+      <dt><span class="status-badge status-deprecated">deprecated</span></dt>
+      <dd>
+        Older versions that still work but should be upgraded. Guides may reference newer patterns.
+      </dd>
+    </dl>
+  </section>
+
+  <section id="compatibility" aria-labelledby="compatibility-title">
+    <h2 id="compatibility-title">Compatibility Notes</h2>
+    
+    <h3>Debezium + Kafka</h3>
+    <p>
+      Debezium {{ toolVersions.tools.debezium.version }} is tested with Kafka {{ toolVersions.tools.kafka.version }}.
+      For other combinations, consult the 
+      <a href="https://debezium.io/documentation/reference/stable/operations/debezium-server.html#_supported_versions" target="_blank" rel="noopener">
+        Debezium version compatibility matrix
+      </a>.
+    </p>
+
+    <h3>Kafka Connect</h3>
+    <p>
+      Kafka Connect is bundled with Apache Kafka. The version numbers align, so Kafka {{ toolVersions.tools.kafka.version }}
+      includes Kafka Connect {{ toolVersions.tools.kafkaConnect.version }}.
+    </p>
+
+    <h3>Cloud Platforms</h3>
+    <p>
+      AWS DMS, Fivetran, and SaaS CDC platforms use their own versioning schemes and handle updates automatically.
+      Our cloud labs reflect current production behavior as of {{ toolVersions.lastUpdated }}.
+    </p>
+  </section>
+
+  <section id="update-frequency" aria-labelledby="update-frequency-title">
+    <h2 id="update-frequency-title">Update Frequency</h2>
+    <p>
+      This version matrix is reviewed and updated quarterly by our automated site-content-review agent.
+      If you notice a version is outdated, please 
+      <a href="{{ '/errata/' | url }}">report an issue</a>.
+    </p>
+    <p>
+      <strong>Next scheduled review:</strong> Check back after the start of each quarter (January, April, July, October).
+    </p>
+  </section>
+
+  <section id="changelog" aria-labelledby="changelog-title">
+    <h2 id="changelog-title">Site Changelog</h2>
+    <p>
+      For the complete history of site updates, content additions, and feature improvements,
+      see the <a href="https://github.com/{{ site.repository }}/blob/main/CHANGELOG.md" target="_blank" rel="noopener">
+        CHANGELOG.md on GitHub
+      </a>.
+    </p>
+  </section>
+
+  <section id="related-resources" aria-labelledby="related-resources-title">
+    <h2 id="related-resources-title">Related Resources</h2>
+    <ul>
+      <li>
+        <a href="{{ '/observability/' | url }}">Observability Basics</a>
+        — Monitor version-specific metrics and behavior
+      </li>
+      <li>
+        <a href="{{ '/cloud-labs/' | url }}">Cloud CDC Labs</a>
+        — Platform-specific implementation guides
+      </li>
+      <li>
+        <a href="{{ '/quickstarts/' | url }}">Database Quickstarts</a>
+        — Database-specific connector setup
+      </li>
+      <li>
+        <a href="{{ '/tooling/' | url }}">Ecosystem Overview</a>
+        — Complete CDC tool landscape
+      </li>
+    </ul>
+  </section>
+</div>
