@@ -17,6 +17,7 @@ eleventyComputed:
     <meta name="twitter:description" content="{{ description }}">
     <meta name="twitter:image" content="{{ site.host }}/images/cdc-cover.jpg">
     <link rel="stylesheet" href="{{ '/assets/css/pages/intro.css' | url }}">
+    <link rel="stylesheet" href="{{ '/assets/css/pages/cdc-simulation.css' | url }}">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -56,6 +57,7 @@ eleventyComputed:
 scripts:
   - "/assets/js/pages/intro.js"
   - "/assets/js/lib/quiz.js"
+  - "/assets/js/pages/cdc-simulation.js"
 ---
 
 {% import "components/ui.njk" as ui %}
@@ -468,6 +470,81 @@ scripts:
           <li>Downstream systems decide retention (history vs latest state).</li>
           <li>Replay is built-in: rewind offsets to rebuild a sink.</li>
         </ul>
+      </div>
+    </section>
+
+    <section class="cdc-simulation-wrapper" id="cdc-simulation">
+      <div class="cdc-simulation-header">
+        <h3>Interactive CDC Pipeline Simulation</h3>
+        <p>Experience how changes flow through a CDC pipeline in real-time. Trigger database operations and watch them propagate through each stage.</p>
+      </div>
+
+      <div class="cdc-simulation-controls">
+        <button type="button" id="sim-insert" class="sim-btn sim-btn-insert">
+          ➕ INSERT Record
+        </button>
+        <button type="button" id="sim-update" class="sim-btn sim-btn-update">
+          🔄 UPDATE Record
+        </button>
+        <button type="button" id="sim-delete" class="sim-btn sim-btn-delete">
+          ❌ DELETE Record
+        </button>
+        <button type="button" id="sim-auto" class="sim-btn">
+          ⚡ Auto-Generate Events
+        </button>
+        <button type="button" id="sim-reset" class="sim-btn sim-btn-reset">
+          🔄 Reset Simulation
+        </button>
+        <div class="mode-toggle-wrapper">
+          <label for="sim-mode-toggle">
+            <span>Streaming</span>
+          </label>
+          <label class="mode-toggle">
+            <input type="checkbox" id="sim-mode-toggle" aria-label="Toggle between streaming and batch mode">
+            <span class="mode-toggle-slider"></span>
+          </label>
+          <label for="sim-mode-toggle">
+            <span>Batch</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="cdc-pipeline">
+        <div id="source-db" class="pipeline-stage">
+          <span class="stage-icon" aria-hidden="true">🗄️</span>
+          <span class="stage-label">Source Database</span>
+          <div class="stage-events" aria-live="polite" aria-label="Source database events"></div>
+        </div>
+
+        <div id="cdc-connector" class="pipeline-stage">
+          <span class="stage-icon" aria-hidden="true">🔌</span>
+          <span class="stage-label">CDC Connector</span>
+          <div class="stage-events" aria-live="polite" aria-label="CDC connector events"></div>
+        </div>
+
+        <div id="message-broker" class="pipeline-stage">
+          <span class="stage-icon" aria-hidden="true">📬</span>
+          <span class="stage-label">Message Broker</span>
+          <div class="stage-events" aria-live="polite" aria-label="Message broker events"></div>
+        </div>
+
+        <div id="target-sink" class="pipeline-stage">
+          <span class="stage-icon" aria-hidden="true">🎯</span>
+          <span class="stage-label">Target Sink</span>
+          <div class="stage-events" aria-live="polite" aria-label="Target sink events"></div>
+        </div>
+      </div>
+
+      <div id="cdc-stats" class="cdc-stats" aria-live="polite"></div>
+
+      <div class="cdc-records">
+        <h4>Current Records in Target</h4>
+        <div id="cdc-records" aria-live="polite"></div>
+      </div>
+
+      <div class="simulation-info">
+        <strong>About this simulation:</strong>
+        This is a browser-based educational demonstration showing how CDC captures and propagates database changes through a pipeline. Try different operations (INSERT, UPDATE, DELETE) and toggle between streaming and batch modes to see how data flows differ. In streaming mode, events are processed individually with natural delays. In batch mode, events are processed more rapidly in sequence.
       </div>
     </section>
 
