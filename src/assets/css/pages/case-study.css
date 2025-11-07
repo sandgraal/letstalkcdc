@@ -384,10 +384,6 @@
   font-size: 1.1rem;
 }
 
-.lesson h4::first-letter {
-  font-size: 1.5rem;
-}
-
 /* Takeaways grid */
 .takeaways-grid {
   display: grid;
