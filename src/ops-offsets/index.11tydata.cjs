@@ -5,6 +5,7 @@ module.exports = {
     description:
       '<p>Keep change streams healthy by protecting offset stores, practicing safe rewinds, and rehearsing replay drills.</p>',
     align: 'center',
+    skillLevel: 'Intermediate',
     actions: [
       { href: '#checklist', label: 'View Ops Checklist', variant: 'primary' },
       { href: '#automation', label: 'Automate Replays', variant: 'ghost' }

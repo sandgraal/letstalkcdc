@@ -1,0 +1,194 @@
+/**
+ * 38-skill-level-badges.css
+ * Skill level badges for educational content
+ * - Beginner: Green color scheme
+ * - Intermediate: Blue color scheme
+ * - Advanced: Red color scheme
+ */
+
+/* ==========================================================================
+   Base Skill Level Badge
+   ========================================================================== */
+
+.skill-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: var(--radius-full, 9999px);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  border: 1.5px solid;
+}
+
+/* Icon for skill level badges */
+.skill-level-badge::before {
+  content: "";
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Skill Level Variants
+   ========================================================================== */
+
+/* Beginner - Green */
+.skill-level-badge--beginner {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.skill-level-badge--beginner::before {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+/* Intermediate - Blue/Orange */
+.skill-level-badge--intermediate {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.skill-level-badge--intermediate::before {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Advanced - Red/Purple */
+.skill-level-badge--advanced {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.skill-level-badge--advanced::before {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* ==========================================================================
+   Size Variants
+   ========================================================================== */
+
+.skill-level-badge--sm {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+}
+
+.skill-level-badge--sm::before {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.skill-level-badge--lg {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.skill-level-badge--lg::before {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ==========================================================================
+   Skill Level in Cards
+   ========================================================================== */
+
+.series-card .skill-level-badge,
+.module-card .skill-level-badge {
+  margin-bottom: 0.5rem;
+}
+
+/* Place skill level badge with other card metadata */
+.card-meta .skill-level-badge {
+  margin-right: 0.5rem;
+}
+
+/* ==========================================================================
+   Skill Level in Hero Section
+   ========================================================================== */
+
+.hero-skill-level {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.hero-align-left .hero-skill-level {
+  justify-content: flex-start;
+}
+
+.hero-section .skill-level-badge {
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+/* ==========================================================================
+   Dark Theme Adjustments
+   ========================================================================== */
+
+[data-theme="dark"] .skill-level-badge--beginner {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+[data-theme="dark"] .skill-level-badge--intermediate {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+[data-theme="dark"] .skill-level-badge--advanced {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ==========================================================================
+   Accessibility
+   ========================================================================== */
+
+.skill-level-badge[aria-label] {
+  cursor: help;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .skill-level-badge {
+    font-size: 0.75rem;
+    padding: 0.3125rem 0.625rem;
+  }
+
+  .skill-level-badge::before {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .skill-level-badge {
+    border: 1px solid #000;
+    color: #000;
+    background: transparent;
+  }
+
+  .skill-level-badge::before {
+    display: none;
+  }
+}

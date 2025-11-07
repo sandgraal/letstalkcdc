@@ -3,6 +3,11 @@
   <section class="hero-section hero-align-{{ align }}">
     <div class="hero-container container">
       <div class="prose">
+        {% if config.skillLevel %}
+          <div class="hero-skill-level">
+            <span class="skill-level-badge skill-level-badge--{{ config.skillLevel | lower }}" aria-label="Skill level: {{ config.skillLevel }}">{{ config.skillLevel }}</span>
+          </div>
+        {% endif %}
         {% if config.kicker %}
           <p class="type-title text-muted hero-kicker">{{ config.kicker }}</p>
         {% endif %}
@@ -44,11 +49,16 @@
     class="series-card{% if card.isRecommended %} is-recommended{% endif %}{% if card.variant %} {{ card.variant }}{% endif %}{% if isDisabled %} is-disabled{% endif %}"
     {% if card.key %}id="series-{{ card.key }}" data-series-key="{{ card.key }}"{% endif %}
   >
-    {% if card.badge or (card.tags and card.tags | length) %}
+    {% if card.badge or (card.tags and card.tags | length) or card.skillLevel %}
       <div class="card-meta">
-        {% if card.badge %}
-          <div class="badge {{ card.badge.variant | default('recommended') }}">{{ card.badge.label }}</div>
-        {% endif %}
+        <div class="card-meta-left">
+          {% if card.badge %}
+            <div class="badge {{ card.badge.variant | default('recommended') }}">{{ card.badge.label }}</div>
+          {% endif %}
+          {% if card.skillLevel %}
+            <span class="skill-level-badge skill-level-badge--{{ card.skillLevel | lower }}" aria-label="Skill level: {{ card.skillLevel }}">{{ card.skillLevel }}</span>
+          {% endif %}
+        </div>
         {% if card.tags and card.tags | length %}
           <div class="card-tags">
             {% for tag in card.tags %}

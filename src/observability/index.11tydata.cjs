@@ -5,6 +5,7 @@ module.exports = {
     description:
       '<p>Instrument your CDC platform with lag, throughput, error, and saturation signals so incidents are caught before consumers notice.</p>',
     align: 'center',
+    skillLevel: 'Intermediate',
     actions: [
       { href: '#dashboards', label: 'Build Dashboards', variant: 'primary' },
       { href: '#slo', label: 'Define SLOs', variant: 'ghost' }

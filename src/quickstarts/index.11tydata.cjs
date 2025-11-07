@@ -4,6 +4,7 @@ module.exports = {
     title: 'CDC Quickstart Guides',
     description: '<p>Bring your first change data capture pipeline online fast. Choose your source database and follow a copy-paste friendly walkthrough with checkpoints and sanity checks.</p>',
     align: 'center',
+    skillLevel: 'Beginner',
     actions: [
       { href: '#quickstart-grid', label: 'Pick a Database' },
       { href: '/tests/', label: 'Run Acceptance Tests', variant: 'ghost' },

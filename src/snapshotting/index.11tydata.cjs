@@ -5,6 +5,7 @@ module.exports = {
     description:
       '<p>Initial loads are where most CDC rollouts stumble. Follow this guided playbook to capture a consistent snapshot, hold the boundary, and merge the stream without gaps.</p>',
     align: 'center',
+    skillLevel: 'Intermediate',
     actions: [
       { href: '#playbook', label: 'Start the Playbook', variant: 'primary' },
       { href: '#perdb', label: 'Skip to DB Recipes', variant: 'ghost' }
