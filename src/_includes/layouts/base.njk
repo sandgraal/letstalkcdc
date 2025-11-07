@@ -44,12 +44,12 @@
             <a class="{% if page.url | startsWith('/intro') %}active{% endif %}" href="{{ '/intro/' | url }}">Introduction</a>
             <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">Learning Series</a>
             <div class="nav-dropdown">
-              <button class="nav-dropdown-toggle {% if page.url | startsWith('/quickstart') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+              <button class="nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
                 Labs
                 <span class="dropdown-icon" aria-hidden="true">▾</span>
               </button>
               <div class="nav-dropdown-menu" role="menu">
-                <a class="{% if page.url | startsWith('/quickstart') %}active{% endif %}" href="{{ '/quickstarts/' | url }}" role="menuitem">Quick Starts</a>
+                <a class="{% if page.url | startsWith('/quickstarts') %}active{% endif %}" href="{{ '/quickstarts/' | url }}" role="menuitem">Quick Starts</a>
                 <a class="{% if page.url | startsWith('/lab-kafka') %}active{% endif %}" href="{{ '/lab-kafka-debezium/' | url }}" role="menuitem">Kafka + Debezium Lab</a>
                 <a class="{% if page.url | startsWith('/cloud-labs') %}active{% endif %}" href="{{ '/cloud-labs/' | url }}" role="menuitem">Cloud Labs</a>
                 <a class="{% if page.url | startsWith('/tests') %}active{% endif %}" href="{{ '/tests/' | url }}" role="menuitem">Acceptance Tests</a>
