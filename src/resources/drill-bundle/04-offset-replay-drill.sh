@@ -5,11 +5,13 @@
 
 set -euo pipefail
 
+# Configuration via environment variables
 KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:29092}"
 CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"
 SOURCE_CONNECTOR="${SOURCE_CONNECTOR:-inventory-connector}"
 SINK_CONNECTOR="${SINK_CONNECTOR:-jdbc-sink-connector}"
 OFFSETS_TOPIC="${OFFSETS_TOPIC:-my_connect_offsets}"
+BACKUP_DIR="${BACKUP_DIR:-${TMPDIR:-/tmp}}"
 
 echo "============================================"
 echo "Drill #4: Offset Wipe & Replay"
@@ -30,10 +32,11 @@ fi
 # Step 2: Backup current state
 echo
 echo "Step 2: Backing up connector offsets..."
+BACKUP_FILE="${BACKUP_DIR}/offsets-backup-$(date +%s).json"
 kafka-console-consumer --bootstrap-server "$KAFKA_BOOTSTRAP" \
-  --topic "$OFFSETS_TOPIC" --from-beginning --timeout-ms 5000 > /tmp/offsets-backup-$(date +%s).json || \
+  --topic "$OFFSETS_TOPIC" --from-beginning --timeout-ms 5000 > "$BACKUP_FILE" || \
   echo "Warning: Could not backup offsets. Topic may not exist."
-echo "Offsets backed up to /tmp/offsets-backup-*.json"
+echo "Offsets backed up to $BACKUP_FILE"
 echo
 
 echo "Step 3: Recording sink row count..."
@@ -69,7 +72,8 @@ echo
 # Step 6: Re-register with fresh snapshot
 echo "Step 6: Re-registering source connector with snapshot mode..."
 echo "Creating new connector 'inventory-connector-v2' with fresh snapshot..."
-cat > /tmp/source-connector-resnapshot.json <<EOF
+CONFIG_FILE="${BACKUP_DIR}/source-connector-resnapshot.json"
+cat > "$CONFIG_FILE" <<EOF
 {
   "name": "inventory-connector-v2",
   "config": {
@@ -89,7 +93,7 @@ EOF
 
 curl -X POST "$CONNECT_URL/connectors" \
   -H "Content-Type: application/json" \
-  -d @/tmp/source-connector-resnapshot.json || \
+  -d @"$CONFIG_FILE" || \
   echo "Failed to create source connector. Check if Connect is running."
 echo
 

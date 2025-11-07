@@ -5,10 +5,14 @@
 
 set -euo pipefail
 
+# Configuration via environment variables
 KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:29092}"
 CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"
 SINK_CONNECTOR="${SINK_CONNECTOR:-jdbc-sink-connector}"
 CONSUMER_GROUP="${CONSUMER_GROUP:-sink-group-inventory}"
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-postgres}"
+POSTGRES_USER="${POSTGRES_USER:-start_data_engineer}"
+POSTGRES_DB="${POSTGRES_DB:-inventory}"
 
 echo "==================================="
 echo "Drill #1: Backpressure Simulation"
@@ -34,7 +38,7 @@ sleep 5
 
 # Step 3: Generate source changes
 echo "Step 3: Generating source database changes..."
-docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+docker exec -it "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
   "INSERT INTO public.app_customer (name, email) VALUES ('Backpressure Test User', 'backpressure@test.com');" || \
   echo "Warning: Failed to insert test data. Check if postgres container is running."
 echo
