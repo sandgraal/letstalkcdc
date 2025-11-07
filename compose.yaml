@@ -40,16 +40,37 @@ services:
       REST_ADVERTISED_HOST_NAME: connect
       REST_PORT: 8083
 
-  pg:
+  postgres:
     image: debezium/example-postgres:2.6
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: inventory
     ports: ["5432:5432"]
+    volumes:
+      - ./sandbox/init/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mysql:
+    image: debezium/example-mysql:2.6
+    environment:
+      MYSQL_ROOT_PASSWORD: debezium
+      MYSQL_USER: mysqluser
+      MYSQL_PASSWORD: mysqlpw
+      MYSQL_DATABASE: inventory
+    ports: ["3306:3306"]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on: [kafka, connect]
+    ports: ["8080:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
 
   kcat:
     image: edenhill/kcat:1.7.1
     depends_on: [kafka]
-    entrypoint: ["/bin/sh","-c","sleep infinity"]
+    entrypoint: ["/bin/sh","-c","while true; do sleep 3600; done"]
     environment: {}
