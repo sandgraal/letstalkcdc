@@ -77,11 +77,11 @@ function initQuiz(container) {
 
         // Track completion event (if tracing is available)
         if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
-          window._educationTracer.trackInteraction('quiz-answer', {
-            quizId: container.dataset.quizId,
-            questionIndex,
-            correct: isCorrect
-          });
+          window._educationTracer.trackInteraction(
+            'quiz-answer',
+            `${container.dataset.quizId}::${questionIndex}`,
+            isCorrect
+          );
         }
       });
     });
@@ -93,9 +93,11 @@ function initQuiz(container) {
       resetQuiz();
       
       if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
-        window._educationTracer.trackInteraction('quiz-reset', {
-          quizId: container.dataset.quizId
-        });
+        window._educationTracer.trackInteraction(
+          'quiz-reset',
+          container.dataset.quizId,
+          false
+        );
       }
     });
   }
@@ -147,12 +149,11 @@ function initQuiz(container) {
 
     // Track completion
     if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
-      window._educationTracer.trackInteraction('quiz-complete', {
-        quizId: container.dataset.quizId,
-        score,
-        total,
-        percentage
-      });
+      window._educationTracer.trackInteraction(
+        'quiz-complete',
+        container.dataset.quizId,
+        score === total
+      );
     }
   }
 
