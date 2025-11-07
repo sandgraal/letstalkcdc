@@ -16,6 +16,27 @@ head_extra: |
             In this lab, you'll build a complete, end-to-end Change Data Capture (CDC) pipeline from scratch. We'll use Docker Compose to orchestrate Postgres databases (source and sink), Kafka, the Debezium Postgres connector, and a JDBC Sink connector to demonstrate real-time change streaming and materialization.
         </p>
 
+        <div class="callout callout-info" style="margin: 2rem 0;">
+            <h3>🚀 Quick Start Option: Use the CDC Sandbox</h3>
+            <p>Want to skip the manual setup and start learning immediately? This repository includes a <strong>pre-configured CDC sandbox</strong> with all services ready to go:</p>
+            <ul>
+                <li>✅ Pre-loaded with sample data (products, customers, orders)</li>
+                <li>✅ Postgres and MySQL databases configured for CDC</li>
+                <li>✅ Kafka, Zookeeper, and Debezium Connect ready</li>
+                <li>✅ Kafka UI for visual message inspection</li>
+                <li>✅ One-command startup: <code>docker compose up -d</code></li>
+            </ul>
+            <p><strong>Get started:</strong></p>
+            <pre><code># From the repository root
+docker compose up -d
+./sandbox/register-postgres-connector.sh
+
+# Open Kafka UI
+open http://localhost:8080</code></pre>
+            <p>📖 <strong>Full documentation:</strong> <a href="https://github.com/sandgraal/letstalkcdc/blob/main/docs/SANDBOX.md">CDC Sandbox Guide</a></p>
+            <p>If you prefer to understand the setup step-by-step, continue with the instructions below. Otherwise, skip to <a href="#verify-sink">Verify Your Sink</a> after starting the sandbox.</p>
+        </div>
+
         <section aria-labelledby="prereqs" class="lab-steps">
             <h2 id="prereqs">Prerequisites</h2>
             <ul>

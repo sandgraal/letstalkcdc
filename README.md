@@ -48,10 +48,34 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 For complete setup instructions including optional features (Appwrite progress tracking, OpenTelemetry tracing, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
 
+### 🚀 CDC Sandbox for Hands-On Practice
+
+Get started with CDC in minutes using our pre-configured Docker Compose sandbox:
+
+```bash
+# Start the complete CDC stack (Postgres, MySQL, Kafka, Debezium)
+docker compose up -d
+
+# Register a connector and start capturing changes
+./sandbox/register-postgres-connector.sh
+
+# View change events in Kafka UI
+open http://localhost:8080
+```
+
+**Includes:**
+- ✅ Pre-loaded sample data (products, customers, orders)
+- ✅ Postgres & MySQL configured for CDC
+- ✅ Kafka, Zookeeper, Debezium Connect
+- ✅ Kafka UI for visual message inspection
+
+📖 **Full guide:** [docs/SANDBOX.md](docs/SANDBOX.md) | [Quick reference](sandbox/README.md)
+
 ### New Features ✨
 
 Recent additions to the platform:
 
+- 🐳 **Docker Compose CDC Sandbox** — Complete CDC environment with one command
 - 🔐 **User authentication** — Create an account and log in to sync progress across devices
 - ☁️ **Cloud progress sync** — Your learning progress automatically saved and synced via Appwrite
 - 🔍 **Client-side search** — Press `/` to search all content instantly
