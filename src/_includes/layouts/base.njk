@@ -41,10 +41,34 @@
           </button>
           <nav aria-label="Primary" class="nav-links" data-mobile-nav>
             <a class="{% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
-            <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">The Series</a>
-            <a href="{{ '/quickstarts/' | url }}">Quick Starts</a>
-            <a href="{{ '/use-cases/' | url }}">Use Cases</a>
-            <a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>
+            <a class="{% if page.url | startsWith('/intro') %}active{% endif %}" href="{{ '/intro/' | url }}">Introduction</a>
+            <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">Learning Series</a>
+            <div class="nav-dropdown">
+              <button class="nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+                Labs
+                <span class="dropdown-icon" aria-hidden="true">▾</span>
+              </button>
+              <div class="nav-dropdown-menu" role="menu">
+                <a class="{% if page.url | startsWith('/quickstarts') %}active{% endif %}" href="{{ '/quickstarts/' | url }}" role="menuitem">Quick Starts</a>
+                <a class="{% if page.url | startsWith('/lab-kafka') %}active{% endif %}" href="{{ '/lab-kafka-debezium/' | url }}" role="menuitem">Kafka + Debezium Lab</a>
+                <a class="{% if page.url | startsWith('/cloud-labs') %}active{% endif %}" href="{{ '/cloud-labs/' | url }}" role="menuitem">Cloud Labs</a>
+                <a class="{% if page.url | startsWith('/tests') %}active{% endif %}" href="{{ '/tests/' | url }}" role="menuitem">Acceptance Tests</a>
+              </div>
+            </div>
+            <div class="nav-dropdown">
+              <button class="nav-dropdown-toggle {% if page.url | startsWith('/tooling') or page.url | startsWith('/connector-builder') or page.url | startsWith('/debezium-decoder') or page.url | startsWith('/dlq-triage') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+                Tools
+                <span class="dropdown-icon" aria-hidden="true">▾</span>
+              </button>
+              <div class="nav-dropdown-menu" role="menu">
+                <a class="{% if page.url | startsWith('/tooling') %}active{% endif %}" href="{{ '/tooling/' | url }}" role="menuitem">Ecosystem</a>
+                <a class="{% if page.url | startsWith('/connector-builder') %}active{% endif %}" href="{{ '/connector-builder/' | url }}" role="menuitem">Connector Builder</a>
+                <a class="{% if page.url | startsWith('/debezium-decoder') %}active{% endif %}" href="{{ '/debezium-decoder/' | url }}" role="menuitem">Event Decoder</a>
+                <a class="{% if page.url | startsWith('/dlq-triage') %}active{% endif %}" href="{{ '/dlq-triage/' | url }}" role="menuitem">DLQ Triage</a>
+              </div>
+            </div>
+            <a class="{% if page.url | startsWith('/use-cases') %}active{% endif %}" href="{{ '/use-cases/' | url }}">Use Cases</a>
+            <a class="{% if page.url | startsWith('/troubleshooting') %}active{% endif %}" href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>
           </nav>
           <div class="header-progress" data-header-progress>
             <span class="header-progress__label">Progress</span>
