@@ -2,6 +2,8 @@
 layout: base.njk
 title: "CDC Tooling Comparison | CDC: The Missing Manual"
 canonicalPath: "/tooling/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <meta
         content="A comparison of CDC tools and platforms, including open-source (Debezium), managed cloud services (AWS DMS), and commercial enterprise solutions (Fivetran, GoldenGate)."
@@ -11,6 +13,7 @@ head_extra: |
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -382,4 +385,6 @@ head_extra: |
             Always check official documentation for the latest releases.</em>
           </p>
         </details>
+
+        {{ quizMacro.quiz(quizConfig) | safe }}
       </article>

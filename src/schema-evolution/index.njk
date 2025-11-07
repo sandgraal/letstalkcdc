@@ -2,6 +2,8 @@
 layout: base.njk
 title: "Schema Evolution | CDC: The Missing Manual"
 canonicalPath: "/schema-evolution/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <meta
         content="Learn how to handle schema drift and evolution in CDC pipelines using a Schema Registry to prevent breakages."
@@ -11,6 +13,7 @@ head_extra: |
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -318,3 +321,5 @@ curl $REGISTRY_URL/config/your-subject
           </ul>
         </details>
       </article>
+
+      {{ quizMacro.quiz(quizConfig) | safe }}

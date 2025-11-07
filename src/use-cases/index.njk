@@ -2,6 +2,8 @@
 layout: base.njk
 title: "CDC Use Cases & Applications | CDC: The Missing Manual"
 canonicalPath: "/use-cases/"
+scripts:
+  - "/assets/js/lib/quiz.js"
 head_extra: |
   <meta
         content="Explore real-world CDC use cases, including real-time data warehousing, cache invalidation, auditing, microservices integration, and full-text search indexing."
@@ -11,6 +13,7 @@ head_extra: |
 
 ---
 {% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -332,4 +335,6 @@ head_extra: |
             </p>
           </div>
         </section>
+
+        {{ quizMacro.quiz(quizConfig) | safe }}
       </article>
