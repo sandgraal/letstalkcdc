@@ -1,0 +1,383 @@
+/* =============================================================
+   Mobile Responsiveness Enhancements
+   Ensuring optimal UX on phones and tablets
+   ============================================================= */
+
+/* ==========================================================================
+   Mobile Header Improvements
+   ========================================================================== */
+
+/* Ensure header elements don't overflow on small screens */
+@media (max-width: 639px) {
+  .nav-container {
+    padding: 0 var(--space-md);
+    gap: var(--space-xs);
+  }
+
+  .site-title {
+    font-size: var(--text-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40vw;
+  }
+
+  .nav-right {
+    gap: var(--space-2xs);
+  }
+
+  /* Hide "Log In" button text on very small screens, show icon only */
+  .nav-right > button[aria-label*="Log in"] {
+    padding: var(--space-xs);
+    font-size: 0;
+  }
+
+  .nav-right > button[aria-label*="Log in"]::before {
+    content: "👤";
+    font-size: var(--text-base);
+  }
+
+  /* Reduce theme toggle and search button sizes slightly */
+  .theme-toggle,
+  .search-trigger {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: var(--text-base);
+  }
+}
+
+/* ==========================================================================
+   Touch Target Improvements (44x44px minimum per WCAG)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Ensure all interactive elements meet minimum touch target size */
+  button,
+  a.button,
+  .button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve button padding on mobile */
+  .button {
+    padding: var(--space-sm) var(--space-lg);
+  }
+
+  .button.small {
+    padding: var(--space-xs) var(--space-md);
+    min-height: 36px;
+  }
+}
+
+/* ==========================================================================
+   Content Layout Improvements
+   ========================================================================== */
+
+/* Reduce excessive padding/margins on mobile */
+@media (max-width: 640px) {
+  section {
+    padding: var(--space-xl) 0;
+  }
+
+  .hero-section {
+    padding: var(--space-2xl) 0;
+  }
+
+  /* Tighten up hero text */
+  .hero-section h1 {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--space-md);
+  }
+
+  .hero-lede {
+    font-size: var(--text-base);
+    margin: var(--space-md) auto;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: var(--space-lg);
+  }
+
+  .hero-actions .button {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Card Grid Improvements
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .series-card-grid,
+  .grid,
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .series-card,
+  .card {
+    padding: var(--space-lg);
+  }
+}
+
+/* ==========================================================================
+   Typography Adjustments
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  /* Ensure headings don't overflow */
+  h1, h2, h3, h4, h5, h6 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Adjust paragraph max-width for mobile */
+  p {
+    max-width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Figure and Media Improvements
+   ========================================================================== */
+
+/* Ensure figures and their contents are responsive */
+figure {
+  max-width: 100%;
+  margin: var(--space-lg) 0;
+}
+
+figure img {
+  width: 100%;
+  height: auto;
+}
+
+figcaption {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* ==========================================================================
+   Code Block Mobile Improvements
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .code-block-wrapper {
+    margin-block: var(--space-md);
+    border-radius: var(--radius-md);
+  }
+
+  pre {
+    padding: var(--space-md);
+    font-size: var(--text-xs);
+    /* Ensure horizontal scrolling works smoothly */
+    -webkit-overflow-scrolling: touch;
+    max-width: calc(100vw - var(--space-md) * 2);
+  }
+
+  .code-block-header {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .code-copy-button {
+    font-size: var(--text-xs);
+    padding: var(--space-2xs) var(--space-xs);
+  }
+}
+
+/* ==========================================================================
+   Table Improvements (additional to existing styles)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Ensure table container doesn't break layout */
+  .table-container {
+    margin-left: calc(var(--space-md) * -1);
+    margin-right: calc(var(--space-md) * -1);
+    border-radius: 0;
+  }
+
+  /* Adjust table cell padding for mobile */
+  td::before {
+    font-size: var(--text-xs);
+  }
+}
+
+/* ==========================================================================
+   Modal and Dialog Mobile Improvements
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .modal,
+  .session-modal .modal-content {
+    max-width: 95vw;
+    max-height: 90vh;
+    margin: var(--space-md);
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: var(--space-md);
+  }
+
+  .modal-title {
+    font-size: var(--text-lg);
+  }
+}
+
+/* ==========================================================================
+   Footer Mobile Improvements
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .footer-grid {
+    gap: var(--space-xl);
+  }
+
+  .footer-bottom {
+    padding-block-start: var(--space-lg);
+  }
+}
+
+/* ==========================================================================
+   Form Improvements
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    /* Prevent iOS zoom on focus */
+    font-size: 16px;
+  }
+
+  .search-overlay {
+    padding: var(--space-md);
+  }
+
+  .search-panel {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ==========================================================================
+   Prevent Horizontal Overflow
+   ========================================================================== */
+
+/* Ensure nothing breaks out of viewport */
+body {
+  overflow-x: hidden;
+}
+
+main {
+  overflow-x: hidden;
+}
+
+/* Prevent wide content from causing horizontal scroll */
+@media (max-width: 768px) {
+  * {
+    max-width: 100%;
+  }
+
+  /* Exception for elements that should be able to scroll horizontally */
+  pre,
+  code,
+  .table-container,
+  .horizontal-scroll {
+    max-width: 100vw;
+  }
+
+  /* Ensure fixed/absolute positioned elements don't overflow */
+  .fixed,
+  [style*="position: fixed"],
+  [style*="position: absolute"] {
+    max-width: 100vw;
+  }
+}
+
+/* ==========================================================================
+   Assistant/Chat Button Mobile Position
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  #askBtn {
+    bottom: var(--space-lg);
+    right: var(--space-md);
+    width: 56px;
+    height: 56px;
+    font-size: var(--text-2xl);
+  }
+
+  #askPanel {
+    left: var(--space-xs);
+    right: var(--space-xs);
+    bottom: var(--space-xs);
+    max-width: none;
+    width: auto;
+  }
+}
+
+/* ==========================================================================
+   Stats/Progress Chip Mobile Position
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .stats-wrapper {
+    bottom: calc(var(--space-lg) + 70px); /* Position above ask button */
+    right: var(--space-md);
+  }
+
+  .stats-chip {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* ==========================================================================
+   Breadcrumb Mobile Improvements
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .breadcrumb-container {
+    padding-inline: var(--space-md);
+  }
+
+  .breadcrumb {
+    font-size: var(--text-xs);
+  }
+
+  /* Truncate long breadcrumb items */
+  .breadcrumb a,
+  .breadcrumb span {
+    max-width: 20ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Preferences
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
