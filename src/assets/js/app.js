@@ -172,51 +172,63 @@ onReady(() => {
   const dropdownToggles = doc.querySelectorAll(".nav-dropdown-toggle");
   
   dropdownToggles.forEach((toggle) => {
+    const dropdown = toggle.closest(".nav-dropdown");
+    const menu = dropdown?.querySelector(".nav-dropdown-menu");
+
+    if (!dropdown || !menu) return;
+
+    const setExpanded = (expanded) => {
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      if (expanded) {
+        dropdown.setAttribute("data-dropdown-open", "");
+      } else {
+        dropdown.removeAttribute("data-dropdown-open");
+      }
+    };
+
     // Handle click/tap
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
       const isExpanded = toggle.getAttribute("aria-expanded") === "true";
-      
+
       // Close all other dropdowns
       dropdownToggles.forEach((other) => {
         if (other !== toggle) {
           other.setAttribute("aria-expanded", "false");
+          other.closest(".nav-dropdown")?.removeAttribute("data-dropdown-open");
         }
       });
-      
+
       // Toggle current dropdown
-      toggle.setAttribute("aria-expanded", isExpanded ? "false" : "true");
+      setExpanded(!isExpanded);
+
+      if (!isExpanded) {
+        const firstMenuItem = menu.querySelector("a");
+        if (firstMenuItem) {
+          // Small delay to ensure menu is rendered before focusing
+          setTimeout(() => firstMenuItem.focus(), 50);
+        }
+      }
     });
-    
+
     // Handle keyboard navigation
     toggle.addEventListener("keydown", (event) => {
-      const dropdown = toggle.closest(".nav-dropdown");
-      const menu = dropdown?.querySelector(".nav-dropdown-menu");
-      
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         toggle.click();
-        
-        // Focus first menu item if opening
-        if (toggle.getAttribute("aria-expanded") === "true") {
-          const firstMenuItem = menu?.querySelector("a");
-          if (firstMenuItem) {
-            // Small delay to ensure menu is rendered before focusing
-            setTimeout(() => firstMenuItem.focus(), 50);
-          }
-        }
       } else if (event.key === "Escape") {
-        toggle.setAttribute("aria-expanded", "false");
+        setExpanded(false);
         toggle.focus();
       }
     });
   });
-  
+
   // Close dropdowns when clicking outside
   doc.addEventListener("click", (event) => {
     if (!event.target.closest(".nav-dropdown")) {
       dropdownToggles.forEach((toggle) => {
         toggle.setAttribute("aria-expanded", "false");
+        toggle.closest(".nav-dropdown")?.removeAttribute("data-dropdown-open");
       });
     }
   });

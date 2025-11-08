@@ -59,7 +59,7 @@
               <a class="nav-chip {% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
               <a class="nav-chip {% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">Series</a>
               <div class="nav-dropdown">
-                <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+                <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true" type="button">
                   Labs
                   <span class="dropdown-icon" aria-hidden="true">▾</span>
                 </button>
@@ -71,7 +71,7 @@
                 </div>
               </div>
               <div class="nav-dropdown">
-                <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/tooling') or page.url | startsWith('/connector-builder') or page.url | startsWith('/debezium-decoder') or page.url | startsWith('/dlq-triage') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+                <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/tooling') or page.url | startsWith('/connector-builder') or page.url | startsWith('/debezium-decoder') or page.url | startsWith('/dlq-triage') %}active{% endif %}" aria-expanded="false" aria-haspopup="true" type="button">
                   Tools
                   <span class="dropdown-icon" aria-hidden="true">▾</span>
                 </button>
