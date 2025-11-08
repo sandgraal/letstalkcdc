@@ -1,9 +1,15 @@
-module.exports = {
-  plugins: [
-    require("postcss-import")({
-      path: ["src/assets/css"],
-    }),
-    require("autoprefixer")(),
+const importPlugin = require("postcss-import");
+const autoprefixer = require("autoprefixer");
+
+const plugins = [
+  importPlugin({
+    path: ["src/assets/css"],
+  }),
+  autoprefixer(),
+];
+
+if (process.env.NODE_ENV === "production") {
+  plugins.push(
     require("cssnano")({
       preset: [
         "default",
@@ -17,6 +23,10 @@ module.exports = {
           minifySelectors: true,
         },
       ],
-    }),
-  ],
+    })
+  );
+}
+
+module.exports = {
+  plugins,
 };
