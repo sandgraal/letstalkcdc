@@ -132,7 +132,6 @@ module.exports = function (eleventyConfig) {
     "src/assets/css/auth.css": "assets/css/auth.css",
     "src/assets/css/pages": "assets/css/pages",
     "src/assets/js": "assets/js",
-    "src/resources": "downloads",
     "compose.yaml": "downloads/compose.yaml",
     "src/css": "css",
     "src/js": "js",
@@ -140,6 +139,9 @@ module.exports = function (eleventyConfig) {
     "src/scripts": "scripts",
     scripts: "scripts",
   });
+
+  // Ensure download assets (YAML manifests, scripts, dashboards, etc.) are copied verbatim.
+  eleventyConfig.addPassthroughCopy({ "src/resources": "downloads" });
 
   eleventyConfig.on("eleventy.after", () => {
     const inputPath = path.join("src", "data", "assistant.yml");
