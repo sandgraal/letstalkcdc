@@ -36,8 +36,19 @@
     <header class="global-header">
       <div class="nav-container">
         <a class="site-logo" href="{{ '/' | url }}" aria-label="{{ site.seoTitle }} home">
-          <span class="site-logo__mark" aria-hidden="true">LT</span>
-          <span class="site-logo__text" aria-hidden="true">CDC</span>
+          <span class="site-logo__icon" aria-hidden="true">
+            <img
+              src="{{ '/images/lets-talk-cdc-logo.svg' | url }}"
+              width="92"
+              height="28"
+              alt=""
+              decoding="async"
+            >
+          </span>
+          <span class="site-logo__wordmark" aria-hidden="true">
+            <span class="site-logo__word site-logo__word--primary">Let's Talk</span>
+            <span class="site-logo__word site-logo__word--accent">CDC</span>
+          </span>
         </a>
         <div class="nav-right">
           <button aria-label="Toggle navigation menu" class="mobile-menu-toggle" data-mobile-menu-toggle type="button">
