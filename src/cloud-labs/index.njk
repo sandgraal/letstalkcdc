@@ -16,13 +16,14 @@ ai-generated: true
     </p>
   </section>
 
-  <section class="diagram-section" style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
-    <figure style="margin: 0;">
-      <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}" 
-           alt="CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink" 
-           style="width: 100%; max-width: 100%; height: auto; display: block; background: #0b1220; border-radius: 8px; padding: 1rem;"/>
-      <figcaption style="color: #94a3b8; font-size: 0.875rem; text-align: center; margin-top: 0.5rem; font-style: italic;">
-        The CDC pipeline architecture: Cloud platforms abstract different parts of this flow—AWS DMS handles the full pipeline, Snowflake focuses on the sink, and Matillion provides visual orchestration.
+  <section class="diagram-section">
+    <figure class="diagram-section__figure">
+      <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}"
+           alt="CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink"
+           class="diagram-section__image" />
+      <figcaption class="diagram-section__caption">
+        The CDC pipeline architecture: Cloud platforms abstract different parts of this flow—AWS DMS handles the full pipeline,
+        Snowflake focuses on the sink, and Matillion provides visual orchestration.
       </figcaption>
     </figure>
   </section>

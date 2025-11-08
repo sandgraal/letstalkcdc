@@ -45,6 +45,15 @@
         padding: 1rem;
         margin: 0;
       }
+      .decoder-app h2 {
+        margin: 1.4rem 0 0.75rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .decoder-app .panel > h2:first-of-type {
+        margin-top: 0;
+      }
       .decoder-app .muted {
         color: var(--muted);
       }
@@ -74,6 +83,10 @@
         color: inherit;
         text-decoration: none;
         cursor: pointer;
+      }
+      .decoder-app .btn-input {
+        min-width: 220px;
+        text-align: left;
       }
       .decoder-app .btn:hover,
       .decoder-app .btn:focus {

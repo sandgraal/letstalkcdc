@@ -46,12 +46,12 @@ head_extra: |
           without breaking the pipeline.
         </p>
 
-        <figure style="max-width: 920px; margin: 2rem auto;">
-          <img src="{{ '/diagrams/schema-evolution.svg' | url }}" 
-               alt="Schema evolution diagram showing how a Schema Registry manages compatibility between producers and consumers with different schema versions using backward, forward, and full compatibility modes" 
-               style="width: 100%; height: auto; display: block; background: #0b1220; border-radius: 8px; padding: 1rem;"/>
-          <figcaption style="color: #94a3b8; font-size: 0.875rem; text-align: center; margin-top: 0.5rem; font-style: italic;">
-            Schema Registry mediates evolution between producers and consumers with compatibility checks
+        <figure class="diagram-section__figure">
+          <img src="{{ '/diagrams/schema-migration-flow.svg' | url }}"
+               alt="Schema evolution flow showing schema registry, converters, and sink adjustments"
+               class="diagram-section__image" />
+          <figcaption class="diagram-section__caption">
+            Schema evolution lifecycle: capture → validate → materialize → monitor
           </figcaption>
         </figure>
 

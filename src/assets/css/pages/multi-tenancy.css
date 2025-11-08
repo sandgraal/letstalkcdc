@@ -114,6 +114,13 @@
   gap: 0.5rem;
 }
 
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
 .seg-presets button {
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
@@ -150,4 +157,8 @@
 .details-list summary {
   font-weight: 600;
   cursor: pointer;
+}
+
+.faq-section {
+  margin-top: 1rem;
 }

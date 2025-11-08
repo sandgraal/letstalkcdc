@@ -59,6 +59,15 @@ h1 {
   padding: 1rem;
   margin: 0;
 }
+.dlq-app h2 {
+  margin: 1.4rem 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.dlq-app .panel > h2:first-of-type {
+  margin-top: 0;
+}
 
 .dlq-app .muted {
   color: var(--muted);
@@ -96,6 +105,20 @@ h1 {
 .dlq-app .btn:focus {
   background: rgba(255, 255, 255, 0.06);
   outline: none;
+}
+.dlq-textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface2);
+  color: #e6eef7;
+  padding: 0.6rem;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.dlq-textarea:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .dlq-app .small {
