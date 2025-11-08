@@ -166,15 +166,18 @@
     transparent 100%
   );
 
-  /* Primary Button Enhancements */
-  --button-primary-start: #38bdf8;
+  /* Primary Button Enhancements
+     Button gradient colors derived from accent palette for consistency.
+     Uses --color-accent-light (#60a5fa) → --color-accent-hover (#2563eb) 
+     → --color-accent-active (#1d4ed8) for a cohesive blue gradient. */
+  --button-primary-start: #60a5fa;
   --button-primary-mid: #2563eb;
-  --button-primary-end: #7c3aed;
-  --button-primary-border: rgba(56, 189, 248, 0.65);
-  --button-primary-shadow: 0 16px 38px -18px rgba(56, 189, 248, 0.75),
+  --button-primary-end: #1d4ed8;
+  --button-primary-border: rgba(96, 165, 250, 0.65);
+  --button-primary-shadow: 0 16px 38px -18px rgba(59, 130, 246, 0.75),
     0 12px 24px -14px rgba(37, 99, 235, 0.65);
-  --button-primary-hover-shadow: 0 22px 46px -18px rgba(56, 189, 248, 0.9),
-    0 14px 28px -16px rgba(124, 58, 237, 0.55);
+  --button-primary-hover-shadow: 0 22px 46px -18px rgba(59, 130, 246, 0.9),
+    0 14px 28px -16px rgba(29, 78, 216, 0.55);
   --button-primary-text-shadow: 0 2px 4px rgba(8, 47, 73, 0.55);
 }
 
@@ -262,14 +265,17 @@
     transparent 100%
   );
 
-  /* Primary Button Enhancements */
+  /* Primary Button Enhancements
+     Button gradient colors derived from accent palette for consistency.
+     Uses --color-accent-hover (#2563eb) → --color-accent-active (#1d4ed8)
+     → darker blue (#1e40af) for depth against light backgrounds. */
   --button-primary-start: #2563eb;
   --button-primary-mid: #1d4ed8;
-  --button-primary-end: #4338ca;
+  --button-primary-end: #1e40af;
   --button-primary-border: rgba(37, 99, 235, 0.4);
   --button-primary-shadow: 0 12px 30px -16px rgba(37, 99, 235, 0.45),
-    0 4px 10px rgba(30, 64, 175, 0.15);
+    0 4px 10px rgba(29, 78, 216, 0.15);
   --button-primary-hover-shadow: 0 16px 40px -18px rgba(37, 99, 235, 0.55),
-    0 6px 14px rgba(30, 64, 175, 0.2);
+    0 6px 14px rgba(29, 78, 216, 0.2);
   --button-primary-text-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
 }
