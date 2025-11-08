@@ -314,7 +314,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO debezium_use
     "database.user": "debezium_user",
     "database.password": "${file:/secrets/db-password.txt:password}",
     "database.dbname": "orders",
-    "database.server.name": "orders",
+    "topic.prefix": "orders",
     "table.include.list": "public.orders,public.customers,public.line_items,public.products",
     "slot.name": "debezium_slot",
     "publication.name": "debezium_publication",

@@ -84,7 +84,7 @@ cat > "$CONFIG_FILE" <<EOF
     "database.user": "start_data_engineer",
     "database.password": "password",
     "database.dbname": "inventory",
-    "database.server.name": "server2",
+    "topic.prefix": "server2",
     "table.include.list": "public.app_customer",
     "slot.name": "debezium_v2"
   }
