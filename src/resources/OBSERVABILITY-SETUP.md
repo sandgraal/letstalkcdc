@@ -61,13 +61,13 @@ mkdir cdc-monitoring && cd cdc-monitoring
 
 # Download all required files from the repository
 # Replace with your actual site URL or use the GitHub raw URLs
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/docker-compose-observability.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus-alerts.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/jmx-exporter-config.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/grafana-datasources.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/grafana-dashboards.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/grafana-kafka-connect-dashboard.json
+curl -O {{ site.origin ~ ('/downloads/docker-compose-observability.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/prometheus.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/prometheus-alerts.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/jmx-exporter-config.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/grafana-datasources.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/grafana-dashboards.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/grafana-kafka-connect-dashboard.json' | url) }}
 ```
 
 ### Step 2: Start the Stack
@@ -220,9 +220,9 @@ We provide a ready-to-use Alertmanager configuration that extends the base monit
 
 ```bash
 # Download the Alertmanager extension files
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/docker-compose.alerts.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/alertmanager.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus-with-alertmanager.yml
+curl -O {{ site.origin ~ ('/downloads/docker-compose.alerts.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/alertmanager.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/prometheus-with-alertmanager.yml' | url) }}
 
 # Start the full stack with Alertmanager
 docker-compose -f docker-compose-observability.yml -f docker-compose.alerts.yml up -d

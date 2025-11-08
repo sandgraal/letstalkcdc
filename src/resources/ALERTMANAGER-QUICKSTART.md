@@ -17,9 +17,9 @@ This guide shows you how to add Alertmanager to your CDC monitoring stack to rou
 If you already have the base monitoring stack, just add these three files:
 
 ```bash
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/docker-compose.alerts.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/alertmanager.yml
-curl -O https://sandgraal.github.io/letstalkcdc/downloads/prometheus-with-alertmanager.yml
+curl -O {{ site.origin ~ ('/downloads/docker-compose.alerts.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/alertmanager.yml' | url) }}
+curl -O {{ site.origin ~ ('/downloads/prometheus-with-alertmanager.yml' | url) }}
 ```
 
 ### 2. Configure your receivers
