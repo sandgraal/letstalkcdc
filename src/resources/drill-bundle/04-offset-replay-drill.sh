@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Configuration via environment variables
-KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:29092}"
+KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:9092}"
 CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"
 SOURCE_CONNECTOR="${SOURCE_CONNECTOR:-inventory-connector}"
 SINK_CONNECTOR="${SINK_CONNECTOR:-jdbc-sink-connector}"

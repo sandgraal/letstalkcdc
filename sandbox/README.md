@@ -94,14 +94,14 @@ docker compose exec mysql mysql -u debezium -pdbz inventory -e \
 
 ```bash
 # List all topics
-docker compose exec kcat kcat -b kafka:9092 -L
+docker compose exec kcat kcat -b kafka:29092 -L
 
 # Consume from Postgres products topic
-docker compose exec kcat kcat -b kafka:9092 -C \
+docker compose exec kcat kcat -b kafka:29092 -C \
   -t dbserver1.public.products -f '\nKey: %k\nValue: %s\n'
 
 # Consume from MySQL products topic
-docker compose exec kcat kcat -b kafka:9092 -C \
+docker compose exec kcat kcat -b kafka:29092 -C \
   -t mysql-server1.inventory.products -f '\nKey: %k\nValue: %s\n'
 ```
 
@@ -144,7 +144,7 @@ Both databases are initialized with the same sample data:
 | **Kafka Connect API** | http://localhost:8083 | None |
 | **PostgreSQL** | localhost:5432 | User: `postgres`, Password: `postgres`, DB: `inventory` |
 | **MySQL** | localhost:3306 | User: `debezium`, Password: `dbz`, DB: `inventory` |
-| **Kafka Broker** | localhost:9092 (external)<br>kafka:9092 (internal) | None |
+| **Kafka Broker** | localhost:9092 (external)<br>kafka:29092 (internal) | None |
 
 ## 🎓 Learning Scenarios
 
@@ -225,7 +225,7 @@ docker compose exec postgres psql -U postgres -d inventory -c "SHOW wal_level;"
 docker compose logs kafka
 
 # Verify Kafka is accessible
-docker compose exec kcat kcat -b kafka:9092 -L
+docker compose exec kcat kcat -b kafka:29092 -L
 ```
 
 ## 🧹 Cleanup

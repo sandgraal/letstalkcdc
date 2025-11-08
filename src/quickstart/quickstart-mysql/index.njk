@@ -82,7 +82,7 @@ WHERE id = (SELECT id FROM app.customer LIMIT 1);
 -- confirm binlog advancing
 SHOW MASTER STATUS;
 -- topic should receive a record for app.customer</code></pre>
-      <pre><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+      <pre><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server1.app.customer --from-beginning --max-messages 5</code></pre>
     </div>
     <div class="box">

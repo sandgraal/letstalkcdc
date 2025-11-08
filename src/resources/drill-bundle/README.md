@@ -44,7 +44,7 @@ chmod +x 01-backpressure-drill.sh
 ```
 
 **Environment Variables** (optional):
-- `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:29092`)
+- `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:9092`)
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SINK_CONNECTOR`: Sink connector name (default: `jdbc-sink-connector`)
 - `CONSUMER_GROUP`: Consumer group to monitor (default: `sink-group-inventory`)
@@ -76,7 +76,7 @@ The script will prompt you to choose from three error scenarios:
 3. Oversized payload
 
 **Environment Variables** (optional):
-- `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:29092`)
+- `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:9092`)
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SINK_CONNECTOR`: Sink connector name (default: `jdbc-sink-connector`)
 - `DLQ_TOPIC`: Dead letter queue topic (default: `dlq.sink.inventory`)
@@ -135,7 +135,7 @@ chmod +x 04-offset-replay-drill.sh
 **⚠️ Warning**: This drill deletes and recreates connectors. Always back up first!
 
 **Environment Variables** (optional):
-- `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:29092`)
+- `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:9092`)
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SOURCE_CONNECTOR`: Source connector name (default: `inventory-connector`)
 - `SINK_CONNECTOR`: Sink connector name (default: `jdbc-sink-connector`)

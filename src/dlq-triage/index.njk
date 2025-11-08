@@ -20,7 +20,7 @@ scripts:
         <h2 id="dlq-inputs">1) inputs</h2>
         <div class="row">
           <label for="bootstrap">bootstrap:</label>
-          <input id="bootstrap" type="text" value="localhost:29092">
+          <input id="bootstrap" type="text" value="localhost:9092">
           <label for="dlq">dlq topic:</label>
           <input id="dlq" type="text" value="dlq.inventory">
         </div>
@@ -34,10 +34,10 @@ scripts:
         <button class="btn copy" id="copy1">copy</button>
         <pre><code id="cmd1"># count a sample &amp; show latest offsets
 kafka-run-class kafka.tools.GetOffsetShell \
-  --broker-list localhost:29092 --topic dlq.inventory --time -1
+  --broker-list localhost:9092 --topic dlq.inventory --time -1
 
 # peek a few DLQ records (value only)
-kafka-console-consumer --bootstrap-server localhost:29092 \
+kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.inventory --from-beginning --timeout-ms 4000 \
   --max-messages 5 | jq -C .</code></pre>
         <details>
@@ -45,10 +45,10 @@ kafka-console-consumer --bootstrap-server localhost:29092 \
           <button class="btn copy" id="copy2">copy</button>
           <pre><code id="cmd2"># show headers (kafka cli shows headers only with Kafkacat or kcat)
 # try kcat if available (brew install kcat)
-kcat -b localhost:29092 -t dlq.inventory -C -J -c 5 | jq -C .
+kcat -b localhost:9092 -t dlq.inventory -C -J -c 5 | jq -C .
 
 # extract original payload if record is wrapped (common in Connect DLQs)
-kafka-console-consumer --bootstrap-server localhost:29092 \
+kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.inventory --from-beginning --timeout-ms 4000 --max-messages 5 \
   | jq -r '.original.value // .record.value // .value // .payload.original.value // .payload.record.value // empty' \
   | jq -C .</code></pre>
@@ -64,7 +64,7 @@ curl -s -X POST http://localhost:8083/connectors/inventory-connector/restart</co
         <details>
           <summary>sink lag (is the consumer stuck?)</summary>
           <button class="btn copy" id="copy4">copy</button>
-          <pre><code id="cmd4">kafka-consumer-groups --bootstrap-server localhost:29092 \
+          <pre><code id="cmd4">kafka-consumer-groups --bootstrap-server localhost:9092 \
   --describe --group my-sink</code></pre>
         </details>
       </section>
@@ -97,10 +97,10 @@ curl -s -X POST http://localhost:8083/connectors/inventory-connector/restart</co
           <p class="muted small">once the root cause is fixed, re-drive a few DLQ records into a <em>sandbox</em> topic first.</p>
           <button class="btn copy" id="copy5">copy</button>
           <pre><code id="cmd5"># re-drive DLQ values into a sandbox topic (no headers preserved)
-kafka-console-consumer --bootstrap-server localhost:29092 \
+kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.inventory --from-beginning --max-messages 100 \
   | jq -r '.original.value // .record.value // .value // .payload.original.value // .payload.record.value // empty' \
-  | kafka-console-producer --bootstrap-server localhost:29092 --topic sandbox.replay</code></pre>
+  | kafka-console-producer --bootstrap-server localhost:9092 --topic sandbox.replay</code></pre>
           <p class="muted small">verify sink behavior on <code>sandbox.replay</code> before touching the original topic.</p>
         </section>
       </aside>

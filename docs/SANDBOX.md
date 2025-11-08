@@ -146,7 +146,7 @@ When lab instructions reference specific services, use these sandbox endpoints:
 | "Kafka broker at localhost:9092" | ✅ Already configured |
 | "Post connector config to Connect API" | `./sandbox/register-postgres-connector.sh` |
 | "View Kafka messages" | Open http://localhost:8080 |
-| "Use kafkacat/kcat" | `docker compose exec kcat kcat -b kafka:9092 ...` |
+| "Use kafkacat/kcat" | `docker compose exec kcat kcat -b kafka:29092 ...` |
 
 ## Advanced Usage
 
