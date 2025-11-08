@@ -17,6 +17,31 @@
    Enhanced Alert Base
    ============================== */
 
+/* ==============================
+   Inline Note Banner
+   ============================== */
+
+.note {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-info-subtle);
+  border-left: 4px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.note a {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+
+.note a:hover,
+.note a:focus {
+  color: var(--color-link-hover);
+}
+
 .alert--enhanced {
   position: relative;
   display: flex;

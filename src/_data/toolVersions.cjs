@@ -3,24 +3,30 @@
 // Updated by site-content-review agent quarterly
 
 module.exports = {
-  lastUpdated: "2025-11-06",
+  lastUpdated: "2025-01-16",
   tools: {
     debezium: {
-      version: "2.7.0",
-      releaseDate: "2024-07-15",
-      releaseNotesUrl: "https://debezium.io/releases/2.7/",
+      version: "2.6.2.Final",
+      releaseDate: "2024-10-22",
+      releaseNotesUrl: "https://debezium.io/releases/2.6/",
       status: "stable"
     },
     kafka: {
-      version: "3.8.0",
-      releaseDate: "2024-09-17",
+      version: "3.6.1 (CP 7.6.1)",
+      releaseDate: "2024-11-19",
       releaseNotesUrl: "https://kafka.apache.org/downloads",
       status: "stable"
     },
     kafkaConnect: {
-      version: "3.8.0",
-      releaseDate: "2024-09-17",
+      version: "3.6.1",
+      releaseDate: "2024-11-19",
       releaseNotesUrl: "https://kafka.apache.org/documentation/#connect",
+      status: "stable"
+    },
+    postgres: {
+      version: "15",
+      releaseDate: "2024-08-08",
+      releaseNotesUrl: "https://www.postgresql.org/docs/release/15.6/",
       status: "stable"
     },
     matillion: {
