@@ -57,7 +57,6 @@
           <nav aria-label="Primary" class="nav-links" data-mobile-nav>
             <div class="nav-links__group nav-links__group--primary">
               <a class="nav-chip {% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
-              <a class="nav-chip {% if page.url | startsWith('/intro') %}active{% endif %}" href="{{ '/intro/' | url }}">Intro</a>
               <a class="nav-chip {% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">Series</a>
               <div class="nav-dropdown">
                 <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
@@ -87,11 +86,15 @@
             <div class="nav-links__group nav-links__group--support">
               <a class="nav-chip {% if page.url | startsWith('/use-cases') %}active{% endif %}" href="{{ '/use-cases/' | url }}">Cases</a>
               <a class="nav-chip {% if page.url | startsWith('/troubleshooting') %}active{% endif %}" href="{{ '/troubleshooting/' | url }}">Help</a>
-              <a class="nav-chip {% if page.url | startsWith('/dashboard') %}active{% endif %}" href="{{ '/dashboard/' | url }}">Progress</a>
             </div>
           </nav>
           <div class="nav-utilities">
-            <div class="header-progress" data-header-progress>
+            <a
+              class="header-progress"
+              data-header-progress
+              href="{{ '/dashboard/' | url }}"
+              aria-label="View detailed progress dashboard"
+            >
               <span class="header-progress__label">Progress</span>
               <div class="header-progress__bar">
                 <div class="progress-bar progress-bar--sm">
@@ -108,7 +111,7 @@
                 </div>
               </div>
               <span class="header-progress__text" data-global-progress-text>0%</span>
-            </div>
+            </a>
             <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
           </div>
         </div>

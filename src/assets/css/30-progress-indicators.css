@@ -17,6 +17,12 @@
   border-radius: 0.5rem;
   font-size: 0.75rem;
   min-width: 8rem;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.2s ease),
+    border-color var(--transition-fast, 0.2s ease),
+    transform var(--transition-fast, 0.2s ease);
 }
 
 /* Show on larger screens */
@@ -24,6 +30,17 @@
   .header-progress {
     display: flex;
   }
+}
+
+.header-progress:hover,
+.header-progress:focus-visible {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(148, 163, 233, 0.35);
+}
+
+.header-progress:focus-visible {
+  outline: 2px solid var(--color-focus, #38bdf8);
+  outline-offset: 2px;
 }
 
 .header-progress__label {
