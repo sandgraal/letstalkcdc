@@ -9,7 +9,7 @@ const outputDir = join(root, outputDirName);
 const bytes = (kb) => kb * 1024;
 
 const budgets = [
-  { label: 'Main CSS bundle', path: ['assets', 'css', 'styles.min.css'], max: bytes(200) },
+  { label: 'Main CSS bundle', path: ['assets', 'css', 'styles.css'], max: bytes(200) },
   { label: 'App JS', path: ['assets', 'js', 'app.js'], max: bytes(80) }
 ];
 

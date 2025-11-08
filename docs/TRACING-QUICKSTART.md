@@ -159,7 +159,7 @@ Here's what a typical user session looks like in traces:
 ```
 documentLoad (2.3s)
 ├─ documentFetch (850ms)
-├─ resourceFetch: styles.min.css (120ms)
+├─ resourceFetch: styles.css (120ms)
 ├─ resourceFetch: app.js (95ms)
 └─ performancePaint (1.8s)
 
