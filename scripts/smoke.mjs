@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join, resolve } from "node:path";
+import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve(".");
 const outputDirName = process.env.BUILD_OUTPUT_DIR ?? "_site";
 const outputDir = join(root, outputDirName);
+const sourceDir = join(root, "src");
 
 const read = (relativePath) =>
   readFileSync(join(outputDir, relativePath), "utf8");
@@ -255,6 +256,64 @@ if (existsSync(htaccessPath)) {
   } catch (error) {
     failures.push(`Failed to read .htaccess: ${error.message}`);
   }
+}
+
+// Guard against root-absolute href/src usage in source templates
+const binaryExtensions = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".ico",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".otf",
+  ".eot",
+  ".zip",
+]);
+
+const sourceFiles = (() => {
+  const acc = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        walk(join(dir, entry.name));
+      } else if (entry.isFile()) {
+        const ext = extname(entry.name).toLowerCase();
+        if (binaryExtensions.has(ext)) {
+          continue;
+        }
+        acc.push(join(dir, entry.name));
+      }
+    }
+  };
+  walk(sourceDir);
+  return acc;
+})();
+
+const offendingSource = [];
+
+for (const filePath of sourceFiles) {
+  const content = readFileSync(filePath, "utf8");
+  const matches = content.match(/(href|src)\s*[:=]["']\/(?!\/)/g);
+  if (matches) {
+    offendingSource.push({
+      file: relative(root, filePath),
+      samples: [...new Set(matches)].slice(0, 3),
+    });
+  }
+}
+
+if (offendingSource.length > 0) {
+  failures.push(
+    "Found root-absolute href/src references in source: " +
+      offendingSource
+        .map(({ file, samples }) => `${file} [${samples.join(", ")}]`)
+        .join("; ")
+  );
 }
 
 if (failures.length) {

@@ -1,12 +1,14 @@
+{% import "components/ui.njk" as ui %}
+
 {% macro render(ariaLabel, items, className='intro-quick-nav') %}
   <nav aria-label="{{ ariaLabel }}" class="{{ className }}">
     <ul>
       {% for item in items %}
         {% set link = item.href or ('#' + item.id) %}
-        {% if link and link | startsWith('/') %}
-          {% set link = link | url %}
+        {% if link %}
+          {% set link = ui.resolve_href(link) %}
         {% endif %}
-        <li><a href="{{ link }}">{{ item.label }}</a></li>
+        <li><a href="{{ link | trim }}">{{ item.label }}</a></li>
       {% endfor %}
     </ul>
   </nav>

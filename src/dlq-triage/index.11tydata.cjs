@@ -6,7 +6,7 @@ module.exports = {
     align: 'center',
     skillLevel: 'Advanced',
     actions: [
-      { href: '/overview/#series-dlq-triage', label: 'Back to Overview' },
+      { href: 'overview/#series-dlq-triage', label: 'Back to Overview' },
       { href: '#dlq-inputs', label: 'Start Debugging', variant: 'ghost' }
     ]
   }

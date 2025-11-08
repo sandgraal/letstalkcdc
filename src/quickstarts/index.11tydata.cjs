@@ -7,8 +7,8 @@ module.exports = {
     skillLevel: 'Beginner',
     actions: [
       { href: '#quickstart-grid', label: 'Pick a Database' },
-      { href: '/tests/', label: 'Run Acceptance Tests', variant: 'ghost' },
-      { href: '/quickstarts/quickstart-postgres/', label: 'Start with Postgres', variant: 'ghost' }
+      { href: 'tests/', label: 'Run Acceptance Tests', variant: 'ghost' },
+      { href: 'quickstarts/quickstart-postgres/', label: 'Start with Postgres', variant: 'ghost' }
     ]
   },
   quickstartDetails: [
@@ -21,8 +21,8 @@ module.exports = {
         'Primary keys or <code>REPLICA IDENTITY FULL</code>'
       ],
       actions: [
-        { href: '/quickstarts/quickstart-postgres/', label: 'Open Postgres quickstart' },
-        { href: '/tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
+        { href: 'quickstarts/quickstart-postgres/', label: 'Open Postgres quickstart' },
+        { href: 'tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
       ],
       meta: '~10–15 min'
     },
@@ -35,8 +35,8 @@ module.exports = {
         '<code>gtid_mode=ON</code> preferred'
       ],
       actions: [
-        { href: '/quickstarts/quickstart-mysql/', label: 'Open MySQL quickstart' },
-        { href: '/tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
+        { href: 'quickstarts/quickstart-mysql/', label: 'Open MySQL quickstart' },
+        { href: 'tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
       ],
       meta: '~10–15 min'
     },
@@ -49,8 +49,8 @@ module.exports = {
         'Database + table supplemental logging'
       ],
       actions: [
-        { href: '/quickstarts/quickstart-oracle/', label: 'Open Oracle quickstart' },
-        { href: '/tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
+        { href: 'quickstarts/quickstart-oracle/', label: 'Open Oracle quickstart' },
+        { href: 'tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
       ],
       meta: '~15–20 min'
     },
@@ -63,8 +63,8 @@ module.exports = {
         'SQL Server Agent running'
       ],
       actions: [
-        { href: '/quickstarts/quickstart-mssql/', label: 'Open SQL Server quickstart' },
-        { href: '/tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
+        { href: 'quickstarts/quickstart-mssql/', label: 'Open SQL Server quickstart' },
+        { href: 'tests/', label: 'Run Acceptance Tests', variant: 'ghost' }
       ],
       meta: '~15–20 min'
     }
