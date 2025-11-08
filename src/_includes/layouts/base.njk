@@ -116,7 +116,27 @@
     </nav>
     {% endif %}
 
-    <main id="main">{{ content | safe }}</main>
+    <main id="main">
+      {{ content | safe }}
+      
+      {# Add discussion link callout based on content type #}
+      {% if seriesKey %}
+        {# Determine discussion type based on series data #}
+        {% set discussionType = 'general' %}
+        {% for module in series %}
+          {% if module.key == seriesKey %}
+            {% if module.tags %}
+              {% for tag in module.tags %}
+                {% if tag.label == 'Lab' %}
+                  {% set discussionType = 'lab' %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {% include "components/discussion-link.njk" %}
+      {% endif %}
+    </main>
 
     {% if seriesKey %}
       {% include "components/series-nav.njk" %}
