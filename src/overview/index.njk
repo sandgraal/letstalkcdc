@@ -24,13 +24,13 @@ head_extra: |
 {# {{ heroConfig | dump }} #}
 {{ ui.hero(heroConfig) | safe }}
 
-<section class="diagram-section" style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
-  <h2 style="color: #e6eefc; font-size: 1.5rem; margin-bottom: 1rem; text-align: center;">CDC Pipeline Architecture</h2>
-  <figure style="margin: 0;">
-    <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}" 
-         alt="CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink" 
-         style="width: 100%; max-width: 100%; height: auto; display: block; background: #0b1220; border-radius: 8px; padding: 1rem;"/>
-    <figcaption style="color: #94a3b8; font-size: 0.875rem; text-align: center; margin-top: 0.5rem; font-style: italic;">
+<section class="diagram-section">
+  <h2 class="diagram-section__title">CDC Pipeline Architecture</h2>
+  <figure class="diagram-section__figure">
+    <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}"
+         alt="CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink"
+         class="diagram-section__image" />
+    <figcaption class="diagram-section__caption">
       The four stages of a CDC pipeline: Source → Connector → Stream → Sink
     </figcaption>
   </figure>

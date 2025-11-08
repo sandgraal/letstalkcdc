@@ -30,7 +30,7 @@ scripts:
           <label for="group">consumer group (sink):</label>
           <input id="group" type="text" value="my-sink">
         </div>
-        <h2 style="margin-top:0.6rem">2) enumerate &amp; peek</h2>
+        <h2>2) enumerate &amp; peek</h2>
         <button class="btn copy" id="copy1">copy</button>
         <pre><code id="cmd1"># count a sample &amp; show latest offsets
 kafka-run-class kafka.tools.GetOffsetShell \
@@ -85,12 +85,12 @@ curl -s -X POST http://localhost:8083/connectors/inventory-connector/restart</co
         <section class="card" aria-labelledby="dlq-decode">
           <h2 id="dlq-decode">decode a DLQ record locally</h2>
           <p class="muted small">paste a DLQ JSON line below and we’ll unwrap the original event. nothing is uploaded.</p>
-          <textarea id="one" placeholder='{"original":{"value":"{\"before\":...,\"after\":...,\"op\":\"u\"}"}, "error":{"message":"..."} }' style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:.5rem;background:var(--surface2);color:#e6eef7;padding:.6rem;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"></textarea>
+          <textarea id="one" class="dlq-textarea" placeholder='{"original":{"value":"{\"before\":...,\"after\":...,\"op\":\"u\""}, "error":{"message":"..."} }'></textarea>
           <div class="row">
             <button class="btn" id="btnDecode">decode</button>
             <a class="btn" href="/debezium-decoder/">open full decoder →</a>
           </div>
-          <pre id="decoded" style="display:none"><code></code></pre>
+          <pre id="decoded" hidden><code></code></pre>
         </section>
         <section class="card" aria-labelledby="dlq-redrive">
           <h2 id="dlq-redrive">safe re-drive (optional)</h2>

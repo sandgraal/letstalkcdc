@@ -12,6 +12,10 @@
   box-shadow: var(--shadow-soft);
 }
 
+.panel--spaced {
+  margin-top: 0.75rem;
+}
+
 .panel-header {
   padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--border-color);
@@ -62,6 +66,10 @@
   display: grid;
   gap: 1rem;
   grid-template-columns: 1fr 1fr;
+}
+
+.kpi-grid--spaced {
+  margin-top: 0.75rem;
 }
 
 @media (max-width: 800px) {
