@@ -32,7 +32,7 @@ docker compose up -d
 ./sandbox/register-postgres-connector.sh
 
 # Open Kafka UI
-open http://localhost:8080</code></pre>
+{% include "snippets/open-url.njk" with { url: "http://localhost:8080" } %}</code></pre>
             <p>📖 <strong>Full documentation:</strong> <a href="https://github.com/sandgraal/letstalkcdc/blob/main/docs/SANDBOX.md">CDC Sandbox Guide</a></p>
             <p>If you prefer to understand the setup step-by-step, continue with the instructions below. Otherwise, skip to <a href="#verify-sink">Verify Your Sink</a> after starting the sandbox.</p>
         </div>

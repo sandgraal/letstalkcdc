@@ -67,21 +67,21 @@
 
 ```bash
 # 1. Visit the live site
-open https://sandgraal.github.io/letstalkcdc/
+{% include "snippets/open-url.njk" with { url: "https://sandgraal.github.io/letstalkcdc/" } %}
 
 # 2. Test search (press / key on the site)
 # Search for: "kafka", "debezium", "snapshot"
 
 # 3. Check Web Vitals
-open "https://sandgraal.github.io/letstalkcdc/?vitals=1"
+{% include "snippets/open-url.njk" with { url: "https://sandgraal.github.io/letstalkcdc/?vitals=1" } %}
 
 # 4. Download complete guide
-open "https://sandgraal.github.io/letstalkcdc/downloads/cdc-complete-guide.html"
+{% include "snippets/open-url.njk" with { url: "https://sandgraal.github.io/letstalkcdc/downloads/cdc-complete-guide.html" } %}
 
 # 5. Browse modules
-open https://sandgraal.github.io/letstalkcdc/intro/
-open https://sandgraal.github.io/letstalkcdc/overview/
-open https://sandgraal.github.io/letstalkcdc/quickstarts/
+{% include "snippets/open-url.njk" with { url: "https://sandgraal.github.io/letstalkcdc/intro/" } %}
+{% include "snippets/open-url.njk" with { url: "https://sandgraal.github.io/letstalkcdc/overview/" } %}
+{% include "snippets/open-url.njk" with { url: "https://sandgraal.github.io/letstalkcdc/quickstarts/" } %}
 ```
 
 ### Verify Deployment Locally

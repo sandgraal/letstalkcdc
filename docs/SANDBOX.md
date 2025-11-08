@@ -97,7 +97,7 @@ docker compose exec postgres psql -U postgres -d inventory -c \
   "UPDATE products SET weight = 3.5 WHERE name = 'Laptop';"
 
 # Open Kafka UI to see the event
-open http://localhost:8080
+{% include "snippets/open-url.njk" with { url: "http://localhost:8080" } %}
 # Navigate to: Topics → dbserver1.public.products → Messages
 ```
 

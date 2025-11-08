@@ -60,7 +60,7 @@ docker compose up -d
 ./sandbox/register-postgres-connector.sh
 
 # View change events in Kafka UI
-open http://localhost:8080
+{% include "snippets/open-url.njk" with { url: "http://localhost:8080" } %}
 ```
 
 **Includes:**
