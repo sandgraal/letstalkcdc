@@ -8,7 +8,7 @@
     "database.user": "debezium",
     "database.password": "dbz",
     "database.server.id": "184054",
-    "database.server.name": "mysql-server1",
+    "topic.prefix": "mysql-server1",
     "database.include.list": "inventory",
     "table.include.list": "inventory.products,inventory.customers,inventory.orders,inventory.addresses",
     "database.history.kafka.bootstrap.servers": "kafka:29092",

@@ -148,11 +148,14 @@ services:
     "database.user": "start_data_engineer",
     "database.password": "password",
     "database.dbname": "inventory",
-    "database.server.name": "dbserver1",
+    "topic.prefix": "dbserver1",
     "table.include.list": "public.products",
     "plugin.name": "pgoutput"
   }
 }</code></pre>
+                    <div class="callout callout-info">
+                        <p>Debezium 2.x uses <code>topic.prefix</code>; for 1.x use <code>database.server.name</code>.</p>
+                    </div>
                     <p>Now, post this configuration using cURL:</p>
                     <pre><code>curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @register-postgres.json</code></pre>
                     <p>You should receive an HTTP 201 response, indicating success.</p>
@@ -166,7 +169,7 @@ services:
                 </li>
                  <li>
                     <h3>Observe the Change Event in Kafka</h3>
-                    <p>Let's consume from the Kafka topic to see the change event that Debezium generated. The topic name is based on the `database.server.name` and the table name (`dbserver1.public.products`).</p>
+                    <p>Let's consume from the Kafka topic to see the change event that Debezium generated. The topic name is based on the `topic.prefix` and the table name (`dbserver1.public.products`).</p>
                     <pre><code>docker-compose exec kafka kafka-console-consumer --bootstrap-server kafka:29092 --topic dbserver1.public.products --from-beginning --max-messages 1 --property print.key=true</code></pre>
                     <p>You will see a detailed JSON payload representing the `INSERT` operation you just performed. Press <code>Ctrl+C</code> if you want to see more messages, or use <code>--timeout-ms 10000</code> instead of <code>--max-messages 1</code> to view all messages within a time window.</p>
                 </li>
