@@ -38,10 +38,10 @@ head_extra: |
           >
           <span class="muted small">privacy: nothing leaves this page.</span>
         </div>
-        <h2 style="margin-top: 1rem">2) keys &amp; sink</h2>
+        <h2>2) keys &amp; sink</h2>
         <div class="row">
           <label class="small">key columns:</label>
-          <input class="btn" id="keys" style="min-width: 220px" value="id" />
+          <input class="btn btn-input" id="keys" value="id" />
           <button class="btn" id="btnSuggest" title="suggest keys from data">
             suggest
           </button>
@@ -62,7 +62,7 @@ head_extra: |
         <div class="foot">
           we infer columns from your last event’s <code>after</code> (or <code>before</code> for deletes). adjust names as needed.
         </div>
-        <div class="hint" id="keyHint" style="display: none"></div>
+        <div class="hint is-hidden" id="keyHint"></div>
       </section>
       <section aria-labelledby="decoder-results" class="panel">
         <h2 id="decoder-results">decoded</h2>

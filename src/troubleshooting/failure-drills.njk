@@ -24,43 +24,35 @@ head_extra: |
 
 {# Drill Bundle Download Section - Update SHA-256 checksum when bundle is regenerated #}
 <div class="prose">
-  <section class="box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; margin-bottom: 2rem;">
-    <div style="display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 300px;">
-        <h2 style="color: white; margin-top: 0;">📦 Download Drill Bundle</h2>
-        <p style="color: rgba(255,255,255,0.9); margin-bottom: 1rem;">
-          Get all four failure drills as self-contained shell scripts. No more copy-pasting commands—run 
+  <section class="cta-banner cta-banner--split" aria-labelledby="drill-bundle-heading">
+    <div class="cta-banner__inner">
+      <div class="cta-banner__content">
+        <h2 class="cta-banner__title" id="drill-bundle-heading">📦 Download Drill Bundle</h2>
+        <p class="cta-banner__body">
+          Get all four failure drills as self-contained shell scripts. No more copy-pasting commands—run
           complete scenarios with a single script, perfect for workshops and training.
         </p>
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-          <a href="/letstalkcdc/downloads/drill-bundle.zip" 
-             class="button" 
-             style="background: white; color: #667eea; border: none; font-weight: bold; text-decoration: none;">
+        <div class="cta-banner__actions">
+          <a class="cta-banner__action cta-banner__action--primary" href="{{ '/downloads/drill-bundle.zip' | url }}">
             ⬇️ Download drill-bundle.zip (12 KB)
           </a>
-          <a href="/letstalkcdc/downloads/drill-bundle/README.md" 
-             class="button secondary" 
-             style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); text-decoration: none;">
+          <a class="cta-banner__action cta-banner__action--outline" href="{{ '/downloads/drill-bundle/README.md' | url }}">
             📖 View README
           </a>
         </div>
-        <details style="margin-top: 1rem;">
-          <summary style="cursor: pointer; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-            📋 Package Details
-          </summary>
-          <div style="margin-top: 0.5rem; font-size: 0.85rem; color: rgba(255,255,255,0.8); font-family: monospace;">
-            <p style="margin: 0.25rem 0;"><strong>Version:</strong> 1.0.0</p>
-            <p style="margin: 0.25rem 0;"><strong>SHA-256:</strong> <code style="background: rgba(0,0,0,0.2); padding: 0.125rem 0.25rem; border-radius: 3px; font-size: 0.75rem; word-break: break-all;">1106a755ccd513cea429aaf5d24e8432437e69e310e10f1d783bb1167be25de5</code></p>
-            <p style="margin: 0.25rem 0;"><strong>Contents:</strong> 4 drill scripts + README + config examples</p>
-            <p style="margin: 0.25rem 0;"><strong>Last Updated:</strong> 2025-11-07</p>
+        <details class="cta-banner__details">
+          <summary>📋 Package Details</summary>
+          <div class="cta-banner__meta">
+            <p><strong>Version:</strong> 1.0.0</p>
+            <p><strong>SHA-256:</strong> <code>1106a755ccd513cea429aaf5d24e8432437e69e310e10f1d783bb1167be25de5</code></p>
+            <p><strong>Contents:</strong> 4 drill scripts + README + config examples</p>
+            <p><strong>Last Updated:</strong> 2025-11-07</p>
           </div>
         </details>
       </div>
-      <div style="flex: 0 0 200px; text-align: center; opacity: 0.9;">
-        <div style="font-size: 5rem; line-height: 1;">📦</div>
-        <div style="font-size: 0.9rem; margin-top: 0.5rem; color: rgba(255,255,255,0.8);">
-          Self-Contained<br/>Shell Scripts
-        </div>
+      <div class="cta-banner__aside">
+        <div class="cta-banner__icon" aria-hidden="true">📦</div>
+        <small>Self-Contained<br/>Shell Scripts</small>
       </div>
     </div>
   </section>

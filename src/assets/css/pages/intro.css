@@ -437,6 +437,19 @@
   padding-left: 1.1rem;
 }
 
+.intro-deep-dive {
+  margin: 0.5rem 0 0;
+}
+
+.intro-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 440px;
+  margin: 0.5rem auto 0;
+  color: var(--accent-primary);
+}
+
 .intro-next,
 .series-roadmap {
   border: 1px solid var(--border-color);

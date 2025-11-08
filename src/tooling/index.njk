@@ -348,14 +348,14 @@ head_extra: |
           </li>
         </ul>
 
-        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid #e5e7eb;">
-        
-        <details style="font-size: 0.875rem; color: #6b7280;">
-          <summary style="cursor: pointer; font-weight: 600; margin-bottom: 1rem;">Tool Version Reference</summary>
-          <p style="margin-bottom: 1rem;">
+        <hr class="section-divider">
+
+        <details class="version-reference">
+          <summary>Tool Version Reference</summary>
+          <p>
             <em>This page references the following tool versions (last updated: {{ toolVersions.lastUpdated }}):</em>
           </p>
-          <ul style="list-style: none; padding-left: 0; font-size: 0.875rem;">
+          <ul class="version-reference__list">
             {%- if toolVersions.tools.debezium and toolVersions.tools.debezium.status !== 'saas' %}
             <li><strong>Debezium:</strong> v{{ toolVersions.tools.debezium.version }} 
               <a href="{{ toolVersions.tools.debezium.releaseNotesUrl }}" target="_blank" rel="noopener">release notes</a>
@@ -387,7 +387,7 @@ head_extra: |
             </li>
             {%- endif %}
           </ul>
-          <p style="margin-top: 1rem; font-size: 0.8rem; color: #9ca3af;">
+          <p class="version-reference__note">
             <em>Note: Tool versions are tracked for reference and updated quarterly. 
             Always check official documentation for the latest releases.</em>
           </p>
