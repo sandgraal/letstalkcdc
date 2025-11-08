@@ -7,6 +7,7 @@
     "build:css": "postcss src/assets/css/main.css -o src/assets/css/styles.min.css",
     "build:dark-theme": "node scripts/build-dark-theme.mjs",
     "build": "npm run build:dark-theme && npm run build:css && eleventy --config=eleventy.config.cjs",
+    "lint:content": "node scripts/lint-content.js",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
     "smoke:a11y": "node scripts/run-pa11y.mjs",
     "smoke:perf": "node scripts/perf-budget.mjs",
