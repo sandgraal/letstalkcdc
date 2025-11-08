@@ -101,7 +101,8 @@ head_extra: |
           {% if card.actions %}
             <div class="qs-detail-actions">
               {% for action in card.actions %}
-                <a class="button{% if action.variant %} {{ action.variant }}{% endif %}" href="{{ action.href }}">{{ action.label }}</a>
+                {% set actionHref = ui.resolve_href(action.href) %}
+                <a class="button{% if action.variant %} {{ action.variant }}{% endif %}" href="{{ actionHref | trim }}">{{ action.label }}</a>
               {% endfor %}
             </div>
           {% endif %}

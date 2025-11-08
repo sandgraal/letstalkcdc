@@ -18,6 +18,7 @@ const CONFIG = {
     /^javascript:/,
     /^#/, // Skip anchor-only links for now
     /^{{/, // Skip template variables that weren't processed
+    /^\$\{/, // Skip JS template placeholders
   ],
   timeout: 5000,
 };
@@ -117,7 +118,8 @@ class LinkChecker {
     
     if (cleanUrl.startsWith('/')) {
       // Absolute path from site root
-      targetPath = join(SITE_DIR, cleanUrl);
+      const normalized = cleanUrl === '/' ? '' : cleanUrl.slice(1);
+      targetPath = join(SITE_DIR, normalized);
     } else {
       // Relative path
       const fromDir = dirname(fromFile);

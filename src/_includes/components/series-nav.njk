@@ -1,3 +1,5 @@
+{% import "components/ui.njk" as ui %}
+
 {% set navModules = series | rejectattr('state', 'equalto', 'disabled') | selectattr('href') | list %}
 {% set currentIndex = -1 %}
 {% set current = null %}
@@ -14,11 +16,8 @@
     <nav class="series-nav" aria-label="Series navigation">
       <div class="series-nav__group series-nav__group--start{% if not prev %} is-disabled{% endif %}">
         {% if prev %}
-          {% set prevHref = prev.href %}
-          {% if prevHref | startsWith('/') %}
-            {% set prevHref = prevHref | url %}
-          {% endif %}
-          <a class="series-nav__link series-nav__link--prev" href="{{ prevHref }}" aria-label="Previous module: {{ prev.title }}">← {{ prev.title }}</a>
+          {% set prevHref = ui.resolve_href(prev.href) %}
+          <a class="series-nav__link series-nav__link--prev" href="{{ prevHref | trim }}" aria-label="Previous module: {{ prev.title }}">← {{ prev.title }}</a>
         {% endif %}
       </div>
       <div class="series-nav__group series-nav__group--center">
@@ -31,11 +30,8 @@
       </div>
       <div class="series-nav__group series-nav__group--end{% if not next %} is-disabled{% endif %}">
         {% if next %}
-          {% set nextHref = next.href %}
-          {% if nextHref | startsWith('/') %}
-            {% set nextHref = nextHref | url %}
-          {% endif %}
-          <a class="series-nav__link series-nav__link--next" href="{{ nextHref }}" aria-label="Next module: {{ next.title }}">{{ next.title }} →</a>
+          {% set nextHref = ui.resolve_href(next.href) %}
+          <a class="series-nav__link series-nav__link--next" href="{{ nextHref | trim }}" aria-label="Next module: {{ next.title }}">{{ next.title }} →</a>
         {% endif %}
       </div>
     </nav>

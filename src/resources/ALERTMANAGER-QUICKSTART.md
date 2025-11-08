@@ -120,7 +120,7 @@ Smart suppression to prevent alert storms:
 
 ## Next Steps
 
-- Review the full setup guide: [OBSERVABILITY-SETUP.md](./OBSERVABILITY-SETUP.md)
+- Review the full setup guide: [OBSERVABILITY-SETUP.md](../OBSERVABILITY-SETUP/)
 - Customize alert thresholds in `prometheus-alerts.yml`
 - Set up maintenance windows for planned downtime
 - Configure mute_time_intervals for recurring maintenance
