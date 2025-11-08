@@ -102,7 +102,7 @@ head_extra: |
       <ol>
         <li>
           <strong>Baseline metrics:</strong> Record current consumer lag and throughput
-          <pre><button class="copy">copy</button><code>kafka-consumer-groups --bootstrap-server localhost:29092 \
+          <pre><button class="copy">copy</button><code>kafka-consumer-groups --bootstrap-server localhost:9092 \
   --describe --group sink-group-inventory</code></pre>
         </li>
         <li>
@@ -128,7 +128,7 @@ curl -X PUT http://localhost:8083/connectors/jdbc-sink-connector/pause</code></p
         <li>
           <strong>Watch lag grow:</strong> Monitor consumer group lag every 30 seconds
           <pre><button class="copy">copy</button><code># Watch lag in real-time (Ctrl+C to stop)
-watch -n 5 "kafka-consumer-groups --bootstrap-server localhost:29092 \
+watch -n 5 "kafka-consumer-groups --bootstrap-server localhost:9092 \
   --describe --group sink-group-inventory | grep -v 'Consumer group'"</code></pre>
         </li>
       </ol>
@@ -225,7 +225,7 @@ curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json
         </li>
         <li>
           <strong>Create a consumer for DLQ monitoring:</strong>
-          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.sink.inventory --from-beginning \
   --property print.headers=true \
   --property print.timestamp=true</code></pre>
@@ -265,7 +265,7 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
         <li>
           <strong>Inspect DLQ messages:</strong>
           <pre><button class="copy">copy</button><code># List messages with error context
-kafka-console-consumer --bootstrap-server localhost:29092 \
+kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.sink.inventory --from-beginning \
   --property print.headers=true \
   --max-messages 5</code></pre>
@@ -507,7 +507,7 @@ curl -s http://localhost:8083/connectors/jdbc-sink-connector/config | \
         <li>
           <strong>Backup current state:</strong>
           <pre><button class="copy">copy</button><code># Export connector offsets (Kafka Connect stores in internal topic)
-kafka-console-consumer --bootstrap-server localhost:29092 \
+kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic my_connect_offsets --from-beginning --timeout-ms 5000 > offsets-backup.json</code></pre>
         </li>
         <li>
@@ -596,7 +596,7 @@ docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
         </li>
         <li>
           <strong>Count messages during snapshot:</strong>
-          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server2.public.app_customer --from-beginning \
   --timeout-ms 10000 | wc -l</code></pre>
         </li>
@@ -611,7 +611,7 @@ docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
         </li>
         <li>
           <strong>Verify streaming event arrives:</strong>
-          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server2.public.app_customer \
   --offset latest --partition 0 --timeout-ms 5000</code></pre>
           <p class="muted">Look for <code>"op":"u"</code> in the JSON payload for update operation</p>

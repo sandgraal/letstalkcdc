@@ -85,7 +85,7 @@ SELECT * FROM cdc.dbo_customers_CT;
 -- Generate a change
 UPDATE dbo.customers SET email = 'new.email@example.com' WHERE id = 1;</code></pre>
       <pre><code># consume from the topic (adjust name)
-kafka-console-consumer --bootstrap-server localhost:29092 \
+kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server1.dbo.customers --from-beginning --max-messages 5</code></pre>
     </div>
     <div class="box">

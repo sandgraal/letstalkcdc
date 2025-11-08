@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:29092}"
+KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:9092}"
 DLQ_TOPIC="${DLQ_TOPIC:-dlq.sink.inventory}"
 CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"
 SINK_CONNECTOR="${SINK_CONNECTOR:-jdbc-sink-connector}"

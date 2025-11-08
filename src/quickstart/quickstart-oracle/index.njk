@@ -89,7 +89,7 @@ SELECT TO_CHAR(first_time, 'YYYY-MM-DD HH24:MI') AS t, COUNT(*) AS switches
 FROM v$log_history
 WHERE first_time > SYSDATE - 1/24
 GROUP BY TO_CHAR(first_time, 'YYYY-MM-DD HH24:MI');</code></pre>
-      <pre><code>kafka-console-consumer --bootstrap-server localhost:29092 \
+      <pre><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server1.APP.CUSTOMER --from-beginning --max-messages 5</code></pre>
     </div>
     <div class="box">

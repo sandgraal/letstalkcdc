@@ -51,7 +51,7 @@ onReady(() => {
   });
 
   const update = () => {
-    const b = (bootstrap?.value || 'localhost:29092').trim() || 'localhost:29092';
+    const b = (bootstrap?.value || 'localhost:9092').trim() || 'localhost:9092';
     const t = (dlq?.value || 'dlq.inventory').trim() || 'dlq.inventory';
     const c = (connector?.value || 'inventory-connector').trim() || 'inventory-connector';
     const g = (group?.value || 'my-sink').trim() || 'my-sink';

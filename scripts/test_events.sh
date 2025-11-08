@@ -41,7 +41,7 @@ fi
 
 TOPIC=${TOPIC:-server1.public.app_customer}
 MESSAGE_LIMIT=${MESSAGE_LIMIT:-10}
-KAFKA_BROKER_INTERNAL=${KAFKA_BROKER_INTERNAL:-kafka:9092}
+KAFKA_BROKER_INTERNAL=${KAFKA_BROKER_INTERNAL:-kafka:29092}
 
 log_info "Consuming up to ${MESSAGE_LIMIT} message(s) from topic '${TOPIC}'"
 
