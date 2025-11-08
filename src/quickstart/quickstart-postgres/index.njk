@@ -75,9 +75,13 @@ CREATE PUBLICATION cdc_pub FOR TABLE app.customer;</code></pre>
     "decimal.handling.mode": "string",
     "snapshot.mode": "initial",
     "errors.tolerance": "all",
-    "errors.deadletterqueue.topic.name": "dlq.pg"
+    "errors.deadletterqueue.topic.name": "dlq.pg",
+    "topic.prefix": "server1"
   }
 }</code></pre>
+      <p class="muted">
+        Debezium 2.x requires <code>topic.prefix</code>; use <code>database.server.name</code> if you are running 1.x connectors.
+      </p>
     </div>
   </section>
 
