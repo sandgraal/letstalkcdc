@@ -262,10 +262,13 @@
     transparent 100%
   );
 
-  /* Primary Button Enhancements */
-  --button-primary-start: #2563eb;
-  --button-primary-mid: #1d4ed8;
-  --button-primary-end: #4338ca;
+  /* Primary Button Enhancements
+     Button gradient colors now derived from accent palette for consistency.
+     If you want a richer gradient, use palette variants but document why.
+  */
+  --button-primary-start: var(--color-accent-primary); /* #3b82f6 */
+  --button-primary-mid: #2563eb; /* Slightly darker blue from palette */
+  --button-primary-end: #1d4ed8; /* Even darker blue for depth */
   --button-primary-border: rgba(37, 99, 235, 0.4);
   --button-primary-shadow: 0 12px 30px -16px rgba(37, 99, 235, 0.45),
     0 4px 10px rgba(30, 64, 175, 0.15);
