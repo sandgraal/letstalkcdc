@@ -257,11 +257,11 @@ WHEN MATCHED THEN
         </p>
 
         <figure class="diagram-section__figure">
-          <img src="{{ '/diagrams/idempotent-handshake.svg' | url }}"
-               alt="Diagram showing the steps of an idempotent CDC consumer handshake"
+          <img src="{{ '/diagrams/outbox-pattern.svg' | url }}"
+               alt="Transactional outbox pattern sequence diagram showing atomic database transaction writing both business data and event record, followed by CDC relay publishing to event bus"
                class="diagram-section__image" />
           <figcaption class="diagram-section__caption">
-            Idempotent handshake: deterministic key → dedupe store → conditional write → checkpoint
+            Outbox pattern: Write business data and event atomically, then publish via CDC
           </figcaption>
         </figure>
 
