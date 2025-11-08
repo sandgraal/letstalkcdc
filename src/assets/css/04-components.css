@@ -50,16 +50,10 @@
 /* Primary Button - Bold, attention-grabbing */
 .button,
 .button.primary {
-  background: linear-gradient(
-    135deg,
-    var(--button-primary-start),
-    var(--button-primary-mid),
-    var(--button-primary-end)
-  );
-  color: var(--color-text-inverse);
-  border: 1px solid var(--button-primary-border);
-  box-shadow: var(--shadow-sm), var(--button-primary-shadow);
-  text-shadow: var(--button-primary-text-shadow);
+  background: var(--gradient-primary);
+  color: var(--button-primary-text);
+  border: none;
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
 .button:hover,
