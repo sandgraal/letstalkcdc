@@ -240,12 +240,16 @@
     padding: var(--space-3xl) var(--space-lg);
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
     gap: var(--space-lg);
     transform: translateX(100%);
     transition: transform 0.3s ease;
     z-index: 1000;
     overflow-y: auto;
     box-shadow: var(--shadow-2xl);
+    flex: none;
+    padding-top: 0;
+    min-width: auto;
   }
 
   .nav-links[data-mobile-nav-open] {
@@ -304,13 +308,23 @@
 .nav-links {
   display: none;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-sm);
-  flex-wrap: wrap;
+  flex: 1;
+  flex-wrap: nowrap;
+  padding-top: 0.35rem;
+  min-width: 0;
 }
 
 @media (min-width: 640px) {
   .nav-links {
     display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
   }
 }
 
