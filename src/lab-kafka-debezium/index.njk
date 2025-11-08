@@ -63,7 +63,7 @@ docker compose up -d
 version: '3.7'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
+    image: confluentinc/cp-zookeeper:7.7.0
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -73,7 +73,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
-    image: confluentinc/cp-kafka:7.6.1
+    image: confluentinc/cp-kafka:7.7.0
     hostname: kafka
     container_name: kafka
     ports:
@@ -104,7 +104,7 @@ services:
       - POSTGRES_DB=inventory
 
   connect:
-    image: debezium/connect:2.6
+    image: debezium/connect:2.7
     hostname: connect
     container_name: connect
     ports:
