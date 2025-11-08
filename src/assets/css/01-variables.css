@@ -167,7 +167,7 @@
   );
 
   /* Button Colors - Ensures readability on gradient backgrounds */
-  --button-primary-text: #ffffff;
+  --button-primary-text: #fde047;
 }
 
 /* Light Theme - Clean, professional */
@@ -255,5 +255,5 @@
   );
 
   /* Button Colors - Ensures readability on gradient backgrounds */
-  --button-primary-text: #ffffff;
+  --button-primary-text: #fde047;
 }
