@@ -4,7 +4,7 @@
 body {background:var(--bg);color:var(--text);font-family:var(--font);}
 body.modern {--bg:#fafafa;--text:#111;--accent:#007bff;--grid:#ccc;--font:'Inter',sans-serif;}
 
-/* Stats chip + counter + tooltip */
+/* Stats chip + counter */
 .stats-wrapper{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;}
 .stats-chip{width:42px;height:42px;border-radius:50%;background:var(--accent);color:#000;font-size:1.3rem;
 display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px var(--accent);cursor:pointer;
@@ -15,11 +15,6 @@ transition:transform .2s ease,box-shadow .2s ease;animation:statsPulse 3s ease-i
 font-weight:bold;padding:2px 6px;border-radius:10px;box-shadow:0 0 8px var(--accent);}
 .stats-counter.updated{animation:counterPulse .3s ease;}
 @keyframes counterPulse{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
-.filter-tooltip{position:absolute;bottom:60px;right:0;background:var(--accent);color:#000;font-size:.8rem;
-padding:4px 8px;border-radius:4px;box-shadow:0 0 12px var(--accent);opacity:0;transform:translateY(10px);
-transition:opacity .3s ease,transform .3s ease;}
-.filter-tooltip.visible{opacity:1;transform:translateY(0);}
-
 /* Console, footer, legend, etc. */
 .agent-console{width:90%;max-width:800px;height:140px;margin:1rem auto;padding:.6rem;border:1px solid var(--accent);
 background:rgba(0,0,0,.4);overflow-y:auto;border-radius:6px;box-shadow:0 0 12px var(--accent);font-size:.8rem;}

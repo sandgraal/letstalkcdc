@@ -114,14 +114,6 @@ const writeLogs = (logs) => {
 
 const getFilter = (id) => FILTERS.find((filter) => filter.id === id) ?? FILTERS[0];
 
-const updateFilterTooltip = (filter) => {
-  const tooltip = doc?.getElementById('filterTooltip');
-  if (!tooltip) return;
-  tooltip.textContent = `FILTER: ${filter.label}`;
-  tooltip.classList.add('visible');
-  globalScope.setTimeout(() => tooltip.classList.remove('visible'), 1200);
-};
-
 const updateStatsCounter = (logs = readLogs()) => {
   const counter = doc?.getElementById('statsCounter');
   if (!counter) return;
@@ -537,7 +529,6 @@ const exportLogs = (format) => {
 const cycleFilter = () => {
   currentFilterIndex = (currentFilterIndex + 1) % FILTERS.length;
   const filter = FILTERS[currentFilterIndex];
-  updateFilterTooltip(filter);
   applyLogFilter(filter.id);
 };
 
