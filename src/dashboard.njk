@@ -1,0 +1,288 @@
+---
+layout: base.njk
+title: My Progress
+description: Track your learning progress across all CDC modules and labs
+---
+
+{% import "components/ui.njk" as ui %}
+
+<div class="dashboard-page container prose">
+  <header class="dashboard-header">
+    <h1>My Learning Progress</h1>
+    <p class="dashboard-subtitle">Track your journey through Change Data Capture concepts and hands-on labs</p>
+  </header>
+
+  <div class="dashboard-stats" id="dashboardStats">
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-content">
+        <h3 class="stat-value" data-overall-percent>0%</h3>
+        <p class="stat-label">Overall Progress</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <h3 class="stat-value" data-completed-count>0</h3>
+        <p class="stat-label">Modules Completed</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🚀</div>
+      <div class="stat-content">
+        <h3 class="stat-value" data-in-progress-count>0</h3>
+        <p class="stat-label">In Progress</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-content">
+        <h3 class="stat-value" data-badges-count>0</h3>
+        <p class="stat-label">Badges Earned</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-badges" id="dashboardBadges" style="display: none;">
+    <h2>🎖️ Achievements</h2>
+    <div class="badges-grid" data-badges-container></div>
+  </div>
+
+  <div class="dashboard-categories" id="dashboardCategories">
+    <h2>Progress by Category</h2>
+    <div class="categories-grid" data-categories-container></div>
+  </div>
+
+  <div class="dashboard-modules" id="dashboardModules">
+    <h2>All Modules</h2>
+    <div class="modules-filter">
+      <button class="filter-btn active" data-filter="all">All Modules</button>
+      <button class="filter-btn" data-filter="completed">Completed</button>
+      <button class="filter-btn" data-filter="in-progress">In Progress</button>
+      <button class="filter-btn" data-filter="not-started">Not Started</button>
+    </div>
+    <div class="modules-list" data-modules-container></div>
+  </div>
+
+  <div class="dashboard-empty" id="dashboardEmpty" style="display: none;">
+    <div class="empty-state">
+      <div class="empty-icon">📚</div>
+      <h2>Start Your Learning Journey!</h2>
+      <p>You haven't started any modules yet. Begin your CDC learning adventure today!</p>
+      <div class="empty-actions">
+        <a href="{{ '/intro/' | url }}" class="button button-primary">Start with Introduction</a>
+        <a href="{{ '/overview/' | url }}" class="button button-secondary">Browse All Modules</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  getCompletedModules,
+  getVisitedModules,
+  getOverallProgress,
+  getCategoryProgress,
+  getEarnedBadges,
+  isModuleCompleted
+} from '{{ '/assets/js/local-progress.js' | url }}';
+
+const modules = window.CDC_MODULES || [];
+
+// Filter state
+let currentFilter = 'all';
+
+// Calculate progress stats
+function calculateStats() {
+  const completed = getCompletedModules();
+  const visited = getVisitedModules();
+  const validModules = modules.filter(m => m.key && m.state !== 'disabled');
+  
+  const completedCount = validModules.filter(m => completed.has(m.key)).length;
+  const visitedModules = validModules.filter(m => {
+    return !completed.has(m.key) && visited[m.key];
+  });
+  
+  return {
+    total: validModules.length,
+    completed: completedCount,
+    inProgress: visitedModules.length,
+    notStarted: validModules.length - completedCount - visitedModules.length,
+    overallPercent: getOverallProgress(modules)
+  };
+}
+
+// Update stats cards
+function updateStats() {
+  const stats = calculateStats();
+  const badges = getEarnedBadges(modules);
+  
+  document.querySelector('[data-overall-percent]').textContent = `${stats.overallPercent}%`;
+  document.querySelector('[data-completed-count]').textContent = `${stats.completed}/${stats.total}`;
+  document.querySelector('[data-in-progress-count]').textContent = stats.inProgress;
+  document.querySelector('[data-badges-count]').textContent = badges.length;
+  
+  // Show/hide empty state
+  const hasProgress = stats.completed > 0 || stats.inProgress > 0;
+  document.getElementById('dashboardEmpty').style.display = hasProgress ? 'none' : 'block';
+  document.getElementById('dashboardStats').style.display = hasProgress ? 'grid' : 'none';
+  document.getElementById('dashboardCategories').style.display = hasProgress ? 'block' : 'none';
+  document.getElementById('dashboardModules').style.display = hasProgress ? 'block' : 'none';
+  
+  // Show/hide badges section
+  if (badges.length > 0) {
+    document.getElementById('dashboardBadges').style.display = 'block';
+    renderBadges(badges);
+  }
+}
+
+// Render badges
+function renderBadges(badges) {
+  const container = document.querySelector('[data-badges-container]');
+  if (!container) return;
+  
+  container.innerHTML = badges.map(badge => `
+    <div class="badge-card">
+      <div class="badge-icon">🏆</div>
+      <h3 class="badge-title">${escapeHtml(badge.title)}</h3>
+      <p class="badge-description">${escapeHtml(badge.description)}</p>
+    </div>
+  `).join('');
+}
+
+// Render categories
+function renderCategories() {
+  const categoryProgress = getCategoryProgress(modules);
+  const container = document.querySelector('[data-categories-container]');
+  if (!container) return;
+  
+  const categories = Object.entries(categoryProgress).map(([name, stats]) => {
+    const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+    return { name, ...stats, percent };
+  }).sort((a, b) => b.percent - a.percent);
+  
+  container.innerHTML = categories.map(cat => `
+    <div class="category-card">
+      <div class="category-header">
+        <h3 class="category-name">${escapeHtml(cat.name)}</h3>
+        <span class="category-count">${cat.completed}/${cat.total}</span>
+      </div>
+      <div class="category-progress">
+        <div class="progress-bar">
+          <div class="progress-bar-fill" style="width: ${cat.percent}%" role="progressbar" 
+               aria-valuenow="${cat.percent}" aria-valuemin="0" aria-valuemax="100"
+               aria-label="${cat.name} progress: ${cat.percent}%"></div>
+        </div>
+        <span class="category-percent">${cat.percent}%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Get module status
+function getModuleStatus(moduleKey) {
+  const completed = getCompletedModules();
+  const visited = getVisitedModules();
+  
+  if (completed.has(moduleKey)) return 'completed';
+  if (visited[moduleKey]) return 'in-progress';
+  return 'not-started';
+}
+
+// Render modules list
+function renderModules(filter = 'all') {
+  const container = document.querySelector('[data-modules-container]');
+  if (!container) return;
+  
+  const validModules = modules.filter(m => m.key && m.state !== 'disabled');
+  const completed = getCompletedModules();
+  const visited = getVisitedModules();
+  
+  // Filter modules
+  const filteredModules = validModules.filter(module => {
+    const status = getModuleStatus(module.key);
+    if (filter === 'all') return true;
+    return status === filter;
+  });
+  
+  if (filteredModules.length === 0) {
+    container.innerHTML = '<p class="no-modules">No modules match this filter.</p>';
+    return;
+  }
+  
+  container.innerHTML = filteredModules.map(module => {
+    const status = getModuleStatus(module.key);
+    const statusIcon = status === 'completed' ? '✅' : status === 'in-progress' ? '🔄' : '⭕';
+    const statusText = status === 'completed' ? 'Completed' : status === 'in-progress' ? 'In Progress' : 'Not Started';
+    const skillLevel = module.skillLevel || 'Intermediate';
+    const tags = module.tags || [];
+    
+    return `
+      <div class="module-card module-card--${status}" data-module="${escapeHtml(module.key)}">
+        <div class="module-header">
+          <div class="module-status-icon">${statusIcon}</div>
+          <div class="module-info">
+            <h3 class="module-title">
+              <a href="${module.href}">${escapeHtml(module.title)}</a>
+            </h3>
+            <p class="module-description">${escapeHtml(module.description)}</p>
+          </div>
+        </div>
+        <div class="module-meta">
+          <span class="module-status">${statusText}</span>
+          <span class="module-skill">${skillLevel}</span>
+          ${tags.map(tag => {
+            const label = typeof tag === 'string' ? tag : tag.label;
+            return `<span class="module-tag">${escapeHtml(label)}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Setup filter buttons
+function setupFilters() {
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentFilter = btn.dataset.filter;
+      
+      // Update active state
+      document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Re-render modules
+      renderModules(currentFilter);
+    });
+  });
+}
+
+// Escape HTML
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Initialize dashboard
+function initDashboard() {
+  updateStats();
+  renderCategories();
+  renderModules(currentFilter);
+  setupFilters();
+}
+
+// Listen for progress updates
+window.addEventListener('cdc:progress-updated', () => {
+  updateStats();
+  renderCategories();
+  renderModules(currentFilter);
+});
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+  initDashboard();
+}
+</script>
