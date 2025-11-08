@@ -1,0 +1,14 @@
+name: Link check
+on:
+  push:
+  pull_request:
+jobs:
+  lychee:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site
+        run: npm ci && npm run build
+      - uses: lycheeverse/lychee-action@v1
+        with:
+          args: --no-progress --verbose "_site/**/*.html"
