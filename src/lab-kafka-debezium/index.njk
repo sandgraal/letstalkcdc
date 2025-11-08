@@ -12,6 +12,10 @@ head_extra: |
 
 {{ ui.hero(heroConfig) | safe }}
 
+<div class="note">
+  Tested with: Kafka {{ pkg.kafka }}, Kafka Connect {{ pkg.connect }}, Debezium {{ pkg.debezium }}, PostgreSQL {{ pkg.pg }}
+</div>
+
         <p class="text-xl text-slate-600">
             In this lab, you'll build a complete, end-to-end Change Data Capture (CDC) pipeline from scratch. We'll use Docker Compose to orchestrate Postgres databases (source and sink), Kafka, the Debezium Postgres connector, and a JDBC Sink connector to demonstrate real-time change streaming and materialization.
         </p>
@@ -59,7 +63,7 @@ docker compose up -d
 version: '3.7'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.0
+    image: confluentinc/cp-zookeeper:7.6.1
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -69,7 +73,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
-    image: confluentinc/cp-kafka:7.3.0
+    image: confluentinc/cp-kafka:7.6.1
     hostname: kafka
     container_name: kafka
     ports:
@@ -89,7 +93,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
   postgres:
-    image: debezium/postgres:14
+    image: debezium/postgres:15
     hostname: postgres
     container_name: postgres
     ports:
@@ -100,7 +104,7 @@ services:
       - POSTGRES_DB=inventory
 
   connect:
-    image: debezium/connect:2.1
+    image: debezium/connect:2.6
     hostname: connect
     container_name: connect
     ports:
@@ -116,7 +120,7 @@ services:
       STATUS_STORAGE_TOPIC: connect-status
 
   postgres-sink:
-    image: debezium/postgres:14
+    image: debezium/postgres:15
     hostname: postgres-sink
     container_name: postgres-sink
     ports:

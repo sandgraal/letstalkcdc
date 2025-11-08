@@ -56,6 +56,13 @@ canonicalPath: "/versions/"
           <td><a href="{{ toolVersions.tools.kafkaConnect.releaseNotesUrl }}" target="_blank" rel="noopener">View Documentation</a></td>
         </tr>
         <tr>
+          <th scope="row">PostgreSQL</th>
+          <td><code>{{ toolVersions.tools.postgres.version }}</code></td>
+          <td>{{ toolVersions.tools.postgres.releaseDate }}</td>
+          <td><span class="status-badge status-{{ toolVersions.tools.postgres.status }}">{{ toolVersions.tools.postgres.status }}</span></td>
+          <td><a href="{{ toolVersions.tools.postgres.releaseNotesUrl }}" target="_blank" rel="noopener">View Release Notes</a></td>
+        </tr>
+        <tr>
           <th scope="row">Matillion</th>
           <td><code>{{ toolVersions.tools.matillion.version }}</code></td>
           <td>{{ toolVersions.tools.matillion.releaseDate }}</td>
@@ -125,6 +132,12 @@ canonicalPath: "/versions/"
     <p>
       Kafka Connect is bundled with Apache Kafka. The version numbers align, so Kafka {{ toolVersions.tools.kafka.version }}
       includes Kafka Connect {{ toolVersions.tools.kafkaConnect.version }}.
+    </p>
+
+    <h3>PostgreSQL (Source Database)</h3>
+    <p>
+      Hands-on labs use PostgreSQL {{ toolVersions.tools.postgres.version }} via the Debezium-tuned container image.
+      Logical replication is enabled out of the box so you can register the connector without extra Postgres configuration.
     </p>
 
     <h3>Cloud Platforms</h3>
