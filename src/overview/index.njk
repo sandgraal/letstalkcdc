@@ -27,9 +27,12 @@ head_extra: |
 <section class="diagram-section">
   <h2 class="diagram-section__title">CDC Pipeline Architecture</h2>
   <figure class="diagram-section__figure">
-    <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}"
-         alt="CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink"
-         class="diagram-section__image" />
+    {% img '/diagrams/cdc-pipeline-architecture.svg' | url,
+      'CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink',
+      {
+        class: 'diagram-section__image'
+      }
+    %}
     <figcaption class="diagram-section__caption">
       The four stages of a CDC pipeline: Source → Connector → Stream → Sink
     </figcaption>

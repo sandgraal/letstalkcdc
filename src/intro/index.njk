@@ -430,8 +430,9 @@ scripts:
     </p>
 
     <figure aria-label="CDC high-level flow">
-      <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}" 
-           alt="CDC pipeline architecture showing the complete data flow from source database through WAL/binlog, connector (Debezium/Airbyte), streaming platform (Kafka/Kinesis), to sink destinations (warehouse, search, cache)"/>
+      {% img '/diagrams/cdc-pipeline-architecture.svg' | url,
+        'CDC pipeline architecture showing the complete data flow from source database through WAL/binlog, connector (Debezium/Airbyte), streaming platform (Kafka/Kinesis), to sink destinations (warehouse, search, cache)'
+      %}
       <figcaption class="figure-caption">
         The CDC pipeline architecture: Source DB → Connector → Stream → Sink. Map components to deeper dives: Source DB → <a href="{{ '/snapshotting/' | url }}">Snapshotting</a>, Connector → <a href="{{ '/connector-builder/' | url }}">Connector Builder</a>, Stream → <a href="{{ '/strategy/' | url }}">Strategy</a>, and Sink → <a href="{{ '/merge-cookbook/' | url }}">Merge Cookbook</a>.
       </figcaption>

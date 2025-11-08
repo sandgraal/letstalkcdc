@@ -10,6 +10,13 @@ const normalizeToArray = (value) => {
 
 const pathPrefix = getPathPrefix();
 
+const escapeAttributeValue = (value) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
 function parseAssistantYaml(content) {
   const lines = content.split(/\r?\n/);
   const intents = [];
@@ -156,6 +163,35 @@ module.exports = function (eleventyConfig) {
 
   eleventyConfig.addWatchTarget("src/assets/css");
   eleventyConfig.addWatchTarget("src/assets/js");
+
+  eleventyConfig.addShortcode("img", (src, alt = "", attrs = {}) => {
+    const extraAttrs = attrs && typeof attrs === "object" ? attrs : {};
+
+    const attributes = {
+      loading: extraAttrs.loading ?? "lazy",
+      decoding: extraAttrs.decoding ?? "async",
+      src,
+      alt,
+      ...extraAttrs,
+    };
+
+    // Preserve explicitly provided empty alt text
+    if (Object.prototype.hasOwnProperty.call(extraAttrs, "alt")) {
+      attributes.alt = extraAttrs.alt;
+    }
+
+    const renderedAttributes = Object.entries(attributes)
+      .filter(([, value]) => value !== undefined && value !== null && value !== false)
+      .map(([key, value]) => {
+        if (value === true) {
+          return key;
+        }
+        return `${key}="${escapeAttributeValue(value)}"`;
+      })
+      .join(" ");
+
+    return `<img ${renderedAttributes}>`;
+  });
 
   eleventyConfig.addNunjucksFilter("startsWith", (value, prefix) => {
     if (typeof value !== "string") return false;
