@@ -3,6 +3,9 @@
     <ul>
       {% for item in items %}
         {% set link = item.href or ('#' + item.id) %}
+        {% if link and link | startsWith('/') %}
+          {% set link = link | url %}
+        {% endif %}
         <li><a href="{{ link }}">{{ item.label }}</a></li>
       {% endfor %}
     </ul>

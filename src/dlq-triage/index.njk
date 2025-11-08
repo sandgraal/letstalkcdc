@@ -13,7 +13,7 @@ scripts:
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="dlq-app">
-  <div class="dlq-app__back"><a href="/overview/#series-dlq-triage">← Back to Overview</a></div>
+  <div class="dlq-app__back"><a href="{{ '/overview/#series-dlq-triage' | url }}">← Back to Overview</a></div>
   <div class="dlq-app__content">
     <div class="wrap">
       <section aria-labelledby="dlq-inputs" class="panel">
@@ -73,7 +73,7 @@ curl -s -X POST http://localhost:8083/connectors/inventory-connector/restart</co
           <h2 id="dlq-causes">common DLQ causes → fixes</h2>
           <div class="kvs">
             <div><span class="pill err">java.sql.SQLException</span></div>
-            <div>sink rejected a row (PK/unique violation, type mismatch). ➜ check target PK &amp; datatypes; use <a href="/merge-cookbook/">merge/upsert</a> patterns.</div>
+            <div>sink rejected a row (PK/unique violation, type mismatch). ➜ check target PK &amp; datatypes; use <a href="{{ '/merge-cookbook/' | url }}">merge/upsert</a> patterns.</div>
             <div><span class="pill warn">org.apache.kafka.common.errors.SerializationException</span></div>
             <div>value/headers not parseable (schema mismatch). ➜ align converters (schemas.enable), topic routing, or use schema registry where required.</div>
             <div><span class="pill warn">org.apache.kafka.connect.errors.ConnectException</span></div>
@@ -88,7 +88,7 @@ curl -s -X POST http://localhost:8083/connectors/inventory-connector/restart</co
           <textarea id="one" class="dlq-textarea" placeholder='{"original":{"value":"{\"before\":...,\"after\":...,\"op\":\"u\""}, "error":{"message":"..."} }'></textarea>
           <div class="row">
             <button class="btn" id="btnDecode">decode</button>
-            <a class="btn" href="/debezium-decoder/">open full decoder →</a>
+            <a class="btn" href="{{ '/debezium-decoder/' | url }}">open full decoder →</a>
           </div>
           <pre id="decoded" hidden><code></code></pre>
         </section>

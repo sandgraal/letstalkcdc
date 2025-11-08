@@ -18,7 +18,11 @@
         {% if config.actions %}
           <div class="hero-actions">
             {% for action in config.actions %}
-              <a class="button {{ action.variant | default('') }}" href="{{ action.href }}">{{ action.label }}</a>
+              {% set actionHref = action.href %}
+              {% if actionHref and actionHref | startsWith('/') %}
+                {% set actionHref = actionHref | url %}
+              {% endif %}
+              <a class="button {{ action.variant | default('') }}" href="{{ actionHref }}">{{ action.label }}</a>
             {% endfor %}
           </div>
         {% endif %}
@@ -35,7 +39,11 @@
     <h3>{{ card.title }}</h3>
     <p>{{ card.description }}</p>
     {% if card.href %}
-      <a href="{{ card.href }}" class="cta-button">{{ card.ctaLabel | default('Explore') }}</a>
+      {% set cardHref = card.href %}
+      {% if cardHref | startsWith('/') %}
+        {% set cardHref = cardHref | url %}
+      {% endif %}
+      <a href="{{ cardHref }}" class="cta-button">{{ card.ctaLabel | default('Explore') }}</a>
     {% else %}
       <a class="cta-button" aria-disabled="true">{{ card.ctaLabel | default('Coming Soon') }}</a>
     {% endif %}
@@ -78,7 +86,11 @@
       {% if isDisabled %}
         <a class="button" aria-disabled="true">{{ card.ctaLabel | default('Coming Soon') }}</a>
       {% else %}
-        <a class="button" href="{{ card.href }}" aria-label="{{ card.ariaLabel | default('Read: ' ~ card.title) }}">{{ card.ctaLabel | default('Dive In!') }}</a>
+        {% set cardHref = card.href %}
+        {% if cardHref | startsWith('/') %}
+          {% set cardHref = cardHref | url %}
+        {% endif %}
+        <a class="button" href="{{ cardHref }}" aria-label="{{ card.ariaLabel | default('Read: ' ~ card.title) }}">{{ card.ctaLabel | default('Dive In!') }}</a>
       {% endif %}
     </p>
   </article>
@@ -144,10 +156,18 @@
     {% endif %}
     {% if card.actions %}
       {% for action in card.actions %}
-        <a class="btn {{ action.variant | default('') }}" href="{{ action.href }}">{{ action.label }}</a>
+        {% set actionHref = action.href %}
+        {% if actionHref and actionHref | startsWith('/') %}
+          {% set actionHref = actionHref | url %}
+        {% endif %}
+        <a class="btn {{ action.variant | default('') }}" href="{{ actionHref }}">{{ action.label }}</a>
       {% endfor %}
     {% elif card.href %}
-      <a class="btn" href="{{ card.href }}">{{ card.ctaLabel | default('Open') }}</a>
+      {% set cardHref = card.href %}
+      {% if cardHref | startsWith('/') %}
+        {% set cardHref = cardHref | url %}
+      {% endif %}
+      <a class="btn" href="{{ cardHref }}">{{ card.ctaLabel | default('Open') }}</a>
     {% endif %}
     {% if card.meta %}
       <div class="meta">{{ card.meta | safe }}</div>
@@ -161,7 +181,11 @@
       {% for link in links %}
         <a
           class="download-link"
-          href="{{ link.href }}"
+          {% set linkHref = link.href %}
+          {% if linkHref | startsWith('/') %}
+            {% set linkHref = linkHref | url %}
+          {% endif %}
+          href="{{ linkHref }}"
           {% if link.download %}download{% endif %}
           {% if link.description %}title="{{ link.description }}"{% endif %}
         >

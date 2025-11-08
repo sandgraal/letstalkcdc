@@ -542,7 +542,7 @@ revenueByCategory.toStream()
         <p>
           <strong>Solution:</strong> Implemented a pre-deployment check requiring schema changes 
           to be coordinated with the data team. Added Snowflake table definitions to version control. 
-          Created a schema evolution guide (see <a href="/schema-evolution/">Schema Evolution module</a>).
+          Created a schema evolution guide (see <a href="{{ '/schema-evolution/' | url }}">Schema Evolution module</a>).
         </p>
       </div>
 
@@ -571,7 +571,7 @@ revenueByCategory.toStream()
           <strong>Solution:</strong> Implemented a post-load deduplication step using Snowflake's 
           <code>QUALIFY ROW_NUMBER() OVER (PARTITION BY primary_key ORDER BY _metadata_load_time DESC) = 1</code> 
           pattern. Documented the limitation and created views that abstract the deduplication logic 
-          (see <a href="/exactly-once/">Exactly-Once module</a> for detailed patterns).
+          (see <a href="{{ '/exactly-once/' | url }}">Exactly-Once module</a> for detailed patterns).
         </p>
       </div>
 
@@ -586,7 +586,7 @@ revenueByCategory.toStream()
           <strong>Solution:</strong> Added end-to-end freshness checks: a canary record written to 
           Postgres every minute, with an alert if it doesn't appear in Snowflake within 5 minutes. 
           Implemented a "data heartbeat" table that gets updated continuously. Documented in 
-          <a href="/observability/">Observability module</a>.
+          <a href="{{ '/observability/' | url }}">Observability module</a>.
         </p>
       </div>
     </div>
@@ -743,7 +743,7 @@ revenueByCategory.toStream()
     <ul>
       <li>
         <strong>Event-Driven Microservices:</strong> Migrating their monolithic order service 
-        to microservices using the <a href="/exactly-once/">Transactional Outbox pattern</a>
+        to microservices using the <a href="{{ '/exactly-once/' | url }}">Transactional Outbox pattern</a>
       </li>
       <li>
         <strong>Real-Time Personalization:</strong> Feeding customer behavior events into a 
@@ -823,35 +823,35 @@ revenueByCategory.toStream()
       the specific patterns and practices that made ShopStream's implementation successful:
     </p>
     <div class="related-links">
-      <a href="/intro/" class="related-card">
+      <a href="{{ '/intro/' | url }}" class="related-card">
         <h3>📚 Introduction to CDC</h3>
         <p>Core concepts and terminology referenced throughout this case study</p>
       </a>
-      <a href="/snapshotting/" class="related-card">
+      <a href="{{ '/snapshotting/' | url }}" class="related-card">
         <h3>📸 Snapshotting</h3>
         <p>How ShopStream handled the initial historical data load</p>
       </a>
-      <a href="/schema-evolution/" class="related-card">
+      <a href="{{ '/schema-evolution/' | url }}" class="related-card">
         <h3>🔄 Schema Evolution</h3>
         <p>Handling ADD COLUMN and schema changes gracefully</p>
       </a>
-      <a href="/exactly-once/" class="related-card">
+      <a href="{{ '/exactly-once/' | url }}" class="related-card">
         <h3>✅ Exactly-Once Semantics</h3>
         <p>Understanding idempotency and the Transactional Outbox pattern</p>
       </a>
-      <a href="/observability/" class="related-card">
+      <a href="{{ '/observability/' | url }}" class="related-card">
         <h3>👁️ Observability</h3>
         <p>Monitoring patterns including the canary record strategy</p>
       </a>
-      <a href="/tooling/" class="related-card">
+      <a href="{{ '/tooling/' | url }}" class="related-card">
         <h3>🛠️ CDC Tooling</h3>
         <p>Detailed comparison of Debezium, Fivetran, DMS, and other tools</p>
       </a>
-      <a href="/use-cases/" class="related-card">
+      <a href="{{ '/use-cases/' | url }}" class="related-card">
         <h3>💡 Real-World Use Cases</h3>
         <p>More examples of CDC applications across industries</p>
       </a>
-      <a href="/lab-kafka-debezium/" class="related-card">
+      <a href="{{ '/lab-kafka-debezium/' | url }}" class="related-card">
         <h3>🧪 Hands-On Lab</h3>
         <p>Try building a CDC pipeline yourself with guided exercises</p>
       </a>
