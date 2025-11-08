@@ -2,6 +2,14 @@ const fs = require("fs");
 const path = require("path");
 const { getPathPrefix } = require("./lib/path-prefix.cjs");
 
+const normalizeToArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return [value];
+};
+
+const pathPrefix = getPathPrefix();
+
 function parseAssistantYaml(content) {
   const lines = content.split(/\r?\n/);
   const intents = [];
@@ -154,7 +162,75 @@ module.exports = function (eleventyConfig) {
     return value.startsWith(prefix);
   });
 
-  const pathPrefix = getPathPrefix();
+  const publishedUrlCandidates = (href) => {
+    if (!href) {
+      return [];
+    }
+
+    const trimmed = href.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      return [];
+    }
+
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.startsWith("http://") ||
+      lower.startsWith("https://") ||
+      lower.startsWith("mailto:") ||
+      lower.startsWith("tel:") ||
+      lower.startsWith("javascript:")
+    ) {
+      return [];
+    }
+
+    const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    const candidates = [normalized];
+
+    if (pathPrefix) {
+      const prefixed = `${pathPrefix.replace(/\/$/, "")}${normalized}`;
+      candidates.push(prefixed);
+    }
+
+    return candidates;
+  };
+
+  eleventyConfig.addGlobalData("eleventyComputed", {
+    permalink: (data) => {
+      if (data.draft) {
+        return false;
+      }
+
+      return data.permalink;
+    },
+    eleventyExcludeFromCollections: (data) => {
+      if (data.draft) {
+        return true;
+      }
+
+      if (typeof data.eleventyExcludeFromCollections !== "undefined") {
+        return data.eleventyExcludeFromCollections;
+      }
+
+      return false;
+    },
+  });
+
+  eleventyConfig.addNunjucksFilter("pageExists", (collection, href) => {
+    if (!collection || !href) {
+      return false;
+    }
+
+    const candidates = publishedUrlCandidates(href);
+
+    if (!candidates.length) {
+      // Assume external / hash links are valid; only guard internal paths.
+      return true;
+    }
+
+    const items = normalizeToArray(collection);
+    return items.some((item) => candidates.includes(item.url));
+  });
 
   return {
     pathPrefix,
