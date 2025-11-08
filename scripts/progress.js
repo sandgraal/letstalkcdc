@@ -317,14 +317,11 @@ const updateDashboardView = (docs = []) => {
   renderProgressDashboard("cdc-progress", dashboardModules, docs);
   const doc = globalScope.document;
   if (!doc) return;
-  const boot = doc.getElementById("cdcDashboardBoot");
   const board = doc.getElementById("cdcDashboard");
   if (docs.length > 0) {
-    boot?.setAttribute("hidden", "hidden");
     board?.removeAttribute("hidden");
   } else {
     board?.setAttribute("hidden", "hidden");
-    boot?.removeAttribute("hidden");
   }
 };
 
