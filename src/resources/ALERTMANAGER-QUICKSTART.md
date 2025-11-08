@@ -48,7 +48,7 @@ docker-compose -f docker-compose-observability.yml -f docker-compose.alerts.yml 
 docker-compose ps
 
 # Access Alertmanager UI
-open http://localhost:9093
+{% include "snippets/open-url.njk" with { url: "http://localhost:9093" } %}
 ```
 
 ### 4. Test alert routing

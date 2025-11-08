@@ -51,7 +51,7 @@ docker compose exec postgres psql -U postgres -d inventory -c "SELECT COUNT(*) F
 docker compose exec mysql mysql -u debezium -pdbz -e "SELECT COUNT(*) FROM inventory.products;"
 
 # Open Kafka UI in your browser
-open http://localhost:8080
+{% include "snippets/open-url.njk" with { url: "http://localhost:8080" } %}
 ```
 
 ## 📚 Using the Sandbox
