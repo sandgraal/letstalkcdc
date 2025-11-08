@@ -40,12 +40,12 @@
     >
       {% if hasLazyLoad %}
         {# Lazy load with thumbnail and play button #}
-        <img 
-          src="{{ config.thumbnail | url }}" 
-          alt="{{ config.title | default('Video thumbnail') }}"
-          class="video-embed-thumbnail"
-          loading="lazy"
-        />
+        {% img config.thumbnail | url,
+          config.title | default('Video thumbnail'),
+          {
+            class: 'video-embed-thumbnail'
+          }
+        %}
         <button 
           class="video-embed-play-btn"
           aria-label="Play video: {{ config.title | default('video') }}"

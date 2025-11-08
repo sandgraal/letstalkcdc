@@ -37,13 +37,10 @@
       <div class="nav-container">
         <a class="site-logo" href="{{ '/' | url }}" aria-label="{{ site.seoTitle }} home">
           <span class="site-logo__icon" aria-hidden="true">
-            <img
-              src="{{ '/images/lets-talk-cdc-logo.svg' | url }}"
-              width="92"
-              height="28"
-              alt=""
-              decoding="async"
-            >
+            {% img '/images/lets-talk-cdc-logo.svg' | url, '', {
+              width: 92,
+              height: 28
+            } %}
           </span>
           <span class="site-logo__wordmark" aria-hidden="true">
             <span class="site-logo__word site-logo__word--primary">Let's Talk</span>
@@ -251,15 +248,15 @@
     <script>
       window.CDC_MODULES = {{ series | dump | safe }};
     </script>
-    <script type="module" src="{{ '/scripts/dashboard.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/app.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/progress-ui.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/auth-ui.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/cloud-progress.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/video-embed.js' | url }}"></script>
+    <script type="module" src="{{ '/scripts/dashboard.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/app.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/progress-ui.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/auth-ui.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/cloud-progress.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/video-embed.js' | url }}" defer></script>
     {% if scripts %}
       {% for script in scripts %}
-        <script type="module" src="{{ script | url }}"></script>
+        <script type="module" src="{{ script | url }}" defer></script>
       {% endfor %}
     {% endif %}
     {% if appwrite.endpoint and appwrite.project and appwrite.databaseId %}
@@ -276,7 +273,7 @@
       <script>
         window.CDC_JOURNEY_SLUG = {{ seriesKey | dump | safe }};
       </script>
-      <script type="module" src="{{ '/scripts/progress.js' | url }}"></script>
+      <script type="module" src="{{ '/scripts/progress.js' | url }}" defer></script>
     {% endif %}
     <footer class="site-footer">
       <div class="footer-container">
@@ -340,8 +337,8 @@
     <link rel="stylesheet" href="{{ '/css/assistant.css' | url }}">
     <button id="askBtn" type="button" aria-label="Ask the Playground">💬</button>
     <div id="askPanel" hidden></div>
-    <script type="module" src="{{ '/js/assistant.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/search.js' | url }}"></script>
-    <script type="module" src="{{ '/assets/js/web-vitals-dashboard.js' | url }}"></script>
+    <script type="module" src="{{ '/js/assistant.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/search.js' | url }}" defer></script>
+    <script type="module" src="{{ '/assets/js/web-vitals-dashboard.js' | url }}" defer></script>
   </body>
 </html>

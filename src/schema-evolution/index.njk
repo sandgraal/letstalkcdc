@@ -47,9 +47,12 @@ head_extra: |
         </p>
 
         <figure class="diagram-section__figure">
-          <img src="{{ '/diagrams/schema-evolution.svg' | url }}"
-               alt="Schema evolution flow showing schema registry, converters, and sink adjustments"
-               class="diagram-section__image" />
+          {% img '/diagrams/schema-evolution.svg' | url,
+            'Schema evolution flow showing schema registry, converters, and sink adjustments',
+            {
+              class: 'diagram-section__image'
+            }
+          %}
           <figcaption class="diagram-section__caption">
             Schema Registry mediates evolution between producers and consumers with compatibility checks
           </figcaption>
