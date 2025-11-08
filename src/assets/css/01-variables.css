@@ -165,6 +165,9 @@
     rgba(255, 255, 255, 0.02) 0%,
     transparent 100%
   );
+
+  /* Button Colors - Ensures readability on gradient backgrounds */
+  --button-primary-text: #ffffff;
 }
 
 /* Light Theme - Clean, professional */
@@ -250,4 +253,7 @@
     rgba(15, 23, 42, 0.02) 0%,
     transparent 100%
   );
+
+  /* Button Colors - Ensures readability on gradient backgrounds */
+  --button-primary-text: #ffffff;
 }

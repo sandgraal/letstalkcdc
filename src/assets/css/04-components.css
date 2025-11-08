@@ -51,7 +51,7 @@
 .button,
 .button.primary {
   background: var(--gradient-primary);
-  color: white;
+  color: var(--button-primary-text);
   border: none;
   box-shadow: var(--shadow-sm), 0 0 0 1px rgba(59, 130, 246, 0.2);
 }
