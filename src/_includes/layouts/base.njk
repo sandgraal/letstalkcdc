@@ -35,62 +35,71 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="global-header">
       <div class="nav-container">
-        <a class="site-title" href="{{ '/' | url }}">{{ site.seoTitle }}</a>
+        <a class="site-logo" href="{{ '/' | url }}" aria-label="{{ site.seoTitle }} home">
+          <span class="site-logo__mark" aria-hidden="true">LT</span>
+          <span class="site-logo__text" aria-hidden="true">CDC</span>
+        </a>
         <div class="nav-right">
           <button aria-label="Toggle navigation menu" class="mobile-menu-toggle" data-mobile-menu-toggle type="button">
             <span class="hamburger-icon" aria-hidden="true"></span>
           </button>
           <nav aria-label="Primary" class="nav-links" data-mobile-nav>
-            <a class="{% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
-            <a class="{% if page.url | startsWith('/intro') %}active{% endif %}" href="{{ '/intro/' | url }}">Introduction</a>
-            <a class="{% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">Learning Series</a>
-            <div class="nav-dropdown">
-              <button class="nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
-                Labs
-                <span class="dropdown-icon" aria-hidden="true">▾</span>
-              </button>
-              <div class="nav-dropdown-menu" role="menu">
-                <a class="{% if page.url | startsWith('/quickstarts') %}active{% endif %}" href="{{ '/quickstarts/' | url }}" role="menuitem">Quick Starts</a>
-                <a class="{% if page.url | startsWith('/lab-kafka') %}active{% endif %}" href="{{ '/lab-kafka-debezium/' | url }}" role="menuitem">Kafka + Debezium Lab</a>
-                <a class="{% if page.url | startsWith('/cloud-labs') %}active{% endif %}" href="{{ '/cloud-labs/' | url }}" role="menuitem">Cloud Labs</a>
-                <a class="{% if page.url | startsWith('/tests') %}active{% endif %}" href="{{ '/tests/' | url }}" role="menuitem">Acceptance Tests</a>
+            <div class="nav-links__group nav-links__group--primary">
+              <a class="nav-chip {% if page.url == '/' %}active{% endif %}" href="{{ '/' | url }}">Home</a>
+              <a class="nav-chip {% if page.url | startsWith('/intro') %}active{% endif %}" href="{{ '/intro/' | url }}">Intro</a>
+              <a class="nav-chip {% if page.url | startsWith('/overview') %}active{% endif %}" href="{{ '/overview/' | url }}">Series</a>
+              <div class="nav-dropdown">
+                <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/quickstarts') or page.url | startsWith('/lab-') or page.url | startsWith('/cloud-labs') or page.url | startsWith('/tests') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+                  Labs
+                  <span class="dropdown-icon" aria-hidden="true">▾</span>
+                </button>
+                <div class="nav-dropdown-menu" role="menu">
+                  <a class="{% if page.url | startsWith('/quickstarts') %}active{% endif %}" href="{{ '/quickstarts/' | url }}" role="menuitem">Quick Starts</a>
+                  <a class="{% if page.url | startsWith('/lab-kafka') %}active{% endif %}" href="{{ '/lab-kafka-debezium/' | url }}" role="menuitem">Kafka + Debezium Lab</a>
+                  <a class="{% if page.url | startsWith('/cloud-labs') %}active{% endif %}" href="{{ '/cloud-labs/' | url }}" role="menuitem">Cloud Labs</a>
+                  <a class="{% if page.url | startsWith('/tests') %}active{% endif %}" href="{{ '/tests/' | url }}" role="menuitem">Acceptance Tests</a>
+                </div>
+              </div>
+              <div class="nav-dropdown">
+                <button class="nav-chip nav-dropdown-toggle {% if page.url | startsWith('/tooling') or page.url | startsWith('/connector-builder') or page.url | startsWith('/debezium-decoder') or page.url | startsWith('/dlq-triage') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
+                  Tools
+                  <span class="dropdown-icon" aria-hidden="true">▾</span>
+                </button>
+                <div class="nav-dropdown-menu" role="menu">
+                  <a class="{% if page.url | startsWith('/tooling') %}active{% endif %}" href="{{ '/tooling/' | url }}" role="menuitem">Ecosystem</a>
+                  <a class="{% if page.url | startsWith('/connector-builder') %}active{% endif %}" href="{{ '/connector-builder/' | url }}" role="menuitem">Connector Builder</a>
+                  <a class="{% if page.url | startsWith('/debezium-decoder') %}active{% endif %}" href="{{ '/debezium-decoder/' | url }}" role="menuitem">Event Decoder</a>
+                  <a class="{% if page.url | startsWith('/dlq-triage') %}active{% endif %}" href="{{ '/dlq-triage/' | url }}" role="menuitem">DLQ Triage</a>
+                </div>
               </div>
             </div>
-            <div class="nav-dropdown">
-              <button class="nav-dropdown-toggle {% if page.url | startsWith('/tooling') or page.url | startsWith('/connector-builder') or page.url | startsWith('/debezium-decoder') or page.url | startsWith('/dlq-triage') %}active{% endif %}" aria-expanded="false" aria-haspopup="true">
-                Tools
-                <span class="dropdown-icon" aria-hidden="true">▾</span>
-              </button>
-              <div class="nav-dropdown-menu" role="menu">
-                <a class="{% if page.url | startsWith('/tooling') %}active{% endif %}" href="{{ '/tooling/' | url }}" role="menuitem">Ecosystem</a>
-                <a class="{% if page.url | startsWith('/connector-builder') %}active{% endif %}" href="{{ '/connector-builder/' | url }}" role="menuitem">Connector Builder</a>
-                <a class="{% if page.url | startsWith('/debezium-decoder') %}active{% endif %}" href="{{ '/debezium-decoder/' | url }}" role="menuitem">Event Decoder</a>
-                <a class="{% if page.url | startsWith('/dlq-triage') %}active{% endif %}" href="{{ '/dlq-triage/' | url }}" role="menuitem">DLQ Triage</a>
-              </div>
+            <div class="nav-links__group nav-links__group--support">
+              <a class="nav-chip {% if page.url | startsWith('/use-cases') %}active{% endif %}" href="{{ '/use-cases/' | url }}">Cases</a>
+              <a class="nav-chip {% if page.url | startsWith('/troubleshooting') %}active{% endif %}" href="{{ '/troubleshooting/' | url }}">Help</a>
+              <a class="nav-chip {% if page.url | startsWith('/dashboard') %}active{% endif %}" href="{{ '/dashboard/' | url }}">Progress</a>
             </div>
-            <a class="{% if page.url | startsWith('/use-cases') %}active{% endif %}" href="{{ '/use-cases/' | url }}">Use Cases</a>
-            <a class="{% if page.url | startsWith('/troubleshooting') %}active{% endif %}" href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>
-            <a class="{% if page.url | startsWith('/dashboard') %}active{% endif %}" href="{{ '/dashboard/' | url }}">My Progress</a>
           </nav>
-          <div class="header-progress" data-header-progress>
-            <span class="header-progress__label">Progress</span>
-            <div class="header-progress__bar">
-              <div class="progress-bar progress-bar--sm">
-                <div 
-                  class="progress-bar-fill" 
-                  data-global-progress-bar 
-                  style="width: 0%"
-                  role="progressbar"
-                  aria-valuenow="0"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  aria-label="Overall learning progress"
-                ></div>
+          <div class="nav-utilities">
+            <div class="header-progress" data-header-progress>
+              <span class="header-progress__label">Progress</span>
+              <div class="header-progress__bar">
+                <div class="progress-bar progress-bar--sm">
+                  <div
+                    class="progress-bar-fill"
+                    data-global-progress-bar
+                    style="width: 0%"
+                    role="progressbar"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-label="Overall learning progress"
+                  ></div>
+                </div>
               </div>
+              <span class="header-progress__text" data-global-progress-text>0%</span>
             </div>
-            <span class="header-progress__text" data-global-progress-text>0%</span>
+            <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
           </div>
-          <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
         </div>
       </div>
     </header>
