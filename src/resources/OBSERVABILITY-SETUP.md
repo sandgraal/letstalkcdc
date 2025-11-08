@@ -350,7 +350,10 @@ You can adjust these in `alertmanager.yml` under `route.repeat_interval`.
 
 Use the Alertmanager UI to create silences during planned maintenance:
 
-1. Open http://localhost:9093
+1. Use your OS-specific command to open the Alertmanager UI:
+   ```bash
+   {% include "snippets/open-url.njk" with { url: "http://localhost:9093" } %}
+   ```
 2. Click "Silences" → "New Silence"
 3. Add matchers (e.g., `connector="inventory-connector"`)
 4. Set duration and comment
@@ -534,7 +537,10 @@ This gives the number of records waiting to be processed. For time-based lag, yo
    ```
 
 2. **Verify Prometheus is scraping**:
-   - Open http://localhost:9090/targets
+   - Use your OS-specific command to open the Prometheus targets page:
+     ```bash
+     {% include "snippets/open-url.njk" with { url: "http://localhost:9090/targets" } %}
+     ```
    - Check `kafka-connect` target status
 
 3. **Check connector JMX exposure**:
@@ -550,7 +556,10 @@ This gives the number of records waiting to be processed. For time-based lag, yo
    ```
 
 2. **Check metric names match dashboard queries**:
-   - Open Prometheus at http://localhost:9090
+   - Use your OS-specific command to open the Prometheus UI:
+     ```bash
+     {% include "snippets/open-url.njk" with { url: "http://localhost:9090" } %}
+     ```
    - Run query: `kafka_connect_connector_status`
    - If no results, JMX exporter config may need adjustment
 
