@@ -10,7 +10,10 @@ head_extra: |
 
 {{ ui.hero(heroConfig) | safe }}
 
+{% set availableQuickstarts = 0 %}
 <div class="qs-grid" id="quickstart-grid">
+  {% if collections.all | pageExists('/quickstarts/quickstart-postgres/') %}
+  {% set availableQuickstarts = availableQuickstarts + 1 %}
   <a class="qs-card" href="{{ '/quickstarts/quickstart-postgres/' | url }}">
     <div>
       <h2>Postgres</h2>
@@ -24,6 +27,9 @@ head_extra: |
       <path d="M12,6a4,4,0,0,1,4,4H8A4,4,0,0,1,12,6Z" />
     </svg>
   </a>
+  {% endif %}
+  {% if collections.all | pageExists('/quickstarts/quickstart-mysql/') %}
+  {% set availableQuickstarts = availableQuickstarts + 1 %}
   <a class="qs-card" href="{{ '/quickstarts/quickstart-mysql/' | url }}">
     <div>
       <h2>MySQL</h2>
@@ -40,6 +46,9 @@ head_extra: |
       <path d="M7,18a5,5,0,0,0,10,0" />
     </svg>
   </a>
+  {% endif %}
+  {% if collections.all | pageExists('/quickstarts/quickstart-oracle/') %}
+  {% set availableQuickstarts = availableQuickstarts + 1 %}
   <a class="qs-card" href="{{ '/quickstarts/quickstart-oracle/' | url }}">
     <div>
       <h2>Oracle</h2>
@@ -55,6 +64,9 @@ head_extra: |
       <path d="M17 3v18" />
     </svg>
   </a>
+  {% endif %}
+  {% if collections.all | pageExists('/quickstarts/quickstart-mssql/') %}
+  {% set availableQuickstarts = availableQuickstarts + 1 %}
   <a class="qs-card" href="{{ '/quickstarts/quickstart-mssql/' | url }}">
     <div>
       <h2>MS SQL Server</h2>
@@ -68,7 +80,16 @@ head_extra: |
       <path d="M9 21V9" />
     </svg>
   </a>
+  {% endif %}
 </div>
+
+{% if availableQuickstarts == 0 %}
+  <section class="box callout" aria-labelledby="quickstarts-coming-soon">
+    <h2 id="quickstarts-coming-soon">Quickstarts are being finalized</h2>
+    <p class="muted">Our database walkthroughs are under review. We’ll publish the guides once each set of prerequisites, configs, and verification steps is validated.</p>
+    <p>Until then, explore the <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a> or jump into the <a href="{{ '/overview/' | url }}">series overview</a> to plan your learning path.</p>
+  </section>
+{% endif %}
 
 {% if quickstartDetails %}
   <section class="qs-detail-section" aria-labelledby="qs-detail-heading">
@@ -99,12 +120,24 @@ head_extra: |
             </ul>
           {% endif %}
           {% if card.actions %}
-            <div class="qs-detail-actions">
-              {% for action in card.actions %}
-                {% set actionHref = ui.resolve_href(action.href) %}
-                <a class="button{% if action.variant %} {{ action.variant }}{% endif %}" href="{{ actionHref | trim }}">{{ action.label }}</a>
-              {% endfor %}
-            </div>
+            {% set visibleActions = [] %}
+            {% for action in card.actions %}
+              {% set shouldShow = (action.href is not defined) or (action.href | trim == '') %}
+              {% if not shouldShow %}
+                {% set shouldShow = collections.all | pageExists(action.href) %}
+              {% endif %}
+              {% if shouldShow %}
+                {% set visibleActions = visibleActions + [action] %}
+              {% endif %}
+            {% endfor %}
+            {% if visibleActions | length %}
+              <div class="qs-detail-actions">
+                {% for action in visibleActions %}
+                  {% set actionHref = ui.resolve_href(action.href) %}
+                  <a class="button{% if action.variant %} {{ action.variant }}{% endif %}" href="{{ actionHref | trim }}">{{ action.label }}</a>
+                {% endfor %}
+              </div>
+            {% endif %}
           {% endif %}
         </article>
       {% endfor %}

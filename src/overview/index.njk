@@ -38,6 +38,9 @@ head_extra: |
 
 <section class="series-card-grid">
   {% for card in seriesCards %}
-    {{ ui.series_card(card) | safe }}
+    {% set targetHref = card.href %}
+    {% if not card.draft and (not targetHref or collections.all | pageExists(targetHref)) %}
+      {{ ui.series_card(card) | safe }}
+    {% endif %}
   {% endfor %}
 </section>
