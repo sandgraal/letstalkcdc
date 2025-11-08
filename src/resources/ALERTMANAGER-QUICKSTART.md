@@ -70,7 +70,11 @@ curl -H "Content-Type: application/json" -d '[{
 ```
 
 Check Alertmanager received it:
-- Open http://localhost:9093 in your browser
+
+- Use your OS-specific command to open the Alertmanager UI:
+  ```bash
+  {% include "snippets/open-url.njk" with { url: "http://localhost:9093" } %}
+  ```
 - You should see the test alert listed
 
 If you configured Slack/PagerDuty, you should receive notifications!

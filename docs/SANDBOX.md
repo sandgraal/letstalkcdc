@@ -145,8 +145,14 @@ When lab instructions reference specific services, use these sandbox endpoints:
 | "Connect to your Postgres database" | `docker compose exec postgres psql -U postgres -d inventory` |
 | "Kafka broker at localhost:9092" | ✅ Already configured |
 | "Post connector config to Connect API" | `./sandbox/register-postgres-connector.sh` |
-| "View Kafka messages" | Open http://localhost:8080 |
+| "View Kafka messages" | Kafka UI at http://localhost:8080 |
 | "Use kafkacat/kcat" | `docker compose exec kcat kcat -b kafka:29092 ...` |
+
+Use your OS-specific command to open the Kafka UI:
+
+```bash
+{% include "snippets/open-url.njk" with { url: "http://localhost:8080" } %}
+```
 
 ## Advanced Usage
 
