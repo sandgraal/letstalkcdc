@@ -1,0 +1,17 @@
+<svg width="184" height="56" viewBox="0 0 184 56" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Let's Talk CDC pulse logo</title>
+  <desc id="desc">A stylized teal heartbeat waveform forming the brand mark for Let's Talk CDC.</desc>
+  <defs>
+    <linearGradient id="pulseGradient" x1="12" y1="28" x2="172" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8AD3CE" />
+      <stop offset="45%" stop-color="#5FBCC5" />
+      <stop offset="100%" stop-color="#3BA3BE" />
+    </linearGradient>
+    <filter id="pulseShadow" x="0" y="8" width="184" height="40" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+  </defs>
+  <g filter="url(#pulseShadow)" stroke="url(#pulseGradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M12 28H46.5L55 12L67.5 44L78 8L92 28H132L142 20L152 36H172" />
+  </g>
+</svg>
