@@ -120,18 +120,18 @@ scripts:
     <nav class="intro-next" aria-labelledby="intro-next-title">
       <h3 id="intro-next-title">What you’ll learn next</h3>
       <ul>
-        <li><a href="/strategy/">Strategy &amp; architecture playbook</a> — apply the concepts to cross-system designs.</li>
+        <li><a href="{{ '/strategy/' | url }}">Strategy &amp; architecture playbook</a> — apply the concepts to cross-system designs.</li>
         <li><a href="#cdc-vendors-title">CDC tooling catalog</a> — evaluate managed platforms, open source, and enterprise stacks.</li>
-        <li><a href="/lab-kafka-debezium/">Hands-on lab: Kafka + Debezium</a> — practice capturing and replaying change events.</li>
+        <li><a href="{{ '/lab-kafka-debezium/' | url }}">Hands-on lab: Kafka + Debezium</a> — practice capturing and replaying change events.</li>
       </ul>
     </nav>
 
     <section class="series-roadmap" id="series-roadmap" aria-labelledby="series-roadmap-title">
       <h2 id="series-roadmap-title">How to use this series</h2>
       <ol>
-        <li><strong>Start with the overview:</strong> Align on terminology and the CDC value proposition in <a href="/overview/">Series Overview</a>.</li>
+        <li><strong>Start with the overview:</strong> Align on terminology and the CDC value proposition in <a href="{{ '/overview/' | url }}">Series Overview</a>.</li>
         <li><strong>Use this intro as the foundation:</strong> Anchor on methods, architecture, and tooling landscape before exploring edge cases.</li>
-        <li><strong>Move into advanced patterns:</strong> Visit <a href="/exactly-once/">Exactly-Once</a>, <a href="/snapshotting/">Snapshotting</a>, and <a href="/schema-evolution/">Schema Evolution</a> for deeper dives.</li>
+        <li><strong>Move into advanced patterns:</strong> Visit <a href="{{ '/exactly-once/' | url }}">Exactly-Once</a>, <a href="{{ '/snapshotting/' | url }}">Snapshotting</a>, and <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a> for deeper dives.</li>
         <li><strong>Practice and operationalize:</strong> Follow the labs and troubleshooting guides to validate your setup in real environments.</li>
       </ol>
     </section>
@@ -155,7 +155,7 @@ scripts:
           <li>✅ Ordered change events support replay and downstream idempotence.</li>
           <li>⚠️ Requires elevated privileges and careful log-retention tuning.</li>
         </ul>
-        <p class="method-link"><a href="/lab-kafka-debezium/">Go deeper with the Debezium lab</a></p>
+        <p class="method-link"><a href="{{ '/lab-kafka-debezium/' | url }}">Go deeper with the Debezium lab</a></p>
         <details class="method-details">
           <summary>Show full breakdown</summary>
           <p>
@@ -231,7 +231,7 @@ scripts:
           <li>⚠️ Misses intermediate updates and hard deletes without tombstones.</li>
           <li>⚠️ Source database load grows with polling frequency.</li>
         </ul>
-        <p class="method-link"><a href="/strategy/">Go deeper with CDC strategy trade-offs</a></p>
+        <p class="method-link"><a href="{{ '/strategy/' | url }}">Go deeper with CDC strategy trade-offs</a></p>
         <details class="method-details">
           <summary>Show full breakdown</summary>
           <p>
@@ -426,14 +426,14 @@ scripts:
     </ul>
 
     <p class="core-components-links">
-      Want the implementation details? <a href="/connector-builder/">Connector Builder</a> shows how log readers stream events, <a href="/schema-evolution/">Schema Evolution</a> covers contract management, and <a href="/merge-cookbook/">Merge Cookbook</a> demonstrates idempotent sink patterns.
+      Want the implementation details? <a href="{{ '/connector-builder/' | url }}">Connector Builder</a> shows how log readers stream events, <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a> covers contract management, and <a href="{{ '/merge-cookbook/' | url }}">Merge Cookbook</a> demonstrates idempotent sink patterns.
     </p>
 
     <figure aria-label="CDC high-level flow">
       <img src="{{ '/diagrams/cdc-pipeline-architecture.svg' | url }}" 
            alt="CDC pipeline architecture showing the complete data flow from source database through WAL/binlog, connector (Debezium/Airbyte), streaming platform (Kafka/Kinesis), to sink destinations (warehouse, search, cache)"/>
       <figcaption class="figure-caption">
-        The CDC pipeline architecture: Source DB → Connector → Stream → Sink. Map components to deeper dives: Source DB → <a href="/snapshotting/">Snapshotting</a>, Connector → <a href="/connector-builder/">Connector Builder</a>, Stream → <a href="/strategy/">Strategy</a>, and Sink → <a href="/merge-cookbook/">Merge Cookbook</a>.
+        The CDC pipeline architecture: Source DB → Connector → Stream → Sink. Map components to deeper dives: Source DB → <a href="{{ '/snapshotting/' | url }}">Snapshotting</a>, Connector → <a href="{{ '/connector-builder/' | url }}">Connector Builder</a>, Stream → <a href="{{ '/strategy/' | url }}">Strategy</a>, and Sink → <a href="{{ '/merge-cookbook/' | url }}">Merge Cookbook</a>.
       </figcaption>
     </figure>
 
@@ -597,7 +597,7 @@ COMMIT;</code></pre>
         </details>
         <p class="muted intro-deep-dive">
           Deep dive:
-          <a href="/exactly-once/">Exactly-Once &amp; the Outbox pattern</a>.
+          <a href="{{ '/exactly-once/' | url }}">Exactly-Once &amp; the Outbox pattern</a>.
         </p>
       </div>
 
@@ -641,7 +641,7 @@ COMMIT;</code></pre>
           <span class="severity severity-must" aria-label="Must do">Must</span>
           <span class="item-text"><strong>Log retention &amp; bloat:</strong> Logical slots (PG) or paused connectors can block log truncation; size WAL/binlog/T-log appropriately and alert on backlog.</span>
         </label>
-        <a class="checklist-link" href="/troubleshooting/">Troubleshooting playbook</a>
+        <a class="checklist-link" href="{{ '/troubleshooting/' | url }}">Troubleshooting playbook</a>
       </li>
       <li>
         <input type="checkbox" id="op-perms">
@@ -649,7 +649,7 @@ COMMIT;</code></pre>
           <span class="severity severity-must" aria-label="Must do">Must</span>
           <span class="item-text"><strong>Privileges &amp; network:</strong> Connectors need replication permissions and stable network paths (no NAT timeouts) to avoid stalls.</span>
         </label>
-        <a class="checklist-link" href="/strategy/">Deployment checklist</a>
+        <a class="checklist-link" href="{{ '/strategy/' | url }}">Deployment checklist</a>
       </li>
       <li>
         <input type="checkbox" id="op-ddl">
@@ -657,7 +657,7 @@ COMMIT;</code></pre>
           <span class="severity severity-should" aria-label="Should do">Should</span>
           <span class="item-text"><strong>DDL changes:</strong> Schema changes may need registry rules and phased rollouts to avoid breaking consumers.</span>
         </label>
-        <a class="checklist-link" href="/schema-evolution/">Schema change guide</a>
+        <a class="checklist-link" href="{{ '/schema-evolution/' | url }}">Schema change guide</a>
       </li>
       <li>
         <input type="checkbox" id="op-sinks">
@@ -665,7 +665,7 @@ COMMIT;</code></pre>
           <span class="severity severity-must" aria-label="Must do">Must</span>
           <span class="item-text"><strong>Sinks are the hard part:</strong> Upsert/delete semantics and idempotency in the warehouse/search system determine data correctness under replay.</span>
         </label>
-        <a class="checklist-link" href="/merge-cookbook/">Merge &amp; upsert patterns</a>
+        <a class="checklist-link" href="{{ '/merge-cookbook/' | url }}">Merge &amp; upsert patterns</a>
       </li>
       <li>
         <input type="checkbox" id="op-observability">
@@ -673,7 +673,7 @@ COMMIT;</code></pre>
           <span class="severity severity-nice" aria-label="Nice to have">Nice</span>
           <span class="item-text">Instrument CDC-specific metrics (lag, slot depth, consumer replay time) so you can rehearse incident response without touching production.</span>
         </label>
-        <a class="checklist-link" href="/tooling/">Observability tooling</a>
+        <a class="checklist-link" href="{{ '/tooling/' | url }}">Observability tooling</a>
       </li>
     </ul>
 
@@ -857,15 +857,15 @@ COMMIT;</code></pre>
       <p class="next-note">Pick the path that matches the momentum you want to keep.</p>
       <div class="next-grid">
         <article class="next-card">
-          <h3><a href="/case-study/">Real-world case study</a></h3>
+          <h3><a href="{{ '/case-study/' | url }}">Real-world case study</a></h3>
           <p>20 min — See how an e-commerce company implemented CDC, from problem to production.</p>
         </article>
         <article class="next-card">
-          <h3><a href="/strategy/">Strategy blueprint</a></h3>
+          <h3><a href="{{ '/strategy/' | url }}">Strategy blueprint</a></h3>
           <p>15 min — Translate these fundamentals into a reference architecture and operating model.</p>
         </article>
         <article class="next-card">
-          <h3><a href="/lab-kafka-debezium/">Hands-on lab</a></h3>
+          <h3><a href="{{ '/lab-kafka-debezium/' | url }}">Hands-on lab</a></h3>
           <p>45 min — Capture, stream, and replay changes with Kafka + Debezium in a guided exercise.</p>
         </article>
         <article class="next-card">

@@ -11,7 +11,7 @@ head_extra: |
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="qs-grid" id="quickstart-grid">
-  <a class="qs-card" href="/quickstarts/quickstart-postgres/">
+  <a class="qs-card" href="{{ '/quickstarts/quickstart-postgres/' | url }}">
     <div>
       <h2>Postgres</h2>
       <p>
@@ -24,7 +24,7 @@ head_extra: |
       <path d="M12,6a4,4,0,0,1,4,4H8A4,4,0,0,1,12,6Z" />
     </svg>
   </a>
-  <a class="qs-card" href="/quickstarts/quickstart-mysql/">
+  <a class="qs-card" href="{{ '/quickstarts/quickstart-mysql/' | url }}">
     <div>
       <h2>MySQL</h2>
       <p>
@@ -40,7 +40,7 @@ head_extra: |
       <path d="M7,18a5,5,0,0,0,10,0" />
     </svg>
   </a>
-  <a class="qs-card" href="/quickstarts/quickstart-oracle/">
+  <a class="qs-card" href="{{ '/quickstarts/quickstart-oracle/' | url }}">
     <div>
       <h2>Oracle</h2>
       <p>
@@ -55,7 +55,7 @@ head_extra: |
       <path d="M17 3v18" />
     </svg>
   </a>
-  <a class="qs-card" href="/quickstarts/quickstart-mssql/">
+  <a class="qs-card" href="{{ '/quickstarts/quickstart-mssql/' | url }}">
     <div>
       <h2>MS SQL Server</h2>
       <p>
@@ -130,6 +130,6 @@ head_extra: |
       <h2 id="qs-verify-heading">Verify your stack</h2>
       <p>After you run a quickstart, execute the acceptance tests to prove containers are healthy, events are flowing, and restarts stay idempotent.</p>
     </div>
-    <a class="button" href="/tests/">Run acceptance tests</a>
+    <a class="button" href="{{ '/tests/' | url }}">Run acceptance tests</a>
   </div>
 </section>

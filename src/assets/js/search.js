@@ -1,6 +1,8 @@
 // Client-side search functionality
 // Uses the pre-generated search-index.json
 
+import { withBasePath } from "./utils/path-prefix.js";
+
 export function initSearch() {
   let searchIndex = null;
   let searchModal = null;
@@ -12,7 +14,7 @@ export function initSearch() {
     if (searchIndex) return searchIndex;
 
     try {
-      const response = await fetch("/search-index.json");
+      const response = await fetch(withBasePath("/search-index.json"));
       searchIndex = await response.json();
       console.debug("[search] ✓ Index loaded:", searchIndex.length, "pages");
       return searchIndex;
@@ -130,7 +132,7 @@ export function initSearch() {
       searchResults.innerHTML = `
         <div class="search-no-results">
           <p>No results found for "<strong>${escapeHtml(query)}</strong>"</p>
-          <p class="text-muted">Try different keywords or browse the <a href="/overview/">module overview</a></p>
+          <p class="text-muted">Try different keywords or browse the <a href="${withBasePath('/overview/')}">module overview</a></p>
         </div>
       `;
       return;

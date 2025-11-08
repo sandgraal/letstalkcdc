@@ -109,10 +109,10 @@ scripts:
       </ul>
     </details>
     <p>
-      <a href="/downloads/grafana-kafka-connect-dashboard.json" download class="btn-primary">
+      <a href="{{ '/downloads/grafana-kafka-connect-dashboard.json' | url }}" download class="btn-primary">
         Download Grafana Dashboard JSON
       </a>
-      <a href="/downloads/OBSERVABILITY-SETUP.md" class="btn-secondary">
+      <a href="{{ '/downloads/OBSERVABILITY-SETUP.md' | url }}" class="btn-secondary">
         View Setup Guide
       </a>
     </p>
@@ -174,7 +174,7 @@ scripts:
       and remediation steps.
     </p>
     <p>
-      <a href="/downloads/prometheus-alerts.yml" download class="btn-primary">
+      <a href="{{ '/downloads/prometheus-alerts.yml' | url }}" download class="btn-primary">
         Download Prometheus Alert Rules
       </a>
     </p>
@@ -213,10 +213,10 @@ scripts:
       </ul>
     </details>
     <p>
-      <a href="/downloads/docker-compose.alerts.yml" download class="btn-primary">
+      <a href="{{ '/downloads/docker-compose.alerts.yml' | url }}" download class="btn-primary">
         Download Alertmanager Extension
       </a>
-      <a href="/downloads/alertmanager.yml" download class="btn-secondary">
+      <a href="{{ '/downloads/alertmanager.yml' | url }}" download class="btn-secondary">
         Alert Routing Config
       </a>
     </p>
@@ -302,10 +302,10 @@ scripts:
       </ul>
     </details>
     <p>
-      <a href="/downloads/docker-compose-observability.yml" download class="btn-primary">
+      <a href="{{ '/downloads/docker-compose-observability.yml' | url }}" download class="btn-primary">
         Download Monitoring Stack
       </a>
-      <a href="/downloads/OBSERVABILITY-SETUP.md" class="btn-secondary">
+      <a href="{{ '/downloads/OBSERVABILITY-SETUP.md' | url }}" class="btn-secondary">
         Setup Guide
       </a>
     </p>
@@ -396,10 +396,10 @@ scripts:
   <section id="resources" aria-labelledby="resources-title">
     <h2 id="resources-title">Further resources</h2>
     <ul>
-      <li><a href="/ops-offsets/">Offsets &amp; replays</a> for the operational drills your alerts should trigger.</li>
-      <li><a href="/reconciliation-surgery/">Reconciliation &amp; Offset Surgery</a> to detect and repair out-of-sync sinks using drift detection and checksum validation.</li>
-      <li><a href="/event-envelope/">Event envelope</a> to align telemetry with payload contracts.</li>
-      <li><a href="/materialization/">Materialization 101</a> to ensure observed freshness ties to downstream SLAs.</li>
+      <li><a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a> for the operational drills your alerts should trigger.</li>
+      <li><a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a> to detect and repair out-of-sync sinks using drift detection and checksum validation.</li>
+      <li><a href="{{ '/event-envelope/' | url }}">Event envelope</a> to align telemetry with payload contracts.</li>
+      <li><a href="{{ '/materialization/' | url }}">Materialization 101</a> to ensure observed freshness ties to downstream SLAs.</li>
       <li><a href="{{ '/versions/' | url }}">Changelog &amp; Version Matrix</a> to verify compatible versions for your monitoring stack.</li>
     </ul>
   </section>

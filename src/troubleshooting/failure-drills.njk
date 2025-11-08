@@ -8,7 +8,7 @@ head_extra: |
     content="Hands-on failure scenario drills to build CDC troubleshooting fluency. Practice backpressure, DLQ handling, schema drift, and offset replays in a safe lab environment."
     name="description"
   />
-  <link rel="stylesheet" href="/letstalkcdc/assets/css/pages/failure-drills.css">
+  <link rel="stylesheet" href="{{ '/assets/css/pages/failure-drills.css' | url }}">
 ---
 {% import "components/ui.njk" as ui %}
 
@@ -74,7 +74,7 @@ head_extra: |
   <section id="prerequisites" aria-labelledby="prereqs-title">
     <h2 id="prereqs-title">Prerequisites</h2>
     <ul class="checklist">
-      <li>Working CDC lab setup (see <a href="/lab-kafka-debezium/">Hands-On Lab</a>)</li>
+      <li>Working CDC lab setup (see <a href="{{ '/lab-kafka-debezium/' | url }}">Hands-On Lab</a>)</li>
       <li>Docker Compose stack running (Postgres, Kafka, Connect)</li>
       <li>Active Debezium connector streaming changes</li>
       <li>Access to Kafka CLI tools (<code>kafka-console-consumer</code>, <code>kafka-consumer-groups</code>)</li>
@@ -755,10 +755,10 @@ HAVING COUNT(*) > 1;</code></pre>
       </li>
     </ul>
     <div class="actions">
-      <a href="/troubleshooting/" class="button">Troubleshooting Guide</a>
-      <a href="/observability/" class="button secondary">Observability Basics</a>
-      <a href="/ops-offsets/" class="button secondary">Offset Management</a>
-      <a href="/reconciliation-surgery/" class="button secondary">Reconciliation & Offset Surgery</a>
+      <a href="{{ '/troubleshooting/' | url }}" class="button">Troubleshooting Guide</a>
+      <a href="{{ '/observability/' | url }}" class="button secondary">Observability Basics</a>
+      <a href="{{ '/ops-offsets/' | url }}" class="button secondary">Offset Management</a>
+      <a href="{{ '/reconciliation-surgery/' | url }}" class="button secondary">Reconciliation & Offset Surgery</a>
     </div>
   </section>
 

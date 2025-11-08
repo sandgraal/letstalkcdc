@@ -124,7 +124,7 @@ tail -5 offsets-backup-*.json</code></pre>
         <strong>Topic name matters:</strong> The standard topic name is
         <code>connect-offsets</code>, which is used by both the main
         <a href="https://github.com/sandgraal/letstalkcdc/blob/main/compose.yaml">compose.yaml</a>
-        and the <a href="/lab-kafka-debezium/">lab tutorial</a>.
+        and the <a href="{{ '/lab-kafka-debezium/' | url }}">lab tutorial</a>.
         Always verify the topic name in your deployment's Connect configuration
         before dumping offsets to avoid an empty backup.
       </p>
@@ -249,10 +249,10 @@ curl -X POST "${CONNECT_URL}/connectors/${CONNECTOR_NAME}/resume"
   <section id="resources" aria-labelledby="resources-title">
     <h2 id="resources-title">Further resources</h2>
     <ul>
-      <li><a href="/reconciliation-surgery/">Reconciliation &amp; Offset Surgery</a> for advanced offset manipulation and sink repair techniques.</li>
-      <li><a href="/event-envelope/">Event envelope</a> for understanding replay impacts on payload contracts.</li>
-      <li><a href="/observability/">Observability basics</a> to plug audit metrics into dashboards.</li>
-      <li><a href="/materialization/">Materialization 101</a> for coordinating offset rewinds with downstream table recovery.</li>
+      <li><a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a> for advanced offset manipulation and sink repair techniques.</li>
+      <li><a href="{{ '/event-envelope/' | url }}">Event envelope</a> for understanding replay impacts on payload contracts.</li>
+      <li><a href="{{ '/observability/' | url }}">Observability basics</a> to plug audit metrics into dashboards.</li>
+      <li><a href="{{ '/materialization/' | url }}">Materialization 101</a> for coordinating offset rewinds with downstream table recovery.</li>
     </ul>
   </section>
 </div>
