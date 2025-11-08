@@ -3,12 +3,33 @@
   <section class="quiz-container" id="{{ quizId }}" data-quiz-id="{{ quizId }}">
     {% if config.title %}
       <header class="quiz-header">
-        <h3 class="quiz-title">{{ config.title }}</h3>
+        <h3 class="quiz-title" id="{{ quizId }}-title">{{ config.title }}</h3>
         {% if config.description %}
           <p class="quiz-description">{{ config.description }}</p>
         {% endif %}
       </header>
     {% endif %}
+
+    <div class="quiz-progress" aria-hidden="true">
+      <div
+        class="quiz-progress-track"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="{{ config.questions | length }}"
+        aria-valuenow="0"
+        data-progress-track
+      >
+        <div class="quiz-progress-fill" data-progress-fill></div>
+      </div>
+      <div class="quiz-progress-meta">
+        <span class="quiz-progress-count">
+          <span data-progress-count>0</span>
+          /
+          <span data-progress-total>{{ config.questions | length }}</span>
+        </span>
+        <span class="quiz-progress-label">answered</span>
+      </div>
+    </div>
 
     <div class="quiz-questions" role="group" aria-labelledby="{{ quizId }}-title">
       {% for question in config.questions %}
@@ -75,7 +96,7 @@
           <span aria-hidden="true">↻</span> Try Again
         </button>
       </div>
-      <div class="summary-message" data-summary-message></div>
+      <div class="summary-message" data-summary-message hidden></div>
     </div>
   </section>
 {%- endmacro %}

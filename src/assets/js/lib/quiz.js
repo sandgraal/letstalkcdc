@@ -17,12 +17,28 @@ function initQuiz(container) {
   const scoreTotalEl = container.querySelector('[data-score-total]');
   const summaryMessageEl = container.querySelector('[data-summary-message]');
   const resetButton = container.querySelector('.quiz-reset-button');
+  const progressFill = container.querySelector('[data-progress-fill]');
+  const progressCountEl = container.querySelector('[data-progress-count]');
+  const progressTrack = container.querySelector('[data-progress-track]');
+  const progressTotalEl = container.querySelector('[data-progress-total]');
   
   const state = {
     answered: new Set(),
     correct: new Set(),
     total: questions.length
   };
+
+  if (scoreTotalEl) {
+    scoreTotalEl.textContent = state.total;
+  }
+
+  if (progressTotalEl) {
+    progressTotalEl.textContent = state.total;
+  }
+
+  if (progressTrack) {
+    progressTrack.setAttribute('aria-valuemax', state.total);
+  }
 
   // Initialize each question
   questions.forEach((question, questionIndex) => {
@@ -31,6 +47,10 @@ function initQuiz(container) {
     const feedbackContainer = question.querySelector('.question-feedback');
     const correctFeedback = feedbackContainer.querySelector('.feedback-correct');
     const incorrectFeedback = feedbackContainer.querySelector('.feedback-incorrect');
+
+    // Ensure feedback elements start hidden in case prerendering removes hidden attribute
+    correctFeedback.hidden = true;
+    incorrectFeedback.hidden = true;
 
     options.forEach(option => {
       option.addEventListener('change', (e) => {
@@ -67,8 +87,10 @@ function initQuiz(container) {
         // Show appropriate feedback
         if (isCorrect) {
           correctFeedback.hidden = false;
+          incorrectFeedback.hidden = true;
         } else {
           incorrectFeedback.hidden = false;
+          correctFeedback.hidden = true;
           e.target.closest('.option-wrapper').classList.add('is-incorrect-choice');
         }
 
@@ -103,12 +125,20 @@ function initQuiz(container) {
   function updateScore() {
     const currentScore = state.correct.size;
     const answeredCount = state.answered.size;
-    
+
     // Update score display
     if (scoreCurrentEl) {
       scoreCurrentEl.textContent = currentScore;
     }
-    
+
+    updateProgress(answeredCount);
+
+    if (summaryMessageEl && answeredCount < state.total) {
+      summaryMessageEl.hidden = true;
+      summaryMessageEl.textContent = '';
+      summaryMessageEl.className = 'summary-message';
+    }
+
     // Show reset button if at least one question answered
     if (resetButton && answeredCount > 0) {
       resetButton.hidden = false;
@@ -156,6 +186,25 @@ function initQuiz(container) {
     }
   }
 
+  function updateProgress(answeredCount) {
+    if (progressCountEl) {
+      progressCountEl.textContent = answeredCount;
+    }
+
+    if (progressFill) {
+      const progressPercent = state.total === 0 ? 0 : Math.round((answeredCount / state.total) * 100);
+      progressFill.style.setProperty('--progress-percent', `${progressPercent}`);
+      progressFill.style.width = `${progressPercent}%`;
+      progressFill.classList.toggle('is-complete', answeredCount === state.total);
+    }
+
+    if (progressTrack) {
+      progressTrack.setAttribute('aria-valuenow', answeredCount);
+      const ariaValueText = `${answeredCount} of ${state.total} questions answered`;
+      progressTrack.setAttribute('aria-valuetext', ariaValueText);
+    }
+  }
+
   function resetQuiz() {
     // Clear state
     state.answered.clear();
@@ -190,6 +239,8 @@ function initQuiz(container) {
       scoreCurrentEl.textContent = '0';
     }
 
+    updateProgress(0);
+
     // Hide reset button and summary message
     if (resetButton) {
       resetButton.hidden = true;
@@ -197,8 +248,11 @@ function initQuiz(container) {
     if (summaryMessageEl) {
       summaryMessageEl.textContent = '';
       summaryMessageEl.hidden = true;
+      summaryMessageEl.className = 'summary-message';
     }
   }
+
+  updateProgress(0);
 }
 
 // Auto-initialize on DOM ready
