@@ -536,7 +536,7 @@
 
 /* Mobile Navigation Adjustments for Dropdowns */
 @media (max-width: 639px) {
-  .nav-dropdown { 
+  .nav-dropdown {
     width: 100%;
   }
 
