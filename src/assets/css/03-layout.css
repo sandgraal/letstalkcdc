@@ -466,8 +466,12 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   backdrop-filter: blur(18px) saturate(160%);
+  /* Standard scrollbar styling for Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 233, 0.4) transparent;
 }
 
+/* Webkit scrollbar styling for Chromium-based browsers and Safari */
 .nav-dropdown-menu::-webkit-scrollbar {
   width: 6px;
 }
