@@ -544,12 +544,12 @@ This gives the number of records waiting to be processed. For time-based lag, yo
 2. **Verify Prometheus is scraping**:
    - Use your OS-specific command to open the Prometheus targets page:
      ```bash
-      # macOS
-      open http://localhost:9090/targets
-      # Linux
-      xdg-open http://localhost:9090/targets
-      # Windows (PowerShell)
-      start http://localhost:9090/targets
+     # macOS
+     open http://localhost:9090/targets
+     # Linux
+     xdg-open http://localhost:9090/targets
+     # Windows (PowerShell)
+     start http://localhost:9090/targets
      ```
    - Check `kafka-connect` target status
 
