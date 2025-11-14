@@ -462,7 +462,7 @@
   transition: opacity var(--transition-fast),
     transform var(--transition-fast),
     visibility var(--transition-fast);
-  z-index: var(--z-fixed);
+  z-index: var(--z-dropdown-menu);
   max-height: var(--dropdown-max-height, min(24rem, calc(100vh - var(--space-3xl))));
   overflow-y: auto;
   overscroll-behavior: contain;
