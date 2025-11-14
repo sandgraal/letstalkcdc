@@ -194,6 +194,11 @@ onReady(() => {
     const viewportHeight = window.innerHeight;
     const gutter = 16;
 
+    // Temporarily clear min-width to get accurate natural dimensions
+    menu.style.removeProperty("--dropdown-min-width");
+    // Force layout recalculation
+    void menu.offsetHeight;
+    
     const menuWidth = Math.max(menu.scrollWidth, rect.width, 200);
     const spaceToRight = viewportWidth - rect.left - gutter;
     const spaceToLeft = rect.right - gutter;
