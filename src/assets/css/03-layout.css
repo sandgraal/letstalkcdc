@@ -560,6 +560,8 @@
     margin-top: 0;
     max-height: 0;
     overflow: hidden;
+    overflow-y: unset;
+    -webkit-overflow-scrolling: unset;
     transition: max-height var(--transition-base);
     backdrop-filter: none;
   }
