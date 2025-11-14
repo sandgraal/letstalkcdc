@@ -544,12 +544,12 @@ This gives the number of records waiting to be processed. For time-based lag, yo
 2. **Verify Prometheus is scraping**:
    - Use your OS-specific command to open the Prometheus targets page:
      ```bash
-      # macOS
-      open http://localhost:9090/targets
-      # Linux
-      xdg-open http://localhost:9090/targets
-      # Windows (PowerShell)
-      start http://localhost:9090/targets
+     # macOS
+     open http://localhost:9090/targets
+     # Linux
+     xdg-open http://localhost:9090/targets
+     # Windows (PowerShell)
+     start http://localhost:9090/targets
      ```
    - Check `kafka-connect` target status
 
@@ -568,12 +568,12 @@ This gives the number of records waiting to be processed. For time-based lag, yo
 2. **Check metric names match dashboard queries**:
    - Use your OS-specific command to open the Prometheus UI:
      ```bash
-      # macOS
-      open http://localhost:9090
-      # Linux
-      xdg-open http://localhost:9090
-      # Windows (PowerShell)
-      start http://localhost:9090
+     # macOS
+     open http://localhost:9090
+     # Linux
+     xdg-open http://localhost:9090
+     # Windows (PowerShell)
+     start http://localhost:9090
      ```
    - Run query: `kafka_connect_connector_status`
    - If no results, JMX exporter config may need adjustment
