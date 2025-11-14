@@ -313,8 +313,10 @@ onReady(() => {
     });
   });
 
-  window.addEventListener("resize", queueReposition, { passive: true });
-  window.addEventListener("scroll", queueReposition, { passive: true, capture: true });
+  if (dropdownToggles.length > 0) {
+    window.addEventListener("resize", queueReposition, { passive: true });
+    window.addEventListener("scroll", queueReposition, { passive: true, capture: true });
+  }
 
   // Close dropdowns when clicking outside
   doc.addEventListener("click", (event) => {
