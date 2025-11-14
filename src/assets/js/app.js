@@ -3,6 +3,10 @@ import { getEducationTracer } from "./tracing-lite.js";
 
 const doc = document;
 
+// Mobile navigation breakpoint (px)
+// Used to determine mobile vs desktop navigation layout
+const MOBILE_NAV_BREAKPOINT = 639;
+
 // Initialize OpenTelemetry tracing
 let educationTracer;
 try {
@@ -162,7 +166,7 @@ onReady(() => {
 
     // Close when resizing to desktop
     window.addEventListener("resize", () => {
-      if (window.matchMedia("(min-width: 640px)").matches) {
+      if (window.matchMedia(`(min-width: ${MOBILE_NAV_BREAKPOINT + 1}px)`).matches) {
         closeNav();
       }
     });
@@ -174,7 +178,7 @@ onReady(() => {
   );
 
   const isMobileNavView = () =>
-    window.matchMedia && window.matchMedia("(max-width: 639px)").matches;
+    window.matchMedia && window.matchMedia(`(max-width: ${MOBILE_NAV_BREAKPOINT}px)`).matches;
 
   const resetDropdownPosition = (dropdown, menu) => {
     dropdown?.removeAttribute("data-dropdown-align");
