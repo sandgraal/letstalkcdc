@@ -422,6 +422,8 @@
 /* Navigation Dropdown */
 .nav-dropdown {
   position: relative;
+  --dropdown-min-width: 200px;
+  --dropdown-offset: -8px;
 }
 
 .nav-dropdown-toggle {
@@ -445,18 +447,39 @@
   position: absolute;
   top: 100%;
   left: 0;
-  min-width: 200px;
+  min-width: var(--dropdown-min-width, 200px);
+  width: max-content;
+  max-width: min(22rem, calc(100vw - var(--space-2xl)));
   background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 233, 0.25);
-  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 233, 0.35);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: var(--space-sm);
   margin-top: var(--space-xs);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-8px);
-  transition: all var(--transition-fast);
-  z-index: var(--z-dropdown);
+  transform: translateY(var(--dropdown-offset, -8px));
+  transition: opacity var(--transition-fast),
+    transform var(--transition-fast),
+    visibility var(--transition-fast);
+  z-index: var(--z-fixed);
+  max-height: var(--dropdown-max-height, min(24rem, calc(100vh - var(--space-3xl))));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+.nav-dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 233, 0.4);
+  border-radius: var(--radius-full);
+}
+
+.nav-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .nav-dropdown:hover .nav-dropdown-menu,
@@ -466,6 +489,22 @@
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+.nav-dropdown[data-dropdown-align="end"] .nav-dropdown-menu {
+  left: auto;
+  right: 0;
+}
+
+.nav-dropdown[data-dropdown-placement="top"] {
+  --dropdown-offset: 8px;
+}
+
+.nav-dropdown[data-dropdown-placement="top"] .nav-dropdown-menu {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: var(--space-xs);
 }
 
 .nav-dropdown-menu a {
@@ -497,7 +536,7 @@
 
 /* Mobile Navigation Adjustments for Dropdowns */
 @media (max-width: 639px) {
-  .nav-dropdown {
+  .nav-dropdown { 
     width: 100%;
   }
 
@@ -523,6 +562,7 @@
     max-height: 0;
     overflow: hidden;
     transition: max-height var(--transition-base);
+    backdrop-filter: none;
   }
 
   .nav-dropdown-toggle[aria-expanded="true"] + .nav-dropdown-menu,

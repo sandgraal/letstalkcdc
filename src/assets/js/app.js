@@ -169,8 +169,86 @@ onReady(() => {
   }
 
   // Navigation Dropdowns
-  const dropdownToggles = doc.querySelectorAll(".nav-dropdown-toggle");
-  
+  const dropdownToggles = Array.from(
+    doc.querySelectorAll(".nav-dropdown-toggle")
+  );
+
+  const isMobileNavView = () =>
+    window.matchMedia && window.matchMedia("(max-width: 639px)").matches;
+
+  const resetDropdownPosition = (dropdown, menu) => {
+    dropdown?.removeAttribute("data-dropdown-align");
+    dropdown?.removeAttribute("data-dropdown-placement");
+    menu?.style.removeProperty("--dropdown-max-height");
+    menu?.style.removeProperty("--dropdown-min-width");
+  };
+
+  const applyDropdownPosition = (toggle, menu, dropdown) => {
+    if (!dropdown || !menu || isMobileNavView()) {
+      resetDropdownPosition(dropdown, menu);
+      return;
+    }
+
+    const rect = toggle.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const gutter = 16;
+
+    const menuWidth = Math.max(menu.scrollWidth, rect.width, 200);
+    const spaceToRight = viewportWidth - rect.left - gutter;
+    const spaceToLeft = rect.right - gutter;
+    const alignEnd = spaceToRight < menuWidth && spaceToLeft > spaceToRight;
+
+    if (alignEnd) {
+      dropdown.setAttribute("data-dropdown-align", "end");
+    } else {
+      dropdown.removeAttribute("data-dropdown-align");
+    }
+
+    const menuHeight = menu.scrollHeight;
+    const spaceBelow = viewportHeight - rect.bottom - gutter;
+    const spaceAbove = rect.top - gutter;
+    const placeTop = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+
+    if (placeTop) {
+      dropdown.setAttribute("data-dropdown-placement", "top");
+    } else {
+      dropdown.removeAttribute("data-dropdown-placement");
+    }
+
+    const availableVertical = placeTop ? spaceAbove : spaceBelow;
+    const maxHeight = Math.min(
+      Math.max(availableVertical, 160),
+      viewportHeight - gutter * 2,
+      menuHeight
+    );
+
+    menu.style.setProperty("--dropdown-max-height", `${Math.round(maxHeight)}px`);
+    menu.style.setProperty("--dropdown-min-width", `${Math.round(menuWidth)}px`);
+  };
+
+  const repositionOpenDropdowns = () => {
+    if (!dropdownToggles.length) return;
+
+    dropdownToggles.forEach((toggle) => {
+      if (toggle.getAttribute("aria-expanded") !== "true") return;
+      const dropdown = toggle.closest(".nav-dropdown");
+      const menu = dropdown?.querySelector(".nav-dropdown-menu");
+      if (!dropdown || !menu) return;
+      applyDropdownPosition(toggle, menu, dropdown);
+    });
+  };
+
+  let repositionQueued = false;
+  const queueReposition = () => {
+    if (repositionQueued) return;
+    repositionQueued = true;
+    requestAnimationFrame(() => {
+      repositionQueued = false;
+      repositionOpenDropdowns();
+    });
+  };
+
   dropdownToggles.forEach((toggle) => {
     const dropdown = toggle.closest(".nav-dropdown");
     const menu = dropdown?.querySelector(".nav-dropdown-menu");
@@ -181,8 +259,10 @@ onReady(() => {
       toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
       if (expanded) {
         dropdown.setAttribute("data-dropdown-open", "");
+        queueReposition();
       } else {
         dropdown.removeAttribute("data-dropdown-open");
+        resetDropdownPosition(dropdown, menu);
       }
     };
 
@@ -193,10 +273,12 @@ onReady(() => {
 
       // Close all other dropdowns
       dropdownToggles.forEach((other) => {
-        if (other !== toggle) {
-          other.setAttribute("aria-expanded", "false");
-          other.closest(".nav-dropdown")?.removeAttribute("data-dropdown-open");
-        }
+        if (other === toggle) return;
+        other.setAttribute("aria-expanded", "false");
+        const otherDropdown = other.closest(".nav-dropdown");
+        const otherMenu = otherDropdown?.querySelector(".nav-dropdown-menu");
+        otherDropdown?.removeAttribute("data-dropdown-open");
+        resetDropdownPosition(otherDropdown, otherMenu);
       });
 
       // Toggle current dropdown
@@ -221,16 +303,28 @@ onReady(() => {
         toggle.focus();
       }
     });
+
+    menu.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setExpanded(false);
+      toggle.focus();
+    });
   });
+
+  window.addEventListener("resize", queueReposition, { passive: true });
+  window.addEventListener("scroll", queueReposition, { passive: true, capture: true });
 
   // Close dropdowns when clicking outside
   doc.addEventListener("click", (event) => {
-    if (!event.target.closest(".nav-dropdown")) {
-      dropdownToggles.forEach((toggle) => {
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.closest(".nav-dropdown")?.removeAttribute("data-dropdown-open");
-      });
-    }
+    if (event.target.closest(".nav-dropdown")) return;
+    dropdownToggles.forEach((toggle) => {
+      toggle.setAttribute("aria-expanded", "false");
+      const dropdown = toggle.closest(".nav-dropdown");
+      const menu = dropdown?.querySelector(".nav-dropdown-menu");
+      dropdown?.removeAttribute("data-dropdown-open");
+      resetDropdownPosition(dropdown, menu);
+    });
   });
 
   const navToggle = doc.querySelector("[data-nav-toggle]");
