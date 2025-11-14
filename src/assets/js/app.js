@@ -217,11 +217,12 @@ onReady(() => {
     }
 
     const availableVertical = placeTop ? spaceAbove : spaceBelow;
-    const maxHeight = Math.min(
-      Math.max(availableVertical, 160),
-      viewportHeight - gutter * 2,
-      menuHeight
-    );
+    let maxHeight;
+    if (menuHeight > availableVertical) {
+      maxHeight = Math.max(availableVertical, 160, 0);
+    } else {
+      maxHeight = menuHeight;
+    }
 
     menu.style.setProperty("--dropdown-max-height", `${Math.round(maxHeight)}px`);
     menu.style.setProperty("--dropdown-min-width", `${Math.round(menuWidth)}px`);
