@@ -32,11 +32,16 @@ head_extra: |
             </ul>
             <p><strong>Get started:</strong></p>
             <pre><code># From the repository root
-docker compose up -d
-./sandbox/register-postgres-connector.sh
+  docker compose up -d
+  ./sandbox/register-postgres-connector.sh
 
-# Open Kafka UI
-{% include "snippets/open-url.njk" with { url: "http://localhost:8080" } %}</code></pre>
+  # Open Kafka UI
+  # macOS
+  open http://localhost:8080
+  # Linux
+  xdg-open http://localhost:8080
+  # Windows (PowerShell)
+  start http://localhost:8080</code></pre>
             <p>📖 <strong>Full documentation:</strong> <a href="https://github.com/sandgraal/letstalkcdc/blob/main/docs/SANDBOX.md">CDC Sandbox Guide</a></p>
             <p>If you prefer to understand the setup step-by-step, continue with the instructions below. Otherwise, skip to <a href="#verify-sink">Verify Your Sink</a> after starting the sandbox.</p>
         </div>
