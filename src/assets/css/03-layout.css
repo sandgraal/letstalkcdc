@@ -448,7 +448,6 @@
   top: 100%;
   left: 0;
   min-width: var(--dropdown-min-width, 200px);
-  width: max-content;
   max-width: min(22rem, calc(100vw - var(--space-2xl)));
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(148, 163, 233, 0.35);
