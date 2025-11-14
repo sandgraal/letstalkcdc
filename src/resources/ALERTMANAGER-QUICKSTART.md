@@ -48,7 +48,12 @@ docker-compose -f docker-compose-observability.yml -f docker-compose.alerts.yml 
 docker-compose ps
 
 # Access Alertmanager UI
-{% include "snippets/open-url.njk" with { url: "http://localhost:9093" } %}
+# macOS
+open http://localhost:9093
+# Linux
+xdg-open http://localhost:9093
+# Windows (PowerShell)
+start http://localhost:9093
 ```
 
 ### 4. Test alert routing
@@ -73,7 +78,12 @@ Check Alertmanager received it:
 
 - Use your OS-specific command to open the Alertmanager UI:
   ```bash
-  {% include "snippets/open-url.njk" with { url: "http://localhost:9093" } %}
+  # macOS
+  open http://localhost:9093
+  # Linux
+  xdg-open http://localhost:9093
+  # Windows (PowerShell)
+  start http://localhost:9093
   ```
 - You should see the test alert listed
 
