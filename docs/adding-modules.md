@@ -4,10 +4,10 @@ This project treats each Eleventy module as a self-contained directory that ship
 
 ## 1. Define the series card metadata
 
-The overview page consumes `src/_data/series.cjs`. Add a new object to that array so the module appears automatically in the overview grid. Use the `key` as the canonical slug and supply the author-controlled description and classification tags that should render in the card.
+The overview page consumes `src/_data/series.mjs`. Add a new object to that array so the module appears automatically in the overview grid. Use the `key` as the canonical slug and supply the author-controlled description and classification tags that should render in the card.
 
 ```js
-// src/_data/series.cjs
+// src/_data/series.mjs
 {
   key: 'anatomy-of-connectors',
   title: 'Anatomy of Connectors',
@@ -20,7 +20,7 @@ The overview page consumes `src/_data/series.cjs`. Add a new object to that arra
 }
 ```
 
-> **Why first?** The `series.cjs` dataset drives navigation chrome, SEO metadata for adjacent modules, and the overview grid. Updating it before writing content ensures the automated wiring (description text, CTA label, badge/tags) is ready as soon as the page ships.
+> **Why first?** The `series.mjs` dataset drives navigation chrome, SEO metadata for adjacent modules, and the overview grid. Updating it before writing content ensures the automated wiring (description text, CTA label, badge/tags) is ready as soon as the page ships.
 
 ## 2. Scaffold the module directory
 
@@ -62,7 +62,7 @@ Eleventy will now expose `seriesKey`, `heroConfig`, and any other exports to the
 
 ## 4. Author the page template
 
-Author `index.njk` with standard front matter and use the shared UI macros. The `layout: base.njk` line pulls in the global navigation, while `seriesKey` enables the previous/next module strip to resolve automatically based on `series.cjs` ordering.
+Author `index.njk` with standard front matter and use the shared UI macros. The `layout: base.njk` line pulls in the global navigation, while `seriesKey` enables the previous/next module strip to resolve automatically based on `series.mjs` ordering.
 
 {% raw %}
 ```njk
@@ -95,7 +95,7 @@ Run the standard development server to confirm the new module renders and the ov
 npm run serve
 ```
 
-Visit `http://localhost:8080/overview/` and confirm the module card shows the correct metadata. Because the overview consumes `series.cjs`, no additional wiring is required—the card renders automatically with the description and classification tags you defined.
+Visit `http://localhost:8080/overview/` and confirm the module card shows the correct metadata. Because the overview consumes `series.mjs`, no additional wiring is required—the card renders automatically with the description and classification tags you defined.
 
 ## 7. Commit and document
 

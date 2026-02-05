@@ -1,4 +1,4 @@
-const series = require('../_data/series.cjs');
+const series = require('../_data/series.mjs');
 
 module.exports = {
   heroConfig: {

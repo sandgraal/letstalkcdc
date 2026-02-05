@@ -1,4 +1,4 @@
-const { getPathPrefix, getPathPrefixForHost } = require("../../lib/path-prefix.cjs");
+import { getPathPrefix, getPathPrefixForHost } from "../../lib/path-prefix.mjs";
 
 const normalizeHost = (host) => {
   if (!host) {
@@ -14,7 +14,7 @@ const hostPathPrefix = getPathPrefixForHost(pathPrefix);
 const resolvedHost = normalizeHost(process.env.SITE_HOST) || defaultHost;
 const hostWithPrefix = hostPathPrefix ? `${resolvedHost}${hostPathPrefix}` : resolvedHost;
 
-module.exports = {
+export default {
   title: "CDC: The Missing Manual",
   tagline: "A Deep Dive into Change Data Capture",
   seoTitle: "CDC: The Missing Manual | A Deep Dive into Change Data Capture",

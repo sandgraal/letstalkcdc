@@ -3,7 +3,7 @@
  * Links to discussions, chat, and community resources
  */
 
-module.exports = {
+export default {
   discussions: {
     enabled: true,
     url: "https://github.com/sandgraal/letstalkcdc/discussions",

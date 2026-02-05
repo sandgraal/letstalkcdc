@@ -40,7 +40,7 @@ Transform Let's Talk CDC into a **modern, performant, and maintainable** educati
 ```
 letstalkcdc/
 ├── src/                          # Eleventy source (Nunjucks templates, content)
-│   ├── _data/                    # Global data (series.cjs, site.cjs, appwrite.cjs)
+│   ├── _data/                    # Global data (series.mjs, site.mjs, appwrite.mjs)
 │   ├── _includes/                # Layouts, components, snippets
 │   ├── assets/
 │   │   ├── css/                  # PostCSS source (main.css → styles.min.css)
@@ -52,15 +52,15 @@ letstalkcdc/
 │   ├── resources/                # Downloadable resources (configs, scripts)
 │   └── [content-directories]/    # 40+ content sections (quickstarts, labs, guides)
 ├── _site/                        # Build output (generated, not committed)
-├── lib/                          # Build-time utilities (path-prefix.cjs)
+├── lib/                          # Build-time utilities (path-prefix.mjs)
 ├── scripts/                      # Build scripts (smoke tests, visual tests, perf checks)
 ├── ai/                           # AI agent system
 │   ├── scripts/                  # Agent implementations
 │   └── logs/                     # Agent execution logs
 ├── docs/                         # Documentation
 ├── .github/workflows/            # CI/CD workflows
-├── eleventy.config.cjs           # 🟡 Eleventy 2.0 config (needs ESM migration)
-├── postcss.config.cjs            # PostCSS configuration
+├── eleventy.config.mjs           # 🟡 Eleventy 2.0 config (needs ESM migration)
+├── postcss.config.mjs            # PostCSS configuration
 └── package.json                  # NPM scripts and dependencies
 ```
 
@@ -98,11 +98,11 @@ letstalkcdc/
 
 | File Path | Lines | Action | Complexity |
 |-----------|-------|--------|------------|
-| `eleventy.config.cjs` | 286 | Convert to ESM (`eleventy.config.mjs`) | Medium |
+| `eleventy.config.mjs` | 286 | Convert to ESM (`eleventy.config.mjs`) | Medium |
 | `src/assets/js/app.js` | 1821 | Split into 7 modules | High |
 | `package.json` | 45 | Update scripts, add bundler, add test frameworks | Medium |
-| `postcss.config.cjs` | ~20 | Convert to ESM (`postcss.config.mjs`) | Low |
-| `lib/path-prefix.cjs` | ~50 | Convert to ESM (`lib/path-prefix.mjs`) | Low |
+| `postcss.config.mjs` | ~20 | Convert to ESM (`postcss.config.mjs`) | Low |
+| `lib/path-prefix.mjs` | ~50 | Convert to ESM (`lib/path-prefix.mjs`) | Low |
 
 #### 🟡 High Priority
 
@@ -110,9 +110,9 @@ letstalkcdc/
 |-----------|-------|--------|------------|
 | `scripts/smoke.mjs` | ~100 | Enhance with Playwright | Medium |
 | `.github/workflows/ci.yml` | ~50 | Add Lighthouse CI, expand test matrix | Medium |
-| `src/_data/series.cjs` | ~200 | Convert to ESM | Low |
-| `src/_data/site.cjs` | ~50 | Convert to ESM | Low |
-| `src/_data/appwrite.cjs` | ~30 | Convert to ESM | Low |
+| `src/_data/series.mjs` | ~200 | Convert to ESM | Low |
+| `src/_data/site.mjs` | ~50 | Convert to ESM | Low |
+| `src/_data/appwrite.mjs` | ~30 | Convert to ESM | Low |
 
 #### 🟢 Medium Priority
 
@@ -170,26 +170,26 @@ letstalkcdc/
   npm install --save-dev @11ty/eleventy@^3.0.0
   ```
 
-- [ ] **Convert `eleventy.config.cjs` → `eleventy.config.mjs`**
+- [ ] **Convert `eleventy.config.mjs` → `eleventy.config.mjs`**
   - [ ] Change `module.exports = function` → `export default function`
   - [ ] Convert `require()` statements to `import` statements
-  - [ ] Update file path: `eleventy.config.cjs` → `eleventy.config.mjs`
+  - [ ] Update file path: `eleventy.config.mjs` → `eleventy.config.mjs`
   - [ ] Test: `npx @11ty/eleventy --config=eleventy.config.mjs`
 
 - [ ] **Convert build-time utilities to ESM**
-  - [ ] `lib/path-prefix.cjs` → `lib/path-prefix.mjs`
+  - [ ] `lib/path-prefix.mjs` → `lib/path-prefix.mjs`
     - Change `module.exports` → `export`
     - Change `require()` → `import`
   - [ ] Update references in `eleventy.config.mjs`
 
 - [ ] **Convert data files to ESM**
-  - [ ] `src/_data/series.cjs` → `src/_data/series.mjs`
-  - [ ] `src/_data/site.cjs` → `src/_data/site.mjs`
-  - [ ] `src/_data/appwrite.cjs` → `src/_data/appwrite.mjs`
+  - [ ] `src/_data/series.mjs` → `src/_data/series.mjs`
+  - [ ] `src/_data/site.mjs` → `src/_data/site.mjs`
+  - [ ] `src/_data/appwrite.mjs` → `src/_data/appwrite.mjs`
   - [ ] Test: Verify data is accessible in templates
 
 - [ ] **Update PostCSS configuration**
-  - [ ] `postcss.config.cjs` → `postcss.config.mjs`
+  - [ ] `postcss.config.mjs` → `postcss.config.mjs`
   - [ ] Convert to ESM syntax
   - [ ] Test: `npm run build:css`
 
@@ -1019,8 +1019,8 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 #### Phase 1.1: Eleventy 3.0 Migration
 
 **Required Reading**:
-- `eleventy.config.cjs` - Current configuration
-- `lib/path-prefix.cjs` - Build-time utilities
+- `eleventy.config.mjs` - Current configuration
+- `lib/path-prefix.mjs` - Build-time utilities
 - `src/_data/*.cjs` - Data files to convert
 - `package.json` - Scripts and dependencies
 - `docs/SETUP.md` - Build instructions
@@ -1036,7 +1036,7 @@ Context:
 - All passthrough copies and data files must remain functional
 
 Requirements:
-1. Convert eleventy.config.cjs to ESM
+1. Convert eleventy.config.mjs to ESM
 2. Convert all .cjs files in lib/ and src/_data/ to .mjs
 3. Update all import statements
 4. Test that the site builds without errors

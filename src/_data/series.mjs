@@ -1,4 +1,4 @@
-module.exports = [
+export default [
   {
     key: 'intro',
     title: 'Interactive Introduction to CDC',

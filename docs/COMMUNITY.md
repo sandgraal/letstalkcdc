@@ -248,7 +248,7 @@ When ready to add real-time chat:
 
 2. Set up moderation bots (MEE6, Dyno)
 3. Create onboarding message and rules
-4. Update `src/_data/community.cjs`:
+4. Update `src/_data/community.mjs`:
    ```javascript
    discord: {
      enabled: true,
@@ -263,7 +263,7 @@ When ready to add real-time chat:
 1. Create workspace or community Slack
 2. Set up channels similar to Discord structure
 3. Configure Slack apps for moderation
-4. Update `src/_data/community.cjs`:
+4. Update `src/_data/community.mjs`:
    ```javascript
    slack: {
      enabled: true,
