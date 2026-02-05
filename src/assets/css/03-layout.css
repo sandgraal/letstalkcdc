@@ -372,8 +372,8 @@
   border-radius: var(--radius-full);
   border: 1px solid transparent;
   background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
   font-weight: 500;
   text-decoration: none;
   transition: all var(--transition-fast);
@@ -388,19 +388,19 @@
 
 .nav-chip:hover,
 .nav-chip:focus-visible {
-  color: var(--color-text-primary);
-  background: var(--color-bg-subtle);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
 }
 
 .nav-chip:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .nav-chip.active,
 .nav-chip[aria-expanded="true"] {
-  color: var(--color-accent-primary);
-  background: var(--color-accent-subtle);
+  color: var(--accent-primary);
+  background: var(--accent-light);
 }
 
 /* Navigation Dropdown */
@@ -433,8 +433,8 @@
   left: 0;
   min-width: var(--dropdown-min-width, 200px);
   max-width: min(22rem, calc(100vw - var(--space-2xl)));
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-default);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   padding: var(--space-sm);
@@ -451,7 +451,7 @@
   overscroll-behavior: contain;
   backdrop-filter: blur(12px) saturate(150%);
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border-default) transparent;
+  scrollbar-color: var(--border-color) transparent;
 }
 
 /* Webkit scrollbar styling for Chromium-based browsers and Safari */
@@ -460,7 +460,7 @@
 }
 
 .nav-dropdown-menu::-webkit-scrollbar-thumb {
-  background: var(--color-border-default);
+  background: var(--border-color);
   border-radius: var(--radius-full);
 }
 
@@ -499,9 +499,9 @@
   justify-content: space-between;
   gap: var(--space-2xs);
   padding: var(--space-sm) var(--space-md);
-  font-size: var(--text-sm);
+  font-size: var(--type-sm);
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
@@ -509,13 +509,13 @@
 }
 
 .nav-dropdown-menu a:hover {
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text-primary);
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .nav-dropdown-menu a.active {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent-primary);
+  background: var(--accent-light);
+  color: var(--accent-primary);
 }
 
 /* Mobile Navigation Adjustments for Dropdowns */
