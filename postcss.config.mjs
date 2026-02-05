@@ -1,5 +1,6 @@
-const importPlugin = require("postcss-import");
-const autoprefixer = require("autoprefixer");
+import importPlugin from "postcss-import";
+import autoprefixer from "autoprefixer";
+import cssnano from "cssnano";
 
 const plugins = [
   importPlugin({
@@ -10,7 +11,7 @@ const plugins = [
 
 if (process.env.NODE_ENV === "production") {
   plugins.push(
-    require("cssnano")({
+    cssnano({
       preset: [
         "default",
         {
@@ -27,6 +28,6 @@ if (process.env.NODE_ENV === "production") {
   );
 }
 
-module.exports = {
+export default {
   plugins,
 };

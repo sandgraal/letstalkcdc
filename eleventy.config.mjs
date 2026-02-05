@@ -1,6 +1,6 @@
-const fs = require("fs");
-const path = require("path");
-const { getPathPrefix } = require("./lib/path-prefix.cjs");
+import fs from "fs";
+import path from "path";
+import { getPathPrefix } from "./lib/path-prefix.mjs";
 
 const normalizeToArray = (value) => {
   if (!value) return [];
@@ -125,7 +125,7 @@ function parseAssistantYaml(content) {
   return { intents };
 }
 
-module.exports = function (eleventyConfig) {
+export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "src/static": "/",
     "src/assets/css/styles.min.css": "assets/css/styles.css",

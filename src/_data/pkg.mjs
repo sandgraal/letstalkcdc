@@ -1,9 +1,9 @@
-const packageJson = require("../../package.json");
-const toolVersions = require("./toolVersions.cjs");
+import packageJson from "../../package.json" with { type: "json" };
+import toolVersions from "./toolVersions.mjs";
 
 const { tools } = toolVersions;
 
-module.exports = {
+export default {
   ...packageJson,
   kafka: tools.kafka.version,
   connect: tools.kafkaConnect.version,

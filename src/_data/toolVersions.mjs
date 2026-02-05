@@ -1,8 +1,8 @@
-// src/_data/toolVersions.cjs
+// src/_data/toolVersions.mjs
 // Tracks current versions of CDC tools and platforms
 // Updated by site-content-review agent quarterly
 
-module.exports = {
+export default {
   lastUpdated: "2025-02-14",
   tools: {
     debezium: {

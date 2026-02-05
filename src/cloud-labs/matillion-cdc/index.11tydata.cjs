@@ -1,4 +1,4 @@
-const { getPathPrefix } = require('../../../lib/path-prefix.cjs');
+const { getPathPrefix } = require('../../../lib/path-prefix.mjs');
 
 const pathPrefix = getPathPrefix().replace(/\/$/, ''); // Remove trailing slash
 
