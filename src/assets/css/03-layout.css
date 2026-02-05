@@ -368,55 +368,39 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-3xs);
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 233, 0.18);
-  background: rgba(15, 23, 42, 0.3);
-  color: var(--color-text-secondary);
-  font-size: clamp(0.68rem, 0.6rem + 0.15vw, 0.78rem);
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  font-weight: 500;
   text-decoration: none;
-  transition: color var(--transition-fast),
-    background-color var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+  transition: all var(--transition-fast);
   white-space: nowrap;
   position: relative;
 }
 
 .nav-chip .dropdown-icon {
-  font-size: 0.65rem;
-  transform: translateY(-0.05rem);
+  font-size: 0.7rem;
+  margin-left: 0.125rem;
 }
 
 .nav-chip:hover,
 .nav-chip:focus-visible {
-  color: var(--color-text-primary);
-  background: rgba(148, 163, 233, 0.18);
-  border-color: rgba(148, 163, 233, 0.45);
-  box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.8);
-  transform: translateY(-1px);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
 }
 
 .nav-chip:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .nav-chip.active,
 .nav-chip[aria-expanded="true"] {
-  color: var(--color-accent-primary);
-  background: linear-gradient(
-      135deg,
-      rgba(59, 130, 246, 0.22) 0%,
-      rgba(37, 99, 235, 0.32) 100%
-    ),
-    rgba(15, 23, 42, 0.55);
-  border-color: rgba(59, 130, 246, 0.45);
-  box-shadow: 0 18px 40px -22px rgba(37, 99, 235, 0.9);
+  color: var(--accent-primary);
+  background: var(--accent-light);
 }
 
 /* Navigation Dropdown */
@@ -449,10 +433,10 @@
   left: 0;
   min-width: var(--dropdown-min-width, 200px);
   max-width: min(22rem, calc(100vw - var(--space-2xl)));
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 233, 0.35);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   padding: var(--space-sm);
   margin-top: var(--space-xs);
   opacity: 0;
@@ -465,10 +449,9 @@
   max-height: var(--dropdown-max-height, min(24rem, calc(100vh - var(--space-3xl))));
   overflow-y: auto;
   overscroll-behavior: contain;
-  backdrop-filter: blur(18px) saturate(160%);
-  /* Standard scrollbar styling for Firefox */
+  backdrop-filter: blur(12px) saturate(150%);
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 233, 0.4) transparent;
+  scrollbar-color: var(--border-color) transparent;
 }
 
 /* Webkit scrollbar styling for Chromium-based browsers and Safari */
@@ -477,7 +460,7 @@
 }
 
 .nav-dropdown-menu::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 233, 0.4);
+  background: var(--border-color);
   border-radius: var(--radius-full);
 }
 
@@ -516,11 +499,9 @@
   justify-content: space-between;
   gap: var(--space-2xs);
   padding: var(--space-sm) var(--space-md);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
+  font-size: var(--type-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
@@ -528,13 +509,13 @@
 }
 
 .nav-dropdown-menu a:hover {
-  background-color: rgba(148, 163, 233, 0.14);
-  color: var(--color-text-primary);
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .nav-dropdown-menu a.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: var(--color-accent-primary);
+  background: var(--accent-light);
+  color: var(--accent-primary);
 }
 
 /* Mobile Navigation Adjustments for Dropdowns */
