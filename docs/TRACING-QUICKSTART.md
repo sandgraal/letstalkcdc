@@ -60,7 +60,6 @@ The site uses **`tracing-lite.js`** — a custom, zero-dependency tracer that:
 
 - 📖 `docs/TRACING.md` - Complete documentation (updated)
 - 📝 `docs/TRACING-QUICKSTART.md` - This file (updated)
-- ⚠️ `docs/TRACING-BUNDLING.md` - See deprecation notice
 
 ## How to Use
 

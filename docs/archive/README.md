@@ -27,6 +27,13 @@ These docs tracked the implementation progress of Appwrite features. The impleme
 
 **Replacement**: The decision is documented inline in [docs/HOSTING.md](../HOSTING.md)
 
+### Phase Implementation Status
+
+- **PHASE-2-COMPLETE.md** — Phase 2 styling improvements status (November 2025)
+- **CONSOLIDATION_SUMMARY.md** — Documentation consolidation report (November 2025)
+
+**Replacement**: These historical status reports have been completed. Phase 2 styling improvements are now integrated into the site, and the documentation consolidation effort resulted in the current streamlined documentation structure.
+
 ## Why Archive?
 
 These documents served important purposes during development:
