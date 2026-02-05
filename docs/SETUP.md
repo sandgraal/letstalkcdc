@@ -216,7 +216,7 @@ npm run dev
 
 #### Documentation
 
-- **Detailed collection setup**: See Step 2 above for manual collection creation steps
+- **Detailed collection setup**: See Section 2, Step 2 above for manual collection creation steps
 
 ---
 
@@ -258,7 +258,7 @@ The site automatically converts YAML → JSON during build.
 
 #### Documentation
 
-- **Collection schema**: See section 2 above for collection setup details
+- **Collection schema**: See Section 2, Step 2 above for collection setup details
 - **Contributing guide**: [AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)
 
 ---
