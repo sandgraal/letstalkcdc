@@ -582,7 +582,8 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Detailed Checklist**:
 
 - [ ] **Quiz Component**
-  - [ ] Design: Refer to `docs/adding-quizzes.md`
+  - [ ] Design: Create quiz component specification
+  - [ ] Refer to interactive learning best practices
   - [ ] Create `src/assets/js/modules/quiz.js`
   - [ ] Features:
     - Multiple choice questions
@@ -668,7 +669,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 
 **References**:
 - `src/data/assistant.yml` - Intent definitions
-- `docs/assistant-feedback-setup.md` - Appwrite setup
+- `docs/SETUP.md` (Assistant section) - Appwrite feedback setup
 
 ---
 
@@ -1095,7 +1096,7 @@ Success criteria:
 - `package.json` - Current build scripts
 - `vite.config.mjs` (to be created) - Vite configuration
 - `.github/workflows/ci.yml` - CI integration
-- `docs/TRACING-BUNDLING.md` - Asset handling guide
+- `docs/TRACING.md` - Tracing implementation guide (includes bundling notes)
 
 **Agent Prompt Template**:
 ```
@@ -1128,7 +1129,7 @@ Success criteria:
 - `src/assets/js/modules/search.js` - Search module to enhance
 - `src/search-index.11ty.cjs` - Search index generation
 - `src/data/assistant.yml` - Assistant intent definitions
-- `docs/adding-quizzes.md` - Quiz component guide
+- `docs/SETUP.md` (Interactive Components section) - Feature setup guide
 
 #### Phase 3: Testing & Quality
 
@@ -1291,23 +1292,29 @@ graph TD
 
 ### Appendix B: Related Documents
 
+> **Note**: This documentation has been consolidated. Several guides that were previously separate have been merged:
+> - Tracing docs consolidated into `TRACING.md`
+> - Setup docs consolidated into `SETUP.md`
+> - AI guidelines moved to `docs/CONTRIBUTING.md`
+> - Technical integration guide at `docs/INTEGRATION.md`
+
 **Setup & Configuration**:
-- [Setup Guide](SETUP.md) — Development environment setup
-- [Hosting Guide](HOSTING.md) — Deployment and hosting options
-- [Tracing Guide](TRACING.md) — OpenTelemetry implementation
-- [Tracing Quickstart](TRACING-QUICKSTART.md) — 15-minute tracing setup
+- [Setup Guide](SETUP.md) — Complete setup including Appwrite, auth, and assistant
+- [Hosting Guide](HOSTING.md) — GitHub Pages deployment
+- [Tracing Guide](TRACING.md) — OpenTelemetry tracing (includes quickstart)
+- [Sandbox Guide](SANDBOX.md) — Docker CDC lab environment
 
 **Content & Features**:
 - [Adding Modules](adding-modules.md) — Content contribution guide
-- [Adding Quizzes](adding-quizzes.md) — Interactive quiz component guide
-- [Assistant Feedback Setup](assistant-feedback-setup.md) — AI assistant Appwrite collection
-- [Appwrite Quickstart](APPWRITE_QUICKSTART.md) — 15-minute Appwrite setup
+- [Video Embeds](video-embeds.md) — Video component usage
+- [Community Guide](COMMUNITY.md) — GitHub Discussions setup
 
 **Development & Architecture**:
-- [AI Contributing Guide](../AI-CONTRIBUTING.md) — AI agent guidelines
+- [Contributing Guide](CONTRIBUTING.md) — AI agent guidelines (moved from root)
+- [Integration Guide](INTEGRATION.md) — Progress tracking implementation
+- [JavaScript Architecture](javascript-architecture.md) — Module system (to be created in Phase 1.2)
 - [AI Agent System](../ai/AGENTS.md) — Agent documentation
 - [AI Context](../ai/CONTEXT.md) — Brand voice and conventions
-- [Integration README](../INTEGRATION_README.md) — Integration overview
 - [Security Policy](../SECURITY.md) — Security guidelines
 
 **Reference**:
