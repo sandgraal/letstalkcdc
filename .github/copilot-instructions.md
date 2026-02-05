@@ -347,14 +347,17 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 
 ## When in Doubt
 
-1. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Appwrite, tracing, deployment)
-2. Review **[ai/AGENTS.md](../ai/AGENTS.md)** for agent-specific rules
-3. Read **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** for AI agent constraints
-4. Check **[ai/CONTEXT.md](../ai/CONTEXT.md)** for brand voice and conventions
-5. Inspect existing pages in `src/` for patterns
-6. Run `npm run smoke` to validate changes
+1. Check **[docs/README.md](../docs/README.md)** for complete documentation index
+2. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Appwrite, tracing, deployment)
+3. Review **[ai/AGENTS.md](../ai/AGENTS.md)** for agent-specific rules
+4. Read **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** for AI agent constraints
+5. Check **[ai/CONTEXT.md](../ai/CONTEXT.md)** for brand voice and conventions
+6. Inspect existing pages in `src/` for patterns
+7. Run `npm run smoke` to validate changes
 
 ### Documentation Index
+
+> **Full Index**: See **[docs/README.md](../docs/README.md)** for the complete documentation index.
 
 **Setup & Deployment:**
 

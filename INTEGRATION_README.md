@@ -1,4 +1,6 @@
-# Progress Tracking Overview
+# Progress Tracking Technical Details
+
+> **Quick Start**: For general setup instructions, see [docs/SETUP.md](docs/SETUP.md). This document provides technical implementation details for developers working on the progress tracking system.
 
 > **Update:** GitHub OAuth sign-in has been retired. Progress is now stored locally in the browser so journeys work without any authentication or external services.
 
