@@ -33,7 +33,7 @@ letstalkcdc/
 ├── scripts/                    # Build helpers (CSS minification, etc.)
 ├── src/assets/js/app.js        # Client-side interactions shared sitewide
 ├── src/assets/css/styles.css   # Source stylesheet processed by PostCSS
-├── eleventy.config.cjs         # Eleventy configuration
+├── eleventy.config.mjs         # Eleventy configuration
 ├── postcss.config.js           # PostCSS configuration
 ├── package.json                # Project metadata, scripts, tooling deps
 ├── package-lock.json

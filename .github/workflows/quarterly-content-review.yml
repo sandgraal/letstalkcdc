@@ -49,7 +49,7 @@ jobs:
             
             ### Action Items:
             1. Review the checklist and check for tool updates
-            2. Update \`src/_data/toolVersions.cjs\` with any new versions
+            2. Update \`src/_data/toolVersions.mjs\` with any new versions
             3. Update quickstart guides and examples if needed
             4. Update the CHANGELOG.md with significant changes
             5. Close this issue when review is complete
