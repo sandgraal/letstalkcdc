@@ -2,6 +2,63 @@
 
 This document describes the client-side tracing implementation for the Let's Talk CDC educational site.
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Custom Tracking](#custom-tracking)
+- [Session Management](#session-management)
+- [Viewing Traces](#viewing-traces)
+- [Development](#development)
+- [Production Considerations](#production-considerations)
+- [Dependencies](#dependencies)
+- [Troubleshooting](#troubleshooting)
+- [Future Enhancements](#future-enhancements)
+
+---
+
+## Quick Start
+
+### 1. View Traces in AI Toolkit
+
+The tracing viewer can be accessed in VS Code via:
+
+**View → AI Toolkit → Tracing**
+
+### 2. Test the Tracing
+
+With the dev server running at http://localhost:8080/:
+
+1. **Open your browser** and navigate to http://localhost:8080/
+2. **Browse modules** - Visit any learning module (e.g., `/intro/`, `/snapshotting/`)
+3. **Search** - Press `/` and search for something (e.g., "kafka")
+4. **Copy code** - Click any "Copy" button on code blocks
+5. **Complete tasks** - Check off items in learning modules
+
+### 3. View the Traces
+
+Return to VS Code and check the **AI Toolkit Tracing panel**. You should see:
+
+- **documentLoad** spans - Page load performance
+- **module.view** spans - When you visited a module
+- **search.query** spans - Your search queries
+- **learning.interaction** spans - Code copy events
+- **web.vital** spans - Core Web Vitals metrics
+- **user-interaction** spans - Click events
+- **fetch** spans - Network requests
+
+### 4. Inspect Trace Details
+
+Click any span to see:
+
+- **Timing information** - Duration, start time
+- **Attributes** - Module keys, search queries, success flags
+- **Context** - Session ID, page path, user agent
+- **Relationships** - Parent/child span connections
+
+---
+
 ## Overview
 
 The site uses a **lightweight OpenTelemetry-compatible tracer** to track:
@@ -14,6 +71,51 @@ The site uses a **lightweight OpenTelemetry-compatible tracer** to track:
 - ⚡ **Core Web Vitals** - LCP, FID, CLS metrics
 
 ## Architecture
+
+### System Flow
+
+```mermaid
+graph TB
+    subgraph "Browser (Client Side)"
+        A[User visits page] --> B[app.js loads]
+        B --> C[Initialize OpenTelemetry]
+        C --> D[Register Instrumentations]
+
+        D --> E1[Document Load<br/>Instrumentation]
+        D --> E2[User Interaction<br/>Instrumentation]
+        D --> E3[Fetch/XHR<br/>Instrumentation]
+        D --> E4[Custom Education<br/>Tracer]
+
+        E1 --> F1[Page Load Spans]
+        E2 --> F2[Click/Submit Spans]
+        E3 --> F3[Network Request Spans]
+        E4 --> F4[Learning Event Spans]
+
+        F1 --> G[Batch Span Processor]
+        F2 --> G
+        F3 --> G
+        F4 --> G
+    end
+
+    subgraph "VS Code AI Toolkit"
+        G -->|OTLP HTTP| H[localhost:4318/v1/traces]
+        H --> I[OpenTelemetry Collector]
+        I --> J[Tracing Viewer UI]
+    end
+
+    subgraph "Custom Education Events"
+        K1[trackModuleView] --> F4
+        K2[trackProgress] --> F4
+        K3[trackInteraction] --> F4
+        K4[trackSearch] --> F4
+        K5[trackWebVital] --> F4
+    end
+
+    style A fill:#e1f5ff
+    style C fill:#fff4e1
+    style J fill:#e8f5e9
+    style F4 fill:#f3e5f5
+```
 
 ### Implementation Approach
 

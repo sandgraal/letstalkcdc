@@ -24,11 +24,10 @@ The site is built with **progressive enhancement** — core features work immedi
 | ------------------------------------- | ----------- | ------------------------------------- |
 | **Static site** (educational content) | ✅ Ready    | None — works out of the box           |
 | **Local progress tracking**           | ✅ Ready    | None — uses browser localStorage      |
-| **User authentication**               | ✅ Ready    | Appwrite project + auth setup         |
-| **Cloud progress sync**               | ✅ Ready    | User authentication + collections     |
 | **AI Toolkit tracing**                | ⚠️ Optional | AI Toolkit + start dev server         |
-| **Appwrite (cloud sync + auth)**      | ⚠️ Optional | Appwrite project + environment config |
-| **Lightweight assistant**             | ⚠️ Optional | Appwrite collection setup             |
+| **Appwrite assistant feedback**       | ⚠️ Optional | Appwrite project + collection setup   |
+| **User authentication**               | ⚠️ Deprecated | Authentication has been removed      |
+| **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed          |
 
 ## Environment Configuration
 
@@ -93,7 +92,6 @@ The site uses a **lightweight tracing implementation** (`src/assets/js/tracing-l
 #### Documentation
 
 - **Comprehensive guide**: [docs/TRACING.md](TRACING.md)
-- **Quick start**: [docs/TRACING-QUICKSTART.md](TRACING-QUICKSTART.md)
 
 #### Notes
 
@@ -139,6 +137,35 @@ Progress tracking now runs entirely in the browser with no authentication. Appwr
 5. Click "**Import Collections**"
 6. Upload `appwrite.collections.json`
 7. Confirm the `assistant_feedback` collection exists (the progress and events collections are no longer required).
+
+**Detailed Collection Setup** (if not importing via JSON):
+
+If you prefer to create the collection manually:
+
+1. Navigate to **Database → Collections → Create collection**
+2. Choose **Custom ID** and enter `assistant_feedback`
+3. Enable **Document security**
+4. Add the following attributes:
+
+   | Key       | Type     | Required | Size/Format | Notes                                 |
+   |-----------|----------|----------|-------------|---------------------------------------|
+   | `question`| String   | Yes      | 512         | User's question text                  |
+   | `intentId`| String   | No       | 128         | Matched intent identifier             |
+   | `helpful` | Boolean  | Yes      | -           | Captures 👍/👎 feedback               |
+   | `ts`      | Datetime | Yes      | -           | ISO timestamp captured in browser     |
+
+5. Create an index named `byTime` on the `ts` attribute (Descending order) for efficient querying
+6. Configure permissions:
+   - Grant **Create** access to `Any` (allows unauthenticated feedback)
+   - Grant **Read**, **Update**, and **Delete** access to administrators only
+
+**Import via Appwrite CLI** (alternative method):
+
+```bash
+appwrite login
+appwrite projects select <PROJECT_ID>
+appwrite databases import --file appwrite.collections.json
+```
 
 ##### Step 3: Configure Environment Variables
 
@@ -189,7 +216,7 @@ npm run dev
 
 #### Documentation
 
-- **Detailed collection setup**: [docs/assistant-feedback-setup.md](assistant-feedback-setup.md)
+- **Detailed collection setup**: See Step 2 above for manual collection creation steps
 
 ---
 
@@ -231,85 +258,42 @@ The site automatically converts YAML → JSON during build.
 
 #### Documentation
 
-- **Collection schema**: [docs/assistant-feedback-setup.md](assistant-feedback-setup.md)
+- **Collection schema**: See section 2 above for collection setup details
 - **Contributing guide**: [AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)
 
 ---
 
-### 4. User Authentication and Cloud Progress Sync (Optional)
+### 4. Archived: User Authentication and Cloud Progress Sync
 
-**Status**: ✅ **Implemented** — Requires Appwrite account setup
+**Status**: ⚠️ **DEPRECATED** — Authentication and cloud sync have been removed
 
-Enables users to create accounts and sync their learning progress across devices.
+> **Note**: User authentication with email/password and cloud-synced progress were previously supported but have been removed from the codebase. Progress tracking now runs entirely in the browser using localStorage with no authentication required.
 
-#### What you get
+#### What Changed
 
-- ✅ User signup and login with email/password
-- ✅ Cloud-synced progress across all devices
-- ✅ Automatic merge of local and cloud progress on login
-- ✅ Secure authentication via Appwrite Account SDK
-- ✅ Progressive enhancement - works offline with local storage
+- ❌ User signup and login removed
+- ❌ Cloud-synced progress removed
+- ❌ Appwrite `progress` and `events` collections no longer used
+- ✅ Progress tracking continues to work using browser localStorage only
+- ✅ Assistant feedback collection (`assistant_feedback`) still supported
 
-#### Prerequisites
+#### Historical Context
 
-- [Appwrite Cloud account](https://cloud.appwrite.io) (free) or self-hosted instance
-- Existing Appwrite project with database (from section 2 above)
+The authentication system previously allowed users to:
+- Create accounts with email/password
+- Sync module completion progress across devices
+- Merge local and cloud progress on login
 
-#### Setup Steps
+This functionality was removed to simplify the architecture and eliminate the need for user accounts. All progress tracking is now browser-based, which provides a better user experience without requiring login.
 
-##### Step 1: Configure Collection Permissions
+#### Migration Notes
 
-In your Appwrite project:
+If you have an existing deployment with user authentication:
+- Existing users will automatically fall back to localStorage-based progress
+- The `progress` and `events` collections can be safely removed from your Appwrite database
+- No user data migration is needed (users will start fresh with localStorage)
 
-1. Go to **Databases → main → progress → Settings → Permissions**
-2. Add permission: **Any authenticated user** (`role:users`)
-   - Enable: Create, Read, Update, Delete (users can only access their own documents)
-
-3. Go to **Databases → main → events → Settings → Permissions**
-4. Add permission: **Any authenticated user** (`role:users`)
-   - Enable: Create, Read (users can only access their own documents)
-
-##### Step 2: Configure CORS for Your Domain
-
-1. In Appwrite Console, go to **Settings → Platforms**
-2. Add **Web Platform**:
-   - Name: `Let's Talk CDC`
-   - Hostname: `yourusername.github.io` (or your custom domain)
-
-##### Step 3: Test Locally
-
-```bash
-# Ensure .env is configured with Appwrite credentials
-npm run dev
-
-# Visit http://localhost:8080
-# Click "Log In" button in header
-# Test signup and login flows
-```
-
-#### Documentation
-
-- **Detailed setup guide**: [docs/auth-setup.md](auth-setup.md)
-- **Security considerations**: [docs/auth-setup.md#security-considerations](auth-setup.md#security-considerations)
-
-#### Troubleshooting
-
-**"Authentication not configured" error**
-
-- Verify `APPWRITE_ENDPOINT` and `APPWRITE_PROJECT` are set in `.env`
-- Rebuild site after changing environment variables
-
-**Login fails**
-
-- Check collection permissions are set for `role:users`
-- Verify CORS is configured for your domain
-- Check browser console for detailed error messages
-
-**Progress not syncing**
-
-- Verify user is logged in (profile button visible in header)
-- Check browser console for sync errors
-- Ensure collections exist and have correct permissions
+For historical reference, the complete authentication setup documentation has been archived in [docs/archive/auth-setup.md](archive/auth-setup.md)
 
 ---
 
@@ -427,11 +411,11 @@ The site follows a **layered architecture**:
 
 - **Setup** — This file
 - **Hosting** — [docs/HOSTING.md](HOSTING.md)
-- **Tracing** — [docs/TRACING.md](TRACING.md), [docs/TRACING-QUICKSTART.md](TRACING-QUICKSTART.md)
+- **Tracing** — [docs/TRACING.md](TRACING.md)
 - **Adding modules** — [docs/adding-modules.md](adding-modules.md)
-- **Assistant setup** — [docs/assistant-feedback-setup.md](assistant-feedback-setup.md)
 - **Contributing** — [AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)
 - **Architecture** — [.github/copilot-instructions.md](../.github/copilot-instructions.md)
+- **Archived docs** — [docs/archive/](archive/) (historical reference)
 
 ### Common Issues
 
