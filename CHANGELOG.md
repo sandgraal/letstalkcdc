@@ -7,6 +7,9 @@
 ## 2026-02-05
 - Initial changelog
 
+## 2026-02-05
+- Initial changelog
+
 ## 2026-01-06
 - Initial changelog
 
