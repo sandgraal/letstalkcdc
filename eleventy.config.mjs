@@ -2,6 +2,71 @@ import fs from "fs";
 import path from "path";
 import { getPathPrefix } from "./lib/path-prefix.mjs";
 
+// ---------------------------------------------------------------------------
+// Vite manifest helpers — resolve hashed asset paths in production builds.
+// In development (no manifest), fall back to the original source paths.
+// ---------------------------------------------------------------------------
+
+const VITE_MANIFEST_PATH = path.resolve("dist", ".vite", "manifest.json");
+
+let _viteManifest = null;
+let _viteManifestChecked = false;
+
+const loadViteManifest = () => {
+  if (_viteManifestChecked) return _viteManifest;
+  _viteManifestChecked = true;
+  try {
+    if (fs.existsSync(VITE_MANIFEST_PATH)) {
+      _viteManifest = JSON.parse(fs.readFileSync(VITE_MANIFEST_PATH, "utf-8"));
+    }
+  } catch {
+    _viteManifest = null;
+  }
+  return _viteManifest;
+};
+
+/**
+ * Resolve a source entry to its hashed output path via the Vite manifest.
+ * @param {string} srcPath  Source path relative to project root,
+ *                          e.g. "src/assets/js/app.js"
+ * @returns {string}  Public URL path, e.g. "/assets/js/app.cGYExZ3c.js"
+ */
+const resolveViteAsset = (srcPath) => {
+  const manifest = loadViteManifest();
+  if (manifest && manifest[srcPath]) {
+    return "/assets/" + manifest[srcPath].file;
+  }
+  // Fallback: strip "src/" prefix to derive the unbundled public path.
+  const fallback = srcPath.startsWith("src/") ? srcPath.slice(4) : srcPath;
+  return "/" + fallback;
+};
+
+/**
+ * Collect all chunk imports (including transitive) for preload hints.
+ * @param {string} srcPath  Source path matching a manifest key.
+ * @returns {string[]}  Array of public URL paths for chunk files.
+ */
+const collectViteChunks = (srcPath) => {
+  const manifest = loadViteManifest();
+  if (!manifest || !manifest[srcPath]) return [];
+  const seen = new Set();
+  const chunks = [];
+  const walk = (key) => {
+    const entry = manifest[key];
+    if (!entry || !entry.imports) return;
+    for (const imp of entry.imports) {
+      if (seen.has(imp)) continue;
+      seen.add(imp);
+      if (manifest[imp]) {
+        chunks.push("/assets/" + manifest[imp].file);
+        walk(imp);
+      }
+    }
+  };
+  walk(srcPath);
+  return chunks;
+};
+
 const normalizeToArray = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -131,13 +196,56 @@ export default function (eleventyConfig) {
     "src/assets/css/styles.min.css": "assets/css/styles.css",
     "src/assets/css/auth.css": "assets/css/auth.css",
     "src/assets/css/pages": "assets/css/pages",
+    // In production the Vite-bundled JS lives in dist/; copy it into _site.
+    // The source JS tree is still copied for page-specific scripts (pages/*.js,
+    // lib/*.js) and as a dev-mode fallback when no Vite manifest exists.
     "src/assets/js": "assets/js",
+    dist: "assets",
     "compose.yaml": "downloads/compose.yaml",
     "src/css": "css",
     "src/js": "js",
     "src/data": "data",
     "src/scripts": "scripts",
     scripts: "scripts",
+  });
+
+  // ---- Vite asset filters --------------------------------------------------
+
+  /**
+   * {{ 'src/assets/js/app.js' | viteAsset | url }}
+   * Resolves a source path to its hashed filename (production) or the
+   * unbundled source path (development).
+   */
+  eleventyConfig.addNunjucksFilter("viteAsset", (srcPath) =>
+    resolveViteAsset(srcPath),
+  );
+
+  /**
+   * Return modulepreload link tags for all shared chunks of an entry.
+   * Usage:  {{ 'src/assets/js/app.js' | vitePreloads | safe }}
+   */
+  eleventyConfig.addNunjucksFilter("vitePreloads", function (srcPath) {
+    // Accept a single path or comma-separated list for deduplication.
+    const paths = srcPath.includes(",")
+      ? srcPath.split(",").map((s) => s.trim())
+      : [srcPath];
+    const seen = new Set();
+    const allChunks = [];
+    for (const p of paths) {
+      for (const c of collectViteChunks(p)) {
+        if (!seen.has(c)) {
+          seen.add(c);
+          allChunks.push(c);
+        }
+      }
+    }
+    if (!allChunks.length) return "";
+    const urlFilter = this.env.getFilter("url");
+    return allChunks
+      .map(
+        (c) => `<link rel="modulepreload" href="${urlFilter.call(this, c)}">`,
+      )
+      .join("\n    ");
   });
 
   // Ensure download assets (YAML manifests, scripts, dashboards, etc.) are copied verbatim.
@@ -156,7 +264,7 @@ export default function (eleventyConfig) {
       fs.mkdirSync(outputDir, { recursive: true });
       fs.writeFileSync(
         path.join(outputDir, "assistant.json"),
-        JSON.stringify(data, null, 2)
+        JSON.stringify(data, null, 2),
       );
     } catch (err) {
       console.warn("Failed to emit assistant.json:", err);
@@ -183,7 +291,9 @@ export default function (eleventyConfig) {
     }
 
     const renderedAttributes = Object.entries(attributes)
-      .filter(([, value]) => value !== undefined && value !== null && value !== false)
+      .filter(
+        ([, value]) => value !== undefined && value !== null && value !== false,
+      )
       .map(([key, value]) => {
         if (value === true) {
           return key;
@@ -282,4 +392,4 @@ export default function (eleventyConfig) {
     markdownTemplateEngine: "njk",
     templateFormats: ["njk", "md", "html", "11ty.js"],
   };
-};
+}
