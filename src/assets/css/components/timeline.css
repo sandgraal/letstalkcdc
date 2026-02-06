@@ -1,0 +1,213 @@
+/**
+ * Timeline Component Styles
+ * Vertical timeline with expandable events for CDC flow visualization
+ */
+
+/* ── Timeline container ─────────────────────────────────────────── */
+
+.timeline {
+  position: relative;
+  margin: 2.5rem 0;
+  padding-left: 2.5rem;
+}
+
+/* Vertical line */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--color-primary, #0366d6) 0%,
+    var(--color-border, #e1e4e8) 100%
+  );
+  border-radius: 2px;
+}
+
+/* ── Timeline event ─────────────────────────────────────────────── */
+
+.timeline-event {
+  position: relative;
+  margin-bottom: 2rem;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+.timeline-event:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Marker (dot on the line) ───────────────────────────────────── */
+
+.timeline-marker {
+  position: absolute;
+  left: -2.5rem;
+  top: 0.25rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--color-background, #fff);
+  border: 3px solid var(--color-primary, #0366d6);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.timeline-marker:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px rgba(3, 102, 214, 0.15);
+}
+
+.timeline-marker:focus-visible {
+  outline: 2px solid var(--color-primary, #0366d6);
+  outline-offset: 3px;
+}
+
+.timeline-event.is-active .timeline-marker {
+  background: var(--color-primary, #0366d6);
+  color: #fff;
+  transform: scale(1.2);
+  box-shadow: 0 0 0 5px rgba(3, 102, 214, 0.2);
+}
+
+/* ── Event content card ─────────────────────────────────────────── */
+
+.timeline-content {
+  padding: 1rem 1.25rem;
+  background: var(--color-background, #fff);
+  border: 1px solid var(--color-border, #e1e4e8);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.timeline-event:hover .timeline-content {
+  border-color: rgba(3, 102, 214, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.timeline-event.is-active .timeline-content {
+  border-color: var(--color-primary, #0366d6);
+  box-shadow: 0 6px 24px rgba(3, 102, 214, 0.12);
+}
+
+/* ── Title & meta ───────────────────────────────────────────────── */
+
+.timeline-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.timeline-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  background: rgba(3, 102, 214, 0.1);
+  color: var(--color-primary, #0366d6);
+}
+
+.timeline-summary {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary, #4a4a4a);
+  line-height: 1.5;
+}
+
+/* ── Expandable detail panel ────────────────────────────────────── */
+
+.timeline-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #e1e4e8);
+  animation: detailExpand 0.25s ease-out;
+}
+
+.timeline-detail[hidden] {
+  display: none;
+}
+
+.timeline-detail p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.timeline-detail code {
+  font-size: 0.8125rem;
+  padding: 0.125rem 0.375rem;
+  background: var(--color-surface, #f0f0f0);
+  border-radius: 4px;
+}
+
+@keyframes detailExpand {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .timeline {
+    padding-left: 2rem;
+  }
+
+  .timeline::before {
+    left: 0.75rem;
+  }
+
+  .timeline-marker {
+    left: -2rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.75rem;
+  }
+
+  .timeline-content {
+    padding: 0.875rem 1rem;
+  }
+
+  .timeline-title {
+    font-size: 0.9375rem;
+  }
+}
+
+/* ── noscript fallback ──────────────────────────────────────────── */
+
+.timeline-noscript .timeline-detail {
+  display: block !important;
+}

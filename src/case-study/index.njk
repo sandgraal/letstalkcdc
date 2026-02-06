@@ -256,7 +256,8 @@ head_extra: |
       role in the data flow:
     </p>
 
-    <div class="architecture-diagram" role="img" aria-label="ShopStream CDC Architecture: PostgreSQL flows through Debezium to Kafka, then to Snowflake and real-time dashboards">
+    <div class="architecture-diagram" role="img" aria-label="ShopStream CDC Architecture: PostgreSQL flows through Debezium to Kafka, then to Snowflake and real-time dashboards"
+         data-tooltips='{"A":"Source OLTP database using WAL-based logical replication","B":"Debezium captures row-level changes and publishes to Kafka topics","C":"Kafka brokers durably store ordered change events","D":"Snowflake Sink connector merges changes into analytics tables","E":"Kafka Streams app computes real-time aggregations","F":"Snowflake data warehouse for historical analytics","G":"Redis cache for low-latency dashboard queries","H":"Tableau dashboards combining real-time and historical data"}'>
       <pre class="mermaid">
 graph LR
     A[PostgreSQL OLTP<br/>Orders, Customers, Products] -->|WAL Stream| B[Debezium Connector<br/>Kafka Connect]

@@ -1,0 +1,142 @@
+/**
+ * Interactive Diagrams Styles
+ * Mermaid.js enhancement with tooltips, highlighting, and animations
+ */
+
+/* ── Loading state ──────────────────────────────────────────────── */
+
+.diagram-loading {
+  position: relative;
+  min-height: 120px;
+}
+
+.diagram-loading::after {
+  content: "Loading diagram…";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #666);
+  background: var(--color-surface, #f8f9fa);
+  border-radius: 8px;
+}
+
+/* ── Rendered diagram container ─────────────────────────────────── */
+
+.diagram-rendered {
+  animation: diagramFadeIn 0.4s ease-out;
+}
+
+.diagram-rendered svg {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  transition: filter 0.3s ease;
+}
+
+.diagram-rendered:focus-within svg {
+  outline: 2px solid var(--color-primary, #0366d6);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+@keyframes diagramFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Interactive nodes ──────────────────────────────────────────── */
+
+.diagram-interactive-node {
+  cursor: pointer;
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
+}
+
+.diagram-interactive-node:hover {
+  filter: brightness(1.1);
+}
+
+.diagram-interactive-node:focus-visible {
+  outline: 2px solid var(--color-primary, #0366d6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.diagram-interactive-node.is-highlighted {
+  filter: brightness(1.15) drop-shadow(0 0 6px rgba(3, 102, 214, 0.5));
+}
+
+/* Dim non-highlighted siblings when one node is highlighted */
+.diagram-rendered
+  svg:has(.is-highlighted)
+  .diagram-interactive-node:not(.is-highlighted) {
+  opacity: 0.4;
+}
+
+/* ── Tooltip ────────────────────────────────────────────────────── */
+
+.diagram-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 280px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-on-primary, #fff);
+  background: var(--color-text-primary, #1a1a1a);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  animation: tooltipIn 0.15s ease-out;
+}
+
+.diagram-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-text-primary, #1a1a1a);
+}
+
+@keyframes tooltipIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+/* ── Diagram wrapper styling ────────────────────────────────────── */
+
+.diagram-wrapper {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--color-surface, #f8f9fa);
+  border: 1px solid var(--color-border, #e1e4e8);
+  border-radius: 12px;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.diagram-wrapper figcaption {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #666);
+  font-style: italic;
+}

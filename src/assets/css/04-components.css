@@ -5,6 +5,8 @@
 
 /* Import sub-components */
 @import "components/quiz.css";
+@import "components/interactive-diagrams.css";
+@import "components/timeline.css";
 
 /* Buttons - Modern, sophisticated */
 .button {
@@ -53,7 +55,9 @@
   background: var(--gradient-primary);
   color: var(--button-primary-text);
   border: none;
-  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(59, 130, 246, 0.2);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
 .button:hover,
@@ -78,7 +82,9 @@
 .button.secondary:hover {
   background-color: var(--color-accent-subtle);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md), 0 0 0 2px var(--color-accent-subtle);
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 2px var(--color-accent-subtle);
 }
 
 /* Ghost Button - Subtle, elegant */
@@ -218,7 +224,9 @@
 /* Hover effects */
 .series-card:hover {
   transform: translateY(-6px);
-  box-shadow: var(--shadow-xl), 0 0 0 1px var(--color-border-strong);
+  box-shadow:
+    var(--shadow-xl),
+    0 0 0 1px var(--color-border-strong);
   border-color: var(--color-accent-primary);
 }
 
@@ -231,7 +239,8 @@
 /* Recommended card - special styling */
 .series-card.is-recommended {
   border-color: var(--color-accent-primary);
-  background: var(--gradient-subtle),
+  background:
+    var(--gradient-subtle),
     linear-gradient(
       135deg,
       rgba(59, 130, 246, 0.05) 0%,
@@ -315,7 +324,9 @@
 .badge.recommended {
   background: var(--gradient-accent);
   color: white;
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3), var(--shadow-glow-sm);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.3),
+    var(--shadow-glow-sm);
 }
 
 .badge.success {
@@ -424,7 +435,8 @@
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background-color var(--transition-fast),
+  transition:
+    background-color var(--transition-fast),
     color var(--transition-fast);
 }
 
@@ -452,7 +464,8 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: var(--text-lg);
-  transition: background-color var(--transition-fast),
+  transition:
+    background-color var(--transition-fast),
     color var(--transition-fast);
 }
 
@@ -480,7 +493,8 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: var(--text-lg);
-  transition: background-color var(--transition-fast),
+  transition:
+    background-color var(--transition-fast),
     color var(--transition-fast);
 }
 
@@ -614,7 +628,9 @@
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
   z-index: var(--z-tooltip);
 }
 
