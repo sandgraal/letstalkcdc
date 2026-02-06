@@ -16,3 +16,4 @@ ai/reviews/*.md
 .env
 .env.local
 .env.*.local
+coverage/
