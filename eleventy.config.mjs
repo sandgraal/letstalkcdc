@@ -89,11 +89,19 @@ function parseAssistantYaml(content) {
   let collectingAnswer = false;
   let answerLines = [];
   let collectingLinks = false;
+  let currentLink = null;
 
   const finalizeAnswer = () => {
     if (!current) return;
     current.answer = answerLines.join(" ").replace(/\s+/g, " ").trim();
     answerLines = [];
+  };
+
+  const pushLink = () => {
+    if (currentLink && current && current.links) {
+      current.links.push(currentLink);
+    }
+    currentLink = null;
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -127,12 +135,28 @@ function parseAssistantYaml(content) {
         continue;
       }
       if (trimmed.startsWith("- label:")) {
-        const label = trimmed.slice("- label:".length).trim();
-        const nextLine = lines[++i] || "";
-        const url = nextLine.trim().replace(/^url:\s*/, "");
-        current.links.push({ label, url });
+        pushLink();
+        currentLink = { label: trimmed.slice("- label:".length).trim() };
         continue;
       }
+      if (currentLink) {
+        if (trimmed.startsWith("url:")) {
+          currentLink.url = trimmed.slice("url:".length).trim();
+          continue;
+        }
+        if (trimmed.startsWith("anchor:")) {
+          currentLink.anchor = trimmed
+            .slice("anchor:".length)
+            .trim()
+            .replace(/^["']|["']$/g, "");
+          continue;
+        }
+        if (trimmed.startsWith("preview:")) {
+          currentLink.preview = trimmed.slice("preview:".length).trim();
+          continue;
+        }
+      }
+      pushLink();
       collectingLinks = false;
       i--;
       continue;
@@ -143,6 +167,10 @@ function parseAssistantYaml(content) {
     }
 
     if (trimmed.startsWith("- id:")) {
+      if (collectingLinks) {
+        pushLink();
+        collectingLinks = false;
+      }
       if (current) {
         if (current.links && current.links.length === 0) {
           delete current.links;
@@ -163,6 +191,12 @@ function parseAssistantYaml(content) {
       continue;
     }
 
+    if (trimmed.startsWith("modules:")) {
+      const listStr = trimmed.slice("modules:".length).trim();
+      current.modules = JSON.parse(listStr.replace(/'/g, '"'));
+      continue;
+    }
+
     if (trimmed === "answer: >") {
       collectingAnswer = true;
       answerLines = [];
@@ -178,6 +212,10 @@ function parseAssistantYaml(content) {
 
   if (collectingAnswer && current) {
     finalizeAnswer();
+  }
+
+  if (collectingLinks) {
+    pushLink();
   }
 
   if (current) {

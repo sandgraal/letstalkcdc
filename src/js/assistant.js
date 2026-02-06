@@ -1,40 +1,78 @@
+/**
+ * CDC Playground – Inline Chat Assistant (Phase 2.3)
+ *
+ * Features:
+ * - Inline chat panel (replaces prompt())
+ * - Context-aware intent matching (boosts intents for current module)
+ * - Chat history persistence (localStorage, last 20 messages)
+ * - Heading-level citation links (url + anchor)
+ * - Next-topic suggestions based on progress
+ * - Improved feedback with inline confirmation
+ */
 import { databases, dbConfig, isAppwriteReady } from "./appwrite-config.js";
 import { withBasePath } from "../assets/js/utils/path-prefix.js";
 
+/* ── Constants ─────────────────────────────────────────────────────────── */
+const HISTORY_KEY = "assistantHistory";
+const FEEDBACK_KEY = "assistantFeedback";
+const MAX_HISTORY = 20;
+
+/* ── Knowledge base ────────────────────────────────────────────────────── */
+let _kb = null;
+
 async function loadKB() {
-  const res = await fetch(withBasePath('/data/assistant.json'));
-  return res.json();
+  if (_kb) return _kb;
+  const res = await fetch(withBasePath("/data/assistant.json"));
+  _kb = await res.json();
+  return _kb;
 }
 
-const STORAGE_KEY = "assistantFeedback";
+/* ── Chat history ──────────────────────────────────────────────────────── */
 
-function readLocalFeedback() {
-  if (typeof window === "undefined") {
+function readHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
     return [];
   }
+}
 
+function writeHistory(entries) {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(entries.slice(-MAX_HISTORY)),
+    );
+  } catch {
+    /* quota exceeded – silently ignore */
+  }
+}
+
+function pushMessage(role, text, extra) {
+  const history = readHistory();
+  history.push({ role, text, ts: Date.now(), ...extra });
+  writeHistory(history);
+}
+
+/* ── Feedback persistence ──────────────────────────────────────────────── */
+
+function readLocalFeedback() {
+  try {
+    const raw = localStorage.getItem(FEEDBACK_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn("Failed to read assistant feedback queue:", error);
+  } catch {
     return [];
   }
 }
 
 function writeLocalFeedback(entries) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch (error) {
-    console.warn("Failed to persist assistant feedback queue:", error);
+    localStorage.setItem(FEEDBACK_KEY, JSON.stringify(entries));
+  } catch {
+    /* quota exceeded */
   }
 }
 
@@ -45,14 +83,9 @@ function queueLocalFeedback(entry) {
 }
 
 async function syncPendingFeedback() {
-  if (!databases || !dbConfig.databaseId || !dbConfig.collectionId) {
-    return;
-  }
-
+  if (!databases || !dbConfig.databaseId || !dbConfig.collectionId) return;
   const pending = readLocalFeedback();
-  if (!pending.length) {
-    return;
-  }
+  if (!pending.length) return;
 
   const remaining = [];
   for (const entry of pending) {
@@ -61,65 +94,306 @@ async function syncPendingFeedback() {
         dbConfig.databaseId,
         dbConfig.collectionId,
         "unique()",
-        entry
+        entry,
       );
-    } catch (error) {
-      console.warn("Assistant feedback sync failed for entry, keeping locally:", error);
+    } catch {
       remaining.push(entry);
     }
   }
-
   writeLocalFeedback(remaining);
-
-  if (!remaining.length) {
-    console.info("Assistant feedback queue synced with Appwrite.");
-  }
 }
 
-function normalize(s) { return (s || "").toLowerCase(); }
+/* ── Intent matching (context-aware) ───────────────────────────────────── */
 
-function matchIntent(q, kb) {
-  if (!q) return null;
-  const Q = normalize(q);
-  let best = null;
+function normalize(s) {
+  return (s || "").toLowerCase().trim();
+}
+
+/**
+ * Returns the best matching intent, or null.
+ * When a currentModule is provided, intents whose `modules` array
+ * includes it are scored +10 (so context-relevant intents win ties).
+ */
+function matchIntent(query, kb, currentModule) {
+  if (!query) return null;
+  const q = normalize(query);
+
+  let bestIntent = null;
+  let bestScore = -1;
+
   for (const intent of kb.intents) {
-    if (intent.triggers.some(t => Q.includes(normalize(t)))) {
-      best = intent;
-      break;
+    let score = 0;
+
+    // Check trigger words – each matching trigger adds 1
+    for (const t of intent.triggers) {
+      if (q.includes(normalize(t))) {
+        score += 1;
+      }
+    }
+    if (score === 0) continue;
+
+    // Context boost: if intent is relevant to the current module
+    if (
+      currentModule &&
+      Array.isArray(intent.modules) &&
+      intent.modules.includes(currentModule)
+    ) {
+      score += 10;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIntent = intent;
     }
   }
-  return best;
+  return bestIntent;
 }
 
-function renderAnswer(intent, q) {
-  const panel = document.getElementById('askPanel');
-  panel.innerHTML = `
-    <div class="assistant-card">
-      <h3>${intent ? intent.id.replaceAll('_',' ') : 'No match'}</h3>
-      <p>${intent ? intent.answer : 'Sorry, I couldn't find that yet.'}</p>
-      ${
-        intent?.links
-          ? `<ul>${intent.links.map(l => `<li><a href="${l.url}">${l.label}</a></li>`).join('')}</ul>`
-          : ''
+/* ── Next-topic suggestions ────────────────────────────────────────────── */
+
+/**
+ * Reads scorecard progress from localStorage and returns up to 2 module
+ * suggestions that the user hasn't completed yet.
+ */
+function getNextTopicSuggestions(currentModule) {
+  const modules = window.CDC_MODULES;
+  if (!Array.isArray(modules)) return [];
+
+  return modules
+    .filter((m) => {
+      if (m.state === "disabled") return false;
+      if (m.key === currentModule) return false;
+      // Check if completion < 100%
+      try {
+        const raw = localStorage.getItem(`progress_${m.key}`);
+        if (!raw) return true; // never started → suggest it
+        const data = JSON.parse(raw);
+        return (data.pct || 0) < 100;
+      } catch {
+        return true;
       }
-      <div class="feedback">
-        <button id="yesBtn">👍</button>
-        <button id="noBtn">👎</button>
-      </div>
-    </div>`;
-  panel.hidden = false;
-  document.getElementById('yesBtn').onclick = () =>
-    saveFeedback(q, intent?.id, true);
-  document.getElementById('noBtn').onclick = () =>
-    saveFeedback(q, intent?.id, false);
+    })
+    .slice(0, 2);
 }
+
+/* ── DOM helpers ───────────────────────────────────────────────────────── */
+
+function esc(s) {
+  const el = document.createElement("span");
+  el.textContent = s;
+  return el.innerHTML;
+}
+
+/* ── Build chat panel HTML ─────────────────────────────────────────────── */
+
+function buildPanelHTML() {
+  return `
+    <div class="assistant-header">
+      <span class="assistant-title">CDC Assistant</span>
+      <button class="assistant-close" aria-label="Close assistant" type="button">&times;</button>
+    </div>
+    <div class="assistant-messages" role="log" aria-live="polite"></div>
+    <form class="assistant-input-row" autocomplete="off">
+      <input
+        type="text"
+        class="assistant-input"
+        placeholder="Ask about CDC…"
+        aria-label="Ask the assistant"
+        autocomplete="off"
+      />
+      <button class="assistant-send" type="submit" aria-label="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>`;
+}
+
+/* ── Render a single message bubble ────────────────────────────────────── */
+
+function renderMessageBubble(msg) {
+  const div = document.createElement("div");
+  div.className = `assistant-msg assistant-msg--${msg.role}`;
+
+  if (msg.role === "user") {
+    div.innerHTML = `<p>${esc(msg.text)}</p>`;
+    return div;
+  }
+
+  // Bot message
+  let html = `<p>${msg.text}</p>`;
+
+  // Citation links
+  if (msg.links && msg.links.length) {
+    html += `<ul class="assistant-links">`;
+    for (const l of msg.links) {
+      const href = withBasePath(l.url) + (l.anchor || "");
+      const title = l.preview ? ` title="${esc(l.preview)}"` : "";
+      html += `<li><a href="${href}"${title}>${esc(l.label)}</a></li>`;
+    }
+    html += `</ul>`;
+  }
+
+  // Next-topic suggestions (only on latest bot message)
+  if (msg.suggestions && msg.suggestions.length) {
+    html += `<div class="assistant-suggestions">`;
+    html += `<span class="assistant-suggestions__label">Continue learning:</span>`;
+    for (const s of msg.suggestions) {
+      html += `<a href="${withBasePath(s.href)}" class="assistant-suggestion-chip">${esc(s.title)}</a>`;
+    }
+    html += `</div>`;
+  }
+
+  // Feedback row (only on latest)
+  if (msg.showFeedback) {
+    html += `
+      <div class="assistant-feedback" data-intent="${msg.intentId || ""}">
+        <button class="assistant-fb-btn" data-helpful="true" type="button" aria-label="Helpful">👍</button>
+        <button class="assistant-fb-btn" data-helpful="false" type="button" aria-label="Not helpful">👎</button>
+      </div>`;
+  }
+
+  div.innerHTML = html;
+  return div;
+}
+
+/* ── Main bootstrap ────────────────────────────────────────────────────── */
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const kb = await loadKB();
+
+  // Sync any pending Appwrite feedback
+  if (isAppwriteReady) {
+    syncPendingFeedback();
+  }
+
+  const panel = document.getElementById("askPanel");
+  const fab = document.getElementById("askBtn");
+  if (!panel || !fab) return;
+
+  // The current module slug (set by base.njk when seriesKey is defined)
+  const currentModule = window.CDC_JOURNEY_SLUG || null;
+
+  // Inject panel structure
+  panel.innerHTML = buildPanelHTML();
+  const messagesEl = panel.querySelector(".assistant-messages");
+  const form = panel.querySelector(".assistant-input-row");
+  const input = panel.querySelector(".assistant-input");
+  const closeBtn = panel.querySelector(".assistant-close");
+
+  // ── Render history on open ──
+  function renderHistory() {
+    messagesEl.innerHTML = "";
+    const history = readHistory();
+    for (const msg of history) {
+      messagesEl.appendChild(renderMessageBubble(msg));
+    }
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // ── Toggle panel ──
+  function openPanel() {
+    panel.hidden = false;
+    panel.classList.add("assistant-open");
+    fab.setAttribute("aria-expanded", "true");
+    renderHistory();
+    requestAnimationFrame(() => input.focus());
+  }
+
+  function closePanel() {
+    panel.hidden = true;
+    panel.classList.remove("assistant-open");
+    fab.setAttribute("aria-expanded", "false");
+  }
+
+  fab.addEventListener("click", () => {
+    if (panel.hidden) {
+      openPanel();
+    } else {
+      closePanel();
+    }
+  });
+
+  closeBtn.addEventListener("click", closePanel);
+
+  // Close on Escape
+  panel.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closePanel();
+  });
+
+  // ── Submit handler ──
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = "";
+
+    // Save user message
+    pushMessage("user", q);
+
+    // Match intent
+    const intent = matchIntent(q, kb, currentModule);
+
+    // Build bot response
+    const botMsg = {
+      role: "bot",
+      text: intent
+        ? intent.answer
+        : "Sorry, I couldn't find an answer for that. Try rephrasing or browse the <a href=\"" +
+          withBasePath("/overview/") +
+          '">series overview</a>.',
+      intentId: intent ? intent.id : null,
+      links: intent ? intent.links || [] : [],
+      suggestions: getNextTopicSuggestions(currentModule),
+      showFeedback: true,
+    };
+
+    pushMessage("bot", botMsg.text, {
+      intentId: botMsg.intentId,
+      links: botMsg.links,
+      suggestions: botMsg.suggestions,
+      showFeedback: true,
+    });
+
+    renderHistory();
+  });
+
+  // ── Feedback delegation ──
+  messagesEl.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".assistant-fb-btn");
+    if (!btn) return;
+
+    const feedbackRow = btn.closest(".assistant-feedback");
+    const intentId = feedbackRow?.dataset.intent || null;
+    const helpful = btn.dataset.helpful === "true";
+
+    // Find the preceding user message to get the question
+    const history = readHistory();
+    let question = "";
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === "user") {
+        question = history[i].text;
+        break;
+      }
+    }
+
+    await saveFeedback(question, intentId, helpful);
+
+    // Replace feedback row with confirmation
+    feedbackRow.innerHTML = `<span class="assistant-fb-thanks">Thanks for the feedback!</span>`;
+  });
+});
+
+/* ── Save feedback ─────────────────────────────────────────────────────── */
 
 async function saveFeedback(question, intentId, helpful) {
-  // If Appwrite SDK didn't load, fall back to local storage immediately
+  const entry = {
+    question,
+    intentId,
+    helpful,
+    ts: new Date().toISOString(),
+  };
+
   if (!databases) {
-    console.warn("Appwrite SDK not available, using local storage");
-    queueLocalFeedback({ question, intentId, helpful, ts: new Date().toISOString() });
-    alert("Feedback guardado localmente (offline mode).");
+    queueLocalFeedback(entry);
     return;
   }
 
@@ -128,29 +402,11 @@ async function saveFeedback(question, intentId, helpful) {
       dbConfig.databaseId,
       dbConfig.collectionId,
       "unique()",
-      { question, intentId, helpful, ts: new Date().toISOString() }
+      entry,
     );
-    alert("Gracias! Feedback enviado al servidor.");
-    await syncPendingFeedback();
-  } catch (err) {
-    console.warn("Appwrite feedback fallback:", err);
-    queueLocalFeedback({ question, intentId, helpful, ts: new Date().toISOString() });
-    alert("Feedback guardado localmente (offline mode).");
+    // Also try to flush any pending queue
+    syncPendingFeedback();
+  } catch {
+    queueLocalFeedback(entry);
   }
 }
-
-document.addEventListener('DOMContentLoaded', async () => {
-  const kb = await loadKB();
-  if (isAppwriteReady) {
-    await syncPendingFeedback();
-  }
-  const btn = document.getElementById('askBtn');
-  btn.addEventListener('click', () => {
-    const q = prompt('Ask the Playground about CDC, Matillion, or agents:');
-    if (!q || !q.trim()) {
-      return;
-    }
-    const match = matchIntent(q, kb);
-    renderAnswer(match, q);
-  });
-});

@@ -1,64 +1,306 @@
 intents:
   - id: cdc_basics
-    triggers: ["what is cdc", "change data capture", "how cdc works"]
+    triggers:
+      [
+        "what is cdc",
+        "change data capture",
+        "how cdc works",
+        "what does cdc do",
+        "cdc explained",
+      ]
+    modules: ["intro", "overview", "strategy"]
     answer: >
-      Change Data Capture (CDC) streams database row changes to downstream systems in near real time.
-      In Matillion CDC, built on Debezium, the agent tails the database write-ahead log (WAL), converts
-      each commit into a change event, and tracks offsets for consistent delivery.
+      Change Data Capture (CDC) streams database row-level changes to downstream
+      systems in near real time. A CDC connector tails the database transaction
+      log (WAL, binlog, redo log), converts each committed change into a
+      structured event, and publishes it to a streaming platform like Kafka.
     links:
-      - label: Deep dive
-        url: /docs/cdc/basics/
-      - label: Lag simulator
-        url: /playground/simulators/lag/
+      - label: Interactive Introduction
+        url: /intro/
+        anchor: "#what-is-cdc"
+        preview: Start with the visual walkthrough of CDC core concepts.
+      - label: Series Overview
+        url: /overview/
+        preview: Browse all available learning modules.
+      - label: Strategic Value of CDC
+        url: /strategy/
+        anchor: "#why-cdc"
+        preview: Understand the business case for adopting CDC.
 
   - id: lag_handling
-    triggers: ["lag", "backpressure", "slow downstream", "throughput"]
+    triggers:
+      [
+        "lag",
+        "backpressure",
+        "slow downstream",
+        "throughput",
+        "latency",
+        "delay",
+        "falling behind",
+      ]
+    modules: ["observability", "ops-offsets", "multi-tenancy"]
     answer: >
-      Lag means delay between a committed source change and its appearance downstream.
-      Manage it by right-sizing agents for peak WAL throughput, compressing batches, parallelizing partitions,
-      and tuning sink flush/ack parameters.
+      Lag is the delay between a committed source change and its appearance
+      downstream. Manage it by right-sizing agents for peak WAL throughput,
+      compressing batches, parallelizing partitions, and tuning sink flush
+      parameters. Monitor the golden signal: replication lag in seconds.
     links:
-      - label: Sizing guide
-        url: /docs/agents/sizing/
-      - label: Offset visualizer
-        url: /playground/tools/offsets/
+      - label: Observability Basics
+        url: /observability/
+        anchor: "#golden-signals"
+        preview: Learn the golden signals for CDC monitoring.
+      - label: Ops Offsets and Replays
+        url: /ops-offsets/
+        preview: Diagnose and fix common lag causes.
 
   - id: snapshot_strategy
-    triggers: ["snapshot", "initial load", "bootstrap"]
+    triggers:
+      [
+        "snapshot",
+        "initial load",
+        "bootstrap",
+        "first sync",
+        "initial snapshot",
+        "snapshotting",
+      ]
+    modules: ["snapshotting"]
     answer: >
-      Snapshots create an initial dataset before streaming begins. Choose between fast (parallel, minimal locking)
-      and consistent (transactionally aligned) modes depending on source pressure tolerance.
+      Snapshots create an initial consistent dataset before streaming begins.
+      The lifecycle follows five stages: Plan, Mark High-Watermark, Consistent
+      Read, Stream from Boundary, and Validate. Choose between fast and
+      consistent modes depending on your tolerance for locking.
     links:
-      - label: Snapshot guide
-        url: /docs/cdc/snapshots/
-      - label: Snapshot visualizer
-        url: /playground/tools/snapshot/
+      - label: Snapshotting Deep Dive
+        url: /snapshotting/
+        anchor: "#lifecycle"
+        preview: Full lifecycle walkthrough with interactive timeline.
+      - label: Quickstart Postgres
+        url: /quickstarts/quickstart-postgres/
+        preview: Run your first snapshot in the Postgres quickstart.
 
   - id: offset_management
-    triggers: ["offset", "resume", "reset", "recovery"]
+    triggers:
+      ["offset", "resume", "reset", "recovery", "replay", "rewind", "resync"]
+    modules: ["ops-offsets", "reconciliation-surgery"]
     answer: >
-      Offsets record each log position processed. They enable resuming streams after restarts.
-      Never delete them unless re-snapshotting; instead use the Matillion reset workflow.
+      Offsets record each log position processed. They enable resuming streams
+      after restarts without data loss. Never delete offsets unless
+      re-snapshotting; instead use a controlled reset workflow. Always verify
+      downstream consistency after any offset manipulation.
     links:
-      - label: Offset reset guide
-        url: /docs/cdc/offsets/
-      - label: Visualizer
-        url: /playground/tools/offsets/
-
-  - id: agent_sizing
-    triggers: ["agent sizing", "cpu", "memory", "scale"]
-    answer: >
-      Start with observed WAL bytes/sec × 1.5–3× headroom. Each connector thread uses 1 core;
-      snapshot threads need more RAM for result buffers. Prefer scaling out beyond 4–6 cores per agent.
-    links:
-      - label: Calculator
-        url: /playground/tools/agent-sizing/
+      - label: Ops Offsets and Replays
+        url: /ops-offsets/
+        anchor: "#offset-stores"
+        preview: Learn about offset storage and safe rewind procedures.
+      - label: Reconciliation and Offset Surgery
+        url: /reconciliation-surgery/
+        anchor: "#offset-surgery"
+        preview: Advanced offset manipulation and repair procedures.
 
   - id: schema_changes
-    triggers: ["ddl", "schema change", "alter table"]
+    triggers:
+      [
+        "ddl",
+        "schema change",
+        "alter table",
+        "column",
+        "schema evolution",
+        "compatibility",
+      ]
+    modules: ["schema-evolution"]
     answer: >
-      Debezium emits schema change events. Additive DDL (new columns) propagates automatically;
-      destructive DDL (drops, renames) requires downstream reconciliation. Review schema history topics.
+      CDC connectors emit schema change events alongside data changes.
+      Additive DDL (new columns, new tables) propagates automatically.
+      Destructive DDL (drops, renames, type changes) requires downstream
+      reconciliation. Use a schema registry for forward/backward compatibility.
     links:
-      - label: Schema evolution
-        url: /docs/cdc/schema/
+      - label: Schema Evolution
+        url: /schema-evolution/
+        anchor: "#compatibility-levels"
+        preview: Compatibility levels and migration strategies.
+
+  - id: exactly_once
+    triggers:
+      [
+        "exactly once",
+        "exactly-once",
+        "idempotent",
+        "duplicate",
+        "deduplication",
+        "at least once",
+        "delivery guarantee",
+      ]
+    modules: ["exactly-once", "event-envelope"]
+    answer: >
+      Exactly-once semantics (EOS) ensure each change event is applied exactly
+      one time at the destination. This requires idempotent writes, transactional
+      coordination, or deduplication. Most CDC pipelines use at-least-once
+      delivery with idempotent sinks as a practical alternative to full EOS.
+    links:
+      - label: Exactly-Once Semantics
+        url: /exactly-once/
+        anchor: "#alo-vs-eos"
+        preview: Visual walkthrough of ALO vs EOS plus transactional outbox.
+      - label: Event Envelope and Delivery
+        url: /event-envelope/
+        anchor: "#delivery-guarantees"
+        preview: Keys, payloads, tombstones, and ordering guarantees.
+
+  - id: multi_tenancy
+    triggers:
+      [
+        "multi-tenant",
+        "multi-tenancy",
+        "isolation",
+        "shared connector",
+        "tenant",
+      ]
+    modules: ["multi-tenancy"]
+    answer: >
+      Multi-tenancy in CDC means sharing infrastructure across multiple
+      customers or datasets. Key decisions include connector-per-tenant vs
+      shared connectors, topic naming strategies, and isolation levels.
+      Consider egress costs when choosing your topology.
+    links:
+      - label: Multi-Tenancy Patterns
+        url: /multi-tenancy/
+        anchor: "#isolation-patterns"
+        preview: Isolation patterns, topic math, and egress estimates.
+
+  - id: partitioning
+    triggers:
+      [
+        "partition",
+        "partitioning",
+        "partition key",
+        "skew",
+        "ordering",
+        "rebalance",
+      ]
+    modules: ["partitioning"]
+    answer: >
+      Partition keys determine how events are distributed across topic
+      partitions. Choose keys that maintain per-entity ordering while avoiding
+      hot partitions. Common strategies include primary key, tenant ID, or
+      composite keys. Monitor for skew and plan for late-arriving events.
+    links:
+      - label: Partitioning
+        url: /partitioning/
+        anchor: "#key-strategies"
+        preview: Partition keys, skew detection, and audit loops.
+
+  - id: connector_setup
+    triggers:
+      [
+        "setup",
+        "install",
+        "configure",
+        "debezium",
+        "connector",
+        "kafka connect",
+        "quickstart",
+        "getting started",
+      ]
+    modules: ["quickstarts", "lab-kafka-debezium"]
+    answer: >
+      To get started with CDC, pick a source database and follow a quickstart
+      guide (10-20 minutes). For a full hands-on lab with Kafka, Debezium,
+      Postgres, and sink connectors, try the comprehensive lab module.
+    links:
+      - label: Quickstarts
+        url: /quickstarts/
+        preview: Pick your database and follow a guided setup.
+      - label: Hands-On Lab
+        url: /lab-kafka-debezium/
+        preview: Full lab with Kafka, Connect, Postgres source and sink.
+
+  - id: use_cases
+    triggers:
+      [
+        "use case",
+        "real-time analytics",
+        "cache invalidation",
+        "audit log",
+        "event sourcing",
+        "replication",
+        "why use cdc",
+      ]
+    modules: ["use-cases", "case-study"]
+    answer: >
+      CDC enables many real-world patterns: real-time analytics dashboards,
+      cache invalidation, audit logging, cross-database replication, event
+      sourcing, and search index sync. Each use case has specific trade-offs
+      around latency, consistency, and operational complexity.
+    links:
+      - label: Real-World Use Cases
+        url: /use-cases/
+        preview: Explore practical CDC applications with examples.
+      - label: Case Study ShopStream
+        url: /case-study/
+        anchor: "#architecture"
+        preview: Full e-commerce CDC implementation walkthrough.
+
+  - id: troubleshooting
+    triggers:
+      [
+        "error",
+        "troubleshoot",
+        "fix",
+        "problem",
+        "debug",
+        "not working",
+        "issue",
+        "failed",
+      ]
+    modules: ["troubleshooting", "reconciliation-surgery", "ops-offsets"]
+    answer: >
+      Common CDC issues include connector failures, offset corruption, schema
+      drift, and data inconsistencies between source and sink. Start by checking
+      connector status, reviewing logs, and verifying offset positions. For data
+      mismatches, use reconciliation queries to identify and fix gaps.
+    links:
+      - label: Troubleshooting Guide
+        url: /troubleshooting/
+        preview: Diagnose and fix common CDC pipeline issues.
+      - label: Reconciliation and Surgery
+        url: /reconciliation-surgery/
+        anchor: "#sql-diff"
+        preview: SQL diff patterns and checksum verification.
+
+  - id: materialization
+    triggers:
+      [
+        "upsert",
+        "merge",
+        "delete",
+        "sink",
+        "target table",
+        "materialize",
+        "apply changes",
+      ]
+    modules: ["materialization"]
+    answer: >
+      Materialization is the process of applying CDC events to a target system.
+      Use MERGE or UPSERT patterns for inserts and updates, handle deletes via
+      soft-delete flags or hard deletes, and consider compaction vs history
+      tables based on your query needs.
+    links:
+      - label: Materialization 101
+        url: /materialization/
+        anchor: "#merge-patterns"
+        preview: Practical MERGE patterns for upserts and deletes.
+
+  - id: observability
+    triggers:
+      ["monitor", "alert", "metrics", "dashboard", "golden signals", "observe"]
+    modules: ["observability"]
+    answer: >
+      The three golden signals for CDC observability are replication lag,
+      throughput (events per second), and error rate. Set up alerts for lag
+      exceeding your SLA, connector restart loops, and schema change events.
+      A minimal dashboard should show these three signals per connector.
+    links:
+      - label: Observability Basics
+        url: /observability/
+        anchor: "#golden-signals"
+        preview: Golden signals, alerting rules, and dashboard setup.
