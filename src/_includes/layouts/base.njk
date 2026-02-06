@@ -30,6 +30,7 @@
     {% if head_extra %}{{ head_extra | safe }}{% endif %}
     <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
     <link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}">
+    {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/cloud-progress.js, src/assets/js/auth-ui.js, src/assets/js/search.js' | vitePreloads | safe }}
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -249,11 +250,11 @@
       window.CDC_MODULES = {{ series | dump | safe }};
     </script>
     <script type="module" src="{{ '/scripts/dashboard.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/app.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/progress-ui.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/auth-ui.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/cloud-progress.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/video-embed.js' | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/app.js' | viteAsset | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/progress-ui.js' | viteAsset | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/auth-ui.js' | viteAsset | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/cloud-progress.js' | viteAsset | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/video-embed.js' | viteAsset | url }}" defer></script>
     {% if scripts %}
       {% for script in scripts %}
         <script type="module" src="{{ script | url }}" defer></script>
@@ -338,7 +339,7 @@
     <button id="askBtn" type="button" aria-label="Ask the Playground">💬</button>
     <div id="askPanel" hidden></div>
     <script type="module" src="{{ '/js/assistant.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/search.js' | url }}" defer></script>
-    <script type="module" src="{{ '/assets/js/web-vitals-dashboard.js' | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/search.js' | viteAsset | url }}" defer></script>
+    <script type="module" src="{{ 'src/assets/js/web-vitals-dashboard.js' | viteAsset | url }}" defer></script>
   </body>
 </html>
