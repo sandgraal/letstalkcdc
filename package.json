@@ -23,10 +23,14 @@
     "agent:content-review": "node ai/scripts/content-review.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
   },
   "devDependencies": {
     "@11ty/eleventy": "^3.1.2",
+    "@axe-core/playwright": "^4.11.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.207.0",
     "@opentelemetry/instrumentation-document-load": "^0.53.0",
@@ -36,6 +40,7 @@
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
+    "@playwright/test": "^1.58.1",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.20",
     "cssnano": "^7.1.2",
@@ -48,6 +53,7 @@
     "postcss-import": "^16.1.1",
     "postcss-prefix-selector": "^2.1.1",
     "rimraf": "^5.0.5",
+    "serve": "^14.2.5",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
   }
