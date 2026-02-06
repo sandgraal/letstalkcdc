@@ -1,8 +1,8 @@
 /**
- * Unit tests for the Search module
+ * Unit tests for the Search module (Fuse.js fuzzy search)
  * @module tests/unit/modules/search.test
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock path-prefix before importing search
 vi.mock("../../../src/assets/js/utils/path-prefix.js", () => ({
@@ -11,83 +11,111 @@ vi.mock("../../../src/assets/js/utils/path-prefix.js", () => ({
 }));
 
 // Must import after mock
-const { initSearch } = await import("../../../src/assets/js/modules/search.js");
+const { initSearch } = await import(
+  "../../../src/assets/js/modules/search.js"
+);
 
 describe("search module", () => {
-  const mockTracer = {
-    trackSearch: vi.fn(),
-  };
+  const mockTracer = { trackSearch: vi.fn() };
 
   const mockIndex = [
     {
       title: "Introduction to CDC",
       path: "/intro/",
-      text: "Change Data Capture (CDC) is a technique for tracking changes",
+      description: "Learn the fundamentals of Change Data Capture",
+      tags: ["core-concept", "beginner"],
+      headings: ["What is CDC", "Why CDC Matters"],
+      text: "Change Data Capture (CDC) is a technique for tracking changes in database tables",
     },
     {
       title: "Snapshotting Guide",
       path: "/snapshotting/",
-      text: "Snapshotting captures the initial state of your database",
+      description: "How to capture initial database state with snapshots",
+      tags: ["advanced"],
+      headings: ["Initial Snapshot", "Incremental Snapshots"],
+      text: "Snapshotting captures the initial state of your database before streaming begins",
     },
     {
       title: "Debezium Setup",
       path: "/quickstarts/",
-      text: "Debezium is an open-source CDC platform built on Kafka Connect",
+      description: "Get started with the Debezium CDC platform quickly",
+      tags: ["quickstart", "debezium"],
+      headings: ["Installing Debezium", "Kafka Connect Configuration"],
+      text: "Debezium is an open-source CDC platform built on Kafka Connect for streaming changes",
     },
   ];
 
+  /** Initialize search and wait for Fuse.js index to be ready */
+  const setupSearch = async () => {
+    initSearch(mockTracer);
+    await vi.advanceTimersByTimeAsync(0);
+  };
+
+  /** Type a query and wait for the debounce to fire */
+  const typeSearch = async (query) => {
+    const input = document.querySelector("#searchInput");
+    input.value = query;
+    input.dispatchEvent(new Event("input"));
+    await vi.advanceTimersByTimeAsync(200);
+    return input;
+  };
+
   beforeEach(() => {
+    vi.useFakeTimers();
     document.body.innerHTML = "";
     vi.clearAllMocks();
 
-    // Mock fetch for search index
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockIndex),
     });
   });
 
-  it("creates a search overlay element in the DOM", () => {
-    initSearch(mockTracer);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // ── Overlay structure ─────────────────────────────────────────────
+
+  it("creates a search overlay element in the DOM", async () => {
+    await setupSearch();
     const overlay = document.querySelector(".search-overlay");
     expect(overlay).not.toBeNull();
     expect(overlay.classList.contains("hidden")).toBe(true);
   });
 
-  it("contains required UI elements", () => {
-    initSearch(mockTracer);
+  it("contains required UI elements", async () => {
+    await setupSearch();
     expect(document.querySelector("#searchInput")).not.toBeNull();
     expect(document.querySelector("#searchResults")).not.toBeNull();
     expect(document.querySelector(".close-search")).not.toBeNull();
     expect(document.querySelector("#searchTitle")).not.toBeNull();
+    expect(document.querySelector(".search-meta")).not.toBeNull();
+    expect(document.querySelector(".search-hint")).not.toBeNull();
   });
 
-  it("fetches search index with correct URL", () => {
-    initSearch(mockTracer);
+  it("fetches search index with correct URL", async () => {
+    await setupSearch();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "/letstalkcdc/search-index.json",
       { cache: "force-cache" },
     );
   });
 
-  it("opens overlay on / key press", async () => {
-    initSearch(mockTracer);
-    // Wait for fetch to complete
-    await vi.waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
+  // ── Open / close ──────────────────────────────────────────────────
 
+  it("opens overlay on / key press", async () => {
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
-
-    const overlay = document.querySelector(".search-overlay");
-    expect(overlay.classList.contains("hidden")).toBe(false);
+    expect(
+      document.querySelector(".search-overlay").classList.contains("hidden"),
+    ).toBe(false);
   });
 
-  it("does not open on / when meta key is held", () => {
-    initSearch(mockTracer);
-
+  it("does not open on / when meta key is held", async () => {
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", {
         key: "/",
@@ -95,15 +123,25 @@ describe("search module", () => {
         bubbles: true,
       }),
     );
-
-    const overlay = document.querySelector(".search-overlay");
-    expect(overlay.classList.contains("hidden")).toBe(true);
+    expect(
+      document.querySelector(".search-overlay").classList.contains("hidden"),
+    ).toBe(true);
   });
 
-  it("closes overlay on Escape", () => {
-    initSearch(mockTracer);
+  it("does not open on / when focus is in an input field", async () => {
+    document.body.innerHTML = '<input type="text" id="otherInput">';
+    await setupSearch();
+    const otherInput = document.querySelector("#otherInput");
+    otherInput.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    expect(
+      document.querySelector(".search-overlay").classList.contains("hidden"),
+    ).toBe(true);
+  });
 
-    // Open first
+  it("closes overlay on Escape", async () => {
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
@@ -111,7 +149,6 @@ describe("search module", () => {
       document.querySelector(".search-overlay").classList.contains("hidden"),
     ).toBe(false);
 
-    // Close
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
@@ -120,88 +157,202 @@ describe("search module", () => {
     ).toBe(true);
   });
 
-  it("closes overlay on close button click", () => {
-    initSearch(mockTracer);
-
+  it("closes overlay on close button click", async () => {
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
-
     document.querySelector(".close-search").click();
     expect(
       document.querySelector(".search-overlay").classList.contains("hidden"),
     ).toBe(true);
   });
 
+  // ── Fuzzy search + rendering ──────────────────────────────────────
+
   it("renders results matching search query", async () => {
-    initSearch(mockTracer);
-    await vi.waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-    // Wait for fetch promise chain
-    await new Promise((r) => setTimeout(r, 0));
-
-    // Open and type
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
-
-    const input = document.querySelector("#searchInput");
-    input.value = "debezium";
-    input.dispatchEvent(new Event("input"));
-
-    const results = document.querySelector("#searchResults");
-    expect(results.innerHTML).toContain("Debezium Setup");
-  });
-
-  it("scores title matches higher than text matches", async () => {
-    initSearch(mockTracer);
-    await new Promise((r) => setTimeout(r, 0));
-
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
-    );
-
-    const input = document.querySelector("#searchInput");
-    input.value = "snapshot";
-    input.dispatchEvent(new Event("input"));
+    await typeSearch("debezium");
 
     const firstResult = document.querySelector("#searchResults .result");
     expect(firstResult).not.toBeNull();
-    expect(firstResult.querySelector("strong").textContent).toBe(
-      "Snapshotting Guide",
+    expect(firstResult.querySelector("strong").textContent).toContain(
+      "Debezium",
     );
+  });
+
+  it("ranks title matches higher than text-only matches", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("snapshot");
+
+    const firstResult = document.querySelector("#searchResults .result");
+    expect(firstResult).not.toBeNull();
+    expect(firstResult.querySelector("strong").textContent).toContain(
+      "Snapshot",
+    );
+  });
+
+  it("supports fuzzy matching for approximate queries", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    // "debezum" is a typo for "debezium" — fuzzy match should still find it
+    await typeSearch("debezum");
+
+    const results = document.querySelectorAll("#searchResults .result");
+    expect(results.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows no-results message for unmatched query", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("zzzzzznotexist");
+
+    const empty = document.querySelector(".search-empty");
+    expect(empty).not.toBeNull();
+    expect(empty.textContent).toContain("No results found");
+  });
+
+  it("displays match count in search meta", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("CDC");
+
+    const meta = document.querySelector(".search-meta");
+    expect(meta.textContent).toMatch(/\d+ results? found/);
+  });
+
+  it("highlights matches with mark tags", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("debezium");
+
+    const marks = document.querySelectorAll("#searchResults mark");
+    expect(marks.length).toBeGreaterThan(0);
+  });
+
+  it("renders tags for results that have them", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("debezium");
+
+    const tags = document.querySelectorAll("#searchResults .result-tag");
+    expect(tags.length).toBeGreaterThan(0);
   });
 
   it("clears results when query is empty", async () => {
-    initSearch(mockTracer);
-    await new Promise((r) => setTimeout(r, 0));
-
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
-
-    const input = document.querySelector("#searchInput");
-    input.value = "CDC";
-    input.dispatchEvent(new Event("input"));
+    await typeSearch("CDC");
     expect(document.querySelector("#searchResults").innerHTML).not.toBe("");
 
-    input.value = "";
-    input.dispatchEvent(new Event("input"));
+    await typeSearch("");
     expect(document.querySelector("#searchResults").innerHTML).toBe("");
   });
 
-  it("tracks search via tracer", async () => {
-    initSearch(mockTracer);
-    await new Promise((r) => setTimeout(r, 0));
+  // ── Keyboard navigation ───────────────────────────────────────────
 
+  it("ArrowDown selects the first result", async () => {
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
+    await typeSearch("CDC");
 
     const input = document.querySelector("#searchInput");
-    input.value = "kafka";
-    input.dispatchEvent(new Event("input"));
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    );
+
+    const firstResult = document.querySelector("#searchResults .result");
+    expect(firstResult.classList.contains("is-active")).toBe(true);
+    expect(firstResult.getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("ArrowDown wraps to first result after last", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("CDC");
+
+    const input = document.querySelector("#searchInput");
+    const count = document.querySelectorAll("#searchResults .result").length;
+    for (let i = 0; i <= count; i++) {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    }
+
+    const firstResult = document.querySelector("#searchResults .result");
+    expect(firstResult.classList.contains("is-active")).toBe(true);
+  });
+
+  it("ArrowUp selects the last result when nothing selected", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("CDC");
+
+    const input = document.querySelector("#searchInput");
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
+    );
+
+    const allResults = document.querySelectorAll("#searchResults .result");
+    const lastResult = allResults[allResults.length - 1];
+    expect(lastResult.classList.contains("is-active")).toBe(true);
+  });
+
+  it("Enter navigates to the active result", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("debezium");
+
+    const input = document.querySelector("#searchInput");
+    const clickSpy = vi.fn();
+    document
+      .querySelector("#searchResults .result")
+      .addEventListener("click", clickSpy);
+
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    );
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+
+    expect(clickSpy).toHaveBeenCalled();
+  });
+
+  // ── Tracking ──────────────────────────────────────────────────────
+
+  it("tracks search via tracer", async () => {
+    await setupSearch();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "/", bubbles: true }),
+    );
+    await typeSearch("kafka");
 
     expect(mockTracer.trackSearch).toHaveBeenCalledWith(
       "kafka",
@@ -209,26 +360,27 @@ describe("search module", () => {
     );
   });
 
+  // ── Error handling ────────────────────────────────────────────────
+
   it("handles fetch failure gracefully", async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
-    initSearch(mockTracer);
-    await new Promise((r) => setTimeout(r, 0));
-
+    await setupSearch();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "/", bubbles: true }),
     );
+    await typeSearch("anything");
 
-    const input = document.querySelector("#searchInput");
-    input.value = "anything";
-    input.dispatchEvent(new Event("input"));
-
-    // Should not throw, just show no results
-    expect(document.querySelector("#searchResults").innerHTML).toBe("");
+    // fuse is null, so should show loading indicator
+    expect(document.querySelector("#searchResults").textContent).toContain(
+      "Search index loading",
+    );
   });
 
-  it("adds search button to .nav-utilities if present", () => {
-    document.body.innerHTML = `<div class="nav-utilities"></div>`;
-    initSearch(mockTracer);
+  // ── Search button ─────────────────────────────────────────────────
+
+  it("adds search button to .nav-utilities if present", async () => {
+    document.body.innerHTML = '<div class="nav-utilities"></div>';
+    await setupSearch();
 
     const searchBtn = document.querySelector(".search-btn");
     expect(searchBtn).not.toBeNull();
