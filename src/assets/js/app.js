@@ -19,6 +19,8 @@ import { initQuickNav } from "./modules/quick-nav.js";
 import { initDepthToggle } from "./modules/depth-toggle.js";
 import { initScorecards } from "./modules/scorecard.js";
 import { showToast } from "./modules/toast.js";
+import { initInteractiveDiagrams } from "./modules/interactive-diagrams.js";
+import { initTimelines } from "./modules/timeline.js";
 
 // --- Initialize OpenTelemetry tracing ---
 
@@ -77,4 +79,6 @@ onReady(() => {
   initSearch(educationTracer);
   initQuickNav();
   initScorecards(educationTracer);
+  initTimelines(educationTracer);
+  initInteractiveDiagrams(educationTracer);
 });

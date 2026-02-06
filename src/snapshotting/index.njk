@@ -26,6 +26,7 @@ scripts:
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quiz.njk" as quizMacro %}
+{% import "components/timeline.njk" as timelineMacro %}
 
 {{ ui.hero(heroConfig) | safe }}
 
@@ -234,6 +235,8 @@ scripts:
             </ul>
           </article>
         </div>
+
+        {{ timelineMacro.timeline(timelineConfig) | safe }}
 
         <section id="perdb" aria-labelledby="perdb-title" class="perdb-recipes">
           <h2 id="perdb-title">Run it on your database</h2>

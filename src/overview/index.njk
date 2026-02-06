@@ -39,7 +39,30 @@ head_extra: |
   </figure>
 </section>
 
-<section class="series-card-grid">
+<section class="diagram-section">
+  <h2 class="diagram-section__title">How Change Events Flow</h2>
+  <p>Click any node to highlight its connections. Hover for details.</p>
+  <div class="architecture-diagram" role="img"
+       aria-label="CDC data flow: database log is read by a connector, published to a streaming platform, and consumed by downstream sinks"
+       data-tooltips='{"SRC":"Production database (PostgreSQL, MySQL, Oracle, SQL Server)","LOG":"Transaction log (WAL, binlog, redo log) captures every committed change","CONN":"CDC connector (Debezium) reads the log and emits structured change events","STREAM":"Streaming platform (Kafka, Pulsar, Kinesis) durably stores ordered events","SINK":"Downstream consumer applies events to a target (data warehouse, cache, search index)","SMT":"Single Message Transforms reshape events in-flight (rename fields, route, filter)"}'>
+    <pre class="mermaid">
+graph LR
+    SRC[Source Database] -->|Transaction Log| LOG[WAL / Binlog / Redo]
+    LOG -->|Read| CONN[CDC Connector]
+    CONN -->|Emit Events| SMT[Transforms]
+    SMT -->|Publish| STREAM[Streaming Platform]
+    STREAM -->|Consume| SINK[Target System]
+
+    style SRC fill:#e1f5ff
+    style CONN fill:#fff3cd
+    style STREAM fill:#d4edda
+    style SINK fill:#f8d7da
+    </pre>
+  </div>
+  <p class="diagram-section__caption">
+    Interactive: click a node to highlight its path through the pipeline.
+  </p>
+</section>
   {% for card in seriesCards %}
     {% set targetHref = card.href %}
     {% if not card.draft and (not targetHref or collections.all | pageExists(targetHref)) %}

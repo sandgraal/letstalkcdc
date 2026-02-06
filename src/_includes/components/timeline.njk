@@ -1,0 +1,74 @@
+{#
+  Timeline Component
+  Renders a vertical timeline of events, each expandable on click.
+
+  Usage:
+    {% import "components/timeline.njk" as timelineMacro %}
+    {{ timelineMacro.timeline(timelineConfig) | safe }}
+
+  timelineConfig:
+    id:     string  — Unique ID for the timeline
+    title:  string  — Section heading (optional)
+    events: array   — Array of event objects:
+      icon:    string — Emoji or short text for the marker
+      title:   string — Event heading
+      tag:     string — Category label (optional)
+      summary: string — Brief description (always visible)
+      detail:  string — Expanded content (shown on click, supports HTML)
+#}
+
+{% macro timeline(config) -%}
+  {% set timelineId = config.id | default('timeline-' ~ (config.title | slugify)) %}
+  <section class="timeline-section" aria-labelledby="{{ timelineId }}-title">
+    {% if config.title %}
+      <h3 id="{{ timelineId }}-title" class="timeline-section-title">{{ config.title }}</h3>
+    {% endif %}
+
+    <noscript>
+      <style>.timeline { padding-left: 2.5rem; } .timeline-detail { display: block !important; }</style>
+    </noscript>
+
+    <div class="timeline" id="{{ timelineId }}" role="list" aria-label="{{ config.title | default('Timeline') }}">
+      {% for event in config.events %}
+        <div
+          class="timeline-event"
+          role="listitem"
+          aria-expanded="false"
+        >
+          <button
+            type="button"
+            class="timeline-marker"
+            aria-pressed="false"
+            aria-label="Event {{ loop.index }}: {{ event.title }}"
+            tabindex="0"
+          >
+            {{ event.icon | default(loop.index) }}
+          </button>
+
+          <div class="timeline-content">
+            <h4 class="timeline-title">{{ event.title }}</h4>
+
+            {% if event.tag or event.meta %}
+              <div class="timeline-meta">
+                {% if event.tag %}
+                  <span class="timeline-tag">{{ event.tag }}</span>
+                {% endif %}
+                {% if event.meta %}
+                  <span>{{ event.meta }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+
+            <p class="timeline-summary">{{ event.summary }}</p>
+
+            {% if event.detail %}
+              <div class="timeline-detail" hidden>
+                {{ event.detail | safe }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{%- endmacro %}
