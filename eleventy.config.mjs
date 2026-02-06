@@ -82,6 +82,25 @@ const escapeAttributeValue = (value) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
+/**
+ * Parse a JSON array that may span multiple lines in the YAML source.
+ * Handles trailing commas that YAML formatters may insert.
+ */
+function parseJsonArray(initialStr, lines, currentIndex, setIndex) {
+  if (initialStr && initialStr.includes("]")) {
+    return JSON.parse(initialStr.replace(/'/g, '"').replace(/,\s*]/g, "]"));
+  }
+  let acc = initialStr;
+  let idx = currentIndex;
+  while (++idx < lines.length) {
+    const next = lines[idx].trim();
+    acc += " " + next;
+    if (next.includes("]")) break;
+  }
+  setIndex(idx);
+  return JSON.parse(acc.replace(/'/g, '"').replace(/,\s*]/g, "]"));
+}
+
 function parseAssistantYaml(content) {
   const lines = content.split(/\r?\n/);
   const intents = [];
@@ -187,13 +206,13 @@ function parseAssistantYaml(content) {
 
     if (trimmed.startsWith("triggers:")) {
       const listStr = trimmed.slice("triggers:".length).trim();
-      current.triggers = JSON.parse(listStr.replace(/'/g, '"'));
+      current.triggers = parseJsonArray(listStr, lines, i, (newI) => { i = newI; });
       continue;
     }
 
     if (trimmed.startsWith("modules:")) {
       const listStr = trimmed.slice("modules:".length).trim();
-      current.modules = JSON.parse(listStr.replace(/'/g, '"'));
+      current.modules = parseJsonArray(listStr, lines, i, (newI) => { i = newI; });
       continue;
     }
 
