@@ -17,3 +17,6 @@ ai/reviews/*.md
 .env.local
 .env.*.local
 coverage/
+
+playwright-report/
+test-results/
