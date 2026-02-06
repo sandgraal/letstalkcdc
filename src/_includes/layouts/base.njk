@@ -336,8 +336,8 @@
       </div>
     </footer>
     <link rel="stylesheet" href="{{ '/css/assistant.css' | url }}">
-    <button id="askBtn" type="button" aria-label="Ask the Playground">💬</button>
-    <div id="askPanel" hidden></div>
+    <button id="askBtn" type="button" aria-label="Ask the CDC Assistant" aria-expanded="false" aria-controls="askPanel">💬</button>
+    <div id="askPanel" hidden role="complementary" aria-label="CDC Assistant chat"></div>
     <script type="module" src="{{ '/js/assistant.js' | url }}" defer></script>
     <script type="module" src="{{ 'src/assets/js/search.js' | viteAsset | url }}" defer></script>
     <script type="module" src="{{ 'src/assets/js/web-vitals-dashboard.js' | viteAsset | url }}" defer></script>
