@@ -356,6 +356,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderHistory();
   });
 
+  // ── Citation click tracking ──
+  messagesEl.addEventListener("click", (e) => {
+    const citationLink = e.target.closest(".assistant-links a");
+    const suggestionChip = e.target.closest(".assistant-suggestion-chip");
+
+    if (
+      window._educationTracer &&
+      typeof window._educationTracer.trackInteraction === "function"
+    ) {
+      if (citationLink) {
+        window._educationTracer.trackInteraction("citation-click", {
+          href: citationLink.getAttribute("href") || "",
+          label: citationLink.textContent || "",
+          module: currentModule,
+        });
+      } else if (suggestionChip) {
+        window._educationTracer.trackInteraction("suggestion-click", {
+          href: suggestionChip.getAttribute("href") || "",
+          title: suggestionChip.textContent || "",
+          module: currentModule,
+        });
+      }
+    }
+  });
+
   // ── Feedback delegation ──
   messagesEl.addEventListener("click", async (e) => {
     const btn = e.target.closest(".assistant-fb-btn");
