@@ -208,7 +208,7 @@ export class EducationTracer {
             "page.first_byte_ms": firstByte,
             "page.title": document.title,
           },
-          loadTime
+          loadTime,
         );
       }, 0);
     });
@@ -233,7 +233,7 @@ export class EducationTracer {
           type: "largest-contentful-paint",
           buffered: true,
         });
-      } catch (e) {
+      } catch (_e) {
         console.debug("LCP observation not supported");
       }
 
@@ -249,7 +249,7 @@ export class EducationTracer {
           });
         });
         fidObserver.observe({ type: "first-input", buffered: true });
-      } catch (e) {
+      } catch (_e) {
         console.debug("FID observation not supported");
       }
 
@@ -273,12 +273,12 @@ export class EducationTracer {
               clsValue < 0.1
                 ? "good"
                 : clsValue < 0.25
-                ? "needs-improvement"
-                : "poor";
+                  ? "needs-improvement"
+                  : "poor";
             this.trackWebVital("CLS", clsValue, rating);
           }
         });
-      } catch (e) {
+      } catch (_e) {
         console.debug("CLS observation not supported");
       }
     }

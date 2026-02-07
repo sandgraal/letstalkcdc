@@ -1,30 +1,30 @@
-const globalScope = typeof window !== 'undefined' ? window : globalThis;
+const globalScope = typeof window !== "undefined" ? window : globalThis;
 const doc = globalScope.document ?? null;
 
-const LOG_STORAGE_KEY = 'cdcAgentLogs';
-const DOC_STORAGE_KEY = 'lastProgressDocs';
+const LOG_STORAGE_KEY = "cdcAgentLogs";
+const DOC_STORAGE_KEY = "lastProgressDocs";
 const MAX_LOG_ENTRIES = 200;
 
 const FILTERS = [
   {
-    id: 'all',
-    label: 'all',
+    id: "all",
+    label: "all",
     predicate: () => true,
   },
   {
-    id: 'errors',
-    label: 'errors',
-    predicate: (entry) => entry.type === 'error' || entry.type === 'warn',
+    id: "errors",
+    label: "errors",
+    predicate: (entry) => entry.type === "error" || entry.type === "warn",
   },
   {
-    id: 'sync',
-    label: 'sync',
-    predicate: (entry) => entry.source === 'SYNC',
+    id: "sync",
+    label: "sync",
+    predicate: (entry) => entry.source === "SYNC",
   },
   {
-    id: 'agent',
-    label: 'agent',
-    predicate: (entry) => entry.source === 'CDC_AGENT',
+    id: "agent",
+    label: "agent",
+    predicate: (entry) => entry.source === "CDC_AGENT",
   },
 ];
 
@@ -35,8 +35,8 @@ let chartInstances = [];
 const hasLocalStorage = (() => {
   try {
     if (!globalScope.localStorage) return false;
-    const key = '__cdc_dashboard__';
-    globalScope.localStorage.setItem(key, '1');
+    const key = "__cdc_dashboard__";
+    globalScope.localStorage.setItem(key, "1");
     globalScope.localStorage.removeItem(key);
     return true;
   } catch (_) {
@@ -81,12 +81,12 @@ const safeJsonParse = (value, fallback) => {
 };
 
 const escapeHtml = (value) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const readStoredDocs = () => {
   const docs = safeJsonParse(safeStorage.get(DOC_STORAGE_KEY), []);
@@ -100,10 +100,14 @@ const readLogs = () => {
   }
   return logs
     .map((entry) => ({
-      message: String(entry?.message ?? ''),
-      type: typeof entry?.type === 'string' ? entry.type.toLowerCase() : 'info',
-      source: typeof entry?.source === 'string' ? entry.source.toUpperCase() : 'CDC_AGENT',
-      timestamp: typeof entry?.timestamp === 'number' ? entry.timestamp : Date.now(),
+      message: String(entry?.message ?? ""),
+      type: typeof entry?.type === "string" ? entry.type.toLowerCase() : "info",
+      source:
+        typeof entry?.source === "string"
+          ? entry.source.toUpperCase()
+          : "CDC_AGENT",
+      timestamp:
+        typeof entry?.timestamp === "number" ? entry.timestamp : Date.now(),
     }))
     .sort((a, b) => a.timestamp - b.timestamp);
 };
@@ -112,34 +116,35 @@ const writeLogs = (logs) => {
   safeStorage.set(LOG_STORAGE_KEY, JSON.stringify(logs));
 };
 
-const getFilter = (id) => FILTERS.find((filter) => filter.id === id) ?? FILTERS[0];
+const getFilter = (id) =>
+  FILTERS.find((filter) => filter.id === id) ?? FILTERS[0];
 
 const updateStatsCounter = (logs = readLogs()) => {
-  const counter = doc?.getElementById('statsCounter');
+  const counter = doc?.getElementById("statsCounter");
   if (!counter) return;
   const count = logs.length;
   counter.textContent = String(count);
-  counter.classList.add('updated');
-  globalScope.setTimeout(() => counter.classList.remove('updated'), 300);
+  counter.classList.add("updated");
+  globalScope.setTimeout(() => counter.classList.remove("updated"), 300);
 };
 
 const applyLogFilter = (filterId) => {
   const filter = getFilter(filterId);
-  const lines = doc?.querySelectorAll('#agentConsole .agent-line');
+  const lines = doc?.querySelectorAll("#agentConsole .agent-line");
   if (!lines) return;
   lines.forEach((line) => {
-    const source = (line.dataset.source ?? '').toUpperCase();
-    const type = (line.dataset.type ?? '').toLowerCase();
+    const source = (line.dataset.source ?? "").toUpperCase();
+    const type = (line.dataset.type ?? "").toLowerCase();
     const entry = { source, type };
     const visible = filter.predicate(entry);
-    line.style.display = visible ? '' : 'none';
+    line.style.display = visible ? "" : "none";
   });
 };
 
 const renderLogEntry = (entry) => {
-  const container = doc?.querySelector('#agentConsole .agent-scroll');
+  const container = doc?.querySelector("#agentConsole .agent-scroll");
   if (!container) return;
-  const row = doc.createElement('div');
+  const row = doc.createElement("div");
   row.className = `agent-line ${entry.type}`;
   row.dataset.source = entry.source;
   row.dataset.type = entry.type;
@@ -154,20 +159,20 @@ const renderLogEntry = (entry) => {
 };
 
 const restoreLogConsole = () => {
-  const container = doc?.querySelector('#agentConsole .agent-scroll');
+  const container = doc?.querySelector("#agentConsole .agent-scroll");
   if (!container) return;
-  container.innerHTML = '';
+  container.innerHTML = "";
   const logs = readLogs();
   logs.forEach((entry) => renderLogEntry(entry));
   applyLogFilter(FILTERS[currentFilterIndex].id);
   updateStatsCounter(logs);
 };
 
-const appendAgentLog = (message, type = 'info', source = 'CDC_AGENT') => {
+const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
   const normalized = {
-    message: String(message ?? ''),
-    type: typeof type === 'string' ? type.toLowerCase() : 'info',
-    source: typeof source === 'string' ? source.toUpperCase() : 'CDC_AGENT',
+    message: String(message ?? ""),
+    type: typeof type === "string" ? type.toLowerCase() : "info",
+    source: typeof source === "string" ? source.toUpperCase() : "CDC_AGENT",
     timestamp: Date.now(),
   };
 
@@ -182,26 +187,25 @@ const appendAgentLog = (message, type = 'info', source = 'CDC_AGENT') => {
   applyLogFilter(FILTERS[currentFilterIndex].id);
   updateStatsCounter(logs);
 
-  const modal = doc?.getElementById('sessionModal');
-  if (modal && !modal.classList.contains('hidden')) {
+  const modal = doc?.getElementById("sessionModal");
+  if (modal && !modal.classList.contains("hidden")) {
     renderSessionDetails();
   }
 };
 
 const loadChartModule = async () => {
   if (chartModulePromise) return chartModulePromise;
-  chartModulePromise = import(
-    'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.esm.js'
-  )
-    .then((mod) => {
-      const { Chart, registerables } = mod;
-      Chart.register(...registerables);
-      return mod;
-    })
-    .catch((error) => {
-      console.warn('CDC Dashboard: Failed to load Chart.js', error);
-      return null;
-    });
+  chartModulePromise =
+    import("https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.esm.js")
+      .then((mod) => {
+        const { Chart, registerables } = mod;
+        Chart.register(...registerables);
+        return mod;
+      })
+      .catch((error) => {
+        console.warn("CDC Dashboard: Failed to load Chart.js", error);
+        return null;
+      });
   return chartModulePromise;
 };
 
@@ -218,13 +222,13 @@ const destroyCharts = () => {
 
 const getThemeColors = () => {
   if (!doc?.body) {
-    return { accent: '#00ff88', text: '#ffffff', grid: '#0a2a2a' };
+    return { accent: "#00ff88", text: "#ffffff", grid: "#0a2a2a" };
   }
   const styles = globalScope.getComputedStyle(doc.body);
   return {
-    accent: styles.getPropertyValue('--accent').trim() || '#00ff88',
-    text: styles.getPropertyValue('--text').trim() || '#ffffff',
-    grid: styles.getPropertyValue('--grid').trim() || '#0a2a2a',
+    accent: styles.getPropertyValue("--accent").trim() || "#00ff88",
+    text: styles.getPropertyValue("--text").trim() || "#ffffff",
+    grid: styles.getPropertyValue("--grid").trim() || "#0a2a2a",
   };
 };
 
@@ -236,30 +240,39 @@ const computeModuleSummaries = (modules, docs) => {
       100,
       Math.max(
         0,
-        typeof record?.percent === 'number'
+        typeof record?.percent === "number"
           ? record.percent
-          : record?.status === 'completed'
-          ? 100
-          : record?.status === 'in-progress'
-          ? 50
-          : 0,
+          : record?.status === "completed"
+            ? 100
+            : record?.status === "in-progress"
+              ? 50
+              : 0,
       ),
     );
     return {
       module,
       percent,
       status:
-        record?.status ?? (percent >= 99 ? 'completed' : percent > 0 ? 'in-progress' : 'not-started'),
+        record?.status ??
+        (percent >= 99
+          ? "completed"
+          : percent > 0
+            ? "in-progress"
+            : "not-started"),
       updatedAt: record?.updatedAt ?? null,
     };
   });
 };
 
 const renderLegend = (summary, colors) => {
-  const legend = doc?.getElementById('progressLegend');
+  const legend = doc?.getElementById("progressLegend");
   if (!legend) return;
-  const completed = summary.filter((entry) => entry.status === 'completed').length;
-  const inProgress = summary.filter((entry) => entry.status === 'in-progress').length;
+  const completed = summary.filter(
+    (entry) => entry.status === "completed",
+  ).length;
+  const inProgress = summary.filter(
+    (entry) => entry.status === "in-progress",
+  ).length;
   const notStarted = summary.length - completed - inProgress;
   legend.innerHTML = `
     <div class="legend-item">
@@ -278,10 +291,12 @@ const renderLegend = (summary, colors) => {
 };
 
 const renderFooter = (summary) => {
-  const footer = doc?.getElementById('progressFooter');
+  const footer = doc?.getElementById("progressFooter");
   if (!footer) return;
 
-  const completed = summary.filter((entry) => entry.status === 'completed').length;
+  const completed = summary.filter(
+    (entry) => entry.status === "completed",
+  ).length;
   const total = summary.length;
   const lastUpdated = summary
     .map((entry) => (entry.updatedAt ? new Date(entry.updatedAt) : null))
@@ -291,15 +306,16 @@ const renderFooter = (summary) => {
   const previousCompleted = footer.dataset.lastCompleted;
   footer.dataset.lastCompleted = String(completed);
   const shouldPulse =
-    typeof previousCompleted !== 'undefined' && previousCompleted !== String(completed);
+    typeof previousCompleted !== "undefined" &&
+    previousCompleted !== String(completed);
 
   footer.innerHTML = `
-    <div class="footer-pill ${shouldPulse ? 'updated' : ''}">
+    <div class="footer-pill ${shouldPulse ? "updated" : ""}">
       Modules completed: ${completed}/${total}
     </div>
-    <div class="footer-pill ${shouldPulse ? 'updated' : ''}">
+    <div class="footer-pill ${shouldPulse ? "updated" : ""}">
       Last update: ${
-        lastUpdated ? lastUpdated.toLocaleString() : 'No synced progress yet'
+        lastUpdated ? lastUpdated.toLocaleString() : "No synced progress yet"
       }
     </div>
   `;
@@ -316,13 +332,15 @@ const renderCharts = (canvasPrefix, summary, colors, Chart) => {
   const overallPercent =
     percents.length === 0
       ? 0
-      : Math.round(percents.reduce((total, value) => total + value, 0) / percents.length);
+      : Math.round(
+          percents.reduce((total, value) => total + value, 0) / percents.length,
+        );
 
   chartInstances.push(
-    new Chart(overallCanvas.getContext('2d'), {
-      type: 'doughnut',
+    new Chart(overallCanvas.getContext("2d"), {
+      type: "doughnut",
       data: {
-        labels: ['Completed', 'Remaining'],
+        labels: ["Completed", "Remaining"],
         datasets: [
           {
             data: [overallPercent, Math.max(0, 100 - overallPercent)],
@@ -333,7 +351,7 @@ const renderCharts = (canvasPrefix, summary, colors, Chart) => {
       },
       options: {
         responsive: true,
-        cutout: '72%',
+        cutout: "72%",
         plugins: {
           legend: { display: false },
           title: {
@@ -345,7 +363,7 @@ const renderCharts = (canvasPrefix, summary, colors, Chart) => {
           tooltip: {
             callbacks: {
               label(context) {
-                const label = context.label ?? '';
+                const label = context.label ?? "";
                 const value = context.parsed;
                 return `${label}: ${value}%`;
               },
@@ -357,8 +375,8 @@ const renderCharts = (canvasPrefix, summary, colors, Chart) => {
   );
 
   chartInstances.push(
-    new Chart(modulesCanvas.getContext('2d'), {
-      type: 'bar',
+    new Chart(modulesCanvas.getContext("2d"), {
+      type: "bar",
       data: {
         labels: summary.map((entry) => entry.module.title ?? entry.module.id),
         datasets: [
@@ -370,13 +388,13 @@ const renderCharts = (canvasPrefix, summary, colors, Chart) => {
         ],
       },
       options: {
-        indexAxis: 'y',
+        indexAxis: "y",
         responsive: true,
         plugins: {
           legend: { display: false },
           title: {
             display: true,
-            text: 'Module progress',
+            text: "Module progress",
             color: colors.text,
             font: { size: 16 },
           },
@@ -406,7 +424,11 @@ const renderCharts = (canvasPrefix, summary, colors, Chart) => {
   );
 };
 
-const renderProgressDashboard = async (canvasPrefix, modules = [], docsOverride) => {
+const renderProgressDashboard = async (
+  canvasPrefix,
+  modules = [],
+  docsOverride,
+) => {
   if (!doc) return;
   const moduleList = Array.isArray(modules) ? modules : [];
   const docs = Array.isArray(docsOverride) ? docsOverride : readStoredDocs();
@@ -425,12 +447,12 @@ const renderProgressDashboard = async (canvasPrefix, modules = [], docsOverride)
 };
 
 const renderSessionDetails = () => {
-  const container = doc?.getElementById('sessionDetails');
+  const container = doc?.getElementById("sessionDetails");
   if (!container) return;
 
   const logs = readLogs();
   if (!logs.length) {
-    container.innerHTML = '<p>No activity yet.</p>';
+    container.innerHTML = "<p>No activity yet.</p>";
     return;
   }
 
@@ -442,9 +464,9 @@ const renderSessionDetails = () => {
   const summaryList = Array.from(countsBySource.entries())
     .map(
       ([source, count]) =>
-        `<li><strong>${escapeHtml(source)}</strong>: ${count} event${count === 1 ? '' : 's'}</li>`,
+        `<li><strong>${escapeHtml(source)}</strong>: ${count} event${count === 1 ? "" : "s"}</li>`,
     )
-    .join('');
+    .join("");
 
   const recent = logs
     .slice(-5)
@@ -457,69 +479,69 @@ const renderSessionDetails = () => {
         </div>
       `,
     )
-    .join('');
+    .join("");
 
   container.innerHTML = `
     <p><strong>Total events:</strong> ${logs.length}</p>
     <ul>${summaryList}</ul>
     <hr />
     <h3>Recent activity</h3>
-    ${recent || '<p>No recent events</p>'}
+    ${recent || "<p>No recent events</p>"}
   `;
 };
 
 const showSessionModal = () => {
-  const modal = doc?.getElementById('sessionModal');
+  const modal = doc?.getElementById("sessionModal");
   if (!modal) return;
-  modal.classList.remove('hidden');
-  modal.setAttribute('aria-hidden', 'false');
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
   renderSessionDetails();
-  const trigger = doc?.getElementById('statsButton');
-  trigger?.setAttribute('aria-expanded', 'true');
+  const trigger = doc?.getElementById("statsButton");
+  trigger?.setAttribute("aria-expanded", "true");
 };
 
 const hideSessionModal = () => {
-  const modal = doc?.getElementById('sessionModal');
+  const modal = doc?.getElementById("sessionModal");
   if (!modal) return;
-  if (modal.classList.contains('hidden')) return;
-  modal.classList.add('hidden');
-  modal.setAttribute('aria-hidden', 'true');
-  const trigger = doc?.getElementById('statsButton');
-  trigger?.setAttribute('aria-expanded', 'false');
+  if (modal.classList.contains("hidden")) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+  const trigger = doc?.getElementById("statsButton");
+  trigger?.setAttribute("aria-expanded", "false");
 };
 
 const exportLogs = (format) => {
   const logs = readLogs();
   if (!logs.length) {
-    globalScope.alert?.('No logs to export yet.');
+    globalScope.alert?.("No logs to export yet.");
     return;
   }
 
-  let content = '';
-  let mime = 'text/plain';
+  let content;
+  let mime = "text/plain";
 
-  if (format === 'json') {
+  if (format === "json") {
     content = JSON.stringify(logs, null, 2);
-    mime = 'application/json';
+    mime = "application/json";
   } else {
     content = logs
       .map(
         (log) =>
           `[${new Date(log.timestamp).toLocaleString()}] [${log.source}] (${log.type}) ${log.message}`,
       )
-      .join('\n');
+      .join("\n");
   }
 
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
-  const anchor = doc?.createElement('a');
+  const anchor = doc?.createElement("a");
   if (!anchor) {
     URL.revokeObjectURL(url);
     return;
   }
   anchor.href = url;
-  const extension = format === 'json' ? 'json' : 'txt';
-  anchor.download = `cdc-session-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
+  const extension = format === "json" ? "json" : "txt";
+  anchor.download = `cdc-session-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
   doc.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -536,8 +558,11 @@ const initialize = () => {
   if (!doc) return;
 
   try {
-    if (hasLocalStorage && globalScope.localStorage.getItem('theme') === 'modern') {
-      doc.body?.classList.add('modern');
+    if (
+      hasLocalStorage &&
+      globalScope.localStorage.getItem("theme") === "modern"
+    ) {
+      doc.body?.classList.add("modern");
     }
   } catch (_) {
     /* ignore */
@@ -546,38 +571,47 @@ const initialize = () => {
   restoreLogConsole();
   applyLogFilter(FILTERS[currentFilterIndex].id);
 
-  const counter = doc.getElementById('statsCounter');
-  counter?.addEventListener('click', cycleFilter);
+  const counter = doc.getElementById("statsCounter");
+  counter?.addEventListener("click", cycleFilter);
 
-  const statsButton = doc.getElementById('statsButton');
-  statsButton?.addEventListener('click', showSessionModal);
+  const statsButton = doc.getElementById("statsButton");
+  statsButton?.addEventListener("click", showSessionModal);
 
-  const closeButton = doc.getElementById('closeModal');
-  closeButton?.addEventListener('click', hideSessionModal);
+  const closeButton = doc.getElementById("closeModal");
+  closeButton?.addEventListener("click", hideSessionModal);
 
-  doc.getElementById('exportTxt')?.addEventListener('click', () => exportLogs('txt'));
-  doc.getElementById('exportJson')?.addEventListener('click', () => exportLogs('json'));
+  doc
+    .getElementById("exportTxt")
+    ?.addEventListener("click", () => exportLogs("txt"));
+  doc
+    .getElementById("exportJson")
+    ?.addEventListener("click", () => exportLogs("json"));
 
-  const modal = doc.getElementById('sessionModal');
-  modal?.addEventListener('click', (event) => {
+  const modal = doc.getElementById("sessionModal");
+  modal?.addEventListener("click", (event) => {
     if (event.target === modal) {
       hideSessionModal();
     }
   });
 
-  doc.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
+  doc.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
       hideSessionModal();
     }
   });
 };
 
 if (doc) {
-  if (doc.readyState === 'loading') {
-    doc.addEventListener('DOMContentLoaded', initialize, { once: true });
+  if (doc.readyState === "loading") {
+    doc.addEventListener("DOMContentLoaded", initialize, { once: true });
   } else {
     initialize();
   }
 }
 
-export { appendAgentLog, applyLogFilter, renderProgressDashboard, updateStatsCounter };
+export {
+  appendAgentLog,
+  applyLogFilter,
+  renderProgressDashboard,
+  updateStatsCounter,
+};

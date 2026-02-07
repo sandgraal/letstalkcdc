@@ -4,28 +4,28 @@
  */
 
 export function initQuizzes() {
-  const quizContainers = document.querySelectorAll('.quiz-container');
-  
-  quizContainers.forEach(container => {
+  const quizContainers = document.querySelectorAll(".quiz-container");
+
+  quizContainers.forEach((container) => {
     initQuiz(container);
   });
 }
 
 function initQuiz(container) {
-  const questions = container.querySelectorAll('.quiz-question');
-  const scoreCurrentEl = container.querySelector('[data-score-current]');
-  const scoreTotalEl = container.querySelector('[data-score-total]');
-  const summaryMessageEl = container.querySelector('[data-summary-message]');
-  const resetButton = container.querySelector('.quiz-reset-button');
-  const progressFill = container.querySelector('[data-progress-fill]');
-  const progressCountEl = container.querySelector('[data-progress-count]');
-  const progressTrack = container.querySelector('[data-progress-track]');
-  const progressTotalEl = container.querySelector('[data-progress-total]');
-  
+  const questions = container.querySelectorAll(".quiz-question");
+  const scoreCurrentEl = container.querySelector("[data-score-current]");
+  const scoreTotalEl = container.querySelector("[data-score-total]");
+  const summaryMessageEl = container.querySelector("[data-summary-message]");
+  const resetButton = container.querySelector(".quiz-reset-button");
+  const progressFill = container.querySelector("[data-progress-fill]");
+  const progressCountEl = container.querySelector("[data-progress-count]");
+  const progressTrack = container.querySelector("[data-progress-track]");
+  const progressTotalEl = container.querySelector("[data-progress-total]");
+
   const state = {
     answered: new Set(),
     correct: new Set(),
-    total: questions.length
+    total: questions.length,
   };
 
   if (scoreTotalEl) {
@@ -37,23 +37,26 @@ function initQuiz(container) {
   }
 
   if (progressTrack) {
-    progressTrack.setAttribute('aria-valuemax', state.total);
+    progressTrack.setAttribute("aria-valuemax", state.total);
   }
 
   // Initialize each question
   questions.forEach((question, questionIndex) => {
-    const options = question.querySelectorAll('.option-input');
+    const options = question.querySelectorAll(".option-input");
     const correctAnswer = question.dataset.correct;
-    const feedbackContainer = question.querySelector('.question-feedback');
-    const correctFeedback = feedbackContainer.querySelector('.feedback-correct');
-    const incorrectFeedback = feedbackContainer.querySelector('.feedback-incorrect');
+    const feedbackContainer = question.querySelector(".question-feedback");
+    const correctFeedback =
+      feedbackContainer.querySelector(".feedback-correct");
+    const incorrectFeedback = feedbackContainer.querySelector(
+      ".feedback-incorrect",
+    );
 
     // Ensure feedback elements start hidden in case prerendering removes hidden attribute
     correctFeedback.hidden = true;
     incorrectFeedback.hidden = true;
 
-    options.forEach(option => {
-      option.addEventListener('change', (e) => {
+    options.forEach((option) => {
+      option.addEventListener("change", (e) => {
         if (state.answered.has(questionIndex)) {
           return; // Already answered, no re-answers allowed
         }
@@ -63,25 +66,27 @@ function initQuiz(container) {
 
         // Mark as answered
         state.answered.add(questionIndex);
-        
+
         // Update correct count
         if (isCorrect) {
           state.correct.add(questionIndex);
         }
 
         // Show feedback
-        question.classList.add('answered');
-        question.classList.add(isCorrect ? 'correct' : 'incorrect');
-        
+        question.classList.add("answered");
+        question.classList.add(isCorrect ? "correct" : "incorrect");
+
         // Disable all options for this question
-        options.forEach(opt => {
+        options.forEach((opt) => {
           opt.disabled = true;
         });
 
         // Highlight the correct answer
         const correctOption = question.querySelector(`[data-correct="true"]`);
         if (correctOption) {
-          correctOption.closest('.option-wrapper').classList.add('is-correct-answer');
+          correctOption
+            .closest(".option-wrapper")
+            .classList.add("is-correct-answer");
         }
 
         // Show appropriate feedback
@@ -91,18 +96,23 @@ function initQuiz(container) {
         } else {
           incorrectFeedback.hidden = false;
           correctFeedback.hidden = true;
-          e.target.closest('.option-wrapper').classList.add('is-incorrect-choice');
+          e.target
+            .closest(".option-wrapper")
+            .classList.add("is-incorrect-choice");
         }
 
         // Update score
         updateScore();
 
         // Track completion event (if tracing is available)
-        if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
-          window._educationTracer.trackInteraction('quiz-answer', {
+        if (
+          window._educationTracer &&
+          typeof window._educationTracer.trackInteraction === "function"
+        ) {
+          window._educationTracer.trackInteraction("quiz-answer", {
             quizId: container.dataset.quizId,
             questionIndex,
-            correct: isCorrect
+            correct: isCorrect,
           });
         }
       });
@@ -111,12 +121,15 @@ function initQuiz(container) {
 
   // Reset button handler
   if (resetButton) {
-    resetButton.addEventListener('click', () => {
+    resetButton.addEventListener("click", () => {
       resetQuiz();
-      
-      if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
-        window._educationTracer.trackInteraction('quiz-reset', {
-          quizId: container.dataset.quizId
+
+      if (
+        window._educationTracer &&
+        typeof window._educationTracer.trackInteraction === "function"
+      ) {
+        window._educationTracer.trackInteraction("quiz-reset", {
+          quizId: container.dataset.quizId,
         });
       }
     });
@@ -135,8 +148,8 @@ function initQuiz(container) {
 
     if (summaryMessageEl && answeredCount < state.total) {
       summaryMessageEl.hidden = true;
-      summaryMessageEl.textContent = '';
-      summaryMessageEl.className = 'summary-message';
+      summaryMessageEl.textContent = "";
+      summaryMessageEl.className = "summary-message";
     }
 
     // Show reset button if at least one question answered
@@ -154,21 +167,23 @@ function initQuiz(container) {
     if (!summaryMessageEl) return;
 
     const percentage = Math.round((score / total) * 100);
-    let message = '';
-    let messageClass = '';
+    let message;
+    let messageClass;
 
     if (percentage === 100) {
-      message = '🎉 Perfect score! You have a solid understanding of this topic.';
-      messageClass = 'perfect';
+      message =
+        "🎉 Perfect score! You have a solid understanding of this topic.";
+      messageClass = "perfect";
     } else if (percentage >= 80) {
-      message = '✨ Great job! You\'ve mastered most of the concepts.';
-      messageClass = 'good';
+      message = "✨ Great job! You've mastered most of the concepts.";
+      messageClass = "good";
     } else if (percentage >= 60) {
-      message = '👍 Good effort! Review the explanations to strengthen your understanding.';
-      messageClass = 'okay';
+      message =
+        "👍 Good effort! Review the explanations to strengthen your understanding.";
+      messageClass = "okay";
     } else {
-      message = '📚 Keep learning! Review the module content and try again.';
-      messageClass = 'needs-work';
+      message = "📚 Keep learning! Review the module content and try again.";
+      messageClass = "needs-work";
     }
 
     summaryMessageEl.textContent = message;
@@ -176,12 +191,15 @@ function initQuiz(container) {
     summaryMessageEl.hidden = false;
 
     // Track completion
-    if (window._educationTracer && typeof window._educationTracer.trackInteraction === 'function') {
-      window._educationTracer.trackInteraction('quiz-complete', {
+    if (
+      window._educationTracer &&
+      typeof window._educationTracer.trackInteraction === "function"
+    ) {
+      window._educationTracer.trackInteraction("quiz-complete", {
         quizId: container.dataset.quizId,
         score,
         total,
-        percentage
+        percentage,
       });
     }
   }
@@ -192,16 +210,23 @@ function initQuiz(container) {
     }
 
     if (progressFill) {
-      const progressPercent = state.total === 0 ? 0 : Math.round((answeredCount / state.total) * 100);
-      progressFill.style.setProperty('--progress-percent', `${progressPercent}`);
+      const progressPercent =
+        state.total === 0 ? 0 : Math.round((answeredCount / state.total) * 100);
+      progressFill.style.setProperty(
+        "--progress-percent",
+        `${progressPercent}`,
+      );
       progressFill.style.width = `${progressPercent}%`;
-      progressFill.classList.toggle('is-complete', answeredCount === state.total);
+      progressFill.classList.toggle(
+        "is-complete",
+        answeredCount === state.total,
+      );
     }
 
     if (progressTrack) {
-      progressTrack.setAttribute('aria-valuenow', answeredCount);
+      progressTrack.setAttribute("aria-valuenow", answeredCount);
       const ariaValueText = `${answeredCount} of ${state.total} questions answered`;
-      progressTrack.setAttribute('aria-valuetext', ariaValueText);
+      progressTrack.setAttribute("aria-valuetext", ariaValueText);
     }
   }
 
@@ -211,32 +236,34 @@ function initQuiz(container) {
     state.correct.clear();
 
     // Reset all questions
-    questions.forEach(question => {
-      question.classList.remove('answered', 'correct', 'incorrect');
-      
+    questions.forEach((question) => {
+      question.classList.remove("answered", "correct", "incorrect");
+
       // Re-enable all options
-      const options = question.querySelectorAll('.option-input');
-      options.forEach(opt => {
+      const options = question.querySelectorAll(".option-input");
+      options.forEach((opt) => {
         opt.disabled = false;
         opt.checked = false;
       });
 
       // Clear visual indicators
-      const optionWrappers = question.querySelectorAll('.option-wrapper');
-      optionWrappers.forEach(wrapper => {
-        wrapper.classList.remove('is-correct-answer', 'is-incorrect-choice');
+      const optionWrappers = question.querySelectorAll(".option-wrapper");
+      optionWrappers.forEach((wrapper) => {
+        wrapper.classList.remove("is-correct-answer", "is-incorrect-choice");
       });
 
       // Hide feedback
-      const feedbacks = question.querySelectorAll('.feedback-correct, .feedback-incorrect');
-      feedbacks.forEach(feedback => {
+      const feedbacks = question.querySelectorAll(
+        ".feedback-correct, .feedback-incorrect",
+      );
+      feedbacks.forEach((feedback) => {
         feedback.hidden = true;
       });
     });
 
     // Reset score display
     if (scoreCurrentEl) {
-      scoreCurrentEl.textContent = '0';
+      scoreCurrentEl.textContent = "0";
     }
 
     updateProgress(0);
@@ -246,9 +273,9 @@ function initQuiz(container) {
       resetButton.hidden = true;
     }
     if (summaryMessageEl) {
-      summaryMessageEl.textContent = '';
+      summaryMessageEl.textContent = "";
       summaryMessageEl.hidden = true;
-      summaryMessageEl.className = 'summary-message';
+      summaryMessageEl.className = "summary-message";
     }
   }
 
@@ -256,9 +283,9 @@ function initQuiz(container) {
 }
 
 // Auto-initialize on DOM ready
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initQuizzes);
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initQuizzes);
   } else {
     initQuizzes();
   }

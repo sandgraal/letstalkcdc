@@ -3,10 +3,10 @@
  * Handles login/signup modal and user profile display
  */
 
-import { login, signup, logout, getCurrentUser, isAuthenticated, initAuth } from './auth.js';
+import { login, signup, logout, getCurrentUser, initAuth } from "./auth.js";
 
-const AUTH_MODAL_ID = 'authModal';
-const USER_PROFILE_ID = 'userProfile';
+const AUTH_MODAL_ID = "authModal";
+const USER_PROFILE_ID = "userProfile";
 
 /**
  * Create authentication modal
@@ -14,14 +14,14 @@ const USER_PROFILE_ID = 'userProfile';
 function createAuthModal() {
   const existing = document.getElementById(AUTH_MODAL_ID);
   if (existing) return existing;
-  
-  const modal = document.createElement('div');
+
+  const modal = document.createElement("div");
   modal.id = AUTH_MODAL_ID;
-  modal.className = 'auth-modal hidden';
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-  modal.setAttribute('aria-labelledby', 'authModalTitle');
-  
+  modal.className = "auth-modal hidden";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-labelledby", "authModalTitle");
+
   modal.innerHTML = `
     <div class="auth-modal-overlay"></div>
     <div class="auth-modal-content">
@@ -135,7 +135,7 @@ function createAuthModal() {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
   return modal;
 }
@@ -143,23 +143,25 @@ function createAuthModal() {
 /**
  * Show authentication modal
  */
-function showAuthModal(defaultTab = 'login') {
+function showAuthModal(defaultTab = "login") {
   const modal = createAuthModal();
-  
+
   // Switch to default tab
   switchTab(defaultTab);
-  
+
   // Show modal
-  modal.classList.remove('hidden');
-  
+  modal.classList.remove("hidden");
+
   // Focus first input
-  const firstInput = modal.querySelector(`[data-panel="${defaultTab}"] input:not([hidden])`);
+  const firstInput = modal.querySelector(
+    `[data-panel="${defaultTab}"] input:not([hidden])`,
+  );
   if (firstInput) {
     setTimeout(() => firstInput.focus(), 100);
   }
-  
+
   // Prevent body scroll
-  document.body.style.overflow = 'hidden';
+  document.body.style.overflow = "hidden";
 }
 
 /**
@@ -168,8 +170,8 @@ function showAuthModal(defaultTab = 'login') {
 function hideAuthModal() {
   const modal = document.getElementById(AUTH_MODAL_ID);
   if (modal) {
-    modal.classList.add('hidden');
-    document.body.style.overflow = '';
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
   }
 }
 
@@ -179,24 +181,24 @@ function hideAuthModal() {
 function switchTab(tabName) {
   const modal = document.getElementById(AUTH_MODAL_ID);
   if (!modal) return;
-  
+
   // Update tab buttons
-  modal.querySelectorAll('.auth-tab').forEach(tab => {
+  modal.querySelectorAll(".auth-tab").forEach((tab) => {
     const isActive = tab.dataset.tab === tabName;
-    tab.classList.toggle('active', isActive);
-    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
   });
-  
+
   // Update panels
-  modal.querySelectorAll('.auth-panel').forEach(panel => {
+  modal.querySelectorAll(".auth-panel").forEach((panel) => {
     const isActive = panel.dataset.panel === tabName;
-    panel.classList.toggle('hidden', !isActive);
+    panel.classList.toggle("hidden", !isActive);
   });
-  
+
   // Update title for accessibility
-  const titleEl = modal.querySelector('h2');
+  const titleEl = modal.querySelector("h2");
   if (titleEl) {
-    document.getElementById('authModalTitle').textContent = titleEl.textContent;
+    document.getElementById("authModalTitle").textContent = titleEl.textContent;
   }
 }
 
@@ -215,9 +217,9 @@ function showError(formType, message) {
  * Clear error messages
  */
 function clearErrors() {
-  document.querySelectorAll('.auth-error').forEach(el => {
+  document.querySelectorAll(".auth-error").forEach((el) => {
     el.hidden = true;
-    el.textContent = '';
+    el.textContent = "";
   });
 }
 
@@ -227,40 +229,40 @@ function clearErrors() {
 async function handleLogin(e) {
   e.preventDefault();
   clearErrors();
-  
+
   const form = e.target;
   const email = form.email.value;
   const password = form.password.value;
-  const button = document.getElementById('loginButton');
-  
+  const button = document.getElementById("loginButton");
+
   button.disabled = true;
-  button.textContent = 'Logging in...';
-  
+  button.textContent = "Logging in...";
+
   try {
     await login(email, password);
     hideAuthModal();
     form.reset();
-    
+
     // Show success toast
     if (window.showToast) {
       window.showToast({
-        title: 'Welcome back!',
-        message: 'Your progress has been synced from the cloud.',
-        type: 'success',
-        duration: 3000
+        title: "Welcome back!",
+        message: "Your progress has been synced from the cloud.",
+        type: "success",
+        duration: 3000,
       });
     }
   } catch (error) {
-    let message = 'Login failed. Please check your credentials.';
-    if (error.message.includes('Invalid credentials')) {
-      message = 'Invalid email or password. Please try again.';
-    } else if (error.message.includes('network')) {
-      message = 'Network error. Please check your connection.';
+    let message = "Login failed. Please check your credentials.";
+    if (error.message.includes("Invalid credentials")) {
+      message = "Invalid email or password. Please try again.";
+    } else if (error.message.includes("network")) {
+      message = "Network error. Please check your connection.";
     }
-    showError('login', message);
+    showError("login", message);
   } finally {
     button.disabled = false;
-    button.textContent = 'Log In';
+    button.textContent = "Log In";
   }
 }
 
@@ -270,48 +272,50 @@ async function handleLogin(e) {
 async function handleSignup(e) {
   e.preventDefault();
   clearErrors();
-  
+
   const form = e.target;
   const name = form.name.value;
   const email = form.email.value;
   const password = form.password.value;
-  const button = document.getElementById('signupButton');
-  
+  const button = document.getElementById("signupButton");
+
   if (password.length < 8) {
-    showError('signup', 'Password must be at least 8 characters long.');
+    showError("signup", "Password must be at least 8 characters long.");
     return;
   }
-  
+
   button.disabled = true;
-  button.textContent = 'Creating account...';
-  
+  button.textContent = "Creating account...";
+
   try {
     await signup(email, password, name);
     hideAuthModal();
     form.reset();
-    
+
     // Show success toast
     if (window.showToast) {
       window.showToast({
-        title: 'Account created!',
-        message: 'Welcome to Let\'s Talk CDC. Your progress will now be saved to the cloud.',
-        type: 'success',
-        duration: 4000
+        title: "Account created!",
+        message:
+          "Welcome to Let's Talk CDC. Your progress will now be saved to the cloud.",
+        type: "success",
+        duration: 4000,
       });
     }
   } catch (error) {
-    let message = 'Signup failed. Please try again.';
-    if (error.message.includes('already exists') || error.code === 409) {
-      message = 'An account with this email already exists. Please log in instead.';
-    } else if (error.message.includes('password')) {
-      message = 'Password must be at least 8 characters long.';
-    } else if (error.message.includes('network')) {
-      message = 'Network error. Please check your connection.';
+    let message = "Signup failed. Please try again.";
+    if (error.message.includes("already exists") || error.code === 409) {
+      message =
+        "An account with this email already exists. Please log in instead.";
+    } else if (error.message.includes("password")) {
+      message = "Password must be at least 8 characters long.";
+    } else if (error.message.includes("network")) {
+      message = "Network error. Please check your connection.";
     }
-    showError('signup', message);
+    showError("signup", message);
   } finally {
     button.disabled = false;
-    button.textContent = 'Create Account';
+    button.textContent = "Create Account";
   }
 }
 
@@ -319,23 +323,23 @@ async function handleSignup(e) {
  * Create user profile button in header
  */
 function createUserProfile() {
-  const headerProgress = document.querySelector('[data-header-progress]');
+  const headerProgress = document.querySelector("[data-header-progress]");
   if (!headerProgress) return;
-  
+
   const container = headerProgress.parentElement;
   if (!container) return;
-  
+
   // Remove existing profile if present
   const existing = document.getElementById(USER_PROFILE_ID);
   if (existing) existing.remove();
-  
+
   const user = getCurrentUser();
-  
+
   if (user && user.loggedIn) {
     // Show user profile
-    const profile = document.createElement('div');
+    const profile = document.createElement("div");
     profile.id = USER_PROFILE_ID;
-    profile.className = 'user-profile';
+    profile.className = "user-profile";
     profile.innerHTML = `
       <button type="button" class="user-profile-button" aria-label="User menu" aria-haspopup="true" aria-expanded="false">
         <span class="user-avatar">${user.name.charAt(0).toUpperCase()}</span>
@@ -351,52 +355,55 @@ function createUserProfile() {
         </button>
       </div>
     `;
-    
+
     container.insertBefore(profile, headerProgress);
-    
+
     // Add menu toggle
-    const profileButton = profile.querySelector('.user-profile-button');
-    const menu = profile.querySelector('.user-menu');
-    
-    profileButton.addEventListener('click', () => {
-      const isOpen = !menu.classList.contains('hidden');
-      menu.classList.toggle('hidden');
-      profileButton.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    const profileButton = profile.querySelector(".user-profile-button");
+    const menu = profile.querySelector(".user-menu");
+
+    profileButton.addEventListener("click", () => {
+      const isOpen = !menu.classList.contains("hidden");
+      menu.classList.toggle("hidden");
+      profileButton.setAttribute("aria-expanded", isOpen ? "false" : "true");
     });
-    
+
     // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
+    document.addEventListener("click", (e) => {
       if (!profile.contains(e.target)) {
-        menu.classList.add('hidden');
-        profileButton.setAttribute('aria-expanded', 'false');
+        menu.classList.add("hidden");
+        profileButton.setAttribute("aria-expanded", "false");
       }
     });
-    
+
     // Handle logout
-    profile.querySelector('[data-logout]').addEventListener('click', async () => {
-      await logout();
-      menu.classList.add('hidden');
-      
-      if (window.showToast) {
-        window.showToast({
-          title: 'Logged out',
-          message: 'You have been logged out. Your local progress is still saved.',
-          type: 'info',
-          duration: 3000
-        });
-      }
-    });
+    profile
+      .querySelector("[data-logout]")
+      .addEventListener("click", async () => {
+        await logout();
+        menu.classList.add("hidden");
+
+        if (window.showToast) {
+          window.showToast({
+            title: "Logged out",
+            message:
+              "You have been logged out. Your local progress is still saved.",
+            type: "info",
+            duration: 3000,
+          });
+        }
+      });
   } else {
     // Show login button
-    const loginButton = document.createElement('button');
+    const loginButton = document.createElement("button");
     loginButton.id = USER_PROFILE_ID;
-    loginButton.type = 'button';
-    loginButton.className = 'button secondary login-button';
-    loginButton.textContent = 'Log In';
-    loginButton.setAttribute('aria-label', 'Log in to sync your progress');
-    
-    loginButton.addEventListener('click', () => showAuthModal('login'));
-    
+    loginButton.type = "button";
+    loginButton.className = "button secondary login-button";
+    loginButton.textContent = "Log In";
+    loginButton.setAttribute("aria-label", "Log in to sync your progress");
+
+    loginButton.addEventListener("click", () => showAuthModal("login"));
+
     container.insertBefore(loginButton, headerProgress);
   }
 }
@@ -407,54 +414,60 @@ function createUserProfile() {
 export function initAuthUI() {
   // Create modal structure
   createAuthModal();
-  
+
   const modal = document.getElementById(AUTH_MODAL_ID);
   if (!modal) return;
-  
+
   // Tab switching
-  modal.querySelectorAll('.auth-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  modal.querySelectorAll(".auth-tab").forEach((tab) => {
+    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
-  
-  modal.querySelectorAll('[data-switch-tab]').forEach(button => {
-    button.addEventListener('click', () => switchTab(button.dataset.switchTab));
+
+  modal.querySelectorAll("[data-switch-tab]").forEach((button) => {
+    button.addEventListener("click", () => switchTab(button.dataset.switchTab));
   });
-  
+
   // Close modal
-  modal.querySelector('.auth-modal-close').addEventListener('click', hideAuthModal);
-  modal.querySelector('.auth-modal-overlay').addEventListener('click', hideAuthModal);
-  
+  modal
+    .querySelector(".auth-modal-close")
+    .addEventListener("click", hideAuthModal);
+  modal
+    .querySelector(".auth-modal-overlay")
+    .addEventListener("click", hideAuthModal);
+
   // Form submissions
-  document.getElementById('loginForm').addEventListener('submit', handleLogin);
-  document.getElementById('signupForm').addEventListener('submit', handleSignup);
-  
+  document.getElementById("loginForm").addEventListener("submit", handleLogin);
+  document
+    .getElementById("signupForm")
+    .addEventListener("submit", handleSignup);
+
   // Close on Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) {
       hideAuthModal();
     }
   });
-  
+
   // Initialize auth system
   initAuth().then(() => {
     // Create user profile or login button
     createUserProfile();
   });
-  
+
   // Update UI when auth state changes
-  window.addEventListener('cdc:user-logged-in', () => {
+  window.addEventListener("cdc:user-logged-in", () => {
     createUserProfile();
   });
-  
-  window.addEventListener('cdc:user-logged-out', () => {
+
+  window.addEventListener("cdc:user-logged-out", () => {
     createUserProfile();
   });
 }
 
 // Auto-initialize
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAuthUI);
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAuthUI);
   } else {
     initAuthUI();
   }

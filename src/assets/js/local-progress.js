@@ -4,8 +4,8 @@
  * Progressive enhancement - works alongside Appwrite integration
  */
 
-const STORAGE_KEY = 'cdc-local-progress';
-const VISIT_KEY = 'cdc-module-visits';
+const STORAGE_KEY = "cdc-local-progress";
+const VISIT_KEY = "cdc-module-visits";
 
 /**
  * Safe localStorage wrapper
@@ -15,7 +15,7 @@ const storage = {
     try {
       const value = localStorage.getItem(key);
       return value ? JSON.parse(value) : null;
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   },
@@ -23,10 +23,10 @@ const storage = {
     try {
       localStorage.setItem(key, JSON.stringify(value));
       return true;
-    } catch (e) {
+    } catch (_e) {
       return false;
     }
-  }
+  },
 };
 
 /**
@@ -52,20 +52,22 @@ export function getVisitedModules() {
  */
 export function markModuleVisited(moduleKey) {
   if (!moduleKey) return;
-  
+
   const visits = getVisitedModules();
   visits[moduleKey] = {
     firstVisit: visits[moduleKey]?.firstVisit || Date.now(),
     lastVisit: Date.now(),
-    visitCount: (visits[moduleKey]?.visitCount || 0) + 1
+    visitCount: (visits[moduleKey]?.visitCount || 0) + 1,
   };
-  
+
   storage.set(VISIT_KEY, visits);
-  
+
   // Dispatch event for UI updates
-  window.dispatchEvent(new CustomEvent('cdc:progress-updated', {
-    detail: { type: 'visit', moduleKey }
-  }));
+  window.dispatchEvent(
+    new CustomEvent("cdc:progress-updated", {
+      detail: { type: "visit", moduleKey },
+    }),
+  );
 }
 
 /**
@@ -74,18 +76,20 @@ export function markModuleVisited(moduleKey) {
  */
 export function markModuleCompleted(moduleKey) {
   if (!moduleKey) return;
-  
+
   const data = storage.get(STORAGE_KEY) || { completed: [], badges: [] };
   if (!data.completed.includes(moduleKey)) {
     data.completed.push(moduleKey);
     data.completedAt = data.completedAt || {};
     data.completedAt[moduleKey] = Date.now();
     storage.set(STORAGE_KEY, data);
-    
+
     // Dispatch event for UI updates
-    window.dispatchEvent(new CustomEvent('cdc:progress-updated', {
-      detail: { type: 'complete', moduleKey }
-    }));
+    window.dispatchEvent(
+      new CustomEvent("cdc:progress-updated", {
+        detail: { type: "complete", moduleKey },
+      }),
+    );
   }
 }
 
@@ -106,15 +110,15 @@ export function isModuleCompleted(moduleKey) {
 export function getOverallProgress(modules) {
   if (!modules || modules.length === 0) return 0;
   const completed = getCompletedModules();
-  const validModules = modules.filter(m => m.key && m.state !== 'disabled');
+  const validModules = modules.filter((m) => m.key && m.state !== "disabled");
   if (validModules.length === 0) return 0;
-  
+
   // Only count completed modules that are in the current valid modules list
-  const validModuleKeys = new Set(validModules.map(m => m.key));
-  const relevantCompletedCount = Array.from(completed).filter(key => 
-    validModuleKeys.has(key)
+  const validModuleKeys = new Set(validModules.map((m) => m.key));
+  const relevantCompletedCount = Array.from(completed).filter((key) =>
+    validModuleKeys.has(key),
   ).length;
-  
+
   return Math.round((relevantCompletedCount / validModules.length) * 100);
 }
 
@@ -126,12 +130,12 @@ export function getOverallProgress(modules) {
 export function getCategoryProgress(modules) {
   const completed = getCompletedModules();
   const categories = {};
-  
-  modules.forEach(module => {
-    if (module.state === 'disabled') return;
-    
-    module.tags?.forEach(tag => {
-      const label = typeof tag === 'string' ? tag : tag.label;
+
+  modules.forEach((module) => {
+    if (module.state === "disabled") return;
+
+    module.tags?.forEach((tag) => {
+      const label = typeof tag === "string" ? tag : tag.label;
       if (!categories[label]) {
         categories[label] = { total: 0, completed: 0 };
       }
@@ -141,7 +145,7 @@ export function getCategoryProgress(modules) {
       }
     });
   });
-  
+
   return categories;
 }
 
@@ -153,18 +157,18 @@ export function getCategoryProgress(modules) {
 export function getEarnedBadges(modules) {
   const categoryProgress = getCategoryProgress(modules);
   const badges = [];
-  
+
   Object.entries(categoryProgress).forEach(([category, stats]) => {
     if (stats.completed === stats.total && stats.total > 0) {
       badges.push({
         category,
         title: `${category} Master`,
         description: `Completed all ${stats.total} ${category} module(s)`,
-        earnedAt: Date.now()
+        earnedAt: Date.now(),
       });
     }
   });
-  
+
   return badges;
 }
 
@@ -177,18 +181,18 @@ export function initializeProgressTracking() {
   if (journeySlug) {
     markModuleVisited(journeySlug);
   }
-  
+
   // Listen for completion events (can be triggered by interactive elements)
-  window.addEventListener('cdc:mark-complete', (e) => {
+  window.addEventListener("cdc:mark-complete", (e) => {
     const { moduleKey } = e.detail;
     markModuleCompleted(moduleKey);
   });
 }
 
 // Auto-initialize when module loads
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeProgressTracking);
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeProgressTracking);
   } else {
     initializeProgressTracking();
   }

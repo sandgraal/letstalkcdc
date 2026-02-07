@@ -2,7 +2,7 @@
  * Unit tests for the Quick Nav module
  * @module tests/unit/modules/quick-nav.test
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { initQuickNav } from "../../../src/assets/js/modules/quick-nav.js";
 
 describe("quick-nav module", () => {

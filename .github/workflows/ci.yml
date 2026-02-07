@@ -39,7 +39,31 @@ jobs:
           retention-days: 1
 
   # ───────────────────────────────────────────────────
-  # Job 2: Unit tests (parallel with build)
+  # Job 2: Lint (parallel with build)
+  # ───────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npx eslint .
+
+      - name: Prettier check
+        run: npx prettier --check .
+
+  # ───────────────────────────────────────────────────
+  # Job 3: Unit tests (parallel with build)
   # ───────────────────────────────────────────────────
   unit-tests:
     runs-on: ubuntu-latest
