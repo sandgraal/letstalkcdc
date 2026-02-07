@@ -48,7 +48,7 @@ export function createWebVitalsDashboard() {
   return {
     update(metric, value, rating) {
       const metricEl = dashboard.querySelector(
-        `[data-vital="${metric.toLowerCase()}"]`
+        `[data-vital="${metric.toLowerCase()}"]`,
       );
       if (!metricEl) return;
 
@@ -100,7 +100,7 @@ export function initWebVitalsDashboard() {
 
   if (!isDev && !forceShow) {
     console.log(
-      "[vitals] Dashboard disabled in production (use ?vitals=1 to enable)"
+      "[vitals] Dashboard disabled in production (use ?vitals=1 to enable)",
     );
     return null;
   }

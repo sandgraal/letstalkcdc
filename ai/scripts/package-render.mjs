@@ -168,7 +168,7 @@ async function generatePrintBundle(content) {
   const sizeKB = (stats.size / 1024).toFixed(2);
 
   console.log(
-    `[packaging] ✓ Print bundle created: ${basename(bundlePath)} (${sizeKB} KB)`
+    `[packaging] ✓ Print bundle created: ${basename(bundlePath)} (${sizeKB} KB)`,
   );
   return bundlePath;
 }
@@ -215,10 +215,10 @@ async function main() {
 
     console.log("\n[packaging] ✓ Package rendering complete!");
     console.log(
-      `[packaging] 📄 Download at: /downloads/cdc-complete-guide.html`
+      `[packaging] 📄 Download at: /downloads/cdc-complete-guide.html`,
     );
     console.log(
-      "[packaging] 💡 Tip: Open in browser and use Print > Save as PDF"
+      "[packaging] 💡 Tip: Open in browser and use Print > Save as PDF",
     );
   } catch (err) {
     console.error("[packaging] ✗ Fatal error:", err);

@@ -249,7 +249,6 @@ npm run agent:analytics
    ```
 
 3. **Check GitHub Pages settings**:
-
    - Go to: https://github.com/sandgraal/letstalkcdc/settings/pages
    - Verify source is set to "GitHub Actions"
 
@@ -266,7 +265,6 @@ npm run agent:analytics
    ```
 
 2. **Verify search.js is loaded**:
-
    - Open browser console
    - Look for search initialization logs
 

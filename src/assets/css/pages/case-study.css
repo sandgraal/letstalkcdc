@@ -128,7 +128,8 @@
   }
 }
 
-.pros, .cons {
+.pros,
+.cons {
   padding: 1rem;
   border-radius: 4px;
 }
@@ -143,7 +144,8 @@
   border-left: 3px solid var(--error-color);
 }
 
-.pros strong, .cons strong {
+.pros strong,
+.cons strong {
   display: block;
   margin-bottom: 0.5rem;
 }
@@ -185,7 +187,7 @@
 }
 
 .component-detail code {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
 }
 
 /* Implementation tasks */
@@ -217,7 +219,7 @@
 }
 
 .migration-timeline::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -236,7 +238,7 @@
 }
 
 .migration-phase::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -2.5rem;
   top: 1.5rem;
@@ -296,7 +298,9 @@
   border-radius: 8px;
   padding: 1.5rem;
   text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .metric-card:hover {
@@ -442,7 +446,10 @@
   padding: 1.25rem;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    border-color 0.2s;
   display: block;
 }
 

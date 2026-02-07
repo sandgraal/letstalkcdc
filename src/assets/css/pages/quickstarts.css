@@ -16,7 +16,9 @@
   background: var(--bg-secondary);
   text-decoration: none;
   color: var(--text-primary);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .qs-card:hover {

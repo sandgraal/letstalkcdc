@@ -4,8 +4,8 @@ This is a static, vendor-agnostic learning site (HTML/CSS/JS). There’s **no se
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
+| Version  | Supported         |
+| -------- | ----------------- |
 | `v0.1.x` | ✅ Active support |
 
 ---
@@ -15,6 +15,7 @@ This is a static, vendor-agnostic learning site (HTML/CSS/JS). There’s **no se
 **Preferred:** Use GitHub’s private reporting: **Security → Report a vulnerability**
 
 Please include:
+
 - A clear description and impact of the vulnerability.
 - Steps to reproduce (URLs, payloads, screenshots, PoC).
 - Proposed mitigation if available.

@@ -132,7 +132,7 @@ export function initSearch() {
       searchResults.innerHTML = `
         <div class="search-no-results">
           <p>No results found for "<strong>${escapeHtml(query)}</strong>"</p>
-          <p class="text-muted">Try different keywords or browse the <a href="${withBasePath('/overview/')}">module overview</a></p>
+          <p class="text-muted">Try different keywords or browse the <a href="${withBasePath("/overview/")}">module overview</a></p>
         </div>
       `;
       return;
@@ -142,19 +142,19 @@ export function initSearch() {
       .map((result, index) => {
         const excerpt = createExcerpt(
           result.content || result.description,
-          query
+          query,
         );
         return `
         <a href="${result.url}" class="search-result" data-index="${index}">
           <div class="search-result-title">${highlightMatch(
             result.title,
-            query
+            query,
           )}</div>
           ${
             result.description
               ? `<div class="search-result-description">${highlightMatch(
                   result.description,
-                  query
+                  query,
                 )}</div>`
               : ""
           }

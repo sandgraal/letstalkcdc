@@ -43,6 +43,7 @@ You must convert these files from CommonJS to ESM:
 **Target**: Use `import` for plugins and `export default` for config
 
 **Key considerations**:
+
 - Convert all plugin imports
 - Convert path-prefix import (add `.mjs` extension)
 - Ensure passthrough copies still work
@@ -54,39 +55,44 @@ You must convert these files from CommonJS to ESM:
 **Target**: Use `export default`
 
 **Key considerations**:
+
 - This is a critical utility for GitHub Pages
 - Must handle both root (`/`) and subdirectory (`/letstalkcdc/`) deployment
 - Auto-detection from environment variables must work
 
-### 3. src/_data/site.cjs → src/_data/site.mjs
+### 3. src/\_data/site.cjs → src/\_data/site.mjs
 
 **Current**: Imports path-prefix and exports site metadata  
 **Target**: Use `import` for path-prefix (with `.mjs` extension) and `export default`
 
 **Key considerations**:
+
 - Data must remain accessible as `{{ site.title }}` in templates
 
-### 4. src/_data/series.cjs → src/_data/series.mjs
+### 4. src/\_data/series.cjs → src/\_data/series.mjs
 
 **Current**: Exports an array of content series  
 **Target**: Use `export default`
 
 **Key considerations**:
+
 - Array structure must remain identical
 - Data must remain accessible as `{{ series }}` in templates
 
-### 5. src/_data/appwrite.cjs → src/_data/appwrite.mjs
+### 5. src/\_data/appwrite.cjs → src/\_data/appwrite.mjs
 
 **Current**: Exports Appwrite configuration  
 **Target**: Use `export default`
 
 **Key considerations**:
+
 - Optional feature — may not be configured
 - Environment variables must still be read correctly
 
 ### 6. package.json
 
 **Required changes**:
+
 ```json
 {
   "type": "module",
@@ -142,17 +148,17 @@ module.exports = { title: "My Site" };
 export default { title: "My Site" };
 ```
 
-### Pattern 5: __dirname Replacement (If Needed)
+### Pattern 5: \_\_dirname Replacement (If Needed)
 
 ```javascript
 // Before
-const path = require('path');
+const path = require("path");
 const __dirname = __dirname;
 
 // After
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import path from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import path from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -179,12 +185,10 @@ const __dirname = dirname(__filename);
 1. **Start with lib/path-prefix.cjs** (no dependencies)
    - Convert to ESM
    - Rename to `.mjs`
-   
 2. **Then eleventy.config.cjs** (depends on path-prefix)
    - Convert all imports
    - Update path-prefix import path
    - Rename to `.mjs`
-   
 3. **Test immediately**:
    ```bash
    npm run build
@@ -214,33 +218,30 @@ const __dirname = dirname(__filename);
    ```bash
    npm run build
    ```
-   
 2. **Count pages**:
    ```bash
    find _site -name "*.html" | wc -l
    ```
    Should be 40+
-   
 3. **Test path prefix**:
+
    ```bash
    ELEVENTY_PATH_PREFIX=/ npm run build
    grep 'href="/' _site/index.html
-   
+
    ELEVENTY_PATH_PREFIX=/letstalkcdc/ npm run build
    grep 'href="/letstalkcdc/' _site/index.html
    ```
-   
+
 4. **Run smoke tests**:
    ```bash
    npm run smoke:core
    ```
-   
 5. **Test dev server**:
    ```bash
    npm run dev
    ```
    Open http://localhost:8080 and verify homepage loads
-   
 6. **Manual browser test**:
    - Check 5 different pages
    - Verify theme toggle works
@@ -252,7 +253,6 @@ const __dirname = dirname(__filename);
 1. Update `progress/PROGRESS.md`:
    - Mark Phase 1.1 as complete
    - Note any issues encountered
-   
 2. Create completion tag:
    ```bash
    git tag phase-1.1-complete
@@ -308,8 +308,9 @@ The path-prefix system is critical for GitHub Pages. Test thoroughly!
 ### ⚠️ Pitfall 5: JSON Imports
 
 If you see `require('./file.json')`, convert to:
+
 ```javascript
-import data from './file.json' assert { type: 'json' };
+import data from "./file.json" assert { type: "json" };
 ```
 
 ## Rollback Plan
@@ -320,22 +321,18 @@ If migration fails and cannot be fixed within 2 hours:
    ```bash
    git checkout HEAD -- package.json
    ```
-   
 2. **Restore all .cjs files**:
    ```bash
    git checkout HEAD -- eleventy.config.cjs lib/path-prefix.cjs src/_data/*.cjs
    ```
-   
 3. **Reinstall**:
    ```bash
    npm install
    ```
-   
 4. **Verify**:
    ```bash
    npm run build
    ```
-   
 5. **Document**: Update progress tracker with BLOCKED status and issues encountered
 
 ## Communication

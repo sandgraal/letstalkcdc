@@ -40,7 +40,7 @@ async function collectMetrics() {
   } catch (err) {
     console.error(
       "[analytics] Warning: Could not analyze _site directory:",
-      err.message
+      err.message,
     );
   }
 
@@ -51,7 +51,7 @@ async function collectMetrics() {
   } catch (err) {
     console.error(
       "[analytics] Warning: Could not analyze src directory:",
-      err.message
+      err.message,
     );
   }
 
@@ -94,7 +94,7 @@ async function analyzeSite(dir, metrics, subPath = "") {
 
   if (metrics.build.pages > 0) {
     metrics.build.avgPageSize = Math.round(
-      metrics.build.totalSize / metrics.build.pages
+      metrics.build.totalSize / metrics.build.pages,
     );
   }
 }
@@ -126,7 +126,7 @@ async function analyzeSource(dir, metrics) {
   try {
     const dataFiles = await readdir(dataDir);
     metrics.content.dataFiles = dataFiles.filter(
-      (f) => f.endsWith(".cjs") || f.endsWith(".js") || f.endsWith(".json")
+      (f) => f.endsWith(".cjs") || f.endsWith(".js") || f.endsWith(".json"),
     ).length;
   } catch {
     // No _data directory
@@ -154,10 +154,10 @@ function printSummary(metrics) {
   console.log("═══════════════════════════════════════");
   console.log(`📄 Pages: ${metrics.build.pages}`);
   console.log(
-    `📦 Total Size: ${(metrics.build.totalSize / 1024 / 1024).toFixed(2)} MB`
+    `📦 Total Size: ${(metrics.build.totalSize / 1024 / 1024).toFixed(2)} MB`,
   );
   console.log(
-    `📏 Avg Page Size: ${(metrics.build.avgPageSize / 1024).toFixed(2)} KB`
+    `📏 Avg Page Size: ${(metrics.build.avgPageSize / 1024).toFixed(2)} KB`,
   );
   console.log(`\n🎨 Assets:`);
   console.log(`   CSS: ${metrics.build.assets.css}`);

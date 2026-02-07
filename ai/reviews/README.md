@@ -33,6 +33,7 @@ npm run agent:content-review
 ```
 
 Or via GitHub Actions:
+
 1. Go to Actions → Quarterly Content Review
 2. Click "Run workflow"
 

@@ -9,6 +9,7 @@ Migrate the Let's Talk CDC site from Eleventy 2.0 to Eleventy 3.0, converting al
 ### What is Eleventy 3.0?
 
 Eleventy 3.0 is a major version upgrade that:
+
 - Adopts ESM-first architecture (native `import`/`export`)
 - Improves build performance
 - Modernizes the plugin API
@@ -79,7 +80,7 @@ Add `"type": "module"` and upgrade Eleventy:
 const { EleventyHtmlBasePlugin } = require("@11ty/eleventy");
 const pathPrefix = require("./lib/path-prefix.cjs");
 
-module.exports = function(eleventyConfig) {
+module.exports = function (eleventyConfig) {
   eleventyConfig.addPlugin(EleventyHtmlBasePlugin);
   return { dir: { input: "src", output: "_site" } };
 };
@@ -88,13 +89,14 @@ module.exports = function(eleventyConfig) {
 import { EleventyHtmlBasePlugin } from "@11ty/eleventy";
 import pathPrefix from "./lib/path-prefix.mjs";
 
-export default function(eleventyConfig) {
+export default function (eleventyConfig) {
   eleventyConfig.addPlugin(EleventyHtmlBasePlugin);
   return { dir: { input: "src", output: "_site" } };
 }
 ```
 
 **Key changes**:
+
 - `require()` → `import`
 - `module.exports` → `export default`
 - File extension `.cjs` → `.mjs`
@@ -103,17 +105,17 @@ export default function(eleventyConfig) {
 
 ```javascript
 // Before
-module.exports = function() {
+module.exports = function () {
   // ... logic
 };
 
 // After
-export default function() {
+export default function () {
   // ... logic
 }
 ```
 
-### Step 4: Convert src/_data/*.cjs files
+### Step 4: Convert src/\_data/\*.cjs files
 
 Data files in Eleventy must export an object or function:
 
@@ -123,7 +125,7 @@ const pathPrefix = require("../../lib/path-prefix.cjs");
 
 module.exports = {
   title: "Let's Talk CDC",
-  pathPrefix: pathPrefix()
+  pathPrefix: pathPrefix(),
 };
 
 // After (src/_data/site.mjs)
@@ -131,7 +133,7 @@ import pathPrefix from "../../lib/path-prefix.mjs";
 
 export default {
   title: "Let's Talk CDC",
-  pathPrefix: pathPrefix()
+  pathPrefix: pathPrefix(),
 };
 ```
 
@@ -159,16 +161,12 @@ PostCSS also supports ESM:
 ```javascript
 // Before (postcss.config.cjs)
 module.exports = {
-  plugins: [
-    require('autoprefixer')
-  ]
+  plugins: [require("autoprefixer")],
 };
 
 // After (postcss.config.mjs)
 export default {
-  plugins: [
-    (await import('autoprefixer')).default
-  ]
+  plugins: [(await import("autoprefixer")).default],
 };
 ```
 
@@ -179,9 +177,11 @@ export default {
 After migration is complete, verify:
 
 1. **Build succeeds**:
+
    ```bash
    npm run build
    ```
+
    Should complete without errors.
 
 2. **All pages render**:
@@ -196,9 +196,11 @@ After migration is complete, verify:
    - Verify links use `/` (root)
 
 4. **Dev server works**:
+
    ```bash
    npm run dev
    ```
+
    Should start server at http://localhost:8080
 
 5. **No console errors**:
@@ -237,13 +239,13 @@ const config = require(`./config/${env}.cjs`);
 const config = await import(`./config/${env}.mjs`);
 ```
 
-### Issue 3: __dirname not available
+### Issue 3: \_\_dirname not available
 
 In ESM, `__dirname` doesn't exist. Use this instead:
 
 ```javascript
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -255,14 +257,14 @@ JSON files need to be imported differently:
 
 ```javascript
 // Before
-const pkg = require('./package.json');
+const pkg = require("./package.json");
 
 // After (Node 18+)
-import pkg from './package.json' assert { type: 'json' };
+import pkg from "./package.json" assert { type: "json" };
 
 // Or use fs
-import { readFileSync } from 'fs';
-const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
+import { readFileSync } from "fs";
+const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 ```
 
 ## 🔄 Rollback Plan
@@ -274,11 +276,13 @@ If migration fails:
    - Downgrade Eleventy to `"^2.0.1"`
 
 2. **Restore .cjs files**:
+
    ```bash
    git checkout HEAD -- eleventy.config.cjs lib/path-prefix.cjs src/_data/*.cjs
    ```
 
 3. **Reinstall dependencies**:
+
    ```bash
    npm install
    ```

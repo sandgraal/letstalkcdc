@@ -8,5 +8,5 @@ export default {
   kafka: tools.kafka.version,
   connect: tools.kafkaConnect.version,
   debezium: tools.debezium.version,
-  pg: tools.postgres.version
+  pg: tools.postgres.version,
 };

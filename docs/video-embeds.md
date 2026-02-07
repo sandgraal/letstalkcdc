@@ -111,6 +111,7 @@ The default aspect ratio is 16:9, which works for most videos. To use a differen
 ```
 
 Other common ratios:
+
 - `16/9` - Standard widescreen (default)
 - `4/3` - Classic TV format
 - `21/9` - Ultra-wide
@@ -144,6 +145,7 @@ The video embed component follows accessibility best practices:
 ### Video Metadata
 
 Always provide:
+
 - **Title**: Clear, descriptive title
 - **Description**: Brief explanation of what the video covers
 - **Caption**: Attribution, context, or key takeaways
@@ -157,13 +159,13 @@ Always provide:
     Log-based CDC reads directly from database transaction logs, providing
     low-latency capture with minimal performance impact.
   </p>
-  
+
   {{ youtubeEmbed('VIDEO_ID', {
     title: 'Log-Based CDC Explained',
     description: 'Visual walkthrough of how database logs are parsed and transformed into change events.',
     caption: 'Learn how Debezium implements log-based CDC for PostgreSQL.'
   }) }}
-  
+
   <p>
     Now that you understand the theory, let's walk through a practical implementation...
   </p>
@@ -218,6 +220,7 @@ Check these files for real examples:
 ### Browser Support
 
 The video embed component works in all modern browsers:
+
 - Chrome/Edge 88+
 - Firefox 85+
 - Safari 14+

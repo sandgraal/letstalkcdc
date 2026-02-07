@@ -13,25 +13,25 @@
 
 ### Files involved
 
-| Path | Purpose |
-| --- | --- |
-| `scripts/progress.js` | Provides the local-only `CDCProgress` implementation and drives the dashboard state. |
-| `src/assets/js/local-progress.js` | Tracks module completion, visits, and badges in `localStorage`. |
-| `src/assets/js/progress-ui.js` | Updates visual indicators (global progress bar, completion badges, completion button). |
-| `src/_includes/components/series-nav.njk` | Renders the journey toolbar without authentication controls. |
-| `scripts/dashboard.js` | Renders charts using the locally cached dashboard data. |
+| Path                                      | Purpose                                                                                |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| `scripts/progress.js`                     | Provides the local-only `CDCProgress` implementation and drives the dashboard state.   |
+| `src/assets/js/local-progress.js`         | Tracks module completion, visits, and badges in `localStorage`.                        |
+| `src/assets/js/progress-ui.js`            | Updates visual indicators (global progress bar, completion badges, completion button). |
+| `src/_includes/components/series-nav.njk` | Renders the journey toolbar without authentication controls.                           |
+| `scripts/dashboard.js`                    | Renders charts using the locally cached dashboard data.                                |
 
 ## Optional: Appwrite for assistant feedback
 
 Appwrite is now optional and only used to sync assistant feedback. If you provide credentials, the browser will send queued feedback to your Appwrite collection; otherwise everything stays local.
 
-| Variable | Scope | Notes |
-| --- | --- | --- |
-| `APPWRITE_ENDPOINT` | Client & Functions | Exposed to the browser as `window.APPWRITE_ENDPOINT`. |
-| `APPWRITE_PROJECT` | Client & Functions | Exposed to the browser as `window.APPWRITE_PROJECT`. |
-| `APPWRITE_DB_ID` | Client & Functions | Exposed to the browser as `window.APPWRITE_DB_ID`. |
-| `COL_ASSISTANT_ID` | Client & Functions | Exposed to the browser as `window.COL_ASSISTANT_ID`. |
-| `APPWRITE_API_KEY` | **Functions only** | **SECRET**. Required only if you sync feedback through a backend worker. |
+| Variable            | Scope              | Notes                                                                    |
+| ------------------- | ------------------ | ------------------------------------------------------------------------ |
+| `APPWRITE_ENDPOINT` | Client & Functions | Exposed to the browser as `window.APPWRITE_ENDPOINT`.                    |
+| `APPWRITE_PROJECT`  | Client & Functions | Exposed to the browser as `window.APPWRITE_PROJECT`.                     |
+| `APPWRITE_DB_ID`    | Client & Functions | Exposed to the browser as `window.APPWRITE_DB_ID`.                       |
+| `COL_ASSISTANT_ID`  | Client & Functions | Exposed to the browser as `window.COL_ASSISTANT_ID`.                     |
+| `APPWRITE_API_KEY`  | **Functions only** | **SECRET**. Required only if you sync feedback through a backend worker. |
 
 If you skip these variables the assistant quietly falls back to local storage.
 

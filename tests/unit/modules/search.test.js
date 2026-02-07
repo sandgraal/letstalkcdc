@@ -11,9 +11,7 @@ vi.mock("../../../src/assets/js/utils/path-prefix.js", () => ({
 }));
 
 // Must import after mock
-const { initSearch } = await import(
-  "../../../src/assets/js/modules/search.js"
-);
+const { initSearch } = await import("../../../src/assets/js/modules/search.js");
 
 describe("search module", () => {
   const mockTracer = { trackSearch: vi.fn() };

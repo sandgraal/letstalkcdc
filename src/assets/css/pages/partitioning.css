@@ -106,7 +106,11 @@
 .bar {
   height: 18px;
   border-radius: 6px;
-  background: linear-gradient(90deg, var(--accent-primary), var(--accent-primary));
+  background: linear-gradient(
+    90deg,
+    var(--accent-primary),
+    var(--accent-primary)
+  );
 }
 
 .bar-wrap {

@@ -3,7 +3,7 @@ name: Sync README Status
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '0 4 * * 1' # weekly Monday 04:00 UTC
+    - cron: "0 4 * * 1" # weekly Monday 04:00 UTC
 
 permissions:
   contents: write
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
       - name: Update README status
         run: node ai/scripts/sync-readme.mjs
       - name: Commit README

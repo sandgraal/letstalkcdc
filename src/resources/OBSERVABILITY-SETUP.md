@@ -128,10 +128,10 @@ curl -X POST http://localhost:8083/connectors \
 docker exec -it cdc-postgres psql -U postgres -d inventory
 
 # Insert test records
-INSERT INTO inventory.customers (first_name, last_name, email) 
+INSERT INTO inventory.customers (first_name, last_name, email)
 VALUES ('John', 'Doe', 'john@example.com');
 
-INSERT INTO inventory.orders (order_date, purchaser, quantity, product_id) 
+INSERT INTO inventory.orders (order_date, purchaser, quantity, product_id)
 VALUES (NOW(), 1001, 5, 101);
 
 # Exit PostgreSQL
@@ -148,44 +148,52 @@ VALUES (NOW(), 1001, 5, 101);
 ## 📊 Dashboard Panels Explained
 
 ### 1. Current Replication Lag
+
 - **What it shows**: Time between source commit and sink processing
-- **Thresholds**: 
+- **Thresholds**:
   - Green: < 60 seconds
   - Yellow: 60s - 5 minutes
   - Red: > 5 minutes
 - **Action if red**: Check connector health, verify sink capacity
 
 ### 2. Throughput (Records/sec)
+
 - **What it shows**: Rate of records processed by source and sink
 - **Use case**: Identify bottlenecks, capacity planning
 - **Watch for**: Sustained drops or divergence between source and sink
 
 ### 3. Error Rate
+
 - **What it shows**: Errors logged per second by connector tasks
 - **Threshold**: Alert if consistently > 0
 - **Action if elevated**: Check logs, review poison pill messages
 
 ### 4. Connector Status
+
 - **What it shows**: Current state (RUNNING, FAILED, PAUSED)
 - **Expected state**: RUNNING (green)
 - **Action if not running**: Review connector logs, restart if needed
 
 ### 5. Dead Letter Queue Volume
+
 - **What it shows**: Messages in DLQ topics over time
 - **Threshold**: Alert on 3x spike above baseline
 - **Action if spiking**: Sample DLQ messages, fix data quality issues
 
 ### 6. Connector Task Running Ratio
+
 - **What it shows**: Percentage of time tasks spend processing vs idle
 - **Threshold**: < 70% indicates potential saturation
 - **Action if low**: Scale out tasks, optimize batch size
 
 ### 7. Connector Restarts
+
 - **What it shows**: Number of restarts in the last hour
 - **Threshold**: > 3 per hour is concerning
 - **Action if high**: Review logs for recurring errors, check resources
 
 ### 8. Batch Processing Time
+
 - **What it shows**: Average time to process each batch
 - **Watch for**: Increasing trend over time
 - **Action if increasing**: Check sink performance, review transformations
@@ -206,6 +214,7 @@ Edit `prometheus-alerts.yml` to adjust thresholds:
 ```
 
 Reload Prometheus configuration:
+
 ```bash
 curl -X POST http://localhost:9090/-/reload
 ```
@@ -239,6 +248,7 @@ The Alertmanager extension includes:
 - **Pre-configured receivers** for PagerDuty, Slack, email, and webhooks (requires your credentials)
 
 Access the Alertmanager UI at http://localhost:9093 to:
+
 - View active alerts
 - See silences
 - Test alert routing
@@ -249,6 +259,7 @@ Access the Alertmanager UI at http://localhost:9093 to:
 The `alertmanager.yml` file includes pre-configured templates for common integrations. You just need to add your credentials:
 
 **Slack Integration:**
+
 1. Go to your Slack workspace → Apps → Incoming Webhooks
 2. Create a new webhook and copy the URL
 3. Edit `alertmanager.yml` and replace `<YOUR_SLACK_WEBHOOK_URL>` with your webhook URL
@@ -256,12 +267,14 @@ The `alertmanager.yml` file includes pre-configured templates for common integra
 5. Reload configuration: `docker-compose restart alertmanager`
 
 **PagerDuty Integration:**
+
 1. Log into PagerDuty → Services → Your Service → Integrations
 2. Add "Events API V2" integration and copy the Integration Key
 3. Edit `alertmanager.yml` and replace `<YOUR_PAGERDUTY_INTEGRATION_KEY>`
 4. Reload configuration: `docker-compose restart alertmanager`
 
 **Email Integration:**
+
 1. Uncomment the `global.smtp_*` settings in `alertmanager.yml`
 2. Configure your SMTP server details (Gmail example included)
 3. Uncomment the `email-ops` receiver section
@@ -269,6 +282,7 @@ The `alertmanager.yml` file includes pre-configured templates for common integra
 5. Reload configuration: `docker-compose restart alertmanager`
 
 **Custom Webhook Integration:**
+
 1. Uncomment the `custom-webhook` receiver in `alertmanager.yml`
 2. Update the URL to point to your webhook endpoint
 3. Optionally configure authentication headers
@@ -302,7 +316,7 @@ Alertmanager groups alerts to reduce noise:
 - **By connector**: All alerts for the same connector group together
 - **By severity**: Critical alerts group separately from warnings
 - **By alert name**: Same alert type fires once per group
-- **Time windows**: 
+- **Time windows**:
   - Initial alert waits 30s to group with similar alerts
   - New alerts in group wait 5m before notification
   - Resolved alerts trigger a "recovery" notification
@@ -313,17 +327,17 @@ The configuration includes smart inhibition rules:
 
 ```yaml
 Connector Down
-  ↓ suppresses ↓
+↓ suppresses ↓
 ├─> High Lag Alert
-├─> Low Throughput Alert  
+├─> Low Throughput Alert
 └─> No Offset Commits Alert
 
 High Error Rate
-  ↓ suppresses ↓
+↓ suppresses ↓
 └─> DLQ Volume Spike (same root cause)
 
 Any Critical Alert
-  ↓ suppresses ↓
+↓ suppresses ↓
 └─> Related Warning Alerts (same connector)
 ```
 
@@ -334,12 +348,13 @@ This prevents receiving 10 alerts when the root cause is a single failed connect
 The configuration implements sensible rate limits:
 
 | Alert Type | Initial Delay | Group Interval | Repeat Interval |
-|------------|---------------|----------------|-----------------|
+| ---------- | ------------- | -------------- | --------------- |
 | Critical   | 10 seconds    | 5 minutes      | 1 hour          |
 | Warning    | 5 minutes     | 5 minutes      | 12 hours        |
 | SLO        | 5 minutes     | 5 minutes      | 6 hours         |
 
 **Why these intervals?**
+
 - **Critical (1h repeat)**: On-call engineer needs regular reminders until fixed
 - **Warning (12h repeat)**: Business hours follow-up, less urgency
 - **SLO (6h repeat)**: Tracks trends, doesn't require immediate action
@@ -368,22 +383,23 @@ For recurring maintenance windows, use `mute_time_intervals` in `alertmanager.ym
 
 ```yaml
 mute_time_intervals:
-  - name: 'weekend-maintenance'
+  - name: "weekend-maintenance"
     time_intervals:
       - times:
-          - start_time: '02:00'
-            end_time: '04:00'
-        weekdays: ['saturday', 'sunday']
+          - start_time: "02:00"
+            end_time: "04:00"
+        weekdays: ["saturday", "sunday"]
 ```
 
 Then reference in your route:
+
 ```yaml
 routes:
   - match:
       severity: warning
-    receiver: 'slack-warnings'
+    receiver: "slack-warnings"
     mute_time_intervals:
-      - 'weekend-maintenance'
+      - "weekend-maintenance"
 ```
 
 #### Cloud-Managed Alternatives
@@ -391,28 +407,33 @@ routes:
 For production environments, consider using managed alerting services instead of self-hosting Alertmanager:
 
 **AWS CloudWatch:**
+
 - Use Prometheus remote_write to send metrics to Amazon Managed Service for Prometheus
 - Configure CloudWatch Alarms for CDC metrics
 - Route to SNS topics → Lambda → Slack/PagerDuty/Email
 
 **Grafana Cloud:**
+
 - Enable Grafana Cloud Alerting
 - Import our alert rules directly into Grafana
 - Use built-in integrations for Slack, PagerDuty, email, etc.
 - Benefits: automatic deduplication, mobile app, escalation chains
 
 **Datadog:**
+
 - Install Datadog agent alongside Prometheus
 - Convert Prometheus queries to Datadog monitors
 - Use Datadog's native integrations for notifications
 - Benefits: APM tracing, log correlation, incident management
 
 **PagerDuty Event Intelligence:**
+
 - Send alerts directly from Prometheus using webhook receiver
 - PagerDuty provides automatic grouping, deduplication, and ML-based noise reduction
 - Best for teams already using PagerDuty for on-call management
 
 **Opsgenie:**
+
 - Similar to PagerDuty, native integration with Prometheus/Alertmanager
 - Advanced routing with on-call schedules and escalation policies
 - Benefits: integrated incident response, mobile app, status pages
@@ -454,23 +475,27 @@ curl http://localhost:9093/api/v1/alerts
 #### Troubleshooting Alert Delivery
 
 **Alerts not showing in Alertmanager:**
+
 1. Check Prometheus is sending alerts: http://localhost:9090/alerts
 2. Verify Prometheus can reach Alertmanager: check logs with `docker logs cdc-prometheus`
 3. Confirm Alertmanager target is UP in Prometheus: http://localhost:9090/targets
 
 **Alerts not reaching Slack/PagerDuty:**
+
 1. Check Alertmanager logs: `docker logs cdc-alertmanager`
 2. Verify webhook URL/API key is correct in `alertmanager.yml`
 3. Test network connectivity: `docker exec cdc-alertmanager curl -I https://hooks.slack.com`
 4. Check Alertmanager status page: http://localhost:9093/#/status
 
 **Too many notifications (alert fatigue):**
+
 1. Increase `repeat_interval` in alert routes
 2. Adjust alert thresholds in `prometheus-alerts.yml`
 3. Add more inhibition rules to suppress related alerts
 4. Increase `group_interval` to batch more alerts together
 
 **Alerts resolved but still getting notifications:**
+
 1. Check `resolve_timeout` in Alertmanager config (default: 5m)
 2. Verify Prometheus is sending "resolved" notifications
 3. Ensure receivers have `send_resolved: true` (default for most receivers)
@@ -513,19 +538,20 @@ For production CDC pipelines:
 
 ### Key Kafka Connect Metrics
 
-| Metric | Description | Type | Alert Threshold |
-|--------|-------------|------|-----------------|
-| `kafka_connect_source_connector_metrics_source_record_poll_total` | Total records polled from source | Counter | N/A |
-| `kafka_connect_sink_connector_metrics_sink_record_send_total` | Total records sent to sink | Counter | N/A |
-| `kafka_connect_connector_task_metrics_total_errors_logged_total` | Total errors logged by task | Counter | > 1/sec for 5m |
-| `kafka_connect_connector_status` | Connector state (RUNNING=1) | Gauge | != RUNNING for 2m |
-| `kafka_connect_connector_task_metrics_total_restarts_total` | Total task restarts | Counter | > 3 in 1h |
-| `kafka_connect_connector_task_metrics_running_ratio` | Task time spent running | Gauge | < 0.7 for 15m |
-| `kafka_topic_partition_current_offset` | Current offset in topic | Gauge | Used for DLQ tracking |
+| Metric                                                            | Description                      | Type    | Alert Threshold       |
+| ----------------------------------------------------------------- | -------------------------------- | ------- | --------------------- |
+| `kafka_connect_source_connector_metrics_source_record_poll_total` | Total records polled from source | Counter | N/A                   |
+| `kafka_connect_sink_connector_metrics_sink_record_send_total`     | Total records sent to sink       | Counter | N/A                   |
+| `kafka_connect_connector_task_metrics_total_errors_logged_total`  | Total errors logged by task      | Counter | > 1/sec for 5m        |
+| `kafka_connect_connector_status`                                  | Connector state (RUNNING=1)      | Gauge   | != RUNNING for 2m     |
+| `kafka_connect_connector_task_metrics_total_restarts_total`       | Total task restarts              | Counter | > 3 in 1h             |
+| `kafka_connect_connector_task_metrics_running_ratio`              | Task time spent running          | Gauge   | < 0.7 for 15m         |
+| `kafka_topic_partition_current_offset`                            | Current offset in topic          | Gauge   | Used for DLQ tracking |
 
 ### Calculating Lag
 
 Lag is calculated as:
+
 ```
 lag = source_record_poll_total - sink_record_send_total
 ```
@@ -537,6 +563,7 @@ This gives the number of records waiting to be processed. For time-based lag, yo
 ### Metrics Not Appearing
 
 1. **Check JMX Exporter is running**:
+
    ```bash
    curl http://localhost:5556/metrics | grep kafka_connect
    ```
@@ -561,6 +588,7 @@ This gives the number of records waiting to be processed. For time-based lag, yo
 ### Dashboard Showing "No Data"
 
 1. **Ensure connector is created and running**:
+
    ```bash
    curl http://localhost:8083/connectors
    ```

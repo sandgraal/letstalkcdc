@@ -16,17 +16,17 @@ Read these files completely before starting the migration:
    - Auto-detects prefix from environment variables
    - Location: `/lib/path-prefix.cjs`
 
-3. **src/_data/site.cjs** (line count: ~20-50 lines)
+3. **src/\_data/site.cjs** (line count: ~20-50 lines)
    - Global site metadata
    - Exports site title, tagline, host, pathPrefix
    - Location: `/src/_data/site.cjs`
 
-4. **src/_data/series.cjs** (line count: ~100-200 lines)
+4. **src/\_data/series.cjs** (line count: ~100-200 lines)
    - Content series/modules definitions
    - Array of objects with keys, titles, descriptions
    - Location: `/src/_data/series.cjs`
 
-5. **src/_data/appwrite.cjs** (line count: ~10-30 lines)
+5. **src/\_data/appwrite.cjs** (line count: ~10-30 lines)
    - Appwrite configuration (optional)
    - Reads environment variables
    - Location: `/src/_data/appwrite.cjs`
@@ -63,15 +63,15 @@ Read these files completely before starting the migration:
    - Convert to ESM
    - Update export statement
 
-3. **src/_data/site.cjs → src/_data/site.mjs**
+3. **src/\_data/site.cjs → src/\_data/site.mjs**
    - Convert to ESM
    - Update import statement for path-prefix
 
-4. **src/_data/series.cjs → src/_data/series.mjs**
+4. **src/\_data/series.cjs → src/\_data/series.mjs**
    - Convert to ESM
    - Update any imports if present
 
-5. **src/_data/appwrite.cjs → src/_data/appwrite.mjs**
+5. **src/\_data/appwrite.cjs → src/\_data/appwrite.mjs**
    - Convert to ESM
    - Simple export conversion
 
@@ -90,20 +90,20 @@ Read these files completely before starting the migration:
 
 After conversion, check these files to ensure they still work:
 
-1. **_site/** directory (generated)
+1. **\_site/** directory (generated)
    - Should contain all HTML files
    - At least 40+ pages should be present
 
-2. **_site/index.html**
+2. **\_site/index.html**
    - Spot-check the homepage
 
-3. **_site/quickstarts/** (any quickstart page)
+3. **\_site/quickstarts/** (any quickstart page)
    - Verify content renders correctly
 
-4. **_site/assets/css/styles.min.css**
+4. **\_site/assets/css/styles.min.css**
    - Should still be generated
 
-5. **_site/assets/js/app.js**
+5. **\_site/assets/js/app.js**
    - Should still be copied
 
 ## 📋 File Conversion Checklist
@@ -147,12 +147,14 @@ grep -r "require(" src/ lib/ --include="*.cjs"
 ## 🎯 Expected File Counts
 
 Before migration:
+
 ```
 .cjs files: 5 (eleventy.config, path-prefix, site, series, appwrite, postcss)
 .mjs files: 0
 ```
 
 After migration:
+
 ```
 .cjs files: 0-1 (postcss might remain)
 .mjs files: 5-6 (all converted)
@@ -165,7 +167,7 @@ No new npm packages are required for this phase. Only upgrade existing:
 ```json
 {
   "dependencies": {
-    "@11ty/eleventy": "^3.0.0"  // upgraded from 2.0.1
+    "@11ty/eleventy": "^3.0.0" // upgraded from 2.0.1
   }
 }
 ```
@@ -184,6 +186,7 @@ Do NOT change these files in this phase:
 ## 🗂️ Directory Structure
 
 Before:
+
 ```
 /
 ├── eleventy.config.cjs
@@ -197,6 +200,7 @@ Before:
 ```
 
 After:
+
 ```
 /
 ├── eleventy.config.mjs

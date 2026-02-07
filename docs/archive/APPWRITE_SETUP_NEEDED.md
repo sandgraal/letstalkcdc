@@ -48,7 +48,6 @@ Then add these **Attributes**:
 Then add these **Indexes**:
 
 1. **Index 1**:
-
    - Key: `userJourney`
    - Type: Key
    - Attributes: `userId` (ASC), `journeySlug` (ASC)

@@ -3,6 +3,7 @@
 Aim: fast, deterministic outputs. Provide context, inputs, constraints, and deliverables.
 
 ## Pattern
+
 ```
 Task: <what to build or change>
 Context: <repo URLs, file paths, brand voice, target audience>
@@ -13,7 +14,9 @@ Review gates: <checks before merge>
 ```
 
 ## Examples
+
 - Content:
+
   ```
   Task: Draft a product page for "Smoked Mango Salsa"
   Context: project uses Eleventy; products at src/_data/products.js

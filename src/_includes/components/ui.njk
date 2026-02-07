@@ -44,20 +44,10 @@
           <div class="hero-lede">{{ config.description | safe }}</div>
         {% endif %}
         {% if config.actions %}
-          {% set filteredActions = [] %}
-          {% for action in config.actions %}
-            {% set rawHref = action.href %}
-            {% set canRender = (rawHref is not defined) or (rawHref | trim == '') %}
-            {% if not canRender %}
-              {% set canRender = collections.all | pageExists(rawHref) %}
-            {% endif %}
-            {% if canRender %}
-              {% set filteredActions = filteredActions + [action] %}
-            {% endif %}
-          {% endfor %}
-          {% if filteredActions | length %}
+          {% set validActions = config.actions | filterValidActions(collections.all) %}
+          {% if validActions | length %}
             <div class="hero-actions">
-              {% for action in filteredActions %}
+              {% for action in validActions %}
                 {% set actionHref = resolve_href(action.href) %}
                 <a class="button {{ action.variant | default('') }}" href="{{ actionHref | trim }}">{{ action.label }}</a>
               {% endfor %}

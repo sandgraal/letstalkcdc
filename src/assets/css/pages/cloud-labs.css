@@ -202,7 +202,7 @@ details[open] summary {
 }
 
 .cloud-labs code {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 }
 
 /* Responsive adjustments */
@@ -210,12 +210,12 @@ details[open] summary {
   .comparison-table {
     font-size: 0.85rem;
   }
-  
+
   .comparison-table th,
   .comparison-table td {
     padding: 0.5rem;
   }
-  
+
   .guide-grid,
   .resources-grid {
     grid-template-columns: 1fr;

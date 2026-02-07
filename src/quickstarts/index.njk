@@ -120,19 +120,10 @@ head_extra: |
             </ul>
           {% endif %}
           {% if card.actions %}
-            {% set visibleActions = [] %}
-            {% for action in card.actions %}
-              {% set shouldShow = (action.href is not defined) or (action.href | trim == '') %}
-              {% if not shouldShow %}
-                {% set shouldShow = collections.all | pageExists(action.href) %}
-              {% endif %}
-              {% if shouldShow %}
-                {% set visibleActions = visibleActions + [action] %}
-              {% endif %}
-            {% endfor %}
-            {% if visibleActions | length %}
+            {% set validActions = card.actions | filterValidActions(collections.all) %}
+            {% if validActions | length %}
               <div class="qs-detail-actions">
-                {% for action in visibleActions %}
+                {% for action in validActions %}
                   {% set actionHref = ui.resolve_href(action.href) %}
                   <a class="button{% if action.variant %} {{ action.variant }}{% endif %}" href="{{ actionHref | trim }}">{{ action.label }}</a>
                 {% endfor %}

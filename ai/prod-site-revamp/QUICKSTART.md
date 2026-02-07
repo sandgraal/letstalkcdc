@@ -50,12 +50,14 @@ ai/prod-site-revamp/
 3. **Phase 1.3**: Build Pipeline Modernization (5 days)
 
 Then parallel:
+
 - **Phase 2**: Feature Enhancements (can start after Phase 1)
 - **Phase 3**: Testing & Quality (can start after Phase 1)
 
 ## 🔨 Common Commands
 
 ### Build & Test
+
 ```bash
 npm run build          # Build the site
 npm run dev            # Start dev server
@@ -66,6 +68,7 @@ npm run smoke:a11y     # Accessibility tests
 ```
 
 ### Validation
+
 ```bash
 # Validate phase completion
 node ai/prod-site-revamp/validation/validate-phase.mjs 1.1
@@ -74,6 +77,7 @@ node ai/prod-site-revamp/validation/validate-phase.mjs 1.3
 ```
 
 ### Useful Checks
+
 ```bash
 # Count HTML pages
 find _site -name "*.html" | wc -l
@@ -99,6 +103,7 @@ Each phase has a pre-written prompt in `prompts/`:
 4. Follow the step-by-step plan in the prompt
 
 **Example**:
+
 ```bash
 cat ai/prod-site-revamp/prompts/phase-1.1-eleventy-migration.md
 # Copy output and paste as instruction
@@ -121,6 +126,7 @@ cat ai/prod-site-revamp/prompts/phase-1.1-eleventy-migration.md
 ## 🚨 When Things Go Wrong
 
 ### Build Fails
+
 1. Read error message carefully
 2. Check if you made a typo
 3. Verify all imports have `.mjs` extensions (Phase 1.1)
@@ -128,12 +134,14 @@ cat ai/prod-site-revamp/prompts/phase-1.1-eleventy-migration.md
 5. If stuck >2 hours, update progress as BLOCKED
 
 ### Tests Fail
+
 1. Run `npm run clean && npm run build`
 2. Check browser console for errors
 3. Test on a fresh page load
 4. Verify localStorage is not corrupted (clear if needed)
 
 ### Rollback Needed
+
 ```bash
 # Restore specific files
 git checkout HEAD -- <file>
@@ -148,16 +156,19 @@ git checkout pre-phase1.1-migration
 ## 💡 Pro Tips
 
 ### For Phase 1.1 (ESM Migration)
+
 - Always include `.mjs` extension in imports
 - Remember `export default` not `module.exports`
 - Test path prefix thoroughly
 
 ### For Phase 1.2 (Modularization)
+
 - Extract one module at a time
 - Test after each module
 - Keep initialization order in mind
 
 ### For Phase 1.3 (Vite)
+
 - Start with minimal config
 - Test bundle size frequently
 - Ensure HMR works in dev mode
@@ -165,6 +176,7 @@ git checkout pre-phase1.1-migration
 ## 📞 Getting Help
 
 If blocked:
+
 1. Update `progress/PROGRESS.md` with BLOCKED status
 2. Document the issue clearly
 3. Include error messages

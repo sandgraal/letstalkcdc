@@ -68,7 +68,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(1rem);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
   z-index: 1000;
 }
 

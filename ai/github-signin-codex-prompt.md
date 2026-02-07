@@ -3,20 +3,24 @@
 You are gpt-5-codex, an autonomous coding agent working in the `letstalkcdc` repository. Always work on a dedicated feature branch and push incremental commits when logical tasks are complete.
 
 ## Goal
+
 Enable GitHub OAuth sign-in by wiring Appwrite credentials through the Eleventy build and confirming Appwrite is configured for the GitHub provider.
 
 ## Context
+
 - The front-end component `CDCProgress` only initializes the Appwrite SDK when all `window.APPWRITE_*` globals are defined. Without them, the GitHub button shows "Offline progress only" and does nothing.
 - Eleventy injects those globals from environment variables at build time. Missing variables leave the SDK uninitialized.
 - The click handler invokes `account.createOAuth2Session('github', ...)`, delegating to Appwrite's GitHub OAuth configuration. Redirect URLs must match the deployed origin.
 
 Reference files:
+
 - `src/_data/appwrite.js`
 - `src/js/progress/index.ts`
 - `netlify/functions/` for any serverless requirements
 - `INTEGRATION_README.md` for Appwrite setup steps.
 
 ## Directives
+
 1. **Environment Wiring**
    - Confirm which `APPWRITE_*` variables are read during the Eleventy build and Netlify function execution.
    - Update configuration or documentation so the deployment defines:
@@ -44,7 +48,7 @@ Reference files:
    - Summarize progress and outstanding actions in commit messages and the final pull request description.
 
 ## Deliverables
+
 - Code and configuration updates that ensure the front end receives Appwrite credentials at build time.
 - Documentation updates that explain required environment variables, noting the API key must remain server-side, and Appwrite provider setup.
 - Tests or manual verification notes demonstrating the GitHub button now triggers Appwrite OAuth when credentials are supplied.
-

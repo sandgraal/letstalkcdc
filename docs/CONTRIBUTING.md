@@ -1,6 +1,7 @@
 # AI-CONTRIBUTING.md
 
 ## Purpose
+
 This document describes the AI agents that automatically maintain and improve this repository. It defines their responsibilities, limitations, and behavioral rules to ensure they enhance rather than disrupt the development workflow.
 
 ## Agent Overview
@@ -10,12 +11,14 @@ This document describes the AI agents that automatically maintain and improve th
 **Responsibility:** Optimizes images for web delivery by compressing and converting them to modern formats.
 
 **What it does:**
+
 - Scans the `src/` directory for image files (`.jpg`, `.jpeg`, `.png`, `.gif`)
 - Identifies images larger than 10 KB that could benefit from optimization
 - Converts images to WebP format with 85% quality setting (when enabled)
 - Reports potential optimizations without modifying files by default
 
 **What it won't do:**
+
 - Modify content semantics or alt text
 - Delete original images
 - Change image dimensions or crop images
@@ -23,6 +26,7 @@ This document describes the AI agents that automatically maintain and improve th
 - Process images in `node_modules`, `_site`, `dist`, or `.git` directories
 
 **Configuration:**
+
 - Located in: `ai/scripts/image-optimize.mjs`
 - Requires: `sharp` package (install with `npm install --save-dev sharp`)
 - Quality setting: 85% (configurable in script)
@@ -30,6 +34,7 @@ This document describes the AI agents that automatically maintain and improve th
 
 **Activation:**
 To enable actual optimization (currently in report-only mode):
+
 1. Install sharp: `npm install --save-dev sharp`
 2. Set environment variable: `IMAGE_OPTIMIZE_ENABLED=true`
 3. Run the script or workflow with the environment variable set
@@ -40,6 +45,7 @@ To enable actual optimization (currently in report-only mode):
 **Responsibility:** Validates internal links in the built site to detect broken references and 404 errors.
 
 **What it does:**
+
 - Builds the site using `npm run build`
 - Scans all HTML files in the `_site/` directory
 - Extracts and validates links from `<a>`, `<img>`, `<script>`, and `<link>` tags
@@ -49,6 +55,7 @@ To enable actual optimization (currently in report-only mode):
 - Fails the workflow if broken links are found
 
 **What it won't do:**
+
 - Check external links (HTTP/HTTPS) by default
 - Follow redirects or check HTTP status codes
 - Validate anchor targets within pages
@@ -56,12 +63,14 @@ To enable actual optimization (currently in report-only mode):
 - Check links in JavaScript-generated content
 
 **Configuration:**
+
 - Located in: `ai/scripts/link-check.mjs`
 - Respects: `ELEVENTY_PATH_PREFIX` environment variable
 - Skips: `mailto:`, `tel:`, `javascript:`, and anchor-only links
 - External link checking: Disabled by default (set `checkExternal: true` to enable)
 
 **Expected behavior:**
+
 - ✅ Passes when all internal links are valid
 - ❌ Fails when broken links are detected (returns exit code 1)
 - Broken links should be fixed in source files, not by the agent
@@ -69,6 +78,7 @@ To enable actual optimization (currently in report-only mode):
 ### 3. Other Agents
 
 See `ai/AGENTS.md` for complete documentation of all agents including:
+
 - `site-content`: Site building and content updates
 - `site-packaging`: Label exports and print-ready assets
 - `site-data`: Data synchronization
@@ -79,6 +89,7 @@ See `ai/AGENTS.md` for complete documentation of all agents including:
 ### Autonomy & Constraints
 
 **Agents MUST:**
+
 - Produce deterministic, idempotent outputs
 - Tag AI-generated outputs with `ai-generated: true` in frontmatter/JSON
 - Exit with appropriate status codes (0 for success, non-zero for failure)
@@ -86,6 +97,7 @@ See `ai/AGENTS.md` for complete documentation of all agents including:
 - Respect `.gitignore` and avoid committing build artifacts
 
 **Agents MUST NOT:**
+
 - Overwrite user-authored Markdown, templates, or source code
 - Change content semantics, meaning, or tone
 - Delete working files or code without explicit configuration
@@ -102,6 +114,7 @@ See `ai/AGENTS.md` for complete documentation of all agents including:
 ### Conflict Resolution
 
 Priority order when conflicts arise:
+
 1. Data files (`src/_data/`)
 2. Layouts and templates (`src/_includes/`)
 3. Assets (CSS, JS, images)
@@ -111,6 +124,7 @@ Human review always takes precedence over agent decisions.
 ## Running Agents Locally
 
 ### Image Optimization
+
 ```bash
 # Report mode (default)
 node ai/scripts/image-optimize.mjs
@@ -120,6 +134,7 @@ IMAGE_OPTIMIZE_ENABLED=true node ai/scripts/image-optimize.mjs
 ```
 
 ### Link Checking
+
 ```bash
 # Build the site first
 npm run build
@@ -129,6 +144,7 @@ ELEVENTY_PATH_PREFIX=/letstalkcdc node ai/scripts/link-check.mjs
 ```
 
 ### All Agents via GitHub Actions
+
 ```bash
 # Trigger manually via GitHub Actions UI
 # Or use GitHub CLI:
@@ -169,6 +185,7 @@ The conversational helper ships with a curated YAML knowledge base at `src/data/
 ## Questions & Issues
 
 For agent-related issues or suggestions:
+
 - Check existing issues labeled `ai-agent`
 - Review logs in `ai/logs/` directory
 - Consult `ai/AGENTS.md` for technical details

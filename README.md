@@ -64,6 +64,7 @@ open http://localhost:8080
 ```
 
 **Includes:**
+
 - ✅ Pre-loaded sample data (products, customers, orders)
 - ✅ Postgres & MySQL configured for CDC
 - ✅ Kafka, Zookeeper, Debezium Connect
@@ -99,15 +100,15 @@ The site automatically rebuilds and deploys on every push to `main`.
 
 The site is built with progressive enhancement — core features work immediately:
 
-| Feature                               | Status      | Documentation                      |
-| ------------------------------------- | ----------- | ---------------------------------- |
-| **Static site** (educational content) | ✅ Ready    | This README                        |
-| **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage |
+| Feature                               | Status      | Documentation                            |
+| ------------------------------------- | ----------- | ---------------------------------------- |
+| **Static site** (educational content) | ✅ Ready    | This README                              |
+| **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage       |
 | **User authentication**               | ✅ Ready    | [docs/auth-setup.md](docs/auth-setup.md) |
 | **Cloud progress sync**               | ✅ Ready    | [docs/auth-setup.md](docs/auth-setup.md) |
-| **OpenTelemetry tracing**             | ⚠️ Optional | [docs/TRACING.md](docs/TRACING.md) |
-| **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
-| **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+| **OpenTelemetry tracing**             | ⚠️ Optional | [docs/TRACING.md](docs/TRACING.md)       |
+| **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)           |
+| **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)           |
 
 ### Serverless Function Hosting
 
@@ -175,5 +176,7 @@ npm run verify:deployment # Verify production deployment
 - **CLS** (Cumulative Layout Shift) — Target: < 0.1
 
 <!-- AI-STATUS:START -->
+
 Last AI agents run: 2026-02-02T04:38:51.930Z
+
 <!-- AI-STATUS:END -->

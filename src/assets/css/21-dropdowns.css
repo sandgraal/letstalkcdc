@@ -72,14 +72,17 @@
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5),
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.5),
     0 10px 10px -5px rgba(0, 0, 0, 0.4);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-0.5rem);
   pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s;
+  transition:
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.2s;
 }
 
 .dropdown.is-open .dropdown__menu {
@@ -356,14 +359,17 @@
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5),
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.5),
     0 10px 10px -5px rgba(0, 0, 0, 0.4);
   opacity: 0;
   visibility: hidden;
   transform: translateX(-0.5rem);
   pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s;
+  transition:
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.2s;
 }
 
 .dropdown__item--has-submenu:hover .dropdown__submenu,
@@ -761,7 +767,8 @@
   .dropdown__menu,
   .dropdown__submenu {
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15),
+    box-shadow:
+      0 10px 25px -5px rgba(0, 0, 0, 0.15),
       0 10px 10px -5px rgba(0, 0, 0, 0.1);
   }
 

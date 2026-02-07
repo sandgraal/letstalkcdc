@@ -11,6 +11,7 @@ Split the monolithic 1821-line `src/assets/js/app.js` file into 7 maintainable, 
 **File**: `src/assets/js/app.js`  
 **Size**: 1821 lines  
 **Problem**: Single file contains 7 distinct features, making it:
+
 - Hard to maintain
 - Difficult to test
 - Impossible to code-split
@@ -27,6 +28,7 @@ Split the monolithic 1821-line `src/assets/js/app.js` file into 7 maintainable, 
 ### Target State
 
 **Structure**:
+
 ```
 src/assets/js/
 ├── app.js                    # New orchestrator (imports all modules)
@@ -48,9 +50,11 @@ src/assets/js/
 Analysis of current `app.js`:
 
 ### Module 1: Theme Toggle
+
 **Lines**: 27-86 (60 lines)  
 **Purpose**: Dark/light mode switching  
 **Key Functions**:
+
 - `syncThemeToggle()` — Update button states
 - `applyTheme()` — Apply theme to DOM
 - `getStoredTheme()` / `setStoredTheme()` — LocalStorage
@@ -60,9 +64,11 @@ Analysis of current `app.js`:
 **Exports**: `initTheme()`
 
 ### Module 2: Navigation
+
 **Lines**: 109-385 (277 lines)  
 **Purpose**: Mobile menu, smooth scrolling, back-to-top  
 **Key Functions**:
+
 - `initMobileNav()` — Mobile hamburger menu
 - `initSmoothScroll()` — Smooth scroll to anchors
 - `initBackToTop()` — Scroll to top button
@@ -72,9 +78,11 @@ Analysis of current `app.js`:
 **Exports**: `initNavigation()`
 
 ### Module 3: Search
+
 **Lines**: 489-612 (124 lines)  
 **Purpose**: Full-text search with Fuse.js  
 **Key Functions**:
+
 - `initSearch()` — Initialize search UI
 - `performSearch()` — Execute search query
 - `renderResults()` — Display search results
@@ -84,9 +92,11 @@ Analysis of current `app.js`:
 **Exports**: `initSearch()`
 
 ### Module 4: Scorecard (Progress Tracking)
+
 **Lines**: 780-1715 (936 lines)  
 **Purpose**: Track user progress through modules  
 **Key Functions**:
+
 - `initScorecard()` — Initialize progress UI
 - `loadProgress()` — Load from LocalStorage
 - `saveProgress()` — Save to LocalStorage
@@ -99,9 +109,11 @@ Analysis of current `app.js`:
 **Note**: This is the largest module (936 lines). Consider splitting further if needed.
 
 ### Module 5: Code Blocks
+
 **Lines**: 446-487 (42 lines) + 1536-1631 (96 lines) = 138 lines  
 **Purpose**: Copy button for code blocks, syntax highlighting  
 **Key Functions**:
+
 - `initCodeBlocks()` — Add copy buttons
 - `copyToClipboard()` — Copy code text
 - `showCopyFeedback()` — Visual feedback
@@ -110,9 +122,11 @@ Analysis of current `app.js`:
 **Exports**: `initCodeBlocks()`
 
 ### Module 6: Toast Notifications
+
 **Lines**: 1717-1821 (105 lines)  
 **Purpose**: Display temporary notifications  
 **Key Functions**:
+
 - `showToast()` — Display toast message
 - `hideToast()` — Remove toast
 - `createToastElement()` — Create DOM element
@@ -121,9 +135,11 @@ Analysis of current `app.js`:
 **Exports**: `showToast()`, `hideToast()`
 
 ### Module 7: Quick Navigation
+
 **Lines**: 614-778 (165 lines)  
 **Purpose**: Sidebar navigation for long pages  
 **Key Functions**:
+
 - `initQuickNav()` — Generate TOC sidebar
 - `updateActiveSection()` — Highlight current section
 - `observeSections()` — Intersection Observer
@@ -161,10 +177,10 @@ Avoid global variables. Use closures or module-level variables:
 
 ```javascript
 // ❌ BAD: Pollutes global scope
-window.currentTheme = 'light';
+window.currentTheme = "light";
 
 // ✅ GOOD: Module-level variable
-let currentTheme = 'light';
+let currentTheme = "light";
 
 export function getTheme() {
   return currentTheme;
@@ -177,8 +193,8 @@ Use event delegation for better performance:
 
 ```javascript
 // ✅ GOOD
-document.addEventListener('click', (e) => {
-  if (e.target.matches('[data-toggle-theme]')) {
+document.addEventListener("click", (e) => {
+  if (e.target.matches("[data-toggle-theme]")) {
     toggleTheme();
   }
 });
@@ -259,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initScorecard();
   initCodeBlocks();
   initQuickNav();
-  
+
   console.log("✓ All modules initialized");
 });
 
@@ -316,13 +332,15 @@ After modularization, manually test:
 ### Issue 1: Module Dependencies
 
 Some modules depend on others:
+
 - `code-blocks.js` depends on `toast.js`
 - Multiple modules depend on `tracing-lite.js`
 
 **Solution**: Import dependencies within modules:
+
 ```javascript
 // code-blocks.js
-import { showToast } from './toast.js';
+import { showToast } from "./toast.js";
 ```
 
 ### Issue 2: Initialization Order
@@ -330,6 +348,7 @@ import { showToast } from './toast.js';
 Some modules may need to initialize before others.
 
 **Solution**: Order matters in app.js. Initialize in this order:
+
 1. Theme (visual, should be immediate)
 2. Navigation (structural)
 3. Search (requires DOM)
@@ -342,12 +361,13 @@ Some modules may need to initialize before others.
 Multiple modules use `educationTracer`.
 
 **Solution**: Export tracer from app.js:
+
 ```javascript
 // app.js
 export { educationTracer };
 
 // In modules
-import { educationTracer } from '../app.js';
+import { educationTracer } from "../app.js";
 ```
 
 **Alternative**: Create a tracer module.
@@ -357,11 +377,13 @@ import { educationTracer } from '../app.js';
 If modularization breaks functionality:
 
 1. **Restore original app.js**:
+
    ```bash
    git checkout HEAD -- src/assets/js/app.js
    ```
 
 2. **Remove modules directory**:
+
    ```bash
    rm -rf src/assets/js/modules/
    ```

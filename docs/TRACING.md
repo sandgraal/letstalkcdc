@@ -131,7 +131,6 @@ The site uses **`tracing-lite.js`** — a custom, dependency-free implementation
 ### Components
 
 1. **`src/assets/js/tracing-lite.js`** - Lightweight tracer implementation
-
    - Custom `EducationTracer` class for educational event tracking
    - OTLP trace formatting and export
    - Core Web Vitals integration

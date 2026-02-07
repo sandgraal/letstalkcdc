@@ -317,25 +317,21 @@ npm run smoke:core
 ## 🔄 Next Steps (Future Enhancements)
 
 1. **Search Enhancements**:
-
    - Add search history
    - Implement fuzzy matching
    - Add search analytics
 
 2. **Web Vitals**:
-
    - Historical trend tracking
    - Aggregate metrics across pages
    - Performance budget enforcement
 
 3. **Package Exports**:
-
    - PDF generation (requires headless browser)
    - Markdown export
    - EPUB format for e-readers
 
 4. **Analytics**:
-
    - Track user journey completions
    - Measure engagement metrics
    - A/B testing framework

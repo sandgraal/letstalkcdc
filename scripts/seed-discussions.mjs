@@ -1,23 +1,26 @@
 #!/usr/bin/env node
 /**
  * Seed GitHub Discussions with starter threads
- * 
+ *
  * This script creates initial discussion threads to kickstart community engagement.
  * It uses the GitHub GraphQL API to create discussions in the specified repository.
- * 
+ *
  * Prerequisites:
  * - GitHub Discussions must be enabled for the repository
  * - GITHUB_TOKEN environment variable with repo and discussion permissions
  * - Repository categories must be created (Show and Tell, Q&A, etc.)
- * 
+ *
  * Usage:
  *   GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs
  */
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = process.env.GITHUB_REPOSITORY_OWNER || 'sandgraal';
-const REPO_NAME = process.env.GITHUB_REPOSITORY_NAME || 'letstalkcdc';
-const RATE_LIMIT_DELAY_MS = parseInt(process.env.RATE_LIMIT_DELAY_MS || '1000', 10);
+const REPO_OWNER = process.env.GITHUB_REPOSITORY_OWNER || "sandgraal";
+const REPO_NAME = process.env.GITHUB_REPOSITORY_NAME || "letstalkcdc";
+const RATE_LIMIT_DELAY_MS = parseInt(
+  process.env.RATE_LIMIT_DELAY_MS || "1000",
+  10,
+);
 
 // Starter discussion threads based on docs/COMMUNITY.md
 const SEED_DISCUSSIONS = [
@@ -38,7 +41,7 @@ We'd love to hear what's working well and what challenges you've faced! 🚀
 **Example:**
 > We use Debezium + Kafka Connect to capture changes from PostgreSQL and MySQL databases, streaming to both Snowflake (analytics) and Redis (caching). For monitoring, we rely on Prometheus + Grafana to track lag and throughput.`,
     category: "Show and Tell",
-    pin: true
+    pin: true,
   },
   {
     title: "Your most challenging CDC bug - and how you fixed it",
@@ -58,7 +61,7 @@ Your story could help someone else avoid the same pitfall!
 - Linking to relevant monitoring dashboards or log patterns
 - Documenting what didn't work before finding the solution`,
     category: "Debugging War Stories",
-    pin: true
+    pin: true,
   },
   {
     title: "Tool Requests / Future Labs - What would you like to see?",
@@ -85,7 +88,7 @@ Your story could help someone else avoid the same pitfall!
 
 Tell us what you want to learn, and we'll prioritize based on community interest!`,
     category: "General",
-    pin: true
+    pin: true,
   },
   {
     title: "Got stuck in a lab? Ask for help here!",
@@ -107,8 +110,8 @@ The more details you provide, the easier it is for others to help troubleshoot.
 
 Don't hesitate to ask - we're all learning together! 🤝`,
     category: "Q&A",
-    pin: true
-  }
+    pin: true,
+  },
 ];
 
 /**
@@ -130,27 +133,29 @@ async function getRepositoryInfo() {
     }
   `;
 
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       query,
       variables: {
         owner: REPO_OWNER,
-        name: REPO_NAME
-      }
-    })
+        name: REPO_NAME,
+      },
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
-  
+
   if (data.errors) {
     throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
   }
@@ -180,11 +185,11 @@ async function createDiscussion(repositoryId, categoryId, title, body) {
     }
   `;
 
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       query: mutation,
@@ -192,17 +197,19 @@ async function createDiscussion(repositoryId, categoryId, title, body) {
         repositoryId,
         categoryId,
         title,
-        body
-      }
-    })
+        body,
+      },
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
-  
+
   if (data.errors) {
     throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
   }
@@ -227,28 +234,32 @@ async function pinDiscussion(discussionId) {
     }
   `;
 
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       query: mutation,
       variables: {
-        discussionId
-      }
-    })
+        discussionId,
+      },
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
-  
+
   if (data.errors) {
-    console.warn(`Warning: Could not pin discussion: ${JSON.stringify(data.errors)}`);
+    console.warn(
+      `Warning: Could not pin discussion: ${JSON.stringify(data.errors)}`,
+    );
     return null;
   }
 
@@ -274,21 +285,21 @@ async function discussionExists(title) {
   `;
 
   // Sanitize title for search query by escaping special characters
-  const sanitizedTitle = title.replace(/["\\]/g, '\\$&');
+  const sanitizedTitle = title.replace(/["\\]/g, "\\$&");
   const searchQuery = `repo:${REPO_OWNER}/${REPO_NAME} "${sanitizedTitle}" in:title`;
 
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       query,
       variables: {
-        query: searchQuery
-      }
-    })
+        query: searchQuery,
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -297,13 +308,13 @@ async function discussionExists(title) {
   }
 
   const data = await response.json();
-  
+
   if (data.errors) {
     console.warn(`Warning: Could not check for existing discussions`);
     return false;
   }
 
-  return data.data.search.nodes.some(node => node.title === title);
+  return data.data.search.nodes.some((node) => node.title === title);
 }
 
 /**
@@ -311,25 +322,29 @@ async function discussionExists(title) {
  */
 function findCategoryId(categories, targetName) {
   const normalized = targetName.toLowerCase().trim();
-  
+
   // Try exact match first
-  let category = categories.find(cat => 
-    cat.name.toLowerCase() === normalized ||
-    cat.slug.toLowerCase() === normalized
-  );
-  
-  if (category) {
-    return category.id;
-  }
-  
-  // Try partial match
-  category = categories.find(cat => 
-    cat.name.toLowerCase().includes(normalized) ||
-    normalized.includes(cat.slug.toLowerCase())
+  let category = categories.find(
+    (cat) =>
+      cat.name.toLowerCase() === normalized ||
+      cat.slug.toLowerCase() === normalized,
   );
 
   if (category) {
-    console.log(`   ℹ️  Matched category "${targetName}" to "${category.name}" (fuzzy match)`);
+    return category.id;
+  }
+
+  // Try partial match
+  category = categories.find(
+    (cat) =>
+      cat.name.toLowerCase().includes(normalized) ||
+      normalized.includes(cat.slug.toLowerCase()),
+  );
+
+  if (category) {
+    console.log(
+      `   ℹ️  Matched category "${targetName}" to "${category.name}" (fuzzy match)`,
+    );
   }
 
   return category?.id;
@@ -339,13 +354,13 @@ function findCategoryId(categories, targetName) {
  * Main execution
  */
 async function main() {
-  console.log('🌱 GitHub Discussions Seeder\n');
+  console.log("🌱 GitHub Discussions Seeder\n");
 
   // Validate prerequisites
   if (!GITHUB_TOKEN) {
-    console.error('❌ Error: GITHUB_TOKEN environment variable is required');
-    console.error('\nUsage:');
-    console.error('  GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs\n');
+    console.error("❌ Error: GITHUB_TOKEN environment variable is required");
+    console.error("\nUsage:");
+    console.error("  GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs\n");
     console.error('The token needs "repo" and "discussion" permissions.\n');
     process.exit(1);
   }
@@ -354,10 +369,12 @@ async function main() {
 
   try {
     // Fetch repository info
-    console.log('🔍 Fetching repository information...');
+    console.log("🔍 Fetching repository information...");
     const repo = await getRepositoryInfo();
     console.log(`✅ Repository ID: ${repo.id}`);
-    console.log(`📁 Available categories: ${repo.discussionCategories.nodes.map(c => c.name).join(', ')}\n`);
+    console.log(
+      `📁 Available categories: ${repo.discussionCategories.nodes.map((c) => c.name).join(", ")}\n`,
+    );
 
     let created = 0;
     let skipped = 0;
@@ -376,16 +393,26 @@ async function main() {
       }
 
       // Find category ID
-      const categoryId = findCategoryId(repo.discussionCategories.nodes, seed.category);
+      const categoryId = findCategoryId(
+        repo.discussionCategories.nodes,
+        seed.category,
+      );
       if (!categoryId) {
-        console.error(`   ⚠️  Warning: Category "${seed.category}" not found, skipping`);
+        console.error(
+          `   ⚠️  Warning: Category "${seed.category}" not found, skipping`,
+        );
         skipped++;
         continue;
       }
 
       // Create discussion
       try {
-        const discussion = await createDiscussion(repo.id, categoryId, seed.title, seed.body);
+        const discussion = await createDiscussion(
+          repo.id,
+          categoryId,
+          seed.title,
+          seed.body,
+        );
         console.log(`   ✅ Created: ${discussion.url}`);
         created++;
 
@@ -399,27 +426,30 @@ async function main() {
         }
 
         // Rate limiting: wait between requests
-        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
+        await new Promise((resolve) =>
+          setTimeout(resolve, RATE_LIMIT_DELAY_MS),
+        );
       } catch (error) {
         console.error(`   ❌ Failed to create: ${error.message}`);
       }
     }
 
     // Summary
-    console.log('\n' + '='.repeat(50));
-    console.log('📊 Summary:');
+    console.log("\n" + "=".repeat(50));
+    console.log("📊 Summary:");
     console.log(`   ✅ Created: ${created}`);
     console.log(`   📌 Pinned: ${pinned}`);
     console.log(`   ⏭️  Skipped: ${skipped}`);
-    console.log('='.repeat(50) + '\n');
+    console.log("=".repeat(50) + "\n");
 
     if (created > 0) {
-      console.log('🎉 Success! Visit your discussions at:');
-      console.log(`   https://github.com/${REPO_OWNER}/${REPO_NAME}/discussions\n`);
+      console.log("🎉 Success! Visit your discussions at:");
+      console.log(
+        `   https://github.com/${REPO_OWNER}/${REPO_NAME}/discussions\n`,
+      );
     }
-
   } catch (error) {
-    console.error('\n❌ Error:', error.message);
+    console.error("\n❌ Error:", error.message);
     process.exit(1);
   }
 }

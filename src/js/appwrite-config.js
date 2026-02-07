@@ -15,7 +15,7 @@ const appwriteConfig = {
 const hasRequiredConfig = Boolean(
   appwriteConfig.endpoint &&
   appwriteConfig.project &&
-  appwriteConfig.databaseId
+  appwriteConfig.databaseId,
 );
 
 let AppwriteSDK = null;
@@ -23,12 +23,15 @@ let AppwriteSDK = null;
 if (hasRequiredConfig) {
   try {
     // Import Appwrite SDK from CDN to avoid bundler configuration
-    AppwriteSDK = await import("https://cdn.jsdelivr.net/npm/appwrite@13.0.0/dist/esm/appwrite.js");
+    AppwriteSDK =
+      await import("https://cdn.jsdelivr.net/npm/appwrite@13.0.0/dist/esm/appwrite.js");
   } catch (error) {
     console.error("Failed to load Appwrite SDK:", error);
   }
 } else {
-  console.info("Appwrite configuration missing; assistant feedback will stay local.");
+  console.info(
+    "Appwrite configuration missing; assistant feedback will stay local.",
+  );
 }
 
 let databases = null;

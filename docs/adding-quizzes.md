@@ -20,7 +20,7 @@ Edit your module's `index.11tydata.cjs` file and add a `quizConfig` object:
 
 ```javascript
 module.exports = {
-  seriesKey: 'your-module',
+  seriesKey: "your-module",
   heroConfig: {
     // ... existing hero config
   },
@@ -35,10 +35,11 @@ module.exports = {
           "It's the fastest method",
           "It has minimal impact on the source database",
           "It requires no configuration",
-          "It works without permissions"
+          "It works without permissions",
         ],
-        correct: "2",  // 1-indexed (option B is correct)
-        explanation: "Log-based CDC reads from transaction logs, which minimizes the impact on the source database while capturing all changes reliably."
+        correct: "2", // 1-indexed (option B is correct)
+        explanation:
+          "Log-based CDC reads from transaction logs, which minimizes the impact on the source database while capturing all changes reliably.",
       },
       // Add 4-6 questions per quiz
       {
@@ -46,10 +47,10 @@ module.exports = {
         options: ["A", "B", "C", "D"],
         correct: "1",
         explanation: "Explanation of the correct answer...",
-        hint: "Optional hint for incorrect answers"
-      }
-    ]
-  }
+        hint: "Optional hint for incorrect answers",
+      },
+    ],
+  },
 };
 ```
 
@@ -91,22 +92,22 @@ Visit your module page and test the quiz functionality.
 
 ### Quiz Object
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `id` | string | Yes | Unique identifier for the quiz (used in HTML `id` attribute) |
-| `title` | string | Yes | Quiz title displayed at the top |
-| `description` | string | No | Short description shown below the title |
-| `questions` | array | Yes | Array of question objects (see below) |
+| Property      | Type   | Required | Description                                                  |
+| ------------- | ------ | -------- | ------------------------------------------------------------ |
+| `id`          | string | Yes      | Unique identifier for the quiz (used in HTML `id` attribute) |
+| `title`       | string | Yes      | Quiz title displayed at the top                              |
+| `description` | string | No       | Short description shown below the title                      |
+| `questions`   | array  | Yes      | Array of question objects (see below)                        |
 
 ### Question Object
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `question` | string | Yes | The question text |
-| `options` | array | Yes | Array of 3-5 answer options (strings) |
-| `correct` | string | Yes | 1-indexed position of correct answer ("1", "2", "3", "4") |
-| `explanation` | string | Yes | Detailed explanation shown after correct answer |
-| `hint` | string | No | Optional hint shown for incorrect answers |
+| Property      | Type   | Required | Description                                               |
+| ------------- | ------ | -------- | --------------------------------------------------------- |
+| `question`    | string | Yes      | The question text                                         |
+| `options`     | array  | Yes      | Array of 3-5 answer options (strings)                     |
+| `correct`     | string | Yes      | 1-indexed position of correct answer ("1", "2", "3", "4") |
+| `explanation` | string | Yes      | Detailed explanation shown after correct answer           |
+| `hint`        | string | No       | Optional hint shown for incorrect answers                 |
 
 ## Best Practices
 
@@ -129,6 +130,7 @@ Visit your module page and test the quiz functionality.
 ### Example Questions
 
 **Good Question:**
+
 ```javascript
 {
   question: "What is a high-watermark in CDC snapshotting?",
@@ -144,6 +146,7 @@ Visit your module page and test the quiz functionality.
 ```
 
 **Avoid:**
+
 ```javascript
 {
   question: "Is CDC good?", // Too vague
@@ -158,6 +161,7 @@ Visit your module page and test the quiz functionality.
 The quiz component includes:
 
 ### Interactive Features
+
 - **Immediate feedback** - Shows correct/incorrect status after each answer
 - **Visual indicators** - Green for correct, red for incorrect, with checkmarks/X icons
 - **Score tracking** - Displays current score (e.g., "3/5 correct")
@@ -169,6 +173,7 @@ The quiz component includes:
   - <60%: "📚 Keep learning!"
 
 ### Accessibility Features
+
 - **Keyboard navigation** - Full keyboard support for all interactions
 - **Screen reader support** - Proper ARIA labels and live regions
 - **High contrast** - Meets WCAG AA contrast requirements
@@ -176,10 +181,12 @@ The quiz component includes:
 - **Semantic HTML** - Radio buttons with proper labels
 
 ### Progressive Enhancement
+
 - **Works without JavaScript** - All questions and answers visible
 - **JavaScript enhanced** - Interactive scoring and feedback when JS available
 
 ### Responsive Design
+
 - **Mobile-friendly** - Touch-optimized for small screens
 - **Desktop-optimized** - Comfortable reading on large displays
 - **Dark mode** - Automatic theme switching

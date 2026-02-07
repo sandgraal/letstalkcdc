@@ -1,13 +1,14 @@
 module.exports = {
-  seriesKey: 'connector-builder',
+  seriesKey: "connector-builder",
   heroConfig: {
-    title: 'Connector Config Builder',
-    description: '<p>Generate Debezium connector configs for Postgres, MySQL, or Oracle. Pick your version, set filters and DLQ options, then copy or curl straight to Kafka Connect.</p>',
-    align: 'center',
-    skillLevel: 'Intermediate',
+    title: "Connector Config Builder",
+    description:
+      "<p>Generate Debezium connector configs for Postgres, MySQL, or Oracle. Pick your version, set filters and DLQ options, then copy or curl straight to Kafka Connect.</p>",
+    align: "center",
+    skillLevel: "Intermediate",
     actions: [
-      { href: '#builder-inputs', label: 'Choose a Source' },
-      { href: '#builder-preview', label: 'Preview & Copy', variant: 'ghost' }
-    ]
-  }
+      { href: "#builder-inputs", label: "Choose a Source" },
+      { href: "#builder-preview", label: "Preview & Copy", variant: "ghost" },
+    ],
+  },
 };

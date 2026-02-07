@@ -91,7 +91,7 @@ class DeploymentVerifier {
       if (response.statusCode !== expectedStatus) {
         this.recordFailure(
           testName,
-          `Expected ${expectedStatus}, got ${response.statusCode}`
+          `Expected ${expectedStatus}, got ${response.statusCode}`,
         );
         return false;
       }
@@ -102,7 +102,7 @@ class DeploymentVerifier {
       } else if (response.duration > CONFIG.performance.targetResponseTime) {
         this.recordWarning(
           testName,
-          `Response time: ${response.duration}ms (target: ${CONFIG.performance.targetResponseTime}ms)`
+          `Response time: ${response.duration}ms (target: ${CONFIG.performance.targetResponseTime}ms)`,
         );
       }
 
@@ -112,7 +112,7 @@ class DeploymentVerifier {
         if (!contentType.includes("text/html")) {
           this.recordWarning(
             testName,
-            `Unexpected content-type: ${contentType}`
+            `Unexpected content-type: ${contentType}`,
           );
         }
       }
@@ -171,7 +171,7 @@ class DeploymentVerifier {
         const hasWrongLinks =
           response.body.includes('href="/intro/"') &&
           !response.body.includes(
-            `href="${this.deployment.pathPrefix}/intro/"`
+            `href="${this.deployment.pathPrefix}/intro/"`,
           );
 
         if (hasWrongLinks) {
@@ -182,7 +182,7 @@ class DeploymentVerifier {
         if (!hasCorrectLinks) {
           this.recordWarning(
             testName,
-            "Could not verify prefixed links (may be using url filter correctly)"
+            "Could not verify prefixed links (may be using url filter correctly)",
           );
         }
       }
@@ -219,15 +219,15 @@ class DeploymentVerifier {
             this.recordWarning(
               testName,
               `${header}: expected one of [${expected.join(
-                ", "
-              )}], got ${value}`
+                ", ",
+              )}], got ${value}`,
             );
             hasIssues = true;
           }
         } else if (value !== expected) {
           this.recordWarning(
             testName,
-            `${header}: expected ${expected}, got ${value}`
+            `${header}: expected ${expected}, got ${value}`,
           );
           hasIssues = true;
         }
@@ -274,7 +274,7 @@ class DeploymentVerifier {
   async runTests() {
     console.log(`\n🔍 Verifying: ${this.deployment.name}`);
     console.log(
-      `   URL: ${this.deployment.baseUrl}${this.deployment.pathPrefix}`
+      `   URL: ${this.deployment.baseUrl}${this.deployment.pathPrefix}`,
     );
     console.log("─".repeat(60));
 
@@ -312,7 +312,7 @@ class DeploymentVerifier {
       const message = test.details || test.message || test.reason || "";
 
       console.log(
-        `${color}${icon}${reset} ${test.name}${message ? ` - ${message}` : ""}`
+        `${color}${icon}${reset} ${test.name}${message ? ` - ${message}` : ""}`,
       );
     });
 

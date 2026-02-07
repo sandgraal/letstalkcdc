@@ -18,13 +18,11 @@ The site uses **`tracing-lite.js`** — a custom, zero-dependency tracer that:
 ### Key Features
 
 1. **Automatic Performance Tracking**
-
    - Page load performance (uses PerformanceNavigationTiming API)
    - Core Web Vitals (LCP, FID, CLS)
    - Resource load metrics
 
 2. **Custom Educational Tracking**
-
    - Module views (tracks which learning modules users visit)
    - Learning progress (step completion, percentage)
    - Code copy events (when users copy code snippets)
@@ -40,7 +38,6 @@ The site uses **`tracing-lite.js`** — a custom, zero-dependency tracer that:
 ### Current Implementation
 
 - ✨ `src/assets/js/tracing-lite.js` - **Lightweight tracer (IN USE)**
-
   - Custom OTLP implementation
   - No external dependencies
   - ~364 lines of vanilla JavaScript

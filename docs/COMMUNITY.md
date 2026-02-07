@@ -59,6 +59,7 @@ GITHUB_TOKEN=ghp_your_token_here node scripts/seed-discussions.mjs
 ```
 
 The script will:
+
 - Create 4 pinned starter discussions
 - Skip any discussions that already exist
 - Automatically categorize each thread
@@ -67,6 +68,7 @@ The script will:
 **For detailed instructions, see [DISCUSSIONS_SEED.md](DISCUSSIONS_SEED.md)**
 
 **Prerequisites:**
+
 - GitHub Discussions must be enabled for the repository
 - GitHub personal access token with `repo` and `discussion` scopes
 - Discussion categories must exist (see above section)
@@ -76,6 +78,7 @@ The script will:
 Alternatively, manually create these discussions:
 
 #### Show Your CDC Stack
+
 ```markdown
 **Title:** Share your CDC stack!
 
@@ -83,6 +86,7 @@ Alternatively, manually create these discussions:
 What tools and technologies are you using for Change Data Capture in your organization?
 
 Share details about:
+
 - Source databases (PostgreSQL, MySQL, Oracle, etc.)
 - CDC tools (Debezium, Maxwell, Striim, etc.)
 - Message brokers (Kafka, Pulsar, Kinesis, etc.)
@@ -93,6 +97,7 @@ We'd love to hear what's working well and what challenges you've faced!
 ```
 
 #### Debugging War Stories
+
 ```markdown
 **Title:** Your most challenging CDC bug - and how you fixed it
 
@@ -100,6 +105,7 @@ We'd love to hear what's working well and what challenges you've faced!
 CDC can be tricky, and we've all hit hard-to-debug issues. Share your war stories!
 
 What to include:
+
 - What was the symptom? (data loss, lag, corruption, etc.)
 - How did you diagnose it?
 - What was the root cause?
@@ -110,6 +116,7 @@ Your story could help someone else avoid the same pitfall!
 ```
 
 #### Production Patterns
+
 ```markdown
 **Title:** What CDC patterns are you using in production?
 
@@ -117,6 +124,7 @@ Your story could help someone else avoid the same pitfall!
 Let's talk about real-world CDC architectures.
 
 Share your experience with:
+
 - Log-based vs. trigger-based vs. timestamp-based CDC
 - Full snapshots vs. incremental replication
 - Schema evolution handling
@@ -128,6 +136,7 @@ What patterns have worked well for your use case?
 ```
 
 #### Tool Requests / Future Labs
+
 ```markdown
 **Title:** Tool Requests / Future Labs - What would you like to see?
 
@@ -135,6 +144,7 @@ What patterns have worked well for your use case?
 Help shape the future of this learning platform!
 
 What would you like to see added?
+
 - New CDC tool tutorials or quick starts
 - Hands-on labs for specific scenarios
 - Deep dives into advanced topics
@@ -143,6 +153,7 @@ What would you like to see added?
 - Video content or interactive demos
 
 Popular CDC tools we could cover:
+
 - Debezium (PostgreSQL, MySQL, MongoDB, SQL Server, Oracle)
 - AWS DMS (Database Migration Service)
 - Google Datastream
@@ -157,6 +168,7 @@ Tell us what you want to learn, and we'll prioritize based on community interest
 ```
 
 #### Got Stuck in a Lab?
+
 ```markdown
 **Title:** Got stuck in a lab? Ask for help here!
 
@@ -164,6 +176,7 @@ Tell us what you want to learn, and we'll prioritize based on community interest
 Running into issues with one of the hands-on labs or quick starts? This is the place to get help!
 
 When asking for help, please include:
+
 1. Which lab or module you're working on
 2. What step you're stuck at
 3. What error message or unexpected behavior you're seeing
@@ -173,6 +186,7 @@ When asking for help, please include:
 The more details you provide, the easier it is for others to help troubleshoot.
 
 Before posting:
+
 - Check the troubleshooting section for common issues
 - Verify prerequisites are met (Docker installed, required ports available, etc.)
 - Try the "clean slate" approach: `docker compose down -v` and restart
@@ -193,6 +207,7 @@ Don't hesitate to ask - we're all learning together!
 ### Response Templates
 
 #### Welcoming New Members
+
 ```markdown
 Welcome to the Let's Talk CDC community! Thanks for sharing your question/experience.
 
@@ -202,13 +217,15 @@ If you haven't already, check out [relevant section of the site] for more backgr
 ```
 
 #### Redirecting to Better Category
+
 ```markdown
-Thanks for your post! This would be a great fit for the [Category Name] category. 
+Thanks for your post! This would be a great fit for the [Category Name] category.
 
 Could you repost it there? That way more people interested in [topic] will see it.
 ```
 
 #### Closing Resolved Discussions
+
 ```markdown
 Great discussion! It looks like this has been resolved.
 
