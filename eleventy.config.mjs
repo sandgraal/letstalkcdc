@@ -187,13 +187,41 @@ function parseAssistantYaml(content) {
 
     if (trimmed.startsWith("triggers:")) {
       const listStr = trimmed.slice("triggers:".length).trim();
-      current.triggers = JSON.parse(listStr.replace(/'/g, '"'));
+      if (listStr && listStr.startsWith("[")) {
+        current.triggers = JSON.parse(
+          listStr.replace(/'/g, '"').replace(/,\s*]/g, "]"),
+        );
+      } else {
+        // Multi-line array: collect subsequent lines until we find the closing ]
+        let arrayStr = "";
+        while (++i < lines.length) {
+          arrayStr += lines[i].trim() + " ";
+          if (lines[i].trim().endsWith("]")) break;
+        }
+        current.triggers = JSON.parse(
+          arrayStr.trim().replace(/'/g, '"').replace(/,\s*]/g, "]"),
+        );
+      }
       continue;
     }
 
     if (trimmed.startsWith("modules:")) {
       const listStr = trimmed.slice("modules:".length).trim();
-      current.modules = JSON.parse(listStr.replace(/'/g, '"'));
+      if (listStr && listStr.startsWith("[")) {
+        current.modules = JSON.parse(
+          listStr.replace(/'/g, '"').replace(/,\s*]/g, "]"),
+        );
+      } else {
+        // Multi-line array: collect subsequent lines until we find the closing ]
+        let arrayStr = "";
+        while (++i < lines.length) {
+          arrayStr += lines[i].trim() + " ";
+          if (lines[i].trim().endsWith("]")) break;
+        }
+        current.modules = JSON.parse(
+          arrayStr.trim().replace(/'/g, '"').replace(/,\s*]/g, "]"),
+        );
+      }
       continue;
     }
 

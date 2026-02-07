@@ -204,6 +204,32 @@ describe("interactive-diagrams module", () => {
         });
       });
 
+      it("sets SVG role=group when interactive nodes exist", () => {
+        const svg = document.querySelector("svg");
+        expect(svg.getAttribute("role")).toBe("group");
+      });
+
+      it("changes ancestor role=img to role=figure to avoid nested-interactive", async () => {
+        // Re-render with an ancestor that has role="img"
+        document.body.innerHTML = `
+          <div class="architecture-diagram" role="img" aria-label="Test diagram">
+            <pre class="mermaid">graph LR; A-->B;</pre>
+          </div>
+        `;
+        window.mermaid.run.mockImplementation(async () => {
+          const block = document.querySelector(".mermaid");
+          block.innerHTML = `
+            <svg>
+              <g class="node" id="A"><text>A</text><rect/></g>
+            </svg>
+          `;
+        });
+        await initInteractiveDiagrams(mockTracer);
+
+        const wrapper = document.querySelector(".architecture-diagram");
+        expect(wrapper.getAttribute("role")).toBe("figure");
+      });
+
       it("click toggles is-highlighted class", () => {
         const nodeA = document.querySelector("#A");
         nodeA.dispatchEvent(new MouseEvent("click", { bubbles: true }));

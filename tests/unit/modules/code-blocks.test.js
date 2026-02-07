@@ -221,5 +221,229 @@ describe("code-blocks module", () => {
       // The block should be wrapped by enhanceCodeBlocks
       expect(document.querySelector(".code-block-wrapper")).not.toBeNull();
     });
+
+    it("legacy copy-snippet click copies text on success", async () => {
+      document.body.innerHTML = `
+        <pre><code>legacy text</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      // Legacy copy-snippet button exists alongside the enhanced one
+      const legacyBtn = document.querySelector(".copy-snippet");
+      expect(legacyBtn).not.toBeNull();
+
+      await legacyBtn.click();
+
+      await vi.waitFor(() => {
+        // Legacy uses code.innerText (undefined in jsdom), so just verify it was called
+        expect(navigator.clipboard.writeText).toHaveBeenCalled();
+        expect(legacyBtn.textContent).toBe("Copied!");
+      });
+    });
+
+    it("legacy copy-snippet shows Failed on clipboard error", async () => {
+      navigator.clipboard.writeText = vi
+        .fn()
+        .mockRejectedValue(new Error("blocked"));
+
+      document.body.innerHTML = `
+        <pre><code>fail text</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const legacyBtn = document.querySelector(".copy-snippet");
+      await legacyBtn.click();
+
+      await vi.waitFor(() => {
+        expect(legacyBtn.textContent).toBe("Failed");
+      });
+    });
+
+    it("legacy button restores text after timeout", async () => {
+      vi.useFakeTimers();
+
+      document.body.innerHTML = `
+        <pre><code>timer text</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const legacyBtn = document.querySelector(".copy-snippet");
+      await legacyBtn.click();
+
+      // Wait for the async click handler to complete
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(legacyBtn.textContent).toBe("Copied!");
+
+      vi.advanceTimersByTime(1200);
+      expect(legacyBtn.textContent).toBe("Copy");
+
+      vi.useRealTimers();
+    });
+
+    it("reuses existing copy-btn instead of creating a new one", () => {
+      document.body.innerHTML = `
+        <pre><code>reuse</code><button class="copy-btn">Existing</button></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      // Should have the existing copy-btn (reused by legacy) + the enhanced copy button
+      const legacy = document.querySelector(".copy-btn");
+      expect(legacy).not.toBeNull();
+      expect(legacy.textContent).toBe("Existing");
+    });
+
+    it("uses pre.id for tracer codeId when available", async () => {
+      document.body.innerHTML = `
+        <pre id="my-block"><code>id block</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const legacyBtn = document.querySelector(".copy-snippet");
+      await legacyBtn.click();
+
+      await vi.waitFor(() => {
+        expect(mockTracer.trackInteraction).toHaveBeenCalledWith(
+          "code-copy",
+          "my-block",
+          true,
+        );
+      });
+    });
+
+    it("handles tracer failure gracefully in legacy copy", async () => {
+      const failingTracer = {
+        trackInteraction: vi.fn().mockImplementation(() => {
+          throw new Error("tracer down");
+        }),
+      };
+
+      document.body.innerHTML = `
+        <pre><code>tracer fail</code></pre>
+      `;
+      initCodeBlocks(failingTracer);
+
+      const legacyBtn = document.querySelector(".copy-snippet");
+      const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+      await legacyBtn.click();
+
+      await vi.waitFor(() => {
+        expect(legacyBtn.textContent).toBe("Copied!");
+      });
+
+      debugSpy.mockRestore();
+    });
+  });
+
+  describe("enhanced code blocks edge cases", () => {
+    it("works without window.showToast on success", async () => {
+      delete window.showToast;
+
+      document.body.innerHTML = `
+        <pre><code class="language-rust">fn main() {}</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const copyBtn = document.querySelector(".code-copy-button");
+      await copyBtn.click();
+
+      await vi.waitFor(() => {
+        expect(copyBtn.textContent).toBe("Copied!");
+      });
+      // No error thrown even without showToast
+    });
+
+    it("works without window.showToast on failure", async () => {
+      delete window.showToast;
+      navigator.clipboard.writeText = vi
+        .fn()
+        .mockRejectedValue(new Error("nope"));
+
+      document.body.innerHTML = `
+        <pre><code>fail no toast</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const copyBtn = document.querySelector(".code-copy-button");
+      await copyBtn.click();
+
+      await vi.waitFor(() => {
+        expect(copyBtn.textContent).toBe("Failed");
+      });
+    });
+
+    it("handles tracer failure gracefully in enhanced copy", async () => {
+      const failingTracer = {
+        trackInteraction: vi.fn().mockImplementation(() => {
+          throw new Error("tracer error");
+        }),
+      };
+
+      document.body.innerHTML = `
+        <pre><code class="language-go">package main</code></pre>
+      `;
+      initCodeBlocks(failingTracer);
+
+      const copyBtn = document.querySelector(".code-copy-button");
+      const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+      await copyBtn.click();
+
+      await vi.waitFor(() => {
+        expect(copyBtn.textContent).toBe("Copied!");
+        expect(debugSpy).toHaveBeenCalledWith(
+          "Code copy tracking failed:",
+          expect.any(Error),
+        );
+      });
+
+      debugSpy.mockRestore();
+    });
+
+    it("restores button text and removes data-copied after timeout", async () => {
+      vi.useFakeTimers();
+
+      document.body.innerHTML = `
+        <pre><code class="language-js">let x = 1;</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const copyBtn = document.querySelector(".code-copy-button");
+      await copyBtn.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(copyBtn.textContent).toBe("Copied!");
+      expect(copyBtn.getAttribute("data-copied")).toBe("true");
+
+      vi.advanceTimersByTime(2000);
+      expect(copyBtn.textContent).toBe("Copy");
+      expect(copyBtn.getAttribute("data-copied")).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("restores Failed text after timeout on error", async () => {
+      vi.useFakeTimers();
+      navigator.clipboard.writeText = vi
+        .fn()
+        .mockRejectedValue(new Error("fail"));
+
+      document.body.innerHTML = `
+        <pre><code>err restore</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const copyBtn = document.querySelector(".code-copy-button");
+      await copyBtn.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(copyBtn.textContent).toBe("Failed");
+
+      vi.advanceTimersByTime(2000);
+      expect(copyBtn.textContent).toBe("Copy");
+
+      vi.useRealTimers();
+    });
   });
 });
