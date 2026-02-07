@@ -52,11 +52,11 @@ describe("interactive-diagrams module", () => {
 
     // Mock createElement to intercept the script append but not resolve
     const originalAppend = document.head.appendChild.bind(document.head);
-    let scriptElement = null;
+    let _scriptElement = null;
 
     vi.spyOn(document.head, "appendChild").mockImplementation((el) => {
       if (el.tagName === "SCRIPT" && el.src.includes("mermaid")) {
-        scriptElement = el;
+        _scriptElement = el;
         // Simulate load failure to exit early
         setTimeout(() => {
           el.dispatchEvent(new Event("error"));

@@ -18,7 +18,7 @@ import { UserInteractionInstrumentation } from "@opentelemetry/instrumentation-u
 import { XMLHttpRequestInstrumentation } from "@opentelemetry/instrumentation-xml-http-request";
 import { FetchInstrumentation } from "@opentelemetry/instrumentation-fetch";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
-import { trace, context } from "@opentelemetry/api";
+import { trace } from "@opentelemetry/api";
 
 /**
  * Initialize OpenTelemetry tracing for the web application
@@ -63,7 +63,7 @@ export function initTracing() {
       // User interaction tracking (clicks, etc.)
       new UserInteractionInstrumentation({
         eventNames: ["click", "submit", "keypress"],
-        shouldPreventSpanCreation: (eventType, element, span) => {
+        shouldPreventSpanCreation: (eventType, element, _span) => {
           // Only track meaningful interactions
           const trackableElements = [
             "button",
@@ -74,7 +74,7 @@ export function initTracing() {
           const tagName = element.tagName.toLowerCase();
           const isTrackable = trackableElements.some((selector) => {
             if (selector.includes("[")) {
-              const [tag, attr] = selector.split("[");
+              const [tag] = selector.split("[");
               return tagName === tag && element.matches(selector);
             }
             return tagName === selector;
@@ -215,7 +215,7 @@ export function setupWebVitalsTracking(educationTracer) {
 
   try {
     observer.observe({ type: "largest-contentful-paint", buffered: true });
-  } catch (e) {
+  } catch (_e) {
     console.warn("LCP observation not supported");
   }
 
@@ -231,7 +231,7 @@ export function setupWebVitalsTracking(educationTracer) {
 
   try {
     fidObserver.observe({ type: "first-input", buffered: true });
-  } catch (e) {
+  } catch (_e) {
     console.warn("FID observation not supported");
   }
 
@@ -255,12 +255,12 @@ export function setupWebVitalsTracking(educationTracer) {
           clsValue < 0.1
             ? "good"
             : clsValue < 0.25
-            ? "needs-improvement"
-            : "poor";
+              ? "needs-improvement"
+              : "poor";
         educationTracer.trackWebVital("CLS", clsValue, rating);
       }
     });
-  } catch (e) {
+  } catch (_e) {
     console.warn("CLS observation not supported");
   }
 }

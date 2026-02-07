@@ -1,0 +1,13 @@
+_site
+dist
+node_modules
+coverage
+playwright-report
+test-results
+.lighthouseci
+package-lock.json
+handoff
+sandbox
+theme-playground
+*.min.css
+*.min.js

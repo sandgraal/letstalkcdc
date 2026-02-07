@@ -180,7 +180,6 @@ const initSearch = (tracer) => {
       return;
     }
 
-    const count = Math.min(fuseResults.length, MAX_RESULTS);
     meta.textContent = `${fuseResults.length} result${fuseResults.length !== 1 ? "s" : ""} found`;
 
     results.innerHTML = fuseResults
@@ -196,7 +195,7 @@ const initSearch = (tracer) => {
           : escapeHtml(item.title);
 
         // Find snippet match (description > text > headings)
-        let snippetHtml = "";
+        let snippetHtml;
         const descMatch = (result.matches || []).find(
           (m) => m.key === "description",
         );

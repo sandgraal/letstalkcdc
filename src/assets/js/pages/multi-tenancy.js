@@ -1,10 +1,10 @@
-import { drawBarChart } from '../lib/charts.js';
+import { drawBarChart } from "../lib/charts.js";
 
 const doc = document;
 
 const onReady = (cb) => {
-  if (doc.readyState === 'loading') {
-    doc.addEventListener('DOMContentLoaded', cb, { once: true });
+  if (doc.readyState === "loading") {
+    doc.addEventListener("DOMContentLoaded", cb, { once: true });
   } else {
     cb();
   }
@@ -13,38 +13,38 @@ const onReady = (cb) => {
 onReady(() => {
   const $ = (sel) => doc.querySelector(sel);
   const I = {
-    tenants: $('#tenants'),
-    chgRate: $('#chgRate'),
-    payload: $('#payload'),
-    envelope: $('#envelope'),
-    topicsPerTenant: $('#topicsPerTenant'),
-    sharedTopics: $('#sharedTopics'),
-    isolation: $('#isolation'),
-    rf: $('#rf'),
-    parts: $('#parts'),
-    retention: $('#retention'),
-    compression: $('#compression')
+    tenants: $("#tenants"),
+    chgRate: $("#chgRate"),
+    payload: $("#payload"),
+    envelope: $("#envelope"),
+    topicsPerTenant: $("#topicsPerTenant"),
+    sharedTopics: $("#sharedTopics"),
+    isolation: $("#isolation"),
+    rf: $("#rf"),
+    parts: $("#parts"),
+    retention: $("#retention"),
+    compression: $("#compression"),
   };
   if (!I.tenants) return;
   const O = {
-    tenants: $('#tenants-val'),
-    chgRate: $('#chgRate-val'),
-    payload: $('#payload-val'),
-    envelope: $('#envelope-val'),
-    topicsPerTenant: $('#topicsPerTenant-val'),
-    sharedTopics: $('#sharedTopics-val'),
-    rf: $('#rf-val'),
-    parts: $('#parts-val'),
-    retention: $('#retention-val'),
-    compression: $('#compression-val'),
-    kTopics: $('#kTopics'),
-    kGroups: $('#kGroups'),
-    kEgress: $('#kEgress'),
-    kBrokerEgress: $('#kBrokerEgress'),
-    kEgressMonth: $('#kEgressMonth'),
-    kConnect: $('#kConnect'),
-    kParts: $('#kParts'),
-    kStorageTB: $('#kStorageTB')
+    tenants: $("#tenants-val"),
+    chgRate: $("#chgRate-val"),
+    payload: $("#payload-val"),
+    envelope: $("#envelope-val"),
+    topicsPerTenant: $("#topicsPerTenant-val"),
+    sharedTopics: $("#sharedTopics-val"),
+    rf: $("#rf-val"),
+    parts: $("#parts-val"),
+    retention: $("#retention-val"),
+    compression: $("#compression-val"),
+    kTopics: $("#kTopics"),
+    kGroups: $("#kGroups"),
+    kEgress: $("#kEgress"),
+    kBrokerEgress: $("#kBrokerEgress"),
+    kEgressMonth: $("#kEgressMonth"),
+    kConnect: $("#kConnect"),
+    kParts: $("#kParts"),
+    kStorageTB: $("#kStorageTB"),
   };
 
   const GROUPS_PER_TENANT = 2;
@@ -54,16 +54,19 @@ onReady(() => {
   const SEC_PER_DAY = 86400;
 
   const palette = {
-    axis: '#334155',
-    grid: 'rgba(148, 163, 184, 0.35)',
-    text: 'var(--text-secondary, #64748b)',
-    textMuted: 'var(--text-muted, #94a3b8)',
-    textStrong: 'var(--text-primary, #0f172a)',
+    axis: "#334155",
+    grid: "rgba(148, 163, 184, 0.35)",
+    text: "var(--text-secondary, #64748b)",
+    textMuted: "var(--text-muted, #94a3b8)",
+    textStrong: "var(--text-primary, #0f172a)",
     bars: [
-      { soft: 'rgba(14, 165, 233, 0.35)', strong: 'rgba(14, 165, 233, 0.95)' },
-      { soft: 'rgba(250, 204, 21, 0.35)', strong: 'rgba(250, 204, 21, 0.95)' },
-      { soft: 'rgba(248, 113, 113, 0.35)', strong: 'rgba(248, 113, 113, 0.95)' }
-    ]
+      { soft: "rgba(14, 165, 233, 0.35)", strong: "rgba(14, 165, 233, 0.95)" },
+      { soft: "rgba(250, 204, 21, 0.35)", strong: "rgba(250, 204, 21, 0.95)" },
+      {
+        soft: "rgba(248, 113, 113, 0.35)",
+        strong: "rgba(248, 113, 113, 0.95)",
+      },
+    ],
   };
 
   const reflect = () => {
@@ -79,7 +82,7 @@ onReady(() => {
     O.compression.textContent = I.compression.value;
   };
 
-  const chartCanvas = $('#costChart');
+  const chartCanvas = $("#costChart");
   let chartValues = [0, 0, 0];
 
   const updateChart = () => {
@@ -87,8 +90,8 @@ onReady(() => {
     drawBarChart(
       chartCanvas,
       chartValues,
-      ['Shared Topics', 'Per-Tenant Topics', 'Per-Tenant Clusters'],
-      palette
+      ["Shared Topics", "Per-Tenant Topics", "Per-Tenant Clusters"],
+      palette,
     );
   };
 
@@ -105,20 +108,23 @@ onReady(() => {
     const retentionDays = Math.max(1, +I.retention.value);
     const compression = Math.max(0.5, +I.compression.value);
 
-    const topics = iso === 'shared' ? shared : t * tpt;
+    const topics = iso === "shared" ? shared : t * tpt;
     const totalPartitions = topics * partsPerTopic;
 
     const groups = Math.max(1, Math.round(t * GROUPS_PER_TENANT));
-    const footprint = iso === 'perTenantClusters'
-      ? t
-      : Math.max(1, Math.round(t * CONNECTOR_PER_TENANT));
+    const footprint =
+      iso === "perTenantClusters"
+        ? t
+        : Math.max(1, Math.round(t * CONNECTOR_PER_TENANT));
 
     const egressBytes = t * r * (s + env + OVERHEAD_PER_MESSAGE);
     const brokerBytes = egressBytes * Math.max(0, rf - 1);
     const egressMBps = egressBytes / 1e6;
     const brokerMBps = brokerBytes / 1e6;
     const egressGBpm = (egressBytes * SEC_PER_MONTH) / 1e9;
-    const storageBytes = (egressBytes * rf * (SEC_PER_DAY * retentionDays)) / Math.max(0.5, compression);
+    const storageBytes =
+      (egressBytes * rf * (SEC_PER_DAY * retentionDays)) /
+      Math.max(0.5, compression);
     const storageTB = storageBytes / 1e12;
 
     O.kTopics.textContent = topics.toLocaleString();
@@ -140,32 +146,34 @@ onReady(() => {
   };
 
   const PARAMS = [
-    'tenants',
-    'chgRate',
-    'payload',
-    'envelope',
-    'topicsPerTenant',
-    'sharedTopics',
-    'isolation',
-    'rf',
-    'parts',
-    'retention',
-    'compression'
+    "tenants",
+    "chgRate",
+    "payload",
+    "envelope",
+    "topicsPerTenant",
+    "sharedTopics",
+    "isolation",
+    "rf",
+    "parts",
+    "retention",
+    "compression",
   ];
 
   const clamp = (el, value) => {
     if (!el) return value;
-    if (el.type === 'range' || el.type === 'number') {
+    if (el.type === "range" || el.type === "number") {
       const n = Number(value);
       if (Number.isFinite(n)) {
-        const min = el.min !== '' ? Number(el.min) : -Infinity;
-        const max = el.max !== '' ? Number(el.max) : Infinity;
+        const min = el.min !== "" ? Number(el.min) : -Infinity;
+        const max = el.max !== "" ? Number(el.max) : Infinity;
         return String(Math.min(Math.max(n, min), max));
       }
       return el.value;
     }
-    if (el.tagName === 'SELECT') {
-      return [...el.options].some((option) => option.value === value) ? value : el.value;
+    if (el.tagName === "SELECT") {
+      return [...el.options].some((option) => option.value === value)
+        ? value
+        : el.value;
     }
     return value;
   };
@@ -175,14 +183,16 @@ onReady(() => {
     for (const key of PARAMS) {
       const el = I[key];
       if (!el) continue;
-      const raw = url.searchParams.get(key) ?? (() => {
-        try {
-          return localStorage.getItem(key);
-        } catch (_) {
-          return null;
-        }
-      })();
-      if (raw != null) {
+      const raw =
+        url.searchParams.get(key) ??
+        (() => {
+          try {
+            return localStorage.getItem(key);
+          } catch (_) {
+            return null;
+          }
+        })();
+      if (raw !== null && raw !== undefined) {
         el.value = clamp(el, raw);
       }
     }
@@ -200,10 +210,10 @@ onReady(() => {
         /* ignore */
       }
     }
-    history[push ? 'pushState' : 'replaceState'](null, '', url);
+    history[push ? "pushState" : "replaceState"](null, "", url);
   };
 
-  $('#shareLink')?.addEventListener('click', async () => {
+  $("#shareLink")?.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(location.href);
     } catch (_) {
@@ -219,7 +229,7 @@ onReady(() => {
       envelope: 300,
       topicsPerTenant: 4,
       sharedTopics: 6,
-      isolation: 'shared'
+      isolation: "shared",
     },
     regulated: {
       tenants: 40,
@@ -228,7 +238,7 @@ onReady(() => {
       envelope: 350,
       topicsPerTenant: 8,
       sharedTopics: 8,
-      isolation: 'perTenantTopics'
+      isolation: "perTenantTopics",
     },
     noisy: {
       tenants: 25,
@@ -237,11 +247,11 @@ onReady(() => {
       envelope: 350,
       topicsPerTenant: 6,
       sharedTopics: 6,
-      isolation: 'perTenantClusters'
-    }
+      isolation: "perTenantClusters",
+    },
   };
 
-  doc.addEventListener('click', (event) => {
+  doc.addEventListener("click", (event) => {
     const preset = event.target?.dataset?.preset;
     if (!preset || !presets[preset]) return;
     for (const [key, value] of Object.entries(presets[preset])) {
@@ -254,7 +264,7 @@ onReady(() => {
     writeParams(false);
   });
 
-  doc.addEventListener('input', (event) => {
+  doc.addEventListener("input", (event) => {
     if (!event.target) return;
     if (PARAMS.includes(event.target.id)) {
       reflect();
@@ -263,7 +273,7 @@ onReady(() => {
     }
   });
 
-  I.isolation.addEventListener('change', () => {
+  I.isolation.addEventListener("change", () => {
     reflect();
     calc();
     writeParams(false);
@@ -282,7 +292,7 @@ onReady(() => {
     observer.observe(chartCanvas);
   }
 
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     if (chartCanvas && chartValues.some((v) => v > 0)) {
       updateChart();
     }

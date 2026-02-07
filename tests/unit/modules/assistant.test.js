@@ -9,7 +9,7 @@
  *
  * @module tests/unit/modules/assistant.test
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 
 // ── Re-implement pure functions from assistant.js for testing ────────────
 // We import fragments inline since assistant.js has side-effects (DOMContentLoaded).
@@ -292,7 +292,7 @@ describe("assistant – matchIntent", () => {
       // "lag" matches lag_handling, but "monitor" also matches.
       // Both "observability" module intents compete.
       // Without context, first match by score order wins.
-      const withoutCtx = matchIntent("lag monitor", SAMPLE_KB, null);
+      const _withoutCtx = matchIntent("lag monitor", SAMPLE_KB, null);
       // With context set to "observability", observability-module intents get +10
       const withCtx = matchIntent("lag monitor", SAMPLE_KB, "observability");
       // Both lag_handling and observability have modules including "observability"
