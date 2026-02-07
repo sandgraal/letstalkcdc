@@ -96,12 +96,6 @@ const enhanceDiagram = (container) => {
   const svg = container.querySelector("svg");
   if (!svg) return;
 
-  // Make focusable for keyboard users
-  svg.setAttribute("tabindex", "0");
-  svg.setAttribute("role", "img");
-  const label = container.dataset.label || container.getAttribute("aria-label");
-  if (label) svg.setAttribute("aria-label", label);
-
   // Parse tooltip data from the container
   const tooltipData = {};
   try {
@@ -115,6 +109,27 @@ const enhanceDiagram = (container) => {
 
   // Find all clickable nodes (g.node elements in Mermaid SVG)
   const nodes = svg.querySelectorAll("g.node, g.cluster");
+
+  // If there are interactive child nodes, use role="group" to avoid
+  // nested-interactive a11y violations.  Otherwise make the SVG itself
+  // focusable so keyboard users can still reach the diagram.
+  if (nodes.length) {
+    svg.setAttribute("role", "group");
+    // Walk up from the mermaid container to find any ancestor with role="img"
+    // and switch it to role="figure" to avoid nested-interactive violations.
+    let ancestor = container;
+    while (ancestor && ancestor !== doc.body) {
+      if (ancestor.getAttribute("role") === "img") {
+        ancestor.setAttribute("role", "figure");
+      }
+      ancestor = ancestor.parentElement;
+    }
+  } else {
+    svg.setAttribute("tabindex", "0");
+    svg.setAttribute("role", "img");
+  }
+  const label = container.dataset.label || container.getAttribute("aria-label");
+  if (label) svg.setAttribute("aria-label", label);
 
   nodes.forEach((node) => {
     // Extract the node ID from Mermaid's rendered structure

@@ -1,12 +1,12 @@
 # Product Requirements Document: Let's Talk CDC Site Revamp
 
-| Field | Value |
-|-------|-------|
-| **Repository** | `sandgraal/letstalkcdc` |
-| **Document Version** | 1.0.0 |
-| **Created** | 2026-02-05 |
-| **Owner** | @sandgraal |
-| **Status** | **COMPLETE** — All 9 phases merged, production release v2.0.0 |
+| Field                | Value                   |
+| -------------------- | ----------------------- |
+| **Repository**       | `sandgraal/letstalkcdc` |
+| **Document Version** | 1.0.0                   |
+| **Created**          | 2026-02-05              |
+| **Owner**            | @sandgraal              |
+| **Status**           | Draft                   |
 
 ---
 
@@ -18,18 +18,18 @@ Transform Let's Talk CDC into a **modern, performant, and maintainable** educati
 
 ### Success Metrics
 
-| Metric | Current | Target | Priority |
-|--------|---------|--------|----------|
-| **Lighthouse Performance Score** | ~75-85 | ≥90 | 🔴 Critical |
-| **Lighthouse Accessibility Score** | ~90 | ≥95 | 🔴 Critical |
-| **Time to Interactive (3G)** | ~3-4s | <2s | 🔴 Critical |
-| **JavaScript Bundle Size (gzipped)** | ~52.7KB (monolithic) | <100KB (modular) | 🟡 High |
-| **First Contentful Paint** | ~1.5s | <1s | 🟡 High |
-| **Cumulative Layout Shift** | <0.1 | <0.05 | 🟢 Medium |
-| **Critical A11y Violations** | 0 | 0 | 🔴 Critical |
-| **Unit Test Coverage** | 0% | ≥80% | 🔴 Critical |
-| **E2E Test Pass Rate** | N/A | 100% | 🔴 Critical |
-| **Build Time** | ~3-5s | <3s | 🟢 Medium |
+| Metric                               | Current              | Target           | Priority    |
+| ------------------------------------ | -------------------- | ---------------- | ----------- |
+| **Lighthouse Performance Score**     | ~75-85               | ≥90              | 🔴 Critical |
+| **Lighthouse Accessibility Score**   | ~90                  | ≥95              | 🔴 Critical |
+| **Time to Interactive (3G)**         | ~3-4s                | <2s              | 🔴 Critical |
+| **JavaScript Bundle Size (gzipped)** | ~52.7KB (monolithic) | <100KB (modular) | 🟡 High     |
+| **First Contentful Paint**           | ~1.5s                | <1s              | 🟡 High     |
+| **Cumulative Layout Shift**          | <0.1                 | <0.05            | 🟢 Medium   |
+| **Critical A11y Violations**         | 0                    | 0                | 🔴 Critical |
+| **Unit Test Coverage**               | 0%                   | ≥80%             | 🔴 Critical |
+| **E2E Test Pass Rate**               | N/A                  | 100%             | 🔴 Critical |
+| **Build Time**                       | ~3-5s                | <3s              | 🟢 Medium   |
 
 ---
 
@@ -68,78 +68,78 @@ letstalkcdc/
 
 #### Current Stack
 
-| Component | Technology | Version | Status |
-|-----------|-----------|---------|--------|
-| **Static Site Generator** | Eleventy | 2.0.1 | 🟡 Needs upgrade to 3.0 |
-| **JavaScript** | ES6 Modules | Native | 🔴 Single 1821-line file needs modularization |
-| **CSS** | PostCSS + Autoprefixer | 8.4.41 | ✅ Modern |
-| **Build Tool** | NPM scripts | - | 🟡 No bundler (needs esbuild/Vite) |
-| **Testing** | Manual smoke tests | - | 🔴 No unit/E2E tests |
-| **CI/CD** | GitHub Actions | - | ✅ Functional but can be enhanced |
-| **Tracing** | OpenTelemetry | 1.9.0 | ✅ Modern |
-| **Auth/Storage** | Appwrite | Cloud | ✅ Optional, working |
+| Component                 | Technology             | Version | Status                                        |
+| ------------------------- | ---------------------- | ------- | --------------------------------------------- |
+| **Static Site Generator** | Eleventy               | 2.0.1   | 🟡 Needs upgrade to 3.0                       |
+| **JavaScript**            | ES6 Modules            | Native  | 🔴 Single 1821-line file needs modularization |
+| **CSS**                   | PostCSS + Autoprefixer | 8.4.41  | ✅ Modern                                     |
+| **Build Tool**            | NPM scripts            | -       | 🟡 No bundler (needs esbuild/Vite)            |
+| **Testing**               | Manual smoke tests     | -       | 🔴 No unit/E2E tests                          |
+| **CI/CD**                 | GitHub Actions         | -       | ✅ Functional but can be enhanced             |
+| **Tracing**               | OpenTelemetry          | 1.9.0   | ✅ Modern                                     |
+| **Auth/Storage**          | Appwrite               | Cloud   | ✅ Optional, working                          |
 
 #### Target Stack
 
-| Component | Technology | Version | Rationale |
-|-----------|-----------|---------|-----------|
-| **Static Site Generator** | Eleventy | 3.0+ | ESM-first, better performance, modern DX |
-| **JavaScript** | ESM Modules | Native | Tree-shaking, better code splitting |
-| **Module Bundler** | esbuild or Vite | Latest | Fast builds, HMR, asset optimization |
-| **Unit Testing** | Vitest | Latest | Fast, ESM-native, Vite integration |
-| **E2E Testing** | Playwright | Latest | Cross-browser, visual regression, a11y |
-| **CSS** | PostCSS + Autoprefixer | Current | Keep (working well) |
-| **Linting** | ESLint + Prettier | Latest | Code quality and consistency |
-| **CI/CD** | GitHub Actions + Lighthouse CI | - | Automated performance monitoring |
+| Component                 | Technology                     | Version | Rationale                                |
+| ------------------------- | ------------------------------ | ------- | ---------------------------------------- |
+| **Static Site Generator** | Eleventy                       | 3.0+    | ESM-first, better performance, modern DX |
+| **JavaScript**            | ESM Modules                    | Native  | Tree-shaking, better code splitting      |
+| **Module Bundler**        | esbuild or Vite                | Latest  | Fast builds, HMR, asset optimization     |
+| **Unit Testing**          | Vitest                         | Latest  | Fast, ESM-native, Vite integration       |
+| **E2E Testing**           | Playwright                     | Latest  | Cross-browser, visual regression, a11y   |
+| **CSS**                   | PostCSS + Autoprefixer         | Current | Keep (working well)                      |
+| **Linting**               | ESLint + Prettier              | Latest  | Code quality and consistency             |
+| **CI/CD**                 | GitHub Actions + Lighthouse CI | -       | Automated performance monitoring         |
 
 ### Key Files for Modification
 
 #### 🔴 Critical Priority
 
-| File Path | Lines | Action | Complexity |
-|-----------|-------|--------|------------|
-| `eleventy.config.mjs` | 286 | Convert to ESM (`eleventy.config.mjs`) | Medium |
-| `src/assets/js/app.js` | 1821 | Split into 7 modules | High |
-| `package.json` | 45 | Update scripts, add bundler, add test frameworks | Medium |
-| `postcss.config.mjs` | ~20 | Convert to ESM (`postcss.config.mjs`) | Low |
-| `lib/path-prefix.mjs` | ~50 | Convert to ESM (`lib/path-prefix.mjs`) | Low |
+| File Path              | Lines | Action                                           | Complexity |
+| ---------------------- | ----- | ------------------------------------------------ | ---------- |
+| `eleventy.config.mjs`  | 286   | Convert to ESM (`eleventy.config.mjs`)           | Medium     |
+| `src/assets/js/app.js` | 1821  | Split into 7 modules                             | High       |
+| `package.json`         | 45    | Update scripts, add bundler, add test frameworks | Medium     |
+| `postcss.config.mjs`   | ~20   | Convert to ESM (`postcss.config.mjs`)            | Low        |
+| `lib/path-prefix.mjs`  | ~50   | Convert to ESM (`lib/path-prefix.mjs`)           | Low        |
 
 #### 🟡 High Priority
 
-| File Path | Lines | Action | Complexity |
-|-----------|-------|--------|------------|
-| `scripts/smoke.mjs` | ~100 | Enhance with Playwright | Medium |
-| `.github/workflows/ci.yml` | ~50 | Add Lighthouse CI, expand test matrix | Medium |
-| `src/_data/series.mjs` | ~200 | Convert to ESM | Low |
-| `src/_data/site.mjs` | ~50 | Convert to ESM | Low |
-| `src/_data/appwrite.mjs` | ~30 | Convert to ESM | Low |
+| File Path                  | Lines | Action                                | Complexity |
+| -------------------------- | ----- | ------------------------------------- | ---------- |
+| `scripts/smoke.mjs`        | ~100  | Enhance with Playwright               | Medium     |
+| `.github/workflows/ci.yml` | ~50   | Add Lighthouse CI, expand test matrix | Medium     |
+| `src/_data/series.mjs`     | ~200  | Convert to ESM                        | Low        |
+| `src/_data/site.mjs`       | ~50   | Convert to ESM                        | Low        |
+| `src/_data/appwrite.mjs`   | ~30   | Convert to ESM                        | Low        |
 
 #### 🟢 Medium Priority
 
-| File Path | Action | Complexity |
-|-----------|--------|------------|
-| `src/assets/css/main.css` | Audit for unused styles | Medium |
+| File Path                        | Action                       | Complexity |
+| -------------------------------- | ---------------------------- | ---------- |
+| `src/assets/css/main.css`        | Audit for unused styles      | Medium     |
 | `src/_includes/components/*.njk` | Add accessibility attributes | Low-Medium |
-| `.github/workflows/deploy.yml` | Add preview deployments | Medium |
+| `.github/workflows/deploy.yml`   | Add preview deployments      | Medium     |
 
 ### Files to Create
 
-| File Path | Purpose | Priority |
-|-----------|---------|----------|
-| `src/assets/js/modules/theme.js` | Theme management module | 🔴 Critical |
-| `src/assets/js/modules/navigation.js` | Navigation and mobile menu | 🔴 Critical |
-| `src/assets/js/modules/search.js` | Search overlay and functionality | 🔴 Critical |
-| `src/assets/js/modules/scorecard.js` | Progress tracking and scorecards | 🔴 Critical |
-| `src/assets/js/modules/code-blocks.js` | Code syntax highlighting and copy | 🔴 Critical |
-| `src/assets/js/modules/toast.js` | Toast notification system | 🔴 Critical |
-| `src/assets/js/modules/quick-nav.js` | Quick navigation component | 🔴 Critical |
-| `vitest.config.mjs` | Vitest test configuration | 🔴 Critical |
-| `playwright.config.mjs` | Playwright E2E test configuration | 🔴 Critical |
-| `tests/unit/` | Unit test directory structure | 🔴 Critical |
-| `tests/e2e/` | E2E test directory structure | 🔴 Critical |
-| `.eslintrc.mjs` | ESLint configuration | 🟡 High |
-| `.prettierrc.mjs` | Prettier configuration | 🟡 High |
-| `vite.config.mjs` or `esbuild.config.mjs` | Bundler configuration | 🟡 High |
+| File Path                                 | Purpose                           | Priority    |
+| ----------------------------------------- | --------------------------------- | ----------- |
+| `src/assets/js/modules/theme.js`          | Theme management module           | 🔴 Critical |
+| `src/assets/js/modules/navigation.js`     | Navigation and mobile menu        | 🔴 Critical |
+| `src/assets/js/modules/search.js`         | Search overlay and functionality  | 🔴 Critical |
+| `src/assets/js/modules/scorecard.js`      | Progress tracking and scorecards  | 🔴 Critical |
+| `src/assets/js/modules/code-blocks.js`    | Code syntax highlighting and copy | 🔴 Critical |
+| `src/assets/js/modules/toast.js`          | Toast notification system         | 🔴 Critical |
+| `src/assets/js/modules/quick-nav.js`      | Quick navigation component        | 🔴 Critical |
+| `vitest.config.mjs`                       | Vitest test configuration         | 🔴 Critical |
+| `playwright.config.mjs`                   | Playwright E2E test configuration | 🔴 Critical |
+| `tests/unit/`                             | Unit test directory structure     | 🔴 Critical |
+| `tests/e2e/`                              | E2E test directory structure      | 🔴 Critical |
+| `.eslintrc.mjs`                           | ESLint configuration              | 🟡 High     |
+| `.prettierrc.mjs`                         | Prettier configuration            | 🟡 High     |
+| `vite.config.mjs` or `esbuild.config.mjs` | Bundler configuration             | 🟡 High     |
 
 ---
 
@@ -156,16 +156,18 @@ letstalkcdc/
 **Objective**: Upgrade from Eleventy 2.0 to 3.0 for ESM support, improved performance, and modern DX.
 
 **Acceptance Criteria**:
-- [x] Site builds successfully with Eleventy 3.0
-- [x] All pages render correctly (no broken layouts)
-- [x] Path prefix system works in both root and subdirectory deployments
-- [x] All passthrough copies work correctly
-- [x] Build time improves by ≥10% or stays the same
-- [x] No console errors on any page
+
+- [ ] Site builds successfully with Eleventy 3.0
+- [ ] All pages render correctly (no broken layouts)
+- [ ] Path prefix system works in both root and subdirectory deployments
+- [ ] All passthrough copies work correctly
+- [ ] Build time improves by ≥10% or stays the same
+- [ ] No console errors on any page
 
 **Detailed Checklist**:
 
-- [x] **Install Eleventy 3.0**
+- [ ] **Install Eleventy 3.0**
+
   ```bash
   npm install --save-dev @11ty/eleventy@^3.0.0
   ```
@@ -219,6 +221,7 @@ letstalkcdc/
   - [ ] Run full CI pipeline on test branch
 
 **References**:
+
 - [Eleventy 3.0 Upgrade Guide](https://www.11ty.dev/docs/v3-upgrade/)
 - [Eleventy ESM Support](https://www.11ty.dev/docs/languages/javascript/#using-esm-in-your-data-files)
 
@@ -229,29 +232,31 @@ letstalkcdc/
 **Objective**: Split the monolithic `src/assets/js/app.js` (1821 lines) into maintainable, testable modules.
 
 **Acceptance Criteria**:
-- [x] All functionality works identically to before
-- [x] Each module is <300 lines
-- [x] Modules are independently testable
-- [x] Bundle size decreases or stays the same (with tree-shaking)
-- [x] Code is easier to navigate and maintain
-- [x] Zero runtime errors on all pages
+
+- [ ] All functionality works identically to before
+- [ ] Each module is <300 lines
+- [ ] Modules are independently testable
+- [ ] Bundle size decreases or stays the same (with tree-shaking)
+- [ ] Code is easier to navigate and maintain
+- [ ] Zero runtime errors on all pages
 
 **Module Breakdown** (from `src/assets/js/app.js`):
 
-| Module | Lines (source) | Lines (target) | Exports | Imports |
-|--------|----------------|----------------|---------|---------|
-| **theme.js** | 27-86 (60 lines) | ~80 | `initTheme()` | None |
-| **navigation.js** | 109-385 (277 lines) | ~300 | `initNavigation()`, `initDropdowns()` | None |
-| **search.js** | 489-612 (124 lines) | ~150 | `initSearch()` | `withBasePath` |
-| **scorecard.js** | 780-1715 (936 lines) | ~400 | `initScorecards()` | `getEducationTracer` |
-| **code-blocks.js** | 446-487, 1536-1631 (138 lines) | ~150 | `initCodeBlocks()` | `getEducationTracer` |
-| **toast.js** | 1717-1821 (105 lines) | ~120 | `showToast()` | None |
-| **quick-nav.js** | 614-778 (165 lines) | ~200 | `initQuickNav()` | None |
-| **app.js** (main) | New orchestrator | ~100 | None (entry point) | All modules |
+| Module             | Lines (source)                 | Lines (target) | Exports                               | Imports              |
+| ------------------ | ------------------------------ | -------------- | ------------------------------------- | -------------------- |
+| **theme.js**       | 27-86 (60 lines)               | ~80            | `initTheme()`                         | None                 |
+| **navigation.js**  | 109-385 (277 lines)            | ~300           | `initNavigation()`, `initDropdowns()` | None                 |
+| **search.js**      | 489-612 (124 lines)            | ~150           | `initSearch()`                        | `withBasePath`       |
+| **scorecard.js**   | 780-1715 (936 lines)           | ~400           | `initScorecards()`                    | `getEducationTracer` |
+| **code-blocks.js** | 446-487, 1536-1631 (138 lines) | ~150           | `initCodeBlocks()`                    | `getEducationTracer` |
+| **toast.js**       | 1717-1821 (105 lines)          | ~120           | `showToast()`                         | None                 |
+| **quick-nav.js**   | 614-778 (165 lines)            | ~200           | `initQuickNav()`                      | None                 |
+| **app.js** (main)  | New orchestrator               | ~100           | None (entry point)                    | All modules          |
 
 **Detailed Checklist**:
 
-- [x] **Create module directory structure**
+- [ ] **Create module directory structure**
+
   ```bash
   mkdir -p src/assets/js/modules
   mkdir -p tests/unit/modules
@@ -259,7 +264,7 @@ letstalkcdc/
 
 - [x] **Extract Theme Module** (`src/assets/js/modules/theme.js`)
   - [ ] Copy lines 27-86 from `app.js`
-  - [ ] Wrap in `export function initTheme()` 
+  - [ ] Wrap in `export function initTheme()`
   - [ ] Extract constants: `syncThemeToggle`, `applyTheme`, `getStoredTheme`, `setStoredTheme`
   - [ ] Export: `export { initTheme, applyTheme };`
   - [ ] Add JSDoc comments
@@ -311,7 +316,8 @@ letstalkcdc/
   - [ ] Export: `export { initQuickNav };`
   - [ ] Test: Intersection observer, active states, scroll behavior
 
-- [x] **Create new `app.js` orchestrator**
+- [ ] **Create new `app.js` orchestrator**
+
   ```javascript
   // src/assets/js/app.js
   import { initTheme } from "./modules/theme.js";
@@ -374,12 +380,13 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Add bundling, minification, asset hashing, and HMR for improved DX and performance.
 
 **Acceptance Criteria**:
-- [x] JavaScript modules are bundled and minified
-- [x] CSS is minified and autoprefixed
-- [x] Assets have content hashes for cache busting
-- [x] HMR works in development mode
-- [x] Build time is <3 seconds
-- [x] Bundle size is <100KB gzipped
+
+- [ ] JavaScript modules are bundled and minified
+- [ ] CSS is minified and autoprefixed
+- [ ] Assets have content hashes for cache busting
+- [ ] HMR works in development mode
+- [ ] Build time is <3 seconds
+- [ ] Bundle size is <100KB gzipped
 
 **Detailed Checklist**:
 
@@ -391,12 +398,14 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
     - Pros: HMR, dev server, plugin ecosystem, great DX
     - Cons: Slightly slower than raw esbuild
 
-- [x] **Install Vite and dependencies**
+- [ ] **Install Vite and dependencies**
+
   ```bash
   npm install --save-dev vite vite-plugin-static-copy
   ```
 
-- [x] **Create `vite.config.mjs`**
+- [ ] **Create `vite.config.mjs`**
+
   ```javascript
   import { defineConfig } from "vite";
   import { viteStaticCopy } from "vite-plugin-static-copy";
@@ -420,15 +429,14 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
     },
     plugins: [
       viteStaticCopy({
-        targets: [
-          { src: "css/**/*", dest: "css" },
-        ],
+        targets: [{ src: "css/**/*", dest: "css" }],
       }),
     ],
   });
   ```
 
-- [x] **Update `package.json` scripts**
+- [ ] **Update `package.json` scripts**
+
   ```json
   {
     "scripts": {
@@ -448,7 +456,8 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   }
   ```
 
-- [x] **Install concurrently for parallel dev servers**
+- [ ] **Install concurrently for parallel dev servers**
+
   ```bash
   npm install --save-dev concurrently
   ```
@@ -488,6 +497,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Target: <100KB gzipped
 
 **References**:
+
 - [Vite Documentation](https://vitejs.dev/)
 - [esbuild Documentation](https://esbuild.github.io/)
 - [Eleventy + Vite Guide](https://www.11ty.dev/docs/languages/javascript/#using-vite-with-eleventy)
@@ -505,16 +515,18 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Upgrade search from simple string matching to fuzzy matching with Fuse.js, keyboard navigation, and better UX.
 
 **Acceptance Criteria**:
-- [x] Fuzzy matching works (typos, partial matches)
-- [x] Keyboard navigation (↑/↓, Enter, Esc)
-- [x] Search results ranked by relevance
-- [x] Highlights matched text in results
-- [x] Performance: Search <100ms for 200+ pages
-- [x] Works offline (no API calls)
+
+- [ ] Fuzzy matching works (typos, partial matches)
+- [ ] Keyboard navigation (↑/↓, Enter, Esc)
+- [ ] Search results ranked by relevance
+- [ ] Highlights matched text in results
+- [ ] Performance: Search <100ms for 200+ pages
+- [ ] Works offline (no API calls)
 
 **Detailed Checklist**:
 
-- [x] **Install Fuse.js**
+- [ ] **Install Fuse.js**
+
   ```bash
   npm install --save fuse.js
   ```
@@ -529,7 +541,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Configure Fuse options:
     ```javascript
     const options = {
-      keys: ['title', 'description', 'content', 'tags'],
+      keys: ["title", "description", "content", "tags"],
       threshold: 0.3, // 0 = exact, 1 = match anything
       includeScore: true,
       includeMatches: true,
@@ -563,6 +575,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Show keyboard shortcuts hint
 
 **References**:
+
 - [Fuse.js Documentation](https://fusejs.io/)
 
 ---
@@ -572,12 +585,13 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Add interactive elements (quizzes, playgrounds, diagrams, timeline) to boost engagement.
 
 **Acceptance Criteria**:
-- [x] Quiz component with multiple choice, instant feedback
-- [x] Code playground with live execution (sandboxed)
-- [x] Interactive diagrams (SVG with tooltips, animations)
-- [x] Timeline component for CDC event flow visualization
-- [x] All components are accessible (keyboard nav, screen readers)
-- [x] Components work without JavaScript (progressive enhancement)
+
+- [ ] Quiz component with multiple choice, instant feedback
+- [ ] Code playground with live execution (sandboxed)
+- [ ] Interactive diagrams (SVG with tooltips, animations)
+- [ ] Timeline component for CDC event flow visualization
+- [ ] All components are accessible (keyboard nav, screen readers)
+- [ ] Components work without JavaScript (progressive enhancement)
 
 **Detailed Checklist**:
 
@@ -622,6 +636,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Ensure keyboard navigation works
 
 **References**:
+
 - [Web Workers API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
 - [Mermaid.js](https://mermaid.js.org/)
 
@@ -632,12 +647,13 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Enhance the AI assistant with context awareness, chat history, and better citations.
 
 **Acceptance Criteria**:
-- [x] Context-aware responses (knows which module user is on)
-- [x] Chat history persists across sessions (localStorage)
-- [x] Citations link directly to relevant sections
-- [x] Assistant can suggest next topics based on progress
-- [x] Feedback system (👍/👎) works and syncs to Appwrite
-- [x] Response time <2s
+
+- [ ] Context-aware responses (knows which module user is on)
+- [ ] Chat history persists across sessions (localStorage)
+- [ ] Citations link directly to relevant sections
+- [ ] Assistant can suggest next topics based on progress
+- [ ] Feedback system (👍/👎) works and syncs to Appwrite
+- [ ] Response time <2s
 
 **Detailed Checklist**:
 
@@ -668,6 +684,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Use feedback to improve intent matching
 
 **References**:
+
 - `src/data/assistant.yml` - Intent definitions
 - `docs/SETUP.md` (Assistant section) - Appwrite feedback setup
 
@@ -684,21 +701,24 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Achieve ≥80% code coverage with Vitest for all JavaScript modules.
 
 **Acceptance Criteria**:
-- [x] Vitest configured and running
-- [x] All 7 modules have unit tests
-- [x] Code coverage ≥80% for each module
-- [x] Tests run in <5 seconds
-- [x] Tests pass in CI/CD
-- [x] Mock DOM APIs correctly
+
+- [ ] Vitest configured and running
+- [ ] All 7 modules have unit tests
+- [ ] Code coverage ≥80% for each module
+- [ ] Tests run in <5 seconds
+- [ ] Tests pass in CI/CD
+- [ ] Mock DOM APIs correctly
 
 **Detailed Checklist**:
 
-- [x] **Install Vitest**
+- [ ] **Install Vitest**
+
   ```bash
   npm install --save-dev vitest @vitest/ui jsdom
   ```
 
-- [x] **Create `vitest.config.mjs`**
+- [ ] **Create `vitest.config.mjs`**
+
   ```javascript
   import { defineConfig } from "vitest/config";
 
@@ -726,8 +746,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Mock matchMedia
   - [ ] Provide global test utilities
 
-- [x] **Write unit tests for each module**:
-
+- [ ] **Write unit tests for each module**:
   - [ ] **`tests/unit/modules/theme.test.js`**
     - Test: Theme toggle works
     - Test: Theme persists in localStorage
@@ -769,7 +788,8 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
     - Test: Active state updates
     - Test: Progress badges display
 
-- [x] **Add npm scripts**
+- [ ] **Add npm scripts**
+
   ```json
   {
     "scripts": {
@@ -792,6 +812,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Upload coverage reports to Codecov (optional)
 
 **References**:
+
 - [Vitest Documentation](https://vitest.dev/)
 - [Testing Library](https://testing-library.com/)
 
@@ -802,22 +823,25 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Set up Playwright for E2E testing, visual regression, and accessibility checks.
 
 **Acceptance Criteria**:
-- [x] Playwright configured for Chrome, Firefox, Safari
-- [x] E2E tests cover critical user journeys
-- [x] Visual regression tests detect UI changes
-- [x] Accessibility tests catch violations
-- [x] Tests run in CI/CD
-- [x] Test results published as artifacts
+
+- [ ] Playwright configured for Chrome, Firefox, Safari
+- [ ] E2E tests cover critical user journeys
+- [ ] Visual regression tests detect UI changes
+- [ ] Accessibility tests catch violations
+- [ ] Tests run in CI/CD
+- [ ] Test results published as artifacts
 
 **Detailed Checklist**:
 
-- [x] **Install Playwright**
+- [ ] **Install Playwright**
+
   ```bash
   npm install --save-dev @playwright/test
   npx playwright install
   ```
 
-- [x] **Create `playwright.config.mjs`**
+- [ ] **Create `playwright.config.mjs`**
+
   ```javascript
   import { defineConfig, devices } from "@playwright/test";
 
@@ -847,8 +871,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   });
   ```
 
-- [x] **Create E2E tests** (`tests/e2e/`)
-
+- [ ] **Create E2E tests** (`tests/e2e/`)
   - [ ] **`tests/e2e/navigation.spec.js`**
     - Test: Navigate to all main sections
     - Test: Mobile menu works
@@ -883,7 +906,8 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Compare on each run
   - [ ] Store diffs as artifacts
 
-- [x] **Add npm scripts**
+- [ ] **Add npm scripts**
+
   ```json
   {
     "scripts": {
@@ -901,6 +925,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Fail build if tests fail
 
 **References**:
+
 - [Playwright Documentation](https://playwright.dev/)
 - [Playwright Visual Comparisons](https://playwright.dev/docs/test-snapshots)
 
@@ -911,12 +936,13 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 **Objective**: Enhance GitHub Actions workflows with Lighthouse CI, PR previews, and comprehensive checks.
 
 **Acceptance Criteria**:
-- [x] Lighthouse CI runs on every PR
-- [x] PR previews deploy to GitHub Pages (separate URL)
-- [x] Unit tests, E2E tests, linting all run in CI
-- [x] Build artifacts cached for faster builds
-- [x] Status checks block merging if tests fail
-- [x] Slack/email notifications for failures (optional)
+
+- [ ] Lighthouse CI runs on every PR
+- [ ] PR previews deploy to GitHub Pages (separate URL)
+- [ ] Unit tests, E2E tests, linting all run in CI
+- [ ] Build artifacts cached for faster builds
+- [ ] Status checks block merging if tests fail
+- [ ] Slack/email notifications for failures (optional)
 
 **Detailed Checklist**:
 
@@ -991,6 +1017,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] GitHub Discussions post on release
 
 **References**:
+
 - [Lighthouse CI Documentation](https://github.com/GoogleChrome/lighthouse-ci)
 - [GitHub Actions Caching](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
 
@@ -1000,25 +1027,26 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 
 ### Required Agent Skills Matrix
 
-| Skill | Description | Used In Phases | Tools/APIs | Priority |
-|-------|-------------|----------------|------------|----------|
-| **`code-refactoring`** | Safely restructure code without changing behavior | Phase 1.2 | AST analysis, test-driven | 🔴 Critical |
-| **`module-bundling`** | Configure and optimize esbuild/Vite | Phase 1.2, 1.3 | Vite, esbuild | 🔴 Critical |
-| **`esm-migration`** | Convert CommonJS to ESM | Phase 1.1 | Node.js, import/export | 🔴 Critical |
-| **`testing`** | Write and maintain unit/E2E tests | Phase 3.1, 3.2 | Vitest, Playwright | 🔴 Critical |
-| **`accessibility`** | Ensure WCAG 2.1 AA compliance | Phase 2, 3.2 | axe-core, pa11y | 🔴 Critical |
-| **`eleventy`** | Eleventy 3.0 configuration and templating | Phase 1.1 | Eleventy, Nunjucks | 🔴 Critical |
-| **`github-actions`** | Configure CI/CD workflows | Phase 3.3 | GitHub Actions | 🟡 High |
-| **`performance-optimization`** | Lighthouse optimization, bundle splitting | Phase 1.3, 3.3 | Lighthouse, WebPageTest | 🟡 High |
-| **`css-architecture`** | PostCSS, responsive design, dark mode | Phase 2 | PostCSS, CSS custom properties | 🟢 Medium |
-| **`content-migration`** | Update Nunjucks templates for new features | Phase 2 | Nunjucks, YAML | 🟢 Medium |
-| **`security-audit`** | Identify and fix vulnerabilities | Phase 3 | npm audit, Snyk | 🟢 Medium |
+| Skill                          | Description                                       | Used In Phases | Tools/APIs                     | Priority    |
+| ------------------------------ | ------------------------------------------------- | -------------- | ------------------------------ | ----------- |
+| **`code-refactoring`**         | Safely restructure code without changing behavior | Phase 1.2      | AST analysis, test-driven      | 🔴 Critical |
+| **`module-bundling`**          | Configure and optimize esbuild/Vite               | Phase 1.2, 1.3 | Vite, esbuild                  | 🔴 Critical |
+| **`esm-migration`**            | Convert CommonJS to ESM                           | Phase 1.1      | Node.js, import/export         | 🔴 Critical |
+| **`testing`**                  | Write and maintain unit/E2E tests                 | Phase 3.1, 3.2 | Vitest, Playwright             | 🔴 Critical |
+| **`accessibility`**            | Ensure WCAG 2.1 AA compliance                     | Phase 2, 3.2   | axe-core, pa11y                | 🔴 Critical |
+| **`eleventy`**                 | Eleventy 3.0 configuration and templating         | Phase 1.1      | Eleventy, Nunjucks             | 🔴 Critical |
+| **`github-actions`**           | Configure CI/CD workflows                         | Phase 3.3      | GitHub Actions                 | 🟡 High     |
+| **`performance-optimization`** | Lighthouse optimization, bundle splitting         | Phase 1.3, 3.3 | Lighthouse, WebPageTest        | 🟡 High     |
+| **`css-architecture`**         | PostCSS, responsive design, dark mode             | Phase 2        | PostCSS, CSS custom properties | 🟢 Medium   |
+| **`content-migration`**        | Update Nunjucks templates for new features        | Phase 2        | Nunjucks, YAML                 | 🟢 Medium   |
+| **`security-audit`**           | Identify and fix vulnerabilities                  | Phase 3        | npm audit, Snyk                | 🟢 Medium   |
 
 ### Context Files by Phase
 
 #### Phase 1.1: Eleventy 3.0 Migration
 
 **Required Reading**:
+
 - `eleventy.config.mjs` - Current configuration
 - `lib/path-prefix.mjs` - Build-time utilities
 - `src/_data/*.cjs` - Data files to convert
@@ -1026,8 +1054,9 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 - `docs/SETUP.md` - Build instructions
 
 **Agent Prompt Template**:
+
 ```
-You are a senior JavaScript developer specializing in static site generators. 
+You are a senior JavaScript developer specializing in static site generators.
 Your task is to migrate this Eleventy 2.0 project to Eleventy 3.0.
 
 Context:
@@ -1051,12 +1080,14 @@ Success criteria:
 #### Phase 1.2: JavaScript Modularization
 
 **Required Reading**:
+
 - `src/assets/js/app.js` (lines 1-1821) - Monolithic file to split
 - `src/assets/js/tracing-lite.js` - OpenTelemetry integration
 - `src/assets/js/utils/path-prefix.js` - Existing utility module
 - This PRD (module breakdown section)
 
 **Agent Prompt Template**:
+
 ```
 You are a senior frontend architect specializing in JavaScript modularization.
 Your task is to split a 1821-line monolithic app.js file into 7 maintainable modules.
@@ -1093,12 +1124,14 @@ Success criteria:
 #### Phase 1.3: Build Pipeline Modernization
 
 **Required Reading**:
+
 - `package.json` - Current build scripts
 - `vite.config.mjs` (to be created) - Vite configuration
 - `.github/workflows/ci.yml` - CI integration
 - `docs/TRACING.md` - Tracing implementation guide (includes bundling notes)
 
 **Agent Prompt Template**:
+
 ```
 You are a senior build engineer specializing in modern JavaScript tooling.
 Your task is to add Vite bundling to this Eleventy static site.
@@ -1126,6 +1159,7 @@ Success criteria:
 #### Phase 2: Feature Enhancements
 
 **Required Reading**:
+
 - `src/assets/js/modules/search.js` - Search module to enhance
 - `src/search-index.11ty.cjs` - Search index generation
 - `src/data/assistant.yml` - Assistant intent definitions
@@ -1134,6 +1168,7 @@ Success criteria:
 #### Phase 3: Testing & Quality
 
 **Required Reading**:
+
 - `vitest.config.mjs` (to be created) - Unit test config
 - `playwright.config.mjs` (to be created) - E2E test config
 - `scripts/smoke.mjs` - Existing smoke tests
@@ -1153,19 +1188,19 @@ gantt
     Eleventy 3.0 Migration           :crit, p1-1, 2026-02-10, 5d
     JavaScript Modularization        :crit, p1-2, after p1-1, 7d
     Build Pipeline Modernization     :crit, p1-3, after p1-2, 5d
-    
+
     section Phase 2: Features
     Enhanced Search                  :p2-1, after p1-3, 5d
     Interactive Components           :p2-2, after p2-1, 7d
     Improved Assistant               :p2-3, after p2-2, 5d
-    
+
     section Phase 3: Testing
     Unit Testing Setup               :p3-1, after p1-3, 3d
     Unit Test Implementation         :p3-1b, after p3-1, 7d
     E2E Testing Setup                :p3-2, after p3-1b, 3d
     E2E Test Implementation          :p3-2b, after p3-2, 7d
     CI/CD Pipeline Enhancement       :p3-3, after p3-2b, 5d
-    
+
     section Milestones
     Phase 1 Complete                 :milestone, m1, after p1-3, 0d
     Phase 2 Complete                 :milestone, m2, after p2-3, 0d
@@ -1180,19 +1215,19 @@ graph TD
     Start[Start Project] --> P1-1[Eleventy 3.0 Migration]
     P1-1 --> P1-2[JavaScript Modularization]
     P1-2 --> P1-3[Build Pipeline Modernization]
-    
+
     P1-3 --> P2-1[Enhanced Search]
     P1-3 --> P3-1[Unit Testing]
-    
+
     P2-1 --> P2-2[Interactive Components]
     P2-2 --> P2-3[Improved Assistant]
-    
+
     P3-1 --> P3-2[E2E Testing]
     P3-2 --> P3-3[CI/CD Pipeline]
-    
+
     P2-3 --> Release[Production Release]
     P3-3 --> Release
-    
+
     style P1-1 fill:#ff6b6b
     style P1-2 fill:#ff6b6b
     style P1-3 fill:#ff6b6b
@@ -1208,10 +1243,12 @@ graph TD
 ### Critical Path
 
 **Sequential (Blocking)**:
+
 1. Eleventy 3.0 Migration → JavaScript Modularization → Build Pipeline
 2. Phase 1 completion blocks Phase 2 and Phase 3
 
 **Parallel (Non-Blocking)**:
+
 - Unit Testing can start after Build Pipeline (while Phase 2 is ongoing)
 - E2E Testing can start after Unit Testing (independent of Phase 2)
 - Enhanced Search, Interactive Components, Improved Assistant can be done in any order
@@ -1222,49 +1259,53 @@ graph TD
 
 ### Risk Matrix
 
-| Risk | Likelihood | Impact | Mitigation Strategy | Owner |
-|------|-----------|--------|---------------------|-------|
-| **Breaking changes in Eleventy 3.0** | 🟡 Medium | 🔴 High | Thoroughly test in staging; maintain 2.0 fallback branch | @sandgraal |
-| **Module splitting introduces bugs** | 🟡 Medium | 🔴 High | Comprehensive E2E tests before splitting; parallel testing | @sandgraal |
-| **Bundle size increases instead of decreases** | 🟢 Low | 🟡 Medium | Monitor with Lighthouse CI; tree-shaking enabled by default | @sandgraal |
-| **Vite/esbuild conflicts with Eleventy** | 🟢 Low | 🟡 Medium | Follow Eleventy + Vite integration guide; use viteStaticCopy | @sandgraal |
-| **Tests are flaky in CI** | 🟡 Medium | 🟡 Medium | Use retry logic; run tests in Docker for consistency | @sandgraal |
-| **Performance regression after bundling** | 🟢 Low | 🔴 High | Lighthouse CI enforces score thresholds; fail build if regression | @sandgraal |
-| **Accessibility violations introduced** | 🟢 Low | 🔴 High | Automated axe-core tests in E2E suite; pa11y in CI | @sandgraal |
-| **Dependencies have security vulnerabilities** | 🟡 Medium | 🟡 Medium | npm audit in CI; Dependabot alerts; Fortify workflow already runs | @sandgraal |
-| **Breaking changes during migration** | 🟡 Medium | 🔴 High | Feature flag new implementations; A/B test before full rollout | @sandgraal |
-| **Timeline slips due to complexity** | 🟡 Medium | 🟢 Low | Phase 1 is MVP; Phase 2/3 can be delayed without blocking launch | @sandgraal |
+| Risk                                           | Likelihood | Impact    | Mitigation Strategy                                               | Owner      |
+| ---------------------------------------------- | ---------- | --------- | ----------------------------------------------------------------- | ---------- |
+| **Breaking changes in Eleventy 3.0**           | 🟡 Medium  | 🔴 High   | Thoroughly test in staging; maintain 2.0 fallback branch          | @sandgraal |
+| **Module splitting introduces bugs**           | 🟡 Medium  | 🔴 High   | Comprehensive E2E tests before splitting; parallel testing        | @sandgraal |
+| **Bundle size increases instead of decreases** | 🟢 Low     | 🟡 Medium | Monitor with Lighthouse CI; tree-shaking enabled by default       | @sandgraal |
+| **Vite/esbuild conflicts with Eleventy**       | 🟢 Low     | 🟡 Medium | Follow Eleventy + Vite integration guide; use viteStaticCopy      | @sandgraal |
+| **Tests are flaky in CI**                      | 🟡 Medium  | 🟡 Medium | Use retry logic; run tests in Docker for consistency              | @sandgraal |
+| **Performance regression after bundling**      | 🟢 Low     | 🔴 High   | Lighthouse CI enforces score thresholds; fail build if regression | @sandgraal |
+| **Accessibility violations introduced**        | 🟢 Low     | 🔴 High   | Automated axe-core tests in E2E suite; pa11y in CI                | @sandgraal |
+| **Dependencies have security vulnerabilities** | 🟡 Medium  | 🟡 Medium | npm audit in CI; Dependabot alerts; Fortify workflow already runs | @sandgraal |
+| **Breaking changes during migration**          | 🟡 Medium  | 🔴 High   | Feature flag new implementations; A/B test before full rollout    | @sandgraal |
+| **Timeline slips due to complexity**           | 🟡 Medium  | 🟢 Low    | Phase 1 is MVP; Phase 2/3 can be delayed without blocking launch  | @sandgraal |
 
 ### Rollback Plan
 
 **If Phase 1 migration fails**:
+
 1. Revert to Git tag `pre-phase1-migration`
 2. Continue using Eleventy 2.0 until issues resolved
 3. Block Phase 2 and Phase 3 work
 
 **If modularization introduces critical bugs**:
+
 1. Keep monolithic `app.js` in a `legacy/` folder
 2. Feature flag: Load modular version or legacy based on `?legacy=1` param
 3. Gradually roll out modular version to 10% → 50% → 100% of users
 
 **If bundle size explodes**:
+
 1. Revert to unbundled modules (Eleventy passthrough copy)
 2. Investigate tree-shaking failures
 3. Consider manual code splitting
 
 ### Browser Support Matrix
 
-| Browser | Version | Support Level | Test Coverage |
-|---------|---------|---------------|---------------|
-| **Chrome** | Last 2 versions | ✅ Full support | E2E tests |
-| **Firefox** | Last 2 versions | ✅ Full support | E2E tests |
-| **Safari** | Last 2 versions | ✅ Full support | E2E tests |
-| **Edge** | Last 2 versions | ✅ Full support | Smoke tests |
-| **Mobile Safari** (iOS) | Last 2 versions | ✅ Full support | Playwright mobile |
-| **Mobile Chrome** (Android) | Last 2 versions | ✅ Full support | Playwright mobile |
-| **IE 11** | - | ❌ Not supported | N/A |
+| Browser                     | Version         | Support Level    | Test Coverage     |
+| --------------------------- | --------------- | ---------------- | ----------------- |
+| **Chrome**                  | Last 2 versions | ✅ Full support  | E2E tests         |
+| **Firefox**                 | Last 2 versions | ✅ Full support  | E2E tests         |
+| **Safari**                  | Last 2 versions | ✅ Full support  | E2E tests         |
+| **Edge**                    | Last 2 versions | ✅ Full support  | Smoke tests       |
+| **Mobile Safari** (iOS)     | Last 2 versions | ✅ Full support  | Playwright mobile |
+| **Mobile Chrome** (Android) | Last 2 versions | ✅ Full support  | Playwright mobile |
+| **IE 11**                   | -               | ❌ Not supported | N/A               |
 
 **Polyfills Required**:
+
 - None (ES6+ native support in all target browsers)
 - Optional: IntersectionObserver for older Safari (<12.1)
 
@@ -1274,42 +1315,46 @@ graph TD
 
 ### Appendix A: Glossary
 
-| Term | Definition |
-|------|------------|
-| **CDC** | Change Data Capture — capturing database changes as events |
-| **Eleventy** | Static site generator built on Node.js |
-| **ESM** | ECMAScript Modules — modern JavaScript module system |
-| **HMR** | Hot Module Replacement — instant updates without full reload |
-| **Tree-shaking** | Removing unused code from bundles |
-| **Lighthouse** | Google's automated tool for web page quality audits |
-| **WCAG** | Web Content Accessibility Guidelines |
-| **pa11y** | Automated accessibility testing tool |
-| **Vitest** | Fast unit testing framework (Vite-native) |
-| **Playwright** | Cross-browser E2E testing framework |
-| **Fuse.js** | Lightweight fuzzy-search library |
-| **OpenTelemetry** | Observability framework for distributed tracing |
-| **Appwrite** | Backend-as-a-Service for auth and data storage |
+| Term              | Definition                                                   |
+| ----------------- | ------------------------------------------------------------ |
+| **CDC**           | Change Data Capture — capturing database changes as events   |
+| **Eleventy**      | Static site generator built on Node.js                       |
+| **ESM**           | ECMAScript Modules — modern JavaScript module system         |
+| **HMR**           | Hot Module Replacement — instant updates without full reload |
+| **Tree-shaking**  | Removing unused code from bundles                            |
+| **Lighthouse**    | Google's automated tool for web page quality audits          |
+| **WCAG**          | Web Content Accessibility Guidelines                         |
+| **pa11y**         | Automated accessibility testing tool                         |
+| **Vitest**        | Fast unit testing framework (Vite-native)                    |
+| **Playwright**    | Cross-browser E2E testing framework                          |
+| **Fuse.js**       | Lightweight fuzzy-search library                             |
+| **OpenTelemetry** | Observability framework for distributed tracing              |
+| **Appwrite**      | Backend-as-a-Service for auth and data storage               |
 
 ### Appendix B: Related Documents
 
 > **Note**: This documentation has been consolidated. Several guides that were previously separate have been merged:
+>
 > - Tracing docs consolidated into `TRACING.md`
 > - Setup docs consolidated into `SETUP.md`
 > - AI guidelines moved to `docs/CONTRIBUTING.md`
 > - Technical integration guide at `docs/INTEGRATION.md`
 
 **Setup & Configuration**:
+
 - [Setup Guide](SETUP.md) — Complete setup including Appwrite, auth, and assistant
 - [Hosting Guide](HOSTING.md) — GitHub Pages deployment
 - [Tracing Guide](TRACING.md) — OpenTelemetry tracing (includes quickstart)
 - [Sandbox Guide](SANDBOX.md) — Docker CDC lab environment
 
 **Content & Features**:
+
 - [Adding Modules](adding-modules.md) — Content contribution guide
 - [Video Embeds](video-embeds.md) — Video component usage
 - [Community Guide](COMMUNITY.md) — GitHub Discussions setup
 
 **Development & Architecture**:
+
 - [Contributing Guide](CONTRIBUTING.md) — AI agent guidelines (moved from root)
 - [Integration Guide](INTEGRATION.md) — Progress tracking implementation
 - [JavaScript Architecture](javascript-architecture.md) — Module system (to be created in Phase 1.2)
@@ -1318,24 +1363,25 @@ graph TD
 - [Security Policy](../SECURITY.md) — Security guidelines
 
 **Reference**:
+
 - [README](../README.md) — Project overview and quick start
 - [Changelog](../CHANGELOG.md) — Version history
 
 ### Appendix C: Change Log
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2026-02-05 | @sandgraal | Initial PRD creation with complete phase breakdown |
+| Version | Date       | Author     | Changes                                            |
+| ------- | ---------- | ---------- | -------------------------------------------------- |
+| 1.0.0   | 2026-02-05 | @sandgraal | Initial PRD creation with complete phase breakdown |
 
 ---
 
 ## Approval & Sign-Off
 
-| Role | Name | Status | Date | Signature |
-|------|------|--------|------|-----------|
-| **Product Owner** | @sandgraal | ⏳ Pending | - | - |
-| **Tech Lead** | @sandgraal | ⏳ Pending | - | - |
-| **QA Lead** | TBD | ⏳ Pending | - | - |
+| Role              | Name       | Status     | Date | Signature |
+| ----------------- | ---------- | ---------- | ---- | --------- |
+| **Product Owner** | @sandgraal | ⏳ Pending | -    | -         |
+| **Tech Lead**     | @sandgraal | ⏳ Pending | -    | -         |
+| **QA Lead**       | TBD        | ⏳ Pending | -    | -         |
 
 ---
 
