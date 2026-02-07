@@ -1,3 +1,6 @@
+## 2026-02-07
+- Initial changelog
+
 # Changelog
 
 ## [2.0.0] — 2026-02-06
