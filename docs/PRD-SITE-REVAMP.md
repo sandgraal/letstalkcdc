@@ -172,42 +172,42 @@ letstalkcdc/
   npm install --save-dev @11ty/eleventy@^3.0.0
   ```
 
-- [ ] **Convert `eleventy.config.mjs` → `eleventy.config.mjs`**
+- [x] **Convert `eleventy.config.mjs` → `eleventy.config.mjs`**
   - [ ] Change `module.exports = function` → `export default function`
   - [ ] Convert `require()` statements to `import` statements
   - [ ] Update file path: `eleventy.config.mjs` → `eleventy.config.mjs`
   - [ ] Test: `npx @11ty/eleventy --config=eleventy.config.mjs`
 
-- [ ] **Convert build-time utilities to ESM**
+- [x] **Convert build-time utilities to ESM**
   - [ ] `lib/path-prefix.mjs` → `lib/path-prefix.mjs`
     - Change `module.exports` → `export`
     - Change `require()` → `import`
   - [ ] Update references in `eleventy.config.mjs`
 
-- [ ] **Convert data files to ESM**
+- [x] **Convert data files to ESM**
   - [ ] `src/_data/series.mjs` → `src/_data/series.mjs`
   - [ ] `src/_data/site.mjs` → `src/_data/site.mjs`
   - [ ] `src/_data/appwrite.mjs` → `src/_data/appwrite.mjs`
   - [ ] Test: Verify data is accessible in templates
 
-- [ ] **Update PostCSS configuration**
+- [x] **Update PostCSS configuration**
   - [ ] `postcss.config.mjs` → `postcss.config.mjs`
   - [ ] Convert to ESM syntax
   - [ ] Test: `npm run build:css`
 
-- [ ] **Update package.json**
+- [x] **Update package.json**
   - [ ] Add `"type": "module"` (already present ✅)
   - [ ] Update all script references to use `.mjs` extensions
   - [ ] Update Eleventy config path in scripts
 
-- [ ] **Test all build commands**
+- [x] **Test all build commands**
   - [ ] `npm run clean`
   - [ ] `npm run build:css`
   - [ ] `npm run build`
   - [ ] `npm run dev`
   - [ ] Verify `_site/` output is identical to pre-migration
 
-- [ ] **Test all content pages**
+- [x] **Test all content pages**
   - [ ] Home page (`/`)
   - [ ] All quickstarts (`/quickstart/*`)
   - [ ] All labs (`/cloud-labs/*`)
@@ -215,7 +215,7 @@ letstalkcdc/
   - [ ] Search functionality
   - [ ] Navigation and mobile menu
 
-- [ ] **Verify CI/CD compatibility**
+- [x] **Verify CI/CD compatibility**
   - [ ] Update `.github/workflows/ci.yml` if needed
   - [ ] Update `.github/workflows/deploy.yml` if needed
   - [ ] Run full CI pipeline on test branch
@@ -262,7 +262,7 @@ letstalkcdc/
   mkdir -p tests/unit/modules
   ```
 
-- [ ] **Extract Theme Module** (`src/assets/js/modules/theme.js`)
+- [x] **Extract Theme Module** (`src/assets/js/modules/theme.js`)
   - [ ] Copy lines 27-86 from `app.js`
   - [ ] Wrap in `export function initTheme()`
   - [ ] Extract constants: `syncThemeToggle`, `applyTheme`, `getStoredTheme`, `setStoredTheme`
@@ -270,7 +270,7 @@ letstalkcdc/
   - [ ] Add JSDoc comments
   - [ ] Test: Theme toggle works, persists in localStorage
 
-- [ ] **Extract Navigation Module** (`src/assets/js/modules/navigation.js`)
+- [x] **Extract Navigation Module** (`src/assets/js/modules/navigation.js`)
   - [ ] Copy lines 109-385 from `app.js`
   - [ ] Split into two functions:
     - `initMobileNav()` (lines 109-173)
@@ -279,14 +279,14 @@ letstalkcdc/
   - [ ] Wrap in `export function initNavigation()` that calls both
   - [ ] Test: Mobile menu, dropdowns, keyboard navigation
 
-- [ ] **Extract Search Module** (`src/assets/js/modules/search.js`)
+- [x] **Extract Search Module** (`src/assets/js/modules/search.js`)
   - [ ] Copy lines 489-612 from `app.js`
   - [ ] Import: `import { withBasePath } from "../utils/path-prefix.js";`
   - [ ] Wrap in `export function initSearch(tracer)`
   - [ ] Export search state for testing: `export { getSearchState };`
   - [ ] Test: Search overlay, fuzzy matching, keyboard shortcuts
 
-- [ ] **Extract Scorecard Module** (`src/assets/js/modules/scorecard.js`)
+- [x] **Extract Scorecard Module** (`src/assets/js/modules/scorecard.js`)
   - [ ] Copy lines 780-1715 from `app.js` (largest module)
   - [ ] Split into sub-functions:
     - `initScorecardTracking()` - Progress tracking
@@ -296,21 +296,21 @@ letstalkcdc/
   - [ ] Export: `export { initScorecards, getProgressState };`
   - [ ] Test: Scorecard clicks, progress persistence, remote sync
 
-- [ ] **Extract Code Blocks Module** (`src/assets/js/modules/code-blocks.js`)
+- [x] **Extract Code Blocks Module** (`src/assets/js/modules/code-blocks.js`)
   - [ ] Copy lines 446-487 (legacy copy buttons) from `app.js`
   - [ ] Copy lines 1536-1631 (enhanced code blocks) from `app.js`
   - [ ] Merge into single `initCodeBlocks(tracer)` function
   - [ ] Export: `export { initCodeBlocks };`
   - [ ] Test: Copy button, syntax highlighting, language labels
 
-- [ ] **Extract Toast Module** (`src/assets/js/modules/toast.js`)
+- [x] **Extract Toast Module** (`src/assets/js/modules/toast.js`)
   - [ ] Copy lines 1717-1821 from `app.js`
   - [ ] Extract functions: `createToastContainer`, `showToast`, `removeToast`
   - [ ] Export: `export { showToast };`
   - [ ] Ensure `window.showToast` still works for backward compatibility
   - [ ] Test: Toast display, auto-dismiss, manual close
 
-- [ ] **Extract Quick Nav Module** (`src/assets/js/modules/quick-nav.js`)
+- [x] **Extract Quick Nav Module** (`src/assets/js/modules/quick-nav.js`)
   - [ ] Copy lines 614-778 from `app.js`
   - [ ] Wrap in `export function initQuickNav()`
   - [ ] Export: `export { initQuickNav };`
@@ -343,13 +343,13 @@ letstalkcdc/
   window.showToast = showToast;
   ```
 
-- [ ] **Verify all pages work**
+- [x] **Verify all pages work**
   - [ ] Test each module independently
   - [ ] Test interactions between modules
   - [ ] Check console for errors
   - [ ] Test on mobile viewport
 
-- [ ] **Update documentation**
+- [x] **Update documentation**
   - [ ] Add `docs/javascript-architecture.md` describing module system
   - [ ] Document each module's API
   - [ ] Add migration guide for contributors
@@ -390,7 +390,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 
 **Detailed Checklist**:
 
-- [ ] **Choose bundler: esbuild (recommended) or Vite**
+- [x] **Choose bundler: esbuild (recommended) or Vite**
   - **Option A: esbuild** (faster, simpler)
     - Pros: 10-100x faster than webpack, simple config
     - Cons: Less features than Vite
@@ -462,35 +462,35 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   npm install --save-dev concurrently
   ```
 
-- [ ] **Update Eleventy config to inject hashed asset paths**
+- [x] **Update Eleventy config to inject hashed asset paths**
   - [ ] Add global data function to read Vite manifest
   - [ ] Create filter to resolve hashed asset paths
   - [ ] Update `base.njk` to use hashed paths
 
-- [ ] **Add asset hashing**
+- [x] **Add asset hashing**
   - [ ] CSS: Use PostCSS + cssnano with sourceMap
   - [ ] JS: Vite handles this automatically
   - [ ] Images: Consider using Eleventy Image plugin
 
-- [ ] **Configure HMR for development**
+- [x] **Configure HMR for development**
   - [ ] Vite dev server runs on port 5173
   - [ ] Eleventy serve runs on port 8080
   - [ ] Add Vite client script to `base.njk` in dev mode
 
-- [ ] **Test build pipeline**
+- [x] **Test build pipeline**
   - [ ] `npm run clean`
   - [ ] `npm run build`
   - [ ] Verify all assets in `_site/assets/js/` have hashes
   - [ ] Verify CSS is minified
   - [ ] Check bundle size: `du -sh _site/assets/js/*.js`
 
-- [ ] **Test development mode**
+- [x] **Test development mode**
   - [ ] `npm run dev`
   - [ ] Make a change to `theme.js`
   - [ ] Verify HMR updates without full reload
   - [ ] Check console for errors
 
-- [ ] **Optimize bundle**
+- [x] **Optimize bundle**
   - [ ] Enable tree-shaking (Vite default)
   - [ ] Code-split large modules (Scorecard is 936 lines)
   - [ ] Consider lazy-loading non-critical modules
@@ -531,12 +531,12 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   npm install --save fuse.js
   ```
 
-- [ ] **Update search index generation** (`src/search-index.11ty.cjs`)
+- [x] **Update search index generation** (`src/search-index.11ty.cjs`)
   - [ ] Add more metadata: tags, description, headings
   - [ ] Extract code blocks as searchable content
   - [ ] Add section-level granularity (not just page-level)
 
-- [ ] **Update search module** (`src/assets/js/modules/search.js`)
+- [x] **Update search module** (`src/assets/js/modules/search.js`)
   - [ ] Import Fuse.js
   - [ ] Configure Fuse options:
     ```javascript
@@ -556,19 +556,19 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Highlight matched text in results
   - [ ] Add "No results found" state with suggestions
 
-- [ ] **Add search analytics**
+- [x] **Add search analytics**
   - [ ] Track search queries via OpenTelemetry
   - [ ] Track result clicks
   - [ ] Track "no results" queries (for content gap analysis)
 
-- [ ] **Test search**
+- [x] **Test search**
   - [ ] Test fuzzy matching: "debezum" → "Debezium"
   - [ ] Test partial matches: "kafka" → all Kafka pages
   - [ ] Test keyboard navigation
   - [ ] Test on mobile (touch-friendly)
   - [ ] Test performance with 200+ pages
 
-- [ ] **Add visual indicators**
+- [x] **Add visual indicators**
   - [ ] Show match count
   - [ ] Show search in progress indicator
   - [ ] Highlight active result
@@ -595,7 +595,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 
 **Detailed Checklist**:
 
-- [ ] **Quiz Component**
+- [x] **Quiz Component**
   - [ ] Design: Create quiz component specification
   - [ ] Refer to interactive learning best practices
   - [ ] Create `src/assets/js/modules/quiz.js`
@@ -608,7 +608,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Add to 3+ modules as pilot
   - [ ] Track completion via OpenTelemetry
 
-- [ ] **Code Playground** (stretch goal)
+- [x] **Code Playground** (stretch goal)
   - [ ] Options:
     - **Option A**: Embed CodeSandbox/StackBlitz (easiest)
     - **Option B**: Build custom REPL with Web Workers (most control)
@@ -617,20 +617,20 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Add "Run" and "Reset" buttons
   - [ ] Show console output
 
-- [ ] **Interactive Diagrams**
+- [x] **Interactive Diagrams**
   - [ ] Use Mermaid.js (already in repo)
   - [ ] Add tooltips on hover
   - [ ] Add click-to-highlight feature
   - [ ] Add animation for CDC event flow
   - [ ] Convert 5+ static diagrams to interactive
 
-- [ ] **Timeline Component**
+- [x] **Timeline Component**
   - [ ] Visualize CDC event flow (snapshot → streaming → lag)
   - [ ] Add zoom/pan for long timelines
   - [ ] Add event details on click
   - [ ] Use for "Snapshotting" and "Observability" modules
 
-- [ ] **Progressive Enhancement**
+- [x] **Progressive Enhancement**
   - [ ] All components degrade gracefully without JS
   - [ ] Use `<noscript>` fallbacks where needed
   - [ ] Ensure keyboard navigation works
@@ -657,28 +657,28 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 
 **Detailed Checklist**:
 
-- [ ] **Context Awareness**
+- [x] **Context Awareness**
   - [ ] Pass current module slug to assistant
   - [ ] Filter intent matching by current module tags
   - [ ] Prioritize results from current module
 
-- [ ] **Chat History**
+- [x] **Chat History**
   - [ ] Store last 10 messages in localStorage
   - [ ] Display previous messages in UI
   - [ ] Add "Clear history" button
   - [ ] Sync to Appwrite if user is logged in (optional)
 
-- [ ] **Better Citations**
+- [x] **Better Citations**
   - [ ] Link to specific headings (not just pages)
   - [ ] Show preview on hover
   - [ ] Track citation clicks
 
-- [ ] **Next Topic Suggestions**
+- [x] **Next Topic Suggestions**
   - [ ] Analyze user progress from scorecard data
   - [ ] Suggest modules with 0% completion
   - [ ] Suggest modules tagged as prerequisites
 
-- [ ] **Feedback Improvements**
+- [x] **Feedback Improvements**
   - [ ] Add optional comment field for negative feedback
   - [ ] Show aggregate feedback stats in admin dashboard
   - [ ] Use feedback to improve intent matching
@@ -740,7 +740,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   });
   ```
 
-- [ ] **Create test setup** (`tests/setup.js`)
+- [x] **Create test setup** (`tests/setup.js`)
   - [ ] Mock localStorage
   - [ ] Mock IntersectionObserver
   - [ ] Mock matchMedia
@@ -800,13 +800,13 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   }
   ```
 
-- [ ] **Run tests locally**
+- [x] **Run tests locally**
   - [ ] `npm test`
   - [ ] `npm run test:coverage`
   - [ ] Fix failing tests
   - [ ] Ensure coverage ≥80%
 
-- [ ] **Integrate with CI**
+- [x] **Integrate with CI**
   - [ ] Add test job to `.github/workflows/ci.yml`
   - [ ] Fail build if tests fail
   - [ ] Upload coverage reports to Codecov (optional)
@@ -900,7 +900,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
     - Test: ARIA attributes are correct
     - Test: Color contrast passes
 
-- [ ] **Add visual regression tests**
+- [x] **Add visual regression tests**
   - [ ] Install `@playwright/test` visual comparison
   - [ ] Take baseline screenshots
   - [ ] Compare on each run
@@ -918,7 +918,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   }
   ```
 
-- [ ] **Integrate with CI**
+- [x] **Integrate with CI**
   - [ ] Add E2E test job to `.github/workflows/ci.yml`
   - [ ] Run on Chrome, Firefox, Safari
   - [ ] Publish test reports as artifacts
@@ -946,7 +946,7 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
 
 **Detailed Checklist**:
 
-- [ ] **Add Lighthouse CI**
+- [x] **Add Lighthouse CI**
   - [ ] Install: `npm install --save-dev @lhci/cli`
   - [ ] Create `.lighthouserc.json`:
     ```json
@@ -986,13 +986,13 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
         - run: npx @lhci/cli autorun
     ```
 
-- [ ] **Add PR Preview Deployments**
+- [x] **Add PR Preview Deployments**
   - [ ] Use Netlify Deploy Previews or Vercel
   - [ ] Alternative: GitHub Pages with PR-specific subdirectories
   - [ ] Add comment to PR with preview URL
   - [ ] Auto-delete preview when PR closes
 
-- [ ] **Expand CI checks** (`.github/workflows/ci.yml`)
+- [x] **Expand CI checks** (`.github/workflows/ci.yml`)
   - [ ] Job 1: Lint (ESLint, Prettier)
   - [ ] Job 2: Unit tests (Vitest)
   - [ ] Job 3: Build (Eleventy + Vite)
@@ -1001,17 +1001,17 @@ Lines 1536-1631: 🟢 Enhanced code blocks (96 lines) → code-blocks.js
   - [ ] Job 6: Accessibility (pa11y)
   - [ ] Job 7: Security audit (`npm audit`)
 
-- [ ] **Add caching**
+- [x] **Add caching**
   - [ ] Cache `node_modules` with `actions/cache`
   - [ ] Cache Playwright browsers
   - [ ] Cache Eleventy build cache
 
-- [ ] **Add status checks**
+- [x] **Add status checks**
   - [ ] Require all jobs to pass before merge
   - [ ] Add branch protection rules
   - [ ] Require 1+ approving review
 
-- [ ] **Add notifications** (optional)
+- [x] **Add notifications** (optional)
   - [ ] Slack webhook for failures
   - [ ] Email on deploy success/failure
   - [ ] GitHub Discussions post on release
