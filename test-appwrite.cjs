@@ -64,7 +64,7 @@ async function main() {
     let needsUpdate = false;
 
     const mainDb = dbData.databases.find(
-      (db) => db.name.toLowerCase() === "main"
+      (db) => db.name.toLowerCase() === "main",
     );
 
     if (
@@ -117,9 +117,7 @@ async function main() {
 
     const collIds = collData.collections?.map((c) => c.$id) || [];
 
-    const required = [
-      { id: "assistant_feedback", env: "COL_ASSISTANT_ID" },
-    ];
+    const required = [{ id: "assistant_feedback", env: "COL_ASSISTANT_ID" }];
 
     let allPresent = true;
     const envUpdates = [];

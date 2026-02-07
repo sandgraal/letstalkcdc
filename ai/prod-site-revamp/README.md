@@ -33,6 +33,7 @@ This workspace provides:
 ### Step 1: Read Phase Context
 
 Each phase directory contains:
+
 - `CONTEXT.md` — What this phase accomplishes
 - `REQUIREMENTS.md` — Specific deliverables
 - `FILES.md` — Which files to read/modify
@@ -41,6 +42,7 @@ Each phase directory contains:
 ### Step 2: Use Prompt Template
 
 Prompts in `prompts/` folder are optimized for:
+
 - Clear task definition
 - Minimal context loading
 - Explicit success criteria
@@ -49,6 +51,7 @@ Prompts in `prompts/` folder are optimized for:
 ### Step 3: Execute Work
 
 Follow the requirements in the phase directory. Always:
+
 - ✅ Read all files in `FILES.md` before making changes
 - ✅ Make minimal, surgical changes
 - ✅ Test after every change
@@ -58,6 +61,7 @@ Follow the requirements in the phase directory. Always:
 ### Step 4: Validate
 
 Run validation scripts in `validation/` to ensure:
+
 - Build succeeds (`npm run build`)
 - Tests pass (when applicable)
 - No console errors
@@ -67,6 +71,7 @@ Run validation scripts in `validation/` to ensure:
 ### Step 5: Update Progress
 
 Update `progress/PROGRESS.md` with:
+
 - What was completed
 - What was skipped (with reason)
 - Any issues encountered
@@ -78,11 +83,11 @@ Update `progress/PROGRESS.md` with:
 
 **Goal**: Modernize the build system and code structure without changing functionality.
 
-| Phase | Task | Agent Skills | Est. Time |
-|-------|------|--------------|-----------|
-| 1.1 | Eleventy 3.0 Migration | `esm-migration`, `eleventy` | 5 days |
-| 1.2 | JavaScript Modularization | `code-refactoring`, `testing` | 7 days |
-| 1.3 | Build Pipeline Modernization | `module-bundling`, `performance-optimization` | 5 days |
+| Phase | Task                         | Agent Skills                                  | Est. Time |
+| ----- | ---------------------------- | --------------------------------------------- | --------- |
+| 1.1   | Eleventy 3.0 Migration       | `esm-migration`, `eleventy`                   | 5 days    |
+| 1.2   | JavaScript Modularization    | `code-refactoring`, `testing`                 | 7 days    |
+| 1.3   | Build Pipeline Modernization | `module-bundling`, `performance-optimization` | 5 days    |
 
 **Critical Path**: 1.1 → 1.2 → 1.3 (sequential, blocking)
 
@@ -111,13 +116,15 @@ Update `progress/PROGRESS.md` with:
 ### Feature Flags
 
 New implementations can be feature-flagged:
+
 ```javascript
-const USE_MODULAR_APP = localStorage.getItem('use_modular_app') !== 'false';
+const USE_MODULAR_APP = localStorage.getItem("use_modular_app") !== "false";
 ```
 
 ### Git Tags
 
 Before each phase:
+
 ```bash
 git tag pre-phase1-migration
 git push origin pre-phase1-migration
@@ -126,6 +133,7 @@ git push origin pre-phase1-migration
 ### Rollback Command
 
 If something breaks:
+
 ```bash
 git revert HEAD~1  # Undo last commit
 npm run build      # Verify build works
@@ -141,6 +149,7 @@ See `progress/PROGRESS.md` for detailed tracking.
 ### Completion Criteria
 
 **Phase 1 Complete** when:
+
 - ✅ Eleventy 3.0 builds successfully
 - ✅ All 40+ pages render correctly
 - ✅ JavaScript modules load without errors
@@ -149,12 +158,14 @@ See `progress/PROGRESS.md` for detailed tracking.
 - ✅ All smoke tests pass
 
 **Phase 2 Complete** when:
+
 - ✅ Search has fuzzy matching
 - ✅ Interactive components work
 - ✅ Assistant accuracy improved
 - ✅ All features tested manually
 
 **Phase 3 Complete** when:
+
 - ✅ Unit test coverage ≥80%
 - ✅ E2E tests cover critical paths
 - ✅ Lighthouse CI enforces scores

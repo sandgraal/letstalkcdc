@@ -17,6 +17,7 @@ Welcome to the Let's Talk CDC documentation. This directory contains comprehensi
 ## 🚀 Setup & Configuration
 
 ### Getting Started
+
 - **[Setup Guide](SETUP.md)** — Complete development environment setup guide
   - Quick start instructions
   - Environment configuration
@@ -30,6 +31,7 @@ Welcome to the Let's Talk CDC documentation. This directory contains comprehensi
   - Custom domain setup
 
 ### Advanced Configuration
+
 - **[Appwrite Quickstart](APPWRITE_QUICKSTART.md)** — 15-minute guide to set up Appwrite backend
 - **[Tracing Guide](TRACING.md)** — Complete OpenTelemetry implementation guide
 - **[Tracing Quickstart](TRACING-QUICKSTART.md)** — Quick setup for tracing and observability
@@ -41,6 +43,7 @@ Welcome to the Let's Talk CDC documentation. This directory contains comprehensi
 ## 🤝 Contributing
 
 ### Content Creation
+
 - **[Adding Modules](adding-modules.md)** — Guide for creating new educational content modules
   - Module structure and conventions
   - Frontmatter requirements
@@ -54,18 +57,21 @@ Welcome to the Let's Talk CDC documentation. This directory contains comprehensi
   - Best practices
 
 ### Video & Media
+
 - **[Video Embeds](video-embeds.md)** — Guidelines for embedding video content
   - Supported platforms
   - Accessibility considerations
   - Responsive embedding
 
 ### AI Assistant
+
 - **[Assistant Feedback Setup](assistant-feedback-setup.md)** — Configure the AI assistant feedback collection
   - Appwrite collection setup
   - Intent matching configuration
   - Feedback analytics
 
 ### Authentication
+
 - **[Auth Setup](auth-setup.md)** — User authentication and authorization configuration
   - Appwrite auth integration
   - Session management
@@ -85,16 +91,19 @@ Welcome to the Let's Talk CDC documentation. This directory contains comprehensi
 ## 📚 Reference & Historical
 
 ### Project Status
+
 - **[Phase 2 Complete](PHASE-2-COMPLETE.md)** — Summary of Phase 2 implementation
 - **[Implementation Summary](IMPLEMENTATION-SUMMARY.md)** — Overview of completed work
 - **[Deployment Success](DEPLOYMENT-SUCCESS.md)** — Deployment milestone documentation
 - **[Consolidation Summary](CONSOLIDATION_SUMMARY.md)** — Repository consolidation notes
 
 ### Community & Engagement
+
 - **[Community Guide](COMMUNITY.md)** — Building and engaging the CDC learning community
 - **[Discussions Seed](DISCUSSIONS_SEED.md)** — Ideas for community discussions and engagement
 
 ### Archived Documents
+
 - **[Archive](archive/)** — Historical documents and decisions
   - Deprecated guides
   - Previous status updates
@@ -114,7 +123,9 @@ Welcome to the Let's Talk CDC documentation. This directory contains comprehensi
 ## 📖 Documentation Conventions
 
 ### Frontmatter
+
 All documentation files should include frontmatter when applicable:
+
 ```yaml
 ---
 title: "Document Title"
@@ -124,11 +135,13 @@ tags: ["tag1", "tag2"]
 ```
 
 ### File Naming
+
 - Use kebab-case: `adding-modules.md`, not `Adding_Modules.md`
 - Be descriptive: `tracing-quickstart.md`, not `tracing.md`
 - Use standard suffixes: `-guide.md`, `-setup.md`, `-quickstart.md`
 
 ### Markdown Style
+
 - Use ATX-style headers (`#`, `##`, `###`)
 - Use fenced code blocks with language identifiers
 - Include a table of contents for long documents (>500 lines)

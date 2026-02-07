@@ -19,12 +19,12 @@ This runbook provisions the Appwrite collection required by the Lightweight Assi
 
 Add the following attributes to mirror the payload produced by `src/js/assistant.js`:
 
-| Key       | Type     | Required | Array | Notes                                 |
-|-----------|----------|----------|-------|---------------------------------------|
-| `question`| String   | Yes      | No    | Length 512 is sufficient for prompts. |
-| `intentId`| String   | No       | No    | Length 128; stores the matched intent.|
-| `helpful` | Boolean  | Yes      | No    | Captures 👍/👎 feedback.              |
-| `ts`      | Datetime | Yes      | No    | ISO timestamp captured in the browser.|
+| Key        | Type     | Required | Array | Notes                                  |
+| ---------- | -------- | -------- | ----- | -------------------------------------- |
+| `question` | String   | Yes      | No    | Length 512 is sufficient for prompts.  |
+| `intentId` | String   | No       | No    | Length 128; stores the matched intent. |
+| `helpful`  | Boolean  | Yes      | No    | Captures 👍/👎 feedback.               |
+| `ts`       | Datetime | Yes      | No    | ISO timestamp captured in the browser. |
 
 When adding the string attributes, set the maximum length to the values listed above.
 

@@ -53,6 +53,7 @@ docker compose ps
 ```
 
 Expected output:
+
 ```
 NAME                    STATUS              PORTS
 letstalkcdc-connect     Up                  0.0.0.0:8083->8083/tcp
@@ -110,9 +111,11 @@ The sandbox is designed to work seamlessly with all lab exercises. When you see 
 #### Example: Lab - CDC with Kafka and Debezium
 
 Original instructions say:
+
 > Create a docker-compose.yml with Postgres, Kafka, and Debezium...
 
 **With the sandbox:**
+
 1. ✅ Already done! Just run `docker compose up -d`
 2. ✅ Sample data already loaded
 3. ✅ Skip to connector registration: `./sandbox/register-postgres-connector.sh`
@@ -125,12 +128,14 @@ Each quickstart guide includes database-specific configuration. The sandbox prov
 #### Example: MySQL Quickstart
 
 The quickstart shows:
+
 ```sql
 -- Enable binlog
 SET binlog_format = 'ROW';
 ```
 
 **With the sandbox:**
+
 - ✅ Binlog already configured correctly
 - ✅ User with replication privileges already created
 - ✅ Sample database already initialized
@@ -140,13 +145,13 @@ SET binlog_format = 'ROW';
 
 When lab instructions reference specific services, use these sandbox endpoints:
 
-| Lab Instruction | Sandbox Equivalent |
-|----------------|-------------------|
-| "Connect to your Postgres database" | `docker compose exec postgres psql -U postgres -d inventory` |
-| "Kafka broker at localhost:9092" | ✅ Already configured |
-| "Post connector config to Connect API" | `./sandbox/register-postgres-connector.sh` |
-| "View Kafka messages" | Kafka UI at http://localhost:8080 |
-| "Use kafkacat/kcat" | `docker compose exec kcat kcat -b kafka:29092 ...` |
+| Lab Instruction                        | Sandbox Equivalent                                           |
+| -------------------------------------- | ------------------------------------------------------------ |
+| "Connect to your Postgres database"    | `docker compose exec postgres psql -U postgres -d inventory` |
+| "Kafka broker at localhost:9092"       | ✅ Already configured                                        |
+| "Post connector config to Connect API" | `./sandbox/register-postgres-connector.sh`                   |
+| "View Kafka messages"                  | Kafka UI at http://localhost:8080                            |
+| "Use kafkacat/kcat"                    | `docker compose exec kcat kcat -b kafka:29092 ...`           |
 
 Use your OS-specific command to open the Kafka UI:
 
@@ -329,6 +334,7 @@ Now that you have a working CDC sandbox:
 ⚠️ **The sandbox uses default credentials for simplicity. Never use these in production!**
 
 Production checklist:
+
 - [ ] Use strong, unique passwords
 - [ ] Store credentials in secrets management (Vault, AWS Secrets Manager, etc.)
 - [ ] Enable TLS/SSL for all connections

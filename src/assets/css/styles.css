@@ -72,10 +72,12 @@
   --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.3);
 
   /* Typography - Responsive with clamp() */
-  --font-sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
-    Arial, sans-serif;
-  --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, "Liberation Mono", monospace;
+  --font-sans:
+    "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono:
+    "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
   --type-display: clamp(2.5rem, 5vw, 3.5rem);
   --type-hero: clamp(1.875rem, 3.5vw, 2.5rem);
   --type-title: clamp(1.5rem, 2.5vw, 2rem);
@@ -484,7 +486,11 @@ body {
   width: 100%;
   display: block;
   height: auto;
-  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08), rgba(15, 23, 42, 0.65));
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(56, 189, 248, 0.08),
+    rgba(15, 23, 42, 0.65)
+  );
   border-radius: 1rem;
   padding: 1.25rem;
   box-shadow: 0 25px 50px rgba(15, 23, 42, 0.45);
@@ -498,7 +504,11 @@ body {
 }
 
 :root[data-theme="light"] .diagram-section__image {
-  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.16), rgba(226, 232, 240, 0.9));
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(56, 189, 248, 0.16),
+    rgba(226, 232, 240, 0.9)
+  );
   box-shadow: 0 22px 40px rgba(15, 23, 42, 0.15);
 }
 
@@ -570,7 +580,11 @@ body {
   --cta-bg-start: #667eea;
   --cta-bg-end: #764ba2;
   --cta-text: #ffffff;
-  background: linear-gradient(135deg, var(--cta-bg-start) 0%, var(--cta-bg-end) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--cta-bg-start) 0%,
+    var(--cta-bg-end) 100%
+  );
   border-radius: 1.25rem;
   padding: clamp(2rem, 4vw, 3rem);
   margin: var(--space-2xl) auto;
@@ -584,7 +598,12 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 55%),
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.18),
+      transparent 55%
+    ),
     radial-gradient(circle at 80% 0%, rgba(236, 72, 153, 0.12), transparent 50%);
   mix-blend-mode: screen;
   pointer-events: none;
@@ -635,7 +654,10 @@ body {
   font-weight: 600;
   text-decoration: none;
   border: 2px solid transparent;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .cta-banner__action:hover,
@@ -864,7 +886,9 @@ body {
   padding: var(--space-xs) var(--space-md);
   color: var(--text-secondary);
   background: var(--bg-secondary);
-  transition: background-color 0.2s ease, color 0.2s ease,
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
     border-color 0.2s ease;
 }
 
@@ -909,7 +933,9 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 .series-card:hover {
   transform: translateY(-4px);
@@ -998,8 +1024,11 @@ body {
   color: var(--text-secondary);
   font-weight: 600;
   text-decoration: none;
-  transition: color 0.2s ease, border-color 0.2s ease,
-    background-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .download-link::after {
@@ -1423,7 +1452,9 @@ svg .emph {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
   z-index: 5;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1480,7 +1511,9 @@ svg .emph {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
   z-index: 5;
 }
 .tooltip:hover .tip,
@@ -1872,7 +1905,9 @@ figure[aria-label="CDC high-level flow"] figcaption {
   border-radius: 0.75rem;
   padding: 2rem 1.5rem;
   text-align: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .benefit-card:hover {

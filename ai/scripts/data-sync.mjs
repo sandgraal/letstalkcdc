@@ -1,14 +1,14 @@
 // ai/scripts/data-sync.mjs
-import { promises as fs } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { promises as fs } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, '..', '..');
-const dataDir = join(projectRoot, 'src', '_data');
-const stateDir = join(projectRoot, 'ai', '_state');
-const cacheDir = join(stateDir, 'data');
+const projectRoot = join(__dirname, "..", "..");
+const dataDir = join(projectRoot, "src", "_data");
+const stateDir = join(projectRoot, "ai", "_state");
+const cacheDir = join(stateDir, "data");
 
 const require = createRequire(import.meta.url);
 
@@ -18,10 +18,13 @@ const ensureDir = async (dir) => {
 
 const readJsonFile = async (filePath, fallback = null) => {
   try {
-    const raw = await fs.readFile(filePath, 'utf8');
+    const raw = await fs.readFile(filePath, "utf8");
     return JSON.parse(raw);
   } catch (error) {
-    console.warn(`[data-sync] Unable to read JSON ${relative(projectRoot, filePath)}:`, error.message);
+    console.warn(
+      `[data-sync] Unable to read JSON ${relative(projectRoot, filePath)}:`,
+      error.message,
+    );
     return fallback;
   }
 };
@@ -29,7 +32,7 @@ const readJsonFile = async (filePath, fallback = null) => {
 const writeJsonFile = async (filePath, data) => {
   const serialized = `${JSON.stringify(data, null, 2)}\n`;
   try {
-    const existing = await fs.readFile(filePath, 'utf8');
+    const existing = await fs.readFile(filePath, "utf8");
     if (existing === serialized) {
       return false;
     }
@@ -37,25 +40,25 @@ const writeJsonFile = async (filePath, data) => {
     // File does not exist — we'll create it below.
   }
 
-  await fs.writeFile(filePath, serialized, 'utf8');
+  await fs.writeFile(filePath, serialized, "utf8");
   return true;
 };
 
 const toStringSafe = (value) => {
   if (value === null || value === undefined) {
-    return '';
+    return "";
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value.trim();
   }
-  if (typeof value === 'number' || typeof value === 'boolean') {
+  if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
-  return '';
+  return "";
 };
 
 const normalizeBadge = (badge) => {
-  if (!badge || typeof badge !== 'object') {
+  if (!badge || typeof badge !== "object") {
     return null;
   }
   const label = toStringSafe(badge.label);
@@ -75,7 +78,7 @@ const normalizeTags = (tags) => {
   }
   return tags
     .map((tag) => {
-      if (!tag || typeof tag !== 'object') {
+      if (!tag || typeof tag !== "object") {
         return null;
       }
       const label = toStringSafe(tag.label);
@@ -92,7 +95,7 @@ const normalizeTags = (tags) => {
 };
 
 const normalizeSeriesEntry = (entry) => {
-  if (!entry || typeof entry !== 'object') {
+  if (!entry || typeof entry !== "object") {
     return null;
   }
 
@@ -101,9 +104,10 @@ const normalizeSeriesEntry = (entry) => {
     return null;
   }
 
-  const totalSteps = Number.isFinite(entry.totalSteps) && entry.totalSteps > 0
-    ? Math.round(entry.totalSteps)
-    : null;
+  const totalSteps =
+    Number.isFinite(entry.totalSteps) && entry.totalSteps > 0
+      ? Math.round(entry.totalSteps)
+      : null;
 
   return {
     key,
@@ -122,16 +126,14 @@ const normalizeSeries = (series) => {
   if (!Array.isArray(series)) {
     return [];
   }
-  return series
-    .map(normalizeSeriesEntry)
-    .filter(Boolean);
+  return series.map(normalizeSeriesEntry).filter(Boolean);
 };
 
 const buildTagSummary = (series) => {
   const summaryMap = new Map();
   series.forEach((entry) => {
     entry.tags.forEach((tag) => {
-      const key = tag.variant || tag.label || 'unknown';
+      const key = tag.variant || tag.label || "unknown";
       if (!summaryMap.has(key)) {
         summaryMap.set(key, {
           key,
@@ -159,7 +161,7 @@ const buildTagSummary = (series) => {
 };
 
 const normalizeSite = (site) => {
-  const payload = typeof site === 'object' && site !== null ? site : {};
+  const payload = typeof site === "object" && site !== null ? site : {};
   return {
     title: toStringSafe(payload.title) || null,
     tagline: toStringSafe(payload.tagline) || null,
@@ -173,7 +175,7 @@ const normalizeSite = (site) => {
 };
 
 const normalizeAppwrite = (config) => {
-  const payload = typeof config === 'object' && config !== null ? config : {};
+  const payload = typeof config === "object" && config !== null ? config : {};
   const normalized = {
     endpoint: toStringSafe(payload.endpoint),
     project: toStringSafe(payload.project),
@@ -195,12 +197,15 @@ const normalizeAppwrite = (config) => {
 const loadDataModule = async (fileName) => {
   const absolutePath = join(dataDir, fileName);
   try {
-    if (fileName.endsWith('.json')) {
+    if (fileName.endsWith(".json")) {
       return await readJsonFile(absolutePath, null);
     }
     return require(absolutePath);
   } catch (error) {
-    console.warn(`[data-sync] Failed to load ${relative(projectRoot, absolutePath)}:`, error.message);
+    console.warn(
+      `[data-sync] Failed to load ${relative(projectRoot, absolutePath)}:`,
+      error.message,
+    );
     return null;
   }
 };
@@ -208,9 +213,9 @@ const loadDataModule = async (fileName) => {
 const main = async () => {
   await ensureDir(cacheDir);
 
-  const rawSeries = await loadDataModule('series.cjs');
-  const rawSite = await loadDataModule('site.cjs');
-  const rawAppwrite = await loadDataModule('appwrite.cjs');
+  const rawSeries = await loadDataModule("series.cjs");
+  const rawSite = await loadDataModule("site.cjs");
+  const rawAppwrite = await loadDataModule("appwrite.cjs");
 
   const series = normalizeSeries(rawSeries);
   const site = normalizeSite(rawSite);
@@ -235,25 +240,25 @@ const main = async () => {
     outputs.push({ file: relative(projectRoot, target), changed });
   };
 
-  await writeOutput('data/site.json', site);
-  await writeOutput('data/series.json', {
+  await writeOutput("data/site.json", site);
+  await writeOutput("data/series.json", {
     generatedAt: site.generatedAt,
     items: series,
   });
-  await writeOutput('data/appwrite.json', {
+  await writeOutput("data/appwrite.json", {
     generatedAt: site.generatedAt,
     ...appwrite,
   });
-  await writeOutput('data/dashboard-modules.json', {
+  await writeOutput("data/dashboard-modules.json", {
     generatedAt: site.generatedAt,
     items: dashboardModules,
   });
-  await writeOutput('data/tag-summary.json', {
+  await writeOutput("data/tag-summary.json", {
     generatedAt: site.generatedAt,
     tags: tagSummary,
   });
 
-  const manifestPath = join(stateDir, 'data-manifest.json');
+  const manifestPath = join(stateDir, "data-manifest.json");
   const manifestEntry = {
     file: relative(projectRoot, manifestPath),
     changed: false,
@@ -272,17 +277,21 @@ const main = async () => {
   outputs.push(manifestEntry);
 
   if (manifestChanged) {
-    await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await fs.writeFile(
+      manifestPath,
+      `${JSON.stringify(manifest, null, 2)}\n`,
+      "utf8",
+    );
   }
 
   const updated = outputs.filter((entry) => entry.changed).length;
   const skipped = outputs.length - updated;
   console.log(
-    `[data-sync] Completed. ${outputs.length} file(s) processed — ${updated} updated, ${skipped} unchanged.`
+    `[data-sync] Completed. ${outputs.length} file(s) processed — ${updated} updated, ${skipped} unchanged.`,
   );
 };
 
 main().catch((error) => {
-  console.error('[data-sync] Failed:', error);
+  console.error("[data-sync] Failed:", error);
   process.exitCode = 1;
 });

@@ -20,14 +20,14 @@ npm run dev
 
 The site is built with **progressive enhancement** — core features work immediately, with optional services adding enhanced functionality:
 
-| Feature                               | Status      | Setup Required                        |
-| ------------------------------------- | ----------- | ------------------------------------- |
-| **Static site** (educational content) | ✅ Ready    | None — works out of the box           |
-| **Local progress tracking**           | ✅ Ready    | None — uses browser localStorage      |
-| **AI Toolkit tracing**                | ⚠️ Optional | AI Toolkit + start dev server         |
-| **Appwrite assistant feedback**       | ⚠️ Optional | Appwrite project + collection setup   |
-| **User authentication**               | ⚠️ Deprecated | Authentication has been removed      |
-| **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed          |
+| Feature                               | Status        | Setup Required                      |
+| ------------------------------------- | ------------- | ----------------------------------- |
+| **Static site** (educational content) | ✅ Ready      | None — works out of the box         |
+| **Local progress tracking**           | ✅ Ready      | None — uses browser localStorage    |
+| **AI Toolkit tracing**                | ⚠️ Optional   | AI Toolkit + start dev server       |
+| **Appwrite assistant feedback**       | ⚠️ Optional   | Appwrite project + collection setup |
+| **User authentication**               | ⚠️ Deprecated | Authentication has been removed     |
+| **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed         |
 
 ## Environment Configuration
 
@@ -147,12 +147,12 @@ If you prefer to create the collection manually:
 3. Enable **Document security**
 4. Add the following attributes:
 
-   | Key       | Type     | Required | Size/Format | Notes                                 |
-   |-----------|----------|----------|-------------|---------------------------------------|
-   | `question`| String   | Yes      | 512         | User's question text                  |
-   | `intentId`| String   | No       | 128         | Matched intent identifier             |
-   | `helpful` | Boolean  | Yes      | -           | Captures 👍/👎 feedback               |
-   | `ts`      | Datetime | Yes      | -           | ISO timestamp captured in browser     |
+   | Key        | Type     | Required | Size/Format | Notes                             |
+   | ---------- | -------- | -------- | ----------- | --------------------------------- |
+   | `question` | String   | Yes      | 512         | User's question text              |
+   | `intentId` | String   | No       | 128         | Matched intent identifier         |
+   | `helpful`  | Boolean  | Yes      | -           | Captures 👍/👎 feedback           |
+   | `ts`       | Datetime | Yes      | -           | ISO timestamp captured in browser |
 
 5. Create an index named `byTime` on the `ts` attribute (Descending order) for efficient querying
 6. Configure permissions:
@@ -280,6 +280,7 @@ The site automatically converts YAML → JSON during build.
 #### Historical Context
 
 The authentication system previously allowed users to:
+
 - Create accounts with email/password
 - Sync module completion progress across devices
 - Merge local and cloud progress on login
@@ -289,6 +290,7 @@ This functionality was removed to simplify the architecture and eliminate the ne
 #### Migration Notes
 
 If you have an existing deployment with user authentication:
+
 - Existing users will automatically fall back to localStorage-based progress
 - The `progress` and `events` collections can be safely removed from your Appwrite database
 - No user data migration is needed (users will start fresh with localStorage)
@@ -308,7 +310,6 @@ The site deploys automatically to GitHub Pages via GitHub Actions.
 1. Go to **Settings → Pages**
 2. Select **GitHub Actions** as source
 3. Configure repository variables (Settings → Secrets and variables → Actions → Variables):
-
    - `SITE_HOST`: `https://letstalkcdc.github.io` or your custom domain
    - `ELEVENTY_PATH_PREFIX`: `/letstalkcdc` (or blank for root deployment)
 

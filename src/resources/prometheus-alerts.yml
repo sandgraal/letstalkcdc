@@ -16,11 +16,11 @@ groups:
           description: |
             Replication lag has exceeded 5 minutes (300,000ms) for connector {{ $labels.connector }}.
             Current lag: {{ $value }}ms
-            
+
             Impact: Downstream consumers are seeing stale data.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-lag
-            
+
             Actions:
             1. Check connector status and logs
             2. Verify source database health
@@ -40,11 +40,11 @@ groups:
           summary: "Kafka Connect connector {{ $labels.connector }} is not committing offsets"
           description: |
             Connector {{ $labels.connector }} is receiving events but has not committed offsets in 5 minutes.
-            
+
             Impact: Risk of data loss or duplicate processing on restart.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-offset-issues
-            
+
             Actions:
             1. Check connector logs for errors
             2. Verify Kafka broker connectivity
@@ -64,11 +64,11 @@ groups:
           description: |
             DLQ growth rate is 3x above baseline for topic {{ $labels.topic }}.
             Current rate: {{ $value | humanize }} messages/sec
-            
+
             Impact: Potential data quality issues or downstream processing failures.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-dlq
-            
+
             Actions:
             1. Sample DLQ messages to identify error patterns
             2. Check for schema changes or data format issues
@@ -85,11 +85,11 @@ groups:
           summary: "Kafka Connect connector {{ $labels.connector }} is not running"
           description: |
             Connector {{ $labels.connector }} is in {{ $labels.state }} state.
-            
+
             Impact: Change data capture is halted for this connector.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-status
-            
+
             Actions:
             1. Check connector status via REST API
             2. Review connector and task logs
@@ -107,11 +107,11 @@ groups:
           summary: "High error rate for Kafka Connect connector {{ $labels.connector }}"
           description: |
             Connector {{ $labels.connector }} task {{ $labels.task }} is logging errors at {{ $value | humanize }}/sec.
-            
+
             Impact: Potential data loss or processing delays.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-errors
-            
+
             Actions:
             1. Review connector task logs
             2. Check for poison pill messages
@@ -131,11 +131,11 @@ groups:
           summary: "Source log retention is low for topic {{ $labels.topic }}"
           description: |
             Only {{ $value | humanizePercentage }} of log retention remains for topic {{ $labels.topic }}.
-            
+
             Impact: Risk of losing ability to replay events if connector fails.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-retention
-            
+
             Actions:
             1. Verify log retention settings
             2. Check if backlog is growing
@@ -153,11 +153,11 @@ groups:
           summary: "Connector {{ $labels.connector }} is restarting frequently"
           description: |
             Connector {{ $labels.connector }} has restarted {{ $value }} times in the last hour.
-            
+
             Impact: Potential processing delays and inconsistent behavior.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-stability
-            
+
             Actions:
             1. Review connector logs for recurring errors
             2. Check for resource constraints (CPU, memory)
@@ -177,11 +177,11 @@ groups:
           description: |
             Connector {{ $labels.connector }} throughput is 90% below 24h average.
             Current rate: {{ $value | humanize }} records/sec
-            
+
             Impact: Potential issue with source database or connector performance.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-throughput
-            
+
             Actions:
             1. Check source database activity
             2. Verify connector task health
@@ -199,11 +199,11 @@ groups:
           summary: "Connector {{ $labels.connector }} task {{ $labels.task }} may be saturated"
           description: |
             Task running ratio is {{ $value | humanizePercentage }}, indicating potential saturation.
-            
+
             Impact: Reduced throughput and increased lag.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-saturation
-            
+
             Actions:
             1. Review task configuration (parallelism, batch size)
             2. Check for CPU or memory constraints
@@ -223,11 +223,11 @@ groups:
           description: |
             Batch processing time is 2x above baseline for connector {{ $labels.connector }}.
             Current average: {{ $value }}ms
-            
+
             Impact: Potential saturation or downstream performance issues.
-            
+
             Runbook: https://yourorg.com/runbooks/kafka-connect-performance
-            
+
             Actions:
             1. Review sink system performance
             2. Check for large or complex transformations
@@ -254,9 +254,9 @@ groups:
           description: |
             99th percentile lag exceeds 5 minute SLO for connector {{ $labels.connector }}.
             Current P99: {{ $value }}ms
-            
+
             Impact: Downstream consumers seeing stale data beyond SLA.
-            
+
             Actions:
             1. Review error budget remaining
             2. Prioritize stability work if budget nearly spent
@@ -278,9 +278,9 @@ groups:
           description: |
             Less than 99% of connectors are running.
             Current availability: {{ $value | humanizePercentage }}
-            
+
             Impact: Change stream downtime affecting multiple pipelines.
-            
+
             Actions:
             1. Identify and restart failed connectors
             2. Review cluster health
@@ -306,9 +306,9 @@ groups:
           description: |
             Lag exceeds 1 hour of throughput for connector {{ $labels.connector }}.
             Risk of missing 99.99% completeness SLO within 1 hour window.
-            
+
             Impact: Potential data completeness violations.
-            
+
             Actions:
             1. Accelerate lag reduction efforts
             2. Notify stakeholders of potential SLO breach

@@ -159,7 +159,8 @@
   opacity: 0;
   transform: translateY(-0.5rem);
   pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -410,7 +411,8 @@
 }
 
 .table--hover-scale .table-row {
-  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

@@ -3,6 +3,7 @@
 High-level flows. Adapt to your stack.
 
 ## Content Build
+
 ```mermaid
 flowchart LR
   A[Markdown/MDX + Data] --> B[SSG Build]
@@ -11,6 +12,7 @@ flowchart LR
 ```
 
 ## Product Data → Pages
+
 ```mermaid
 flowchart LR
   D1[products.(json|js|yaml)] --> E[Collections / Data Cascade]
@@ -19,6 +21,7 @@ flowchart LR
 ```
 
 ## Agents + Logs
+
 ```mermaid
 sequenceDiagram
   participant GH as GitHub Actions

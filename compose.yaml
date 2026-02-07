@@ -73,5 +73,5 @@ services:
   kcat:
     image: edenhill/kcat:1.7.1
     depends_on: [kafka]
-    entrypoint: ["/bin/sh","-c","while true; do sleep 3600; done"]
+    entrypoint: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
     environment: {}

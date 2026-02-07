@@ -11,3 +11,4 @@ sandbox
 theme-playground
 *.min.css
 *.min.js
+*.njk

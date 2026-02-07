@@ -37,10 +37,10 @@ Deploy to GitHub Pages (_site/ directory)
 
 Define these repository variables under **Settings → Secrets and variables → Actions → Variables**:
 
-| Variable | Description | Example |
-| --- | --- | --- |
-| `SITE_HOST` | Full URL where the site is hosted | `https://sandgraal.github.io` or `https://yourdomain.com` |
-| `ELEVENTY_PATH_PREFIX` | Path prefix for project pages (leave blank for user/org pages) | `/letstalkcdc` or blank |
+| Variable               | Description                                                    | Example                                                   |
+| ---------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| `SITE_HOST`            | Full URL where the site is hosted                              | `https://sandgraal.github.io` or `https://yourdomain.com` |
+| `ELEVENTY_PATH_PREFIX` | Path prefix for project pages (leave blank for user/org pages) | `/letstalkcdc` or blank                                   |
 
 ### 3. Automatic Deployment
 
@@ -57,12 +57,12 @@ GitHub OAuth-based progress sync has been removed. All journey progress is now t
 
 Appwrite credentials are only required if you want to sync assistant feedback:
 
-| Variable | Description |
-| --- | --- |
-| `APPWRITE_ENDPOINT` | Appwrite API endpoint URL |
-| `APPWRITE_PROJECT` | Appwrite project ID |
-| `APPWRITE_DB_ID` | Appwrite database ID |
-| `COL_ASSISTANT_ID` | Assistant feedback collection ID |
+| Variable            | Description                      |
+| ------------------- | -------------------------------- |
+| `APPWRITE_ENDPOINT` | Appwrite API endpoint URL        |
+| `APPWRITE_PROJECT`  | Appwrite project ID              |
+| `APPWRITE_DB_ID`    | Appwrite database ID             |
+| `COL_ASSISTANT_ID`  | Assistant feedback collection ID |
 
 If any of these are omitted, the assistant silently falls back to storing feedback locally.
 
@@ -106,10 +106,10 @@ Follow these steps before paging a human escalation channel when a GitHub Action
 
 ## Costs
 
-| Component | Platform | Cost |
-| --- | --- | --- |
-| Static Site | GitHub Pages | Free for public repositories |
-| Optional feedback sync | Appwrite | Free tier available |
+| Component              | Platform     | Cost                         |
+| ---------------------- | ------------ | ---------------------------- |
+| Static Site            | GitHub Pages | Free for public repositories |
+| Optional feedback sync | Appwrite     | Free tier available          |
 
 ## Decision Log
 

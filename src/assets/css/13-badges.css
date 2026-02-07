@@ -111,7 +111,8 @@
     var(--color-accent-hover, #0ea5e9) 100%
   );
   color: white;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3),
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.3),
     0 4px 12px rgba(56, 189, 248, 0.25);
   border: none;
 }
@@ -390,7 +391,9 @@
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   border: 1px solid rgba(56, 189, 248, 0.2);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 100;
@@ -448,6 +451,7 @@
 }
 
 [data-theme="dark"] .badge--recommended {
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4),
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.4),
     0 4px 16px rgba(56, 189, 248, 0.3);
 }

@@ -28,7 +28,7 @@ const dashboardModules = rawModules
   }));
 
 const moduleTitleLookup = new Map(
-  dashboardModules.map((module) => [module.id, module.title])
+  dashboardModules.map((module) => [module.id, module.title]),
 );
 
 const state = {
@@ -63,9 +63,13 @@ const normalizeEntry = (slug, entry = {}) => {
   const stepRaw = Number(entry.step ?? entry.completed ?? 0);
   const step = Number.isFinite(stepRaw) ? stepRaw : 0;
   const updatedAt =
-    entry.updatedAt ?? entry.$updatedAt ?? entry.$createdAt ?? new Date().toISOString();
+    entry.updatedAt ??
+    entry.$updatedAt ??
+    entry.$createdAt ??
+    new Date().toISOString();
   const parsedState = safeParseState(entry.state);
-  const status = percent >= 100 ? "completed" : percent > 0 ? "in-progress" : "not-started";
+  const status =
+    percent >= 100 ? "completed" : percent > 0 ? "in-progress" : "not-started";
   return {
     journeySlug: slug,
     percent,
@@ -109,7 +113,10 @@ const writeStoredProgress = () => {
 const persistDashboardDocs = (docs) => {
   if (typeof globalScope.localStorage === "undefined") return;
   try {
-    globalScope.localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(docs));
+    globalScope.localStorage.setItem(
+      DASHBOARD_STORAGE_KEY,
+      JSON.stringify(docs),
+    );
   } catch (_) {
     /* ignore */
   }
@@ -149,7 +156,7 @@ const resolveReady = () => {
       globalScope.dispatchEvent(
         new CustomEvent("cdc-progress-ready", {
           detail: { progress: globalScope.CDCProgress ?? null },
-        })
+        }),
       );
     } catch (_) {
       /* ignore */
@@ -186,7 +193,7 @@ const dispatchProgressChange = (slug) => {
           journeySlug: slug,
           entry: detailEntry,
         },
-      })
+      }),
     );
   } catch (_) {
     /* ignore */
@@ -305,8 +312,8 @@ const transformDocsForDashboard = (docs = []) =>
         percent >= 100
           ? "completed"
           : percent > 0
-          ? "in-progress"
-          : "not-started",
+            ? "in-progress"
+            : "not-started",
       updatedAt,
       step: typeof doc.step === "number" ? doc.step : null,
     };
@@ -401,8 +408,7 @@ const CDCProgress = {
   getCurrentUser: () => null,
   isAuthenticated: () => false,
   getProgress: getProgressInternal,
-  getDashboardDocs: () =>
-    transformDocsForDashboard(snapshotProgressDocs()),
+  getDashboardDocs: () => transformDocsForDashboard(snapshotProgressDocs()),
   signInWithOAuth: () => {
     return Promise.resolve(false);
   },

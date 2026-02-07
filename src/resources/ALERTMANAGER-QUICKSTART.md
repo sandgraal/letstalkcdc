@@ -27,14 +27,17 @@ curl -O {{ site.origin ~ ('/downloads/prometheus-with-alertmanager.yml' | url) }
 Edit `alertmanager.yml` and add your credentials:
 
 **For Slack:**
+
 - Replace `<YOUR_SLACK_WEBHOOK_URL>` with your Slack webhook URL
 - Get webhook from: Slack → Apps → Incoming Webhooks
 
 **For PagerDuty:**
+
 - Replace `<YOUR_PAGERDUTY_INTEGRATION_KEY>` with your integration key
 - Get key from: PagerDuty → Services → Your Service → Integrations → Events API v2
 
 **For Email:**
+
 - Uncomment the `global.smtp_*` settings
 - Add your SMTP server details and credentials
 
@@ -118,16 +121,19 @@ Smart suppression to prevent alert storms:
 ## Troubleshooting
 
 **Alerts not appearing in Alertmanager:**
+
 1. Check Prometheus alerts page: http://localhost:9090/alerts
 2. Verify Prometheus logs: `docker logs cdc-prometheus`
 3. Check Alertmanager is listed as target in Prometheus: http://localhost:9090/targets
 
 **Alerts not reaching Slack/PagerDuty:**
+
 1. Check Alertmanager logs: `docker logs cdc-alertmanager`
 2. Verify webhook URL/API key is correct in `alertmanager.yml`
 3. Test connectivity: `docker exec cdc-alertmanager curl -I https://hooks.slack.com`
 
 **Too many notifications:**
+
 1. Increase `repeat_interval` in `alertmanager.yml`
 2. Adjust alert thresholds in `prometheus-alerts.yml`
 3. Add more inhibition rules

@@ -18,7 +18,11 @@
 }
 
 .kbd {
-  font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font:
+    12px/1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
   background: var(--color-background-soft);
   padding: 0.1rem 0.35rem;
   border: 1px solid var(--border-color);

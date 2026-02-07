@@ -104,7 +104,9 @@ figcaption {
   border-radius: var(--radius-lg, 0.5rem);
   aspect-ratio: 4/3;
   cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .gallery-item img {
@@ -510,7 +512,9 @@ img[loading="lazy"].is-loaded {
 .avatar-group .avatar {
   margin-left: -0.5rem;
   border: 2px solid var(--color-bg-primary, #050c1a);
-  transition: transform 0.2s ease, z-index 0s 0.2s;
+  transition:
+    transform 0.2s ease,
+    z-index 0s 0.2s;
 }
 
 .avatar-group .avatar:first-child {
@@ -520,7 +524,9 @@ img[loading="lazy"].is-loaded {
 .avatar-group .avatar:hover {
   transform: translateY(-4px);
   z-index: 10;
-  transition: transform 0.2s ease, z-index 0s 0s;
+  transition:
+    transform 0.2s ease,
+    z-index 0s 0s;
 }
 
 /* ==========================================================================
@@ -535,7 +541,9 @@ img[loading="lazy"].is-loaded {
   background: var(--color-bg-elevated, rgba(30, 41, 59, 0.6));
   border: 1px solid var(--color-border-default, rgba(148, 163, 233, 0.2));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .img-card:hover {

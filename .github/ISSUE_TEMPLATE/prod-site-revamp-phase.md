@@ -1,9 +1,9 @@
 ---
 name: Prod-Site-Revamp Phase
 about: Track progress on a specific phase of the prod-site-revamp project
-title: '[Prod-Site-Revamp] Phase X.X: Phase Name'
-labels: ['prod-site-revamp', 'enhancement']
-assignees: ''
+title: "[Prod-Site-Revamp] Phase X.X: Phase Name"
+labels: ["prod-site-revamp", "enhancement"]
+assignees: ""
 ---
 
 ## Phase Information
@@ -44,6 +44,7 @@ Copy the checklist from the phase's REQUIREMENTS.md file:
 ## Testing
 
 ### Automated Tests
+
 ```bash
 npm run build
 npm run smoke
@@ -51,6 +52,7 @@ node ai/prod-site-revamp/validation/validate-phase.mjs X.X
 ```
 
 ### Manual Tests
+
 - [ ] Test item 1
 - [ ] Test item 2
 
@@ -61,6 +63,7 @@ Add any additional notes, blockers, or observations here.
 ---
 
 **Before closing this issue:**
+
 - [ ] All checklist items complete
 - [ ] All success criteria met
 - [ ] Validation script passes

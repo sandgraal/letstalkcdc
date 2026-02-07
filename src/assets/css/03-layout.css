@@ -95,7 +95,8 @@
   text-decoration: none;
   font-family: var(--font-display);
   font-weight: 700;
-  transition: transform var(--transition-fast),
+  transition:
+    transform var(--transition-fast),
     color var(--transition-fast);
 }
 
@@ -442,11 +443,15 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(var(--dropdown-offset, -8px));
-  transition: opacity var(--transition-fast),
+  transition:
+    opacity var(--transition-fast),
     transform var(--transition-fast),
     visibility var(--transition-fast);
   z-index: var(--z-dropdown-menu);
-  max-height: var(--dropdown-max-height, min(24rem, calc(100vh - var(--space-3xl))));
+  max-height: var(
+    --dropdown-max-height,
+    min(24rem, calc(100vh - var(--space-3xl)))
+  );
   overflow-y: auto;
   overscroll-behavior: contain;
   backdrop-filter: blur(12px) saturate(150%);

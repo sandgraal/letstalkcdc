@@ -21,7 +21,8 @@ kbd {
   );
   border: 1px solid rgba(148, 163, 233, 0.2);
   border-radius: 4px;
-  box-shadow: 0 1px 0 rgba(148, 163, 233, 0.1),
+  box-shadow:
+    0 1px 0 rgba(148, 163, 233, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
   white-space: nowrap;
@@ -31,7 +32,8 @@ kbd {
 
 kbd:hover {
   border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.2),
+  box-shadow:
+    0 0 8px rgba(56, 189, 248, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -156,7 +158,9 @@ kbd.kbd--accent {
   background: var(--color-bg-secondary, #0f172a);
   border: 1px solid rgba(148, 163, 233, 0.2);
   border-radius: 12px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 0 80px rgba(56, 189, 248, 0.1);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(56, 189, 248, 0.1);
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -441,12 +445,14 @@ a:hover .shortcut-hint {
   0%,
   100% {
     transform: translateY(0);
-    box-shadow: 0 1px 0 rgba(148, 163, 233, 0.1),
+    box-shadow:
+      0 1px 0 rgba(148, 163, 233, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   50% {
     transform: translateY(1px);
-    box-shadow: 0 0 0 rgba(148, 163, 233, 0.1),
+    box-shadow:
+      0 0 0 rgba(148, 163, 233, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 }
@@ -565,12 +571,15 @@ kbd:active {
     rgba(226, 232, 240, 0.9) 100%
   );
   border-color: rgba(100, 116, 139, 0.3);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="light"] kbd:hover {
   border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2),
+  box-shadow:
+    0 0 8px rgba(59, 130, 246, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 

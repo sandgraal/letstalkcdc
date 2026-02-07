@@ -376,25 +376,25 @@
   .cdc-simulation-wrapper {
     padding: 1rem;
   }
-  
+
   .cdc-pipeline {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .cdc-simulation-controls {
     flex-direction: column;
   }
-  
+
   .sim-btn {
     width: 100%;
     justify-content: center;
   }
-  
+
   .stage-events {
     min-height: 60px;
   }
-  
+
   .cdc-stats {
     flex-direction: column;
   }
@@ -406,7 +406,7 @@
     background: #1e293b;
     border-color: #334155;
   }
-  
+
   .cdc-simulation-controls,
   .pipeline-stage,
   .cdc-stats,
@@ -414,27 +414,27 @@
     background: #0f172a;
     border-color: #334155;
   }
-  
+
   .sim-btn {
     background: #0f172a;
   }
-  
+
   .pipeline-stage.active {
     background: #1e3a8a;
   }
-  
+
   .cdc-event,
   .record-item {
     background: #1e293b;
     border-color: #334155;
   }
-  
+
   .simulation-info {
     background: #422006;
     border-color: #f59e0b;
     color: #fbbf24;
   }
-  
+
   .simulation-info strong {
     color: #fbbf24;
   }

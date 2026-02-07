@@ -28,22 +28,26 @@ Before running these drills, ensure you have:
 ## Included Drills
 
 ### 1. Backpressure Simulation (`01-backpressure-drill.sh`)
+
 **Duration**: ~15 minutes  
 **Scenario**: Sink connector shutdown causing consumer lag buildup
 
 **What You'll Learn**:
+
 - How to monitor consumer lag metrics
 - How Kafka buffers changes during sink outages
 - When lag becomes critical
 - Alert threshold tuning
 
 **Usage**:
+
 ```bash
 chmod +x 01-backpressure-drill.sh
 ./01-backpressure-drill.sh
 ```
 
 **Environment Variables** (optional):
+
 - `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:9092`)
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SINK_CONNECTOR`: Sink connector name (default: `jdbc-sink-connector`)
@@ -52,30 +56,36 @@ chmod +x 01-backpressure-drill.sh
 ---
 
 ### 2. Dead Letter Queue (`02-dlq-drill.sh`)
+
 **Duration**: ~20 minutes  
 **Scenario**: Triggering serialization errors and DLQ handling
 
 **What You'll Learn**:
+
 - How to identify and diagnose serialization errors
 - DLQ configuration and monitoring
 - Error tolerance policies
 - DLQ triage and message recovery
 
 **Prerequisites**:
+
 - Sink connector configured with DLQ settings (see `dlq-sink-config.json` example)
 
 **Usage**:
+
 ```bash
 chmod +x 02-dlq-drill.sh
 ./02-dlq-drill.sh
 ```
 
 The script will prompt you to choose from three error scenarios:
+
 1. Incompatible data type injection
 2. Missing target table
 3. Oversized payload
 
 **Environment Variables** (optional):
+
 - `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:9092`)
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SINK_CONNECTOR`: Sink connector name (default: `jdbc-sink-connector`)
@@ -84,22 +94,26 @@ The script will prompt you to choose from three error scenarios:
 ---
 
 ### 3. Schema Drift (`03-schema-drift-drill.sh`)
+
 **Duration**: ~25 minutes  
 **Scenario**: Testing breaking vs. non-breaking schema changes
 
 **What You'll Learn**:
+
 - How schema changes propagate through CDC pipelines
 - Which changes are safe vs. breaking
 - Schema evolution strategies
 - Recovery patterns for schema drift
 
 **Usage**:
+
 ```bash
 chmod +x 03-schema-drift-drill.sh
 ./03-schema-drift-drill.sh
 ```
 
 The script will prompt you to choose from five schema change scenarios:
+
 1. Drop a column (breaking)
 2. Change column type (breaking)
 3. Add NOT NULL constraint (risky)
@@ -107,26 +121,31 @@ The script will prompt you to choose from five schema change scenarios:
 5. Increase column width (safe)
 
 **Environment Variables** (optional):
+
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SOURCE_CONNECTOR`: Source connector name (default: `inventory-connector`)
 
 ---
 
 ### 4. Offset Wipe & Replay (`04-offset-replay-drill.sh`)
+
 **Duration**: ~30 minutes  
 **Scenario**: Resnapshot and replay with idempotency testing
 
 **What You'll Learn**:
+
 - How CDC connectors manage offsets and state
 - Snapshot vs. streaming mode behavior
 - Safe offset reset procedures
 - Idempotency validation
 
 **Prerequisites**:
+
 - Sink configured for UPSERT/idempotent writes
 - Backup of current state recommended
 
 **Usage**:
+
 ```bash
 chmod +x 04-offset-replay-drill.sh
 ./04-offset-replay-drill.sh
@@ -135,6 +154,7 @@ chmod +x 04-offset-replay-drill.sh
 **⚠️ Warning**: This drill deletes and recreates connectors. Always back up first!
 
 **Environment Variables** (optional):
+
 - `KAFKA_BOOTSTRAP`: Kafka bootstrap server (default: `localhost:9092`)
 - `CONNECT_URL`: Kafka Connect REST API URL (default: `http://localhost:8083`)
 - `SOURCE_CONNECTOR`: Source connector name (default: `inventory-connector`)
@@ -146,7 +166,9 @@ chmod +x 04-offset-replay-drill.sh
 ## Configuration Files
 
 ### `dlq-sink-config.json`
+
 Example sink connector configuration with Dead Letter Queue enabled:
+
 ```json
 {
   "name": "jdbc-sink-connector",
@@ -172,25 +194,33 @@ Example sink connector configuration with Dead Letter Queue enabled:
 ## Troubleshooting
 
 ### Scripts Fail with "command not found"
+
 **Solution**: Ensure all prerequisites are installed:
+
 - Kafka CLI tools in PATH
 - Docker and docker-compose accessible
 - curl and jq installed
 
 ### Docker containers not accessible
+
 **Solution**: Verify containers are running:
+
 ```bash
 docker ps | grep -E "postgres|kafka|connect"
 ```
 
 ### Connector API calls fail
+
 **Solution**: Check Kafka Connect is running:
+
 ```bash
 curl http://localhost:8083/connectors
 ```
 
 ### Permission denied on scripts
+
 **Solution**: Make scripts executable:
+
 ```bash
 chmod +x *.sh
 ```

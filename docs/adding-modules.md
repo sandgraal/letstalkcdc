@@ -45,16 +45,24 @@ Inside `index.11tydata.cjs`, export an object that at minimum defines `seriesKey
 ```js
 // src/anatomy-of-connectors/index.11tydata.cjs
 module.exports = {
-  seriesKey: 'anatomy-of-connectors',
+  seriesKey: "anatomy-of-connectors",
   heroConfig: {
-    title: 'Anatomy of Connectors',
+    title: "Anatomy of Connectors",
     description: `Walk through the stages of change capture connectors — from snapshotting to steady-state streams — and learn how to observe each step.`,
-    align: 'center',
+    align: "center",
     actions: [
-      { href: '#connector-lifecycle', label: 'View the Lifecycle', variant: 'secondary' },
-      { href: '#operational-playbook', label: 'Download Ops Checklist', variant: 'ghost' }
-    ]
-  }
+      {
+        href: "#connector-lifecycle",
+        label: "View the Lifecycle",
+        variant: "secondary",
+      },
+      {
+        href: "#operational-playbook",
+        label: "Download Ops Checklist",
+        variant: "ghost",
+      },
+    ],
+  },
 };
 ```
 
@@ -65,6 +73,7 @@ Eleventy will now expose `seriesKey`, `heroConfig`, and any other exports to the
 Author `index.njk` with standard front matter and use the shared UI macros. The `layout: base.njk` line pulls in the global navigation, while `seriesKey` enables the previous/next module strip to resolve automatically based on `series.mjs` ordering.
 
 {% raw %}
+
 ```njk
 ---
 layout: base.njk
@@ -81,6 +90,7 @@ canonicalPath: /anatomy-of-connectors/
   <p>…</p>
 </section>
 ```
+
 {% endraw %}
 
 ## 5. Add optional assets
@@ -102,4 +112,3 @@ Visit `http://localhost:8080/overview/` and confirm the module card shows the co
 Once satisfied, commit your changes (module content, dataset update, any assets) together with an appropriate message. Update related documentation or navigation links if the module introduces new dependencies.
 
 Following these steps keeps the overview grid, navigation chrome, and module pages in sync with minimal manual work.
-

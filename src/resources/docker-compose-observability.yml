@@ -34,7 +34,7 @@ services:
       - zookeeper
     ports:
       - "9092:9092"
-      - "9101:9101"  # JMX port
+      - "9101:9101" # JMX port
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -62,7 +62,7 @@ services:
       - pg
     ports:
       - "8083:8083"
-      - "9102:9102"  # JMX port
+      - "9102:9102" # JMX port
     environment:
       BOOTSTRAP_SERVERS: kafka:29092
       GROUP_ID: 1

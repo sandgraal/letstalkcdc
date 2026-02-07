@@ -6,14 +6,17 @@
 .quiz-container {
   margin: 3rem 0;
   padding: 2.5rem 2rem;
-  background: linear-gradient(160deg, rgba(3, 102, 214, 0.12), rgba(3, 102, 214, 0))
+  background:
+    linear-gradient(160deg, rgba(3, 102, 214, 0.12), rgba(3, 102, 214, 0))
       var(--quiz-gradient, rgba(255, 255, 255, 0)),
     var(--color-surface, #f8f9fa);
   border-radius: 16px;
   border: 1px solid var(--color-border, #e1e4e8);
   box-shadow: 0 24px 50px -30px rgba(15, 23, 42, 0.3);
   backdrop-filter: saturate(120%);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
 }
 
 .quiz-container:hover {
@@ -64,7 +67,9 @@
 }
 
 .quiz-progress-fill.is-complete {
-  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.2), 0 8px 20px -12px rgba(79, 70, 229, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(79, 70, 229, 0.2),
+    0 8px 20px -12px rgba(79, 70, 229, 0.7);
 }
 
 .quiz-progress-meta {
@@ -96,7 +101,10 @@
   border-radius: 12px;
   border: 2px solid transparent;
   box-shadow: 0 12px 30px -25px rgba(15, 23, 42, 0.6);
-  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .quiz-question:not(.answered):hover {
@@ -155,7 +163,10 @@
 
 .option-wrapper {
   margin-bottom: 0.75rem;
-  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .option-input {
@@ -444,7 +455,8 @@
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .quiz-container {
-    background: linear-gradient(160deg, rgba(79, 70, 229, 0.18), rgba(3, 102, 214, 0))
+    background:
+      linear-gradient(160deg, rgba(79, 70, 229, 0.18), rgba(3, 102, 214, 0))
         var(--quiz-gradient-dark, rgba(30, 30, 30, 0)),
       var(--color-surface-dark, #1e1e1e);
     border-color: var(--color-border-dark, #3a3a3a);

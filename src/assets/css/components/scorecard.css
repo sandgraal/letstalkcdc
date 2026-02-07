@@ -44,7 +44,11 @@
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .scorecard-action:hover,
@@ -134,7 +138,10 @@
   display: inline-grid;
   place-content: center;
   background: #fff;
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .scorecard-label input[type="checkbox"]::after {
@@ -201,7 +208,9 @@ html[data-theme="dark"] .scorecard-progress {
   border-radius: var(--radius-lg);
   background: var(--bg-primary);
   box-shadow: var(--shadow-soft);
-  transition: box-shadow 200ms ease, border-color 200ms ease;
+  transition:
+    box-shadow 200ms ease,
+    border-color 200ms ease;
 }
 
 @media (max-width: 720px) {
@@ -262,7 +271,8 @@ html[data-theme="dark"] .scorecard-summary {
   color: var(--text-secondary);
 }
 
-.scorecard-summary[data-scorecard-summary-state="complete"] .scorecard-summary-progress {
+.scorecard-summary[data-scorecard-summary-state="complete"]
+  .scorecard-summary-progress {
   color: var(--success-color);
 }
 
@@ -284,7 +294,11 @@ html[data-theme="dark"] .scorecard-summary-meter {
   height: 100%;
   width: 0%;
   border-radius: var(--radius-full);
-  background: linear-gradient(90deg, rgba(13, 148, 136, 0.85), rgba(8, 145, 178, 0.85));
+  background: linear-gradient(
+    90deg,
+    rgba(13, 148, 136, 0.85),
+    rgba(8, 145, 178, 0.85)
+  );
   transition: width 220ms ease;
 }
 
@@ -312,7 +326,10 @@ html[data-theme="dark"] .scorecard-summary-meter {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .scorecard-summary-item[data-state="complete"] {
@@ -372,7 +389,8 @@ html[data-theme="dark"] .scorecard-summary-item[data-state="complete"] {
   }
 }
 
-.scorecard-summary[data-scorecard-summary-state="complete"] .scorecard-summary-item-status {
+.scorecard-summary[data-scorecard-summary-state="complete"]
+  .scorecard-summary-item-status {
   color: var(--success-color);
 }
 
@@ -396,7 +414,10 @@ html[data-theme="dark"] .scorecard-summary-item[data-state="complete"] {
   color: var(--accent-hover);
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .scorecard-summary-reset:hover,
@@ -412,7 +433,9 @@ html[data-theme="dark"] .scorecard-summary-item[data-state="complete"] {
   box-shadow: none;
 }
 
-html[data-theme="dark"] .scorecard[data-scorecard-complete="1"] .scorecard-progress {
+html[data-theme="dark"]
+  .scorecard[data-scorecard-complete="1"]
+  .scorecard-progress {
   color: var(--accent-primary);
 }
 
@@ -504,4 +527,3 @@ html[data-theme="dark"] .scorecard-empty {
     color: var(--text-muted);
   }
 }
-

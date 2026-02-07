@@ -39,6 +39,7 @@ For authenticated user access, configure permissions for each collection:
 Navigate to **Databases → main → progress → Settings → Permissions**
 
 Add these permissions:
+
 - **Any authenticated user** (`role:users`)
   - ✓ Create documents
   - ✓ Read documents (only their own)
@@ -50,6 +51,7 @@ Add these permissions:
 Navigate to **Databases → main → events → Settings → Permissions**
 
 Add these permissions:
+
 - **Any authenticated user** (`role:users`)
   - ✓ Create documents
   - ✓ Read documents (only their own)
@@ -59,6 +61,7 @@ Add these permissions:
 Navigate to **Databases → main → assistant_feedback → Settings → Permissions**
 
 Add these permissions:
+
 - **Any** (`role:any`) - Allows anonymous feedback
   - ✓ Create documents
 
@@ -215,6 +218,7 @@ Appwrite Cloud free tier includes:
 - **Database**: 2GB storage
 
 For typical usage:
+
 - Each module completion = 2 requests (save progress + log event)
 - Each login = 1 request
 - Each page load = 0 requests (uses local storage primarily)

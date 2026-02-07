@@ -65,7 +65,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .auth-modal-close:hover {
@@ -103,7 +105,7 @@
 }
 
 .auth-tab.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 0;
@@ -169,7 +171,9 @@
   font-size: 1rem;
   background: var(--color-bg, #fff);
   color: var(--color-text, #000);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .form-group input:focus {
@@ -237,7 +241,9 @@
   border-radius: 24px;
   padding: 0.25rem 0.75rem 0.25rem 0.25rem;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .user-profile-button:hover {
@@ -271,7 +277,7 @@
   .user-name {
     display: none;
   }
-  
+
   .user-profile-button {
     padding: 0.25rem;
   }

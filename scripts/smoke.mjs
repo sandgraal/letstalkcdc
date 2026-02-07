@@ -17,7 +17,7 @@ const ensureOutputDir = () => {
   }
 
   console.log(
-    `${outputDirName} directory missing; running "npm run build" to generate site…`
+    `${outputDirName} directory missing; running "npm run build" to generate site…`,
   );
   const { status } = spawnSync("npm", ["run", "build"], {
     stdio: "inherit",
@@ -31,7 +31,7 @@ const ensureOutputDir = () => {
 
   if (!existsSync(outputDir)) {
     console.error(
-      `Build completed but ${outputDirName} directory is still missing; aborting smoke test.`
+      `Build completed but ${outputDirName} directory is still missing; aborting smoke test.`,
     );
     process.exit(1);
   }
@@ -60,7 +60,7 @@ try {
   const intro = read("intro/index.html");
   if (!intro.includes('id="methodsChart"')) {
     failures.push(
-      "Intro page is missing the radar chart canvas (#methodsChart)."
+      "Intro page is missing the radar chart canvas (#methodsChart).",
     );
   }
   if (!intro.includes("/assets/js/pages/intro.js")) {
@@ -74,12 +74,12 @@ try {
   const tenancy = read("multi-tenancy/index.html");
   if (!tenancy.includes('id="costChart"')) {
     failures.push(
-      "Multi-tenancy page is missing the cost chart canvas (#costChart)."
+      "Multi-tenancy page is missing the cost chart canvas (#costChart).",
     );
   }
   if (!tenancy.includes("/assets/js/pages/multi-tenancy.js")) {
     failures.push(
-      "Multi-tenancy page is not loading the multi-tenancy module script."
+      "Multi-tenancy page is not loading the multi-tenancy module script.",
     );
   }
 } catch (error) {
@@ -92,7 +92,7 @@ const offendingFonts = walkHtml.filter((file) => {
 });
 if (offendingFonts.length > 0) {
   failures.push(
-    `Built HTML still references fonts.googleapis.com (${offendingFonts.length} file(s)).`
+    `Built HTML still references fonts.googleapis.com (${offendingFonts.length} file(s)).`,
   );
 }
 
@@ -100,7 +100,7 @@ if (offendingFonts.length > 0) {
 const socialImagePath = join(outputDir, "images", "cdc-cover.jpg");
 if (!existsSync(socialImagePath)) {
   failures.push(
-    "Social preview image (images/cdc-cover.jpg) is missing from the build output."
+    "Social preview image (images/cdc-cover.jpg) is missing from the build output.",
   );
 }
 
@@ -121,12 +121,12 @@ try {
   }
   if (!homepage.includes('twitter:card" content="summary_large_image')) {
     failures.push(
-      "Homepage is missing Twitter card type (summary_large_image)."
+      "Homepage is missing Twitter card type (summary_large_image).",
     );
   }
   if (!homepage.includes('id="askBtn"')) {
     failures.push(
-      "Homepage is missing the assistant trigger button (#askBtn)."
+      "Homepage is missing the assistant trigger button (#askBtn).",
     );
   }
   if (!homepage.includes("/js/assistant.js")) {
@@ -140,7 +140,7 @@ try {
 const assistantDataPath = join(outputDir, "data", "assistant.json");
 if (!existsSync(assistantDataPath)) {
   failures.push(
-    "Assistant knowledge base JSON (data/assistant.json) is missing from the build output."
+    "Assistant knowledge base JSON (data/assistant.json) is missing from the build output.",
   );
 } else {
   try {
@@ -151,12 +151,12 @@ if (!existsSync(assistantDataPath)) {
       assistantData.intents.length === 0
     ) {
       failures.push(
-        "Assistant knowledge base JSON does not include any intents."
+        "Assistant knowledge base JSON does not include any intents.",
       );
     }
   } catch (error) {
     failures.push(
-      `Assistant knowledge base JSON is not valid: ${error.message}`
+      `Assistant knowledge base JSON is not valid: ${error.message}`,
     );
   }
 }
@@ -196,7 +196,7 @@ for (const module of expectedModules) {
 const searchIndexPath = join(outputDir, "search-index.json");
 if (!existsSync(searchIndexPath)) {
   failures.push(
-    "Search index (search-index.json) is missing from build output."
+    "Search index (search-index.json) is missing from build output.",
   );
 } else {
   try {
@@ -250,7 +250,7 @@ if (existsSync(htaccessPath)) {
     }
     if (/unsafe-inline/.test(htaccess)) {
       failures.push(
-        "CSP still includes unsafe-inline; expected hashed allowances instead."
+        "CSP still includes unsafe-inline; expected hashed allowances instead.",
       );
     }
   } catch (error) {
@@ -312,7 +312,7 @@ if (offendingSource.length > 0) {
     "Found root-absolute href/src references in source: " +
       offendingSource
         .map(({ file, samples }) => `${file} [${samples.join(", ")}]`)
-        .join("; ")
+        .join("; "),
   );
 }
 
@@ -322,5 +322,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Smoke test passed: critical canvases present, CSP hardened, no external fonts."
+  "Smoke test passed: critical canvases present, CSP hardened, no external fonts.",
 );

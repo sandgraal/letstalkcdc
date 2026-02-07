@@ -126,7 +126,8 @@ node scripts/seed-discussions.mjs
 
 **Symptom**: Script says category not found
 
-**Solution**: 
+**Solution**:
+
 1. Check category names match what's in your repository
 2. The script uses fuzzy matching, so close names should work
 3. Create the missing category in GitHub Discussions settings
@@ -136,6 +137,7 @@ node scripts/seed-discussions.mjs
 **Symptom**: API returns GraphQL errors
 
 **Solution**:
+
 1. Verify your token has correct permissions (`repo`, `discussion`)
 2. Check that Discussions are enabled for the repository
 3. Ensure you're not rate limited (wait a few minutes)
@@ -145,6 +147,7 @@ node scripts/seed-discussions.mjs
 **Symptom**: Script skips discussions that don't appear to exist
 
 **Solution**:
+
 - The search uses GitHub's API which may have indexing delays
 - Check manually if the discussion exists
 - Wait a few minutes for GitHub's search index to update
@@ -163,7 +166,7 @@ Example:
 {
   title: "Your Custom Thread Title",
   body: `Your markdown content here
-  
+
 **Can include:**
 - Lists
 - **Bold** and *italic*

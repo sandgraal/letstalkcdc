@@ -11,6 +11,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: All CommonJS modules must be converted to ECMAScript Modules.
 
 **Acceptance Criteria**:
+
 - ✅ All `.cjs` files are renamed to `.mjs`
 - ✅ All `require()` calls are converted to `import` statements
 - ✅ All `module.exports` are converted to `export default` or `export`
@@ -21,6 +22,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: The site must build successfully with Eleventy 3.0.
 
 **Acceptance Criteria**:
+
 - ✅ `npm install` completes without peer dependency errors
 - ✅ `npm run build` completes without errors
 - ✅ `npm run dev` starts development server successfully
@@ -31,6 +33,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: GitHub Pages path prefix functionality must continue to work.
 
 **Acceptance Criteria**:
+
 - ✅ Path prefix auto-detects from `GITHUB_REPOSITORY` environment variable
 - ✅ Manual override via `ELEVENTY_PATH_PREFIX` works
 - ✅ Root deployment (`/`) works correctly
@@ -42,6 +45,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: All data files must export data correctly in ESM format.
 
 **Acceptance Criteria**:
+
 - ✅ `site.mjs` exports site metadata
 - ✅ `series.mjs` exports content series array
 - ✅ `appwrite.mjs` exports Appwrite configuration
@@ -52,6 +56,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: The generated site must be identical to the pre-migration version.
 
 **Acceptance Criteria**:
+
 - ✅ All 40+ HTML pages are generated
 - ✅ All assets are copied correctly (CSS, JS, images)
 - ✅ HTML structure is unchanged
@@ -65,6 +70,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: Build performance should not regress.
 
 **Acceptance Criteria**:
+
 - ✅ Build time ≤ 5 seconds (currently ~3-5 seconds)
 - ✅ Dev server startup ≤ 3 seconds
 
@@ -73,6 +79,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: Deployment process should remain unchanged.
 
 **Acceptance Criteria**:
+
 - ✅ GitHub Actions workflows still work
 - ✅ `npm run build` still produces `_site/` directory
 - ✅ No changes required to hosting configuration
@@ -82,6 +89,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: Development workflow should be unchanged or improved.
 
 **Acceptance Criteria**:
+
 - ✅ Hot reload still works in dev mode
 - ✅ Error messages are clear and helpful
 - ✅ No new manual steps added to build process
@@ -91,6 +99,7 @@ Migrate Let's Talk CDC from Eleventy 2.0 (CommonJS) to Eleventy 3.0 (ESM) withou
 **Description**: Converted code should follow ESM best practices.
 
 **Acceptance Criteria**:
+
 - ✅ Consistent use of `import`/`export` syntax
 - ✅ No mixing of CommonJS and ESM patterns
 - ✅ Explicit file extensions on all local imports
@@ -236,6 +245,7 @@ Phase 1.1 is complete when ALL of these are true:
 **Estimated Duration**: 5 days
 
 **Breakdown**:
+
 - Day 1: Read documentation, understand current setup
 - Day 2: Convert config files and test build
 - Day 3: Convert data files and verify output
@@ -243,6 +253,7 @@ Phase 1.1 is complete when ALL of these are true:
 - Day 5: Manual testing, documentation, rollback prep
 
 **Daily Checkpoints**:
+
 - End of each day: Commit work in progress
 - If stuck for >2 hours: Ask for help
 - If blocked: Update progress tracker with BLOCKED status

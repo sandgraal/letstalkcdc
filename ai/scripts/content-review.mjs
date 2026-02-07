@@ -51,7 +51,10 @@ async function loadToolVersions() {
     const module = await import(`file://${toolVersionsPath}`);
     return module.default || module;
   } catch (err) {
-    console.error("[content-review] Error loading toolVersions.cjs:", err.message);
+    console.error(
+      "[content-review] Error loading toolVersions.cjs:",
+      err.message,
+    );
     return null;
   }
 }
@@ -63,17 +66,18 @@ const TOOL_DISPLAY_NAMES = {
   matillion: "Matillion",
   awsDms: "AWS DMS",
   fivetran: "Fivetran",
-  goldenGate: "Oracle GoldenGate"
+  goldenGate: "Oracle GoldenGate",
 };
 
 function generateToolChecks(tools) {
   return Object.entries(tools)
     .map(([key, tool]) => {
       const displayName = TOOL_DISPLAY_NAMES[key] || key;
-      const versionDisplay = tool.status === "saas" 
-        ? "(SaaS - rolling updates)" 
-        : `v${tool.version} (${tool.releaseDate})`;
-      
+      const versionDisplay =
+        tool.status === "saas"
+          ? "(SaaS - rolling updates)"
+          : `v${tool.version} (${tool.releaseDate})`;
+
       return `### ${displayName}
 - Current tracked version: ${versionDisplay}
 - Release notes: ${tool.releaseNotesUrl}
@@ -89,7 +93,7 @@ async function generateReviewChecklist(toolVersions) {
   const timestamp = new Date().toISOString();
   const toolChecks = generateToolChecks(toolVersions.tools);
   const lastReview = toolVersions.lastUpdated;
-  
+
   const notes = `Last review: ${lastReview}
 Current review: ${timestamp.split("T")[0]}
 
@@ -100,8 +104,7 @@ Review Focus Areas:
 - Security advisories or critical fixes
 `;
 
-  const checklist = REVIEW_CHECKLIST_TEMPLATE
-    .replace("{timestamp}", timestamp)
+  const checklist = REVIEW_CHECKLIST_TEMPLATE.replace("{timestamp}", timestamp)
     .replace("{toolChecks}", toolChecks)
     .replace("{notes}", notes);
 
@@ -117,8 +120,10 @@ async function saveReviewChecklist(checklist) {
   const filepath = join(reviewsDir, filename);
 
   await writeFile(filepath, checklist, "utf-8");
-  console.log(`[content-review] ✓ Review checklist saved to ai/reviews/${filename}`);
-  
+  console.log(
+    `[content-review] ✓ Review checklist saved to ai/reviews/${filename}`,
+  );
+
   return filepath;
 }
 
@@ -130,29 +135,33 @@ async function logReview() {
     timestamp: new Date().toISOString(),
     agent: "site-content-review",
     action: "quarterly-review-generated",
-    status: "completed"
+    status: "completed",
   };
 
   const logFile = join(logsDir, "site-content-review.jsonl");
   const logLine = JSON.stringify(logEntry) + "\n";
 
   await writeFile(logFile, logLine, { flag: "a" });
-  console.log("[content-review] ✓ Review logged to ai/logs/site-content-review.jsonl");
+  console.log(
+    "[content-review] ✓ Review logged to ai/logs/site-content-review.jsonl",
+  );
 }
 
 async function main() {
   console.log("\n🔍 CDC Content Review Agent");
   console.log("═══════════════════════════════════════");
-  
+
   const toolVersions = await loadToolVersions();
   if (!toolVersions) {
     console.error("[content-review] ✗ Could not load tool versions");
     process.exit(1);
   }
 
-  console.log(`\n📊 Tracking ${Object.keys(toolVersions.tools).length} CDC tools`);
+  console.log(
+    `\n📊 Tracking ${Object.keys(toolVersions.tools).length} CDC tools`,
+  );
   console.log(`📅 Last update: ${toolVersions.lastUpdated}`);
-  
+
   const checklist = await generateReviewChecklist(toolVersions);
   await saveReviewChecklist(checklist);
   await logReview();

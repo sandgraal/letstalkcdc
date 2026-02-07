@@ -7,6 +7,7 @@
 ## Context
 
 The Let's Talk CDC project requires:
+
 1. Static site hosting (Eleventy-generated HTML/CSS/JS)
 2. Serverless function hosting for `migrateUser` (Appwrite progress sync)
 3. CI/CD integration
@@ -32,6 +33,7 @@ The Let's Talk CDC project requires:
 ### Why Separate Serverless Hosting?
 
 GitHub Pages serves static content only. The `migrateUser` serverless function requires:
+
 - Server-side execution
 - Environment variable access (including secrets)
 - API endpoint functionality
@@ -61,16 +63,19 @@ GitHub Pages serves static content only. The `migrateUser` serverless function r
 ## Alternatives Considered
 
 ### Full Netlify Hosting
+
 ❌ Would require reverting GitHub Pages deployment  
 ❌ Additional platform account required  
 ❌ Less integrated with GitHub workflow
 
 ### Full Vercel Hosting
+
 ❌ Would require new deployment configuration  
 ❌ Moving away from working GitHub Pages setup  
 ✅ Could be considered if GitHub Pages becomes limiting
 
 ### GitHub Actions + API Gateway
+
 ❌ Complex to set up workflow_dispatch as API  
 ❌ Not designed for real-time API endpoints  
 ❌ Would require custom implementation
@@ -78,6 +83,7 @@ GitHub Pages serves static content only. The `migrateUser` serverless function r
 ## Consequences
 
 ### Positive
+
 - Leverages existing working deployment
 - Minimal migration effort required
 - Separation of concerns (static vs. serverless)
@@ -85,17 +91,20 @@ GitHub Pages serves static content only. The `migrateUser` serverless function r
 - Can switch serverless providers independently
 
 ### Negative
+
 - Requires two platforms instead of one
 - Need to update endpoint URL when switching providers
 - Slightly more complex deployment documentation
 
 ### Neutral
+
 - Users must choose and configure serverless provider
 - Documentation needed for multiple deployment options
 
 ## Implementation
 
 ### Completed
+
 - ✅ Documented hosting decision in `docs/HOSTING.md`
 - ✅ Updated `README.md` with deployment instructions
 - ✅ Updated `INTEGRATION_README.md` for serverless function deployment
@@ -103,6 +112,7 @@ GitHub Pages serves static content only. The `migrateUser` serverless function r
 - ✅ Added TODO comment in `scripts/progress.js` for endpoint update
 
 ### Required for Full Migration (If switching from Netlify)
+
 - [ ] Choose serverless provider
 - [ ] Deploy `migrateUser` function to chosen provider
 - [ ] Update endpoint URL in `scripts/progress.js`
@@ -113,6 +123,7 @@ GitHub Pages serves static content only. The `migrateUser` serverless function r
 ## Monitoring
 
 After deployment:
+
 - Monitor GitHub Actions workflow success rate
 - Monitor serverless function error rates and latency
 - Track costs (should remain zero or very low)
@@ -121,6 +132,7 @@ After deployment:
 ## Review
 
 This decision should be reviewed if:
+
 - GitHub Pages limitations are encountered
 - Serverless provider costs become significant
 - A single-platform solution becomes more appealing

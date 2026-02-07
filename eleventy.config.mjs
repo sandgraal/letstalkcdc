@@ -465,6 +465,32 @@ export default function (eleventyConfig) {
     return items.some((item) => candidates.includes(item.url));
   });
 
+  // Filter an array of action objects to only those whose href resolves to an
+  // existing page (or is external / anchor).  This avoids the well-known
+  // Nunjucks scoping bug where {% set %} inside {% for %} doesn't propagate
+  // to the outer scope.
+  eleventyConfig.addNunjucksFilter(
+    "filterValidActions",
+    (actions, collection) => {
+      if (!actions || !Array.isArray(actions)) {
+        return [];
+      }
+      const items = normalizeToArray(collection);
+      return actions.filter((action) => {
+        const href = action && action.href;
+        if (!href || (typeof href === "string" && href.trim() === "")) {
+          return false;
+        }
+        const candidates = publishedUrlCandidates(href);
+        if (!candidates.length) {
+          // External / hash / mailto links are always valid.
+          return true;
+        }
+        return items.some((item) => candidates.includes(item.url));
+      });
+    },
+  );
+
   return {
     pathPrefix,
     dir: {

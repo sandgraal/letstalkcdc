@@ -50,7 +50,9 @@ html[data-theme="dark"] .intro-quick-nav {
   font-weight: 500;
   color: #036672;
   text-decoration: none;
-  transition: border-color 160ms ease, background-color 160ms ease,
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
     color 160ms ease;
 }
 
@@ -114,7 +116,10 @@ html[data-theme="dark"] .intro-quick-nav a .quick-nav-badge {
   color: #5eead4;
 }
 
-html[data-theme="dark"] .intro-quick-nav a .quick-nav-badge[data-state="complete"] {
+html[data-theme="dark"]
+  .intro-quick-nav
+  a
+  .quick-nav-badge[data-state="complete"] {
   background: rgba(45, 212, 191, 0.32);
   color: #ccfbf1;
 }

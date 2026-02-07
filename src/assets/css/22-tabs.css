@@ -632,7 +632,8 @@
 }
 
 .tabs--glow .tabs__indicator {
-  box-shadow: 0 0 10px var(--color-accent-primary),
+  box-shadow:
+    0 0 10px var(--color-accent-primary),
     0 0 20px rgba(var(--color-accent-primary-rgb), 0.5);
 }
 
