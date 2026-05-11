@@ -287,6 +287,12 @@ export default function (eleventyConfig) {
     "src/assets/js": "assets/js",
     dist: "assets",
     "compose.yaml": "downloads/compose.yaml",
+    // Drill-bundle archive + README served from the failure-drills page.
+    // The template uses a page-relative `downloads/drill-bundle.zip` href.
+    "src/resources/drill-bundle.zip":
+      "troubleshooting/failure-drills/downloads/drill-bundle.zip",
+    "src/resources/drill-bundle/README.md":
+      "troubleshooting/failure-drills/downloads/drill-bundle/README.md",
     "src/css": "css",
     "src/js": "js",
     "src/data": "data",
@@ -294,7 +300,36 @@ export default function (eleventyConfig) {
     scripts: "scripts",
   });
 
+  // Markdown files under src/resources/ are downloadable assets, not pages.
+  // Without this, Eleventy renders them as standalone HTML (e.g. the drill
+  // bundle README) carrying stale hardcoded URLs.
+  eleventyConfig.ignores.add("resources/**/*.md");
+  eleventyConfig.ignores.add("src/resources/**/*.md");
+
   // ---- Vite asset filters --------------------------------------------------
+
+  /**
+   * Render a `head_extra` string from front-matter through the same template
+   * mini-language the page body uses. Front-matter strings are not re-parsed
+   * by Nunjucks, so e.g. `<link href="{{ '/foo' | url }}">` would emit the
+   * literal text without this filter. Handles the two patterns currently
+   * used in `head_extra` across the site:
+   *   {{ '/some/path' | url }}    → pathPrefix + path
+   *   {{ site.host }}             → site.host
+   * Unknown expressions pass through unchanged.
+   */
+  eleventyConfig.addNunjucksFilter("renderHeadExtra", function (str) {
+    if (!str) return "";
+    const pp = (getPathPrefix() || "/").replace(/\/$/, "");
+    const ctx = (this && this.ctx) || {};
+    const host = (ctx.site && ctx.site.host) || "";
+    return str
+      .replace(
+        /\{\{\s*['"]([^'"]+)['"]\s*\|\s*url\s*\}\}/g,
+        (_, p) => `${pp}${p}`,
+      )
+      .replace(/\{\{\s*site\.host\s*\}\}/g, host);
+  });
 
   /**
    * {{ 'src/assets/js/app.js' | viteAsset | url }}

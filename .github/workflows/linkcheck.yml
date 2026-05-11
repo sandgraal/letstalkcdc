@@ -8,7 +8,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build site
+        env:
+          # Pinned to the real GitHub Pages host so canonical / OG / JSON-LD
+          # URLs resolve when lychee crawls them. Production deploy.yml uses
+          # vars.SITE_HOST and vars.ELEVENTY_PATH_PREFIX for its own host;
+          # those are intentionally not relied on here so the link-check
+          # works even if the repo variables are unset.
+          ELEVENTY_PATH_PREFIX: /letstalkcdc
+          SITE_HOST: https://sandgraal.github.io
         run: npm ci && npm run build
       - uses: lycheeverse/lychee-action@v2.0.2
+        env:
+          # Authenticated requests to github.com avoid the rate-limited 404s
+          # that show up under unauthenticated CI runs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: --no-progress --verbose "_site/**/*.html"
+          # --exclude-loopback skips localhost/127.0.0.1 URLs that appear
+          # inside <code> blocks documenting curl commands (Kafka Connect REST
+          # examples). Those aren't reachable links.
+          args: --no-progress --verbose --exclude-loopback "_site/**/*.html"

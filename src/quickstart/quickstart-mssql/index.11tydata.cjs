@@ -1,4 +1,6 @@
 module.exports = {
+  datePublished: "2026-02-06",
+  dateModified: "2026-02-06",
   heroConfig: {
     title: "MS SQL Server CDC — Quickstart & Runbook",
     description:

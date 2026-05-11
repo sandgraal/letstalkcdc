@@ -26,7 +26,6 @@ export default [
       "handoff/**",
       "sandbox/**",
       "theme-playground/**",
-      "ai/prod-site-revamp/**",
     ],
   },
 
@@ -41,7 +40,6 @@ export default [
       "*.js",
       "lib/**/*.mjs",
       "scripts/**/*.{js,mjs}",
-      "ai/scripts/**/*.mjs",
       "src/_data/**/*.mjs",
       "src/**/*.cjs",
     ],

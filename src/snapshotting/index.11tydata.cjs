@@ -1,4 +1,6 @@
 module.exports = {
+  datePublished: "2026-02-06",
+  dateModified: "2026-02-06",
   seriesKey: "snapshotting",
   heroConfig: {
     title: "The First Hurdle: Snapshotting",

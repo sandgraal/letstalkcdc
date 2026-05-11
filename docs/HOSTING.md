@@ -96,13 +96,12 @@ Before considering a deployment complete:
 
 ## CI failure runbook
 
-Follow these steps before paging a human escalation channel when a GitHub Actions workflow fails:
+When a GitHub Actions workflow fails:
 
-1. **Identify the agent:** Inspect the failing job in the Actions log. Match the job name to the oversight matrix in `ai/AGENTS.md` to confirm the responsible agent and human owner.
-2. **Review recent runs:** Pull the relevant `ai/logs/<agent>.jsonl` entries to spot recurring errors or timeouts. Share anomalies with the listed owner via the team channel noted in your ops notes.
-3. **Reproduce locally:** Run the matching script (`npm run agent:<name>` or `node ai/scripts/<file>.mjs`) in report mode. Capture console output and environment differences (e.g., missing `ELEVENTY_PATH_PREFIX`).
-4. **Apply the health checklist:** If the issue persists, run the monthly agent health steps in `ai/AUTOMATIONS.md` for that agent—log review, dry-run, and rollback rehearsal—to validate recovery paths.
-5. **Escalate with context:** Only after the above is complete, escalate to the human owner with links to the failing workflow, log excerpts, and notes on attempted remediations.
+1. **Inspect the failing job** in the Actions log. Note the workflow file under `.github/workflows/` and the step that failed.
+2. **Reproduce locally** with the equivalent npm script (e.g. `npm run build`, `npm run smoke`, `npm run test`, `npm run lighthouse`). Most jobs map directly to a script in `package.json`.
+3. **Check environment differences** — most commonly a missing `ELEVENTY_PATH_PREFIX` or `SITE_HOST` repository variable.
+4. **If still stuck**, open an issue with links to the failing workflow run, log excerpts, and notes on what you tried.
 
 ## Costs
 

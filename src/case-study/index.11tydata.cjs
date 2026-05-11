@@ -1,4 +1,6 @@
 module.exports = {
+  datePublished: "2026-02-06",
+  dateModified: "2026-02-06",
   seriesKey: "case-study",
   heroConfig: {
     title: "Real-World Case Study: E-Commerce CDC Pipeline",

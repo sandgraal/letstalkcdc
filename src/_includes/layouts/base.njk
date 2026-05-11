@@ -27,7 +27,37 @@
     {% endif %}
     <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
     <meta name="theme-color" content="#0f172a">
-    {% if head_extra %}{{ head_extra | safe }}{% endif %}
+    {% if seriesKey and (datePublished or dateModified) %}
+      <meta property="article:published_time" content="{{ datePublished | default(dateModified) }}">
+      <meta property="article:modified_time" content="{{ dateModified | default(datePublished) }}">
+    {% endif %}
+    {% if seriesKey and (datePublished or dateModified) %}
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": {{ (title or heroConfig.title or site.title) | dump | safe }},
+          "description": {{ (description or site.description) | dump | safe }},
+          "datePublished": {{ (datePublished or dateModified) | dump | safe }},
+          "dateModified": {{ (dateModified or datePublished) | dump | safe }},
+          "author": {
+            "@type": "Person",
+            "name": {{ author.name | dump | safe }}{% if author.url %},
+            "url": {{ author.url | dump | safe }}{% endif %}
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": {{ site.title | dump | safe }},
+            "url": {{ site.host | dump | safe }}
+          },
+          "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "{{ site.host }}{{ canonicalUrl }}"
+          }
+        }
+      </script>
+    {% endif %}
+    {% if head_extra %}{{ head_extra | renderHeadExtra | safe }}{% endif %}
     <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
     <link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}">
     {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/cloud-progress.js, src/assets/js/auth-ui.js, src/assets/js/search.js' | vitePreloads | safe }}
@@ -139,7 +169,29 @@
 
     <main id="main">
       {{ content | safe }}
-      
+
+      {% if seriesKey and (datePublished or dateModified) %}
+        <aside class="page-meta" aria-label="Page metadata">
+          <p class="page-meta__author">
+            By <a href="{{ author.url }}" rel="author">{{ author.name }}</a>
+          </p>
+          {% if dateModified %}
+            <p class="page-meta__dates">
+              <time datetime="{{ dateModified }}">Last reviewed {{ dateModified }}</time>
+              {% if datePublished and datePublished != dateModified %}
+                · <time datetime="{{ datePublished }}">Originally published {{ datePublished }}</time>
+              {% endif %}
+            </p>
+          {% endif %}
+          {% if author.advisoryUrl %}
+            <p class="page-meta__cta">
+              Need a second opinion on your CDC design?
+              <a href="{{ author.advisoryUrl }}">See advisory →</a>
+            </p>
+          {% endif %}
+        </aside>
+      {% endif %}
+
       {# Add discussion link callout based on content type #}
       {% if seriesKey %}
         {# Determine discussion type based on series data #}
