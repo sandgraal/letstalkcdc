@@ -27,9 +27,9 @@
     {% endif %}
     <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
     <meta name="theme-color" content="#0f172a">
-    {% if datePublished or dateModified %}
-      <meta name="article:published_time" content="{{ datePublished | default(dateModified) }}">
-      <meta name="article:modified_time" content="{{ dateModified | default(datePublished) }}">
+    {% if seriesKey and (datePublished or dateModified) %}
+      <meta property="article:published_time" content="{{ datePublished | default(dateModified) }}">
+      <meta property="article:modified_time" content="{{ dateModified | default(datePublished) }}">
     {% endif %}
     {% if seriesKey and (datePublished or dateModified) %}
       <script type="application/ld+json">
