@@ -287,12 +287,24 @@ export default function (eleventyConfig) {
     "src/assets/js": "assets/js",
     dist: "assets",
     "compose.yaml": "downloads/compose.yaml",
+    // Drill-bundle archive + README served from the failure-drills page.
+    // The template uses a page-relative `downloads/drill-bundle.zip` href.
+    "src/resources/drill-bundle.zip":
+      "troubleshooting/failure-drills/downloads/drill-bundle.zip",
+    "src/resources/drill-bundle/README.md":
+      "troubleshooting/failure-drills/downloads/drill-bundle/README.md",
     "src/css": "css",
     "src/js": "js",
     "src/data": "data",
     "src/scripts": "scripts",
     scripts: "scripts",
   });
+
+  // Markdown files under src/resources/ are downloadable assets, not pages.
+  // Without this, Eleventy renders them as standalone HTML (e.g. the drill
+  // bundle README) carrying stale hardcoded URLs.
+  eleventyConfig.ignores.add("resources/**/*.md");
+  eleventyConfig.ignores.add("src/resources/**/*.md");
 
   // ---- Vite asset filters --------------------------------------------------
 

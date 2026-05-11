@@ -20,4 +20,7 @@ jobs:
           # that show up under unauthenticated CI runs.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: --no-progress --verbose "_site/**/*.html"
+          # --exclude-loopback skips localhost/127.0.0.1 URLs that appear
+          # inside <code> blocks documenting curl commands (Kafka Connect REST
+          # examples). Those aren't reachable links.
+          args: --no-progress --verbose --exclude-loopback "_site/**/*.html"
