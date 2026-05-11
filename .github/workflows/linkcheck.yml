@@ -9,10 +9,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build site
         env:
-          # Match deploy.yml so canonical / OG / JSON-LD URLs resolve to the
-          # real production host instead of the placeholder default.
-          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
-          SITE_HOST: ${{ vars.SITE_HOST }}
+          # Pinned to the real GitHub Pages host so canonical / OG / JSON-LD
+          # URLs resolve when lychee crawls them. Production deploy.yml uses
+          # vars.SITE_HOST and vars.ELEVENTY_PATH_PREFIX for its own host;
+          # those are intentionally not relied on here so the link-check
+          # works even if the repo variables are unset.
+          ELEVENTY_PATH_PREFIX: /letstalkcdc
+          SITE_HOST: https://sandgraal.github.io
         run: npm ci && npm run build
       - uses: lycheeverse/lychee-action@v2.0.2
         env:
