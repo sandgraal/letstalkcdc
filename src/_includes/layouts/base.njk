@@ -57,7 +57,7 @@
         }
       </script>
     {% endif %}
-    {% if head_extra %}{{ head_extra | safe }}{% endif %}
+    {% if head_extra %}{{ head_extra | renderHeadExtra | safe }}{% endif %}
     <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
     <link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}">
     {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/cloud-progress.js, src/assets/js/auth-ui.js, src/assets/js/search.js' | vitePreloads | safe }}

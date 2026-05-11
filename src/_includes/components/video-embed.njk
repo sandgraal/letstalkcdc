@@ -94,7 +94,7 @@
     description: config.description,
     caption: config.caption,
     transcript: config.transcript,
-    thumbnail: config.thumbnail | default('https://img.youtube.com/vi/' ~ videoId ~ '/maxresdefault.jpg')
+    thumbnail: config.thumbnail | default('https://img.youtube.com/vi/' ~ videoId ~ '/hqdefault.jpg')
   } %}
   {{ videoEmbed(embedConfig) }}
 {%- endmacro %}

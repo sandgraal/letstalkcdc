@@ -8,7 +8,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build site
+        env:
+          # Match deploy.yml so canonical / OG / JSON-LD URLs resolve to the
+          # real production host instead of the placeholder default.
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
+          SITE_HOST: ${{ vars.SITE_HOST }}
         run: npm ci && npm run build
       - uses: lycheeverse/lychee-action@v2.0.2
+        env:
+          # Authenticated requests to github.com avoid the rate-limited 404s
+          # that show up under unauthenticated CI runs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --no-progress --verbose "_site/**/*.html"

@@ -297,6 +297,29 @@ export default function (eleventyConfig) {
   // ---- Vite asset filters --------------------------------------------------
 
   /**
+   * Render a `head_extra` string from front-matter through the same template
+   * mini-language the page body uses. Front-matter strings are not re-parsed
+   * by Nunjucks, so e.g. `<link href="{{ '/foo' | url }}">` would emit the
+   * literal text without this filter. Handles the two patterns currently
+   * used in `head_extra` across the site:
+   *   {{ '/some/path' | url }}    → pathPrefix + path
+   *   {{ site.host }}             → site.host
+   * Unknown expressions pass through unchanged.
+   */
+  eleventyConfig.addNunjucksFilter("renderHeadExtra", function (str) {
+    if (!str) return "";
+    const pp = (getPathPrefix() || "/").replace(/\/$/, "");
+    const ctx = (this && this.ctx) || {};
+    const host = (ctx.site && ctx.site.host) || "";
+    return str
+      .replace(
+        /\{\{\s*['"]([^'"]+)['"]\s*\|\s*url\s*\}\}/g,
+        (_, p) => `${pp}${p}`,
+      )
+      .replace(/\{\{\s*site\.host\s*\}\}/g, host);
+  });
+
+  /**
    * {{ 'src/assets/js/app.js' | viteAsset | url }}
    * Resolves a source path to its hashed filename (production) or the
    * unbundled source path (development).

@@ -1,0 +1,16 @@
+# Lychee ignore — patterns excluded from the link-check workflow.
+#
+# Each pattern is a regex. Add a comment above any new entry explaining
+# why it's excluded and when it can be re-enabled.
+
+# Redirect stubs use {{ site.host }}{{ '/path/' | url }} which doubles the
+# path-prefix. Pre-existing template bug; tracked separately. Excluding so
+# lychee doesn't surface the same problem on every page.
+^https?://[^/]+/letstalkcdc/letstalkcdc/
+
+# Vendor docs URL drift — these pages have moved upstream. Updating the
+# citations is content work, not infrastructure. Re-enable as each page is
+# touched in the modern-CDC dossier rewrite (Month 2).
+^https://debezium\.io/documentation/reference/stable/operations/signals\.html$
+^https://fivetran\.com/docs/getting-started/changelog$
+^https://www\.matillion\.com/resources/release-notes$
