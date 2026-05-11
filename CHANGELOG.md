@@ -38,13 +38,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cleaned up `.github/copilot-instructions.md` and `.chatgpt-context.yml` so
   they no longer point at removed paths.
 
-### Deferred
+### Removed (CSS dead-code purge)
 
-- Full CSS consolidation (target: ≤10 token-led layered files) is deferred to
-  a follow-up PR. The current `src/assets/css/` has ~47 files, a dead
-  `styles.css` aggregator, and duplicate `30-*` / `38-*` numbering. Doing the
-  merge safely needs a dedicated change with visual diffs; Month 0 keeps it
-  scoped to the new `page-meta` block in `04-components.css`.
+- Retired the legacy `src/assets/css/styles.css` (2.3k-line monolith). The
+  production bundle is built from `src/assets/css/main.css`; the source
+  `styles.css` was never passthrough-copied, never reached the browser, and
+  was actively misleading.
+- Deleted 31 orphan numbered files that only `styles.css` referenced
+  (`07-code-blocks` through `37-chips-badges`, plus the duplicate-numbered
+  `30-progress-indicators`, `30-timeline`, `38-skill-level-badges`). Their
+  selectors were either unused or already covered by `02-base.css`,
+  `03-layout.css`, `04-components.css` (which imports `components/*.css`),
+  or page-specific CSS under `pages/`.
+- Deleted `src/assets/css/search.css` (loose copy of `06-search.css`,
+  unreferenced).
+- Deleted `src/assets/css/web-vitals-dashboard.css` (no template links it;
+  the JS just constructs the dashboard with `.web-vitals-dashboard` as an
+  unstyled className).
+- Retired the `theme-dark-prefixed.css` build pipeline:
+  `scripts/build-dark-theme.mjs`, the `theme-playground/styles.css` source,
+  the `build:dark-theme` npm script and its slot in the `build` chain. The
+  generated `theme-dark-prefixed.css` was never linked from any template.
+
+Net effect: `src/assets/css/` drops from 47 to 13 files. Verified the
+production output `_site/assets/css/styles.css` is byte-identical
+(SHA256 `4843ff26…`) before and after the purge — no shipped CSS rule
+changed.
 
 ## [2.0.0] — 2026-02-06
 
