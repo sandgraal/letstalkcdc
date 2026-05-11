@@ -638,3 +638,59 @@
   opacity: 1;
   transform: translateX(-50%) translateY(-4px);
 }
+
+/* =============================================================
+   Page meta — author + last reviewed stamp + soft advisory CTA.
+   Rendered by base.njk on module pages with datePublished set.
+   ============================================================= */
+.page-meta {
+  margin: var(--space-xl, 3rem) auto var(--space-lg, 1.5rem);
+  max-width: 72ch;
+  padding: var(--space-md, 1rem) var(--space-lg, 1.5rem);
+  border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.15));
+  color: var(--text-secondary, #cbd5e1);
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+}
+
+.page-meta__author {
+  margin: 0 0 var(--space-xs, 0.25rem);
+  font-weight: 500;
+}
+
+.page-meta__author a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-color, rgba(148, 163, 184, 0.4));
+  text-underline-offset: 0.2em;
+}
+
+.page-meta__author a:hover,
+.page-meta__author a:focus-visible {
+  color: var(--accent-primary, #3b82f6);
+  text-decoration-color: currentColor;
+}
+
+.page-meta__dates {
+  margin: 0;
+  color: var(--text-muted, #94a3b8);
+}
+
+.page-meta__dates time {
+  font-variant-numeric: tabular-nums;
+}
+
+.page-meta__cta {
+  margin: var(--space-sm, 0.75rem) 0 0;
+}
+
+.page-meta__cta a {
+  color: var(--accent-primary, #3b82f6);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.page-meta__cta a:hover,
+.page-meta__cta a:focus-visible {
+  text-decoration: underline;
+}

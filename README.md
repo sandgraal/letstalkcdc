@@ -83,7 +83,6 @@ Recent additions to the platform:
 - 📊 **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
 - 📦 **Print-ready exports** — Complete guide at `/downloads/cdc-complete-guide.html`
 - 🧪 **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
-- 📈 **Build analytics** — Track site metrics with `npm run agent:analytics`
 - 🚀 **Deployment verification** — Post-deploy checks with `npm run verify:deployment`
 
 ### Basic Deployment
@@ -135,10 +134,6 @@ npm run smoke:core       # HTML validation + link checking
 npm run smoke:a11y       # Accessibility tests (requires Chromium)
 npm run smoke:perf       # Performance budget checks
 
-# Agent Scripts
-npm run agent:analytics  # Generate build analytics report
-npm run agent:package    # Create print-ready export bundle
-
 # Community Management
 node scripts/seed-discussions.mjs  # Seed GitHub Discussions with starter threads
 
@@ -174,7 +169,3 @@ npm run verify:deployment # Verify production deployment
 - **LCP** (Largest Contentful Paint) — Target: < 2.5s
 - **FID** (First Input Delay) — Target: < 100ms
 - **CLS** (Cumulative Layout Shift) — Target: < 0.1
-
-<!-- AI-STATUS:START -->
-Last AI agents run: 2026-05-11T05:15:34.403Z
-<!-- AI-STATUS:END -->

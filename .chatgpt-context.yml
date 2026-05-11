@@ -9,28 +9,6 @@ directories:
   layouts: src/_includes/layouts
   assets: src/assets
   output: _site
-  revamp_workspace: ai/prod-site-revamp
-agent_prefix: site
-active_agents:
-  - site-content
-  - site-image
-  - site-data
-  - site-packaging
-  - site-analytics
-active_projects:
-  - name: prod-site-revamp
-    status: not_started
-    workspace: ai/prod-site-revamp
-    phases:
-      - phase: "1.1"
-        name: "Eleventy 3.0 Migration"
-        status: not_started
-      - phase: "1.2"
-        name: "JavaScript Modularization"
-        status: not_started
-      - phase: "1.3"
-        name: "Build Pipeline Modernization"
-        status: not_started
 constraints:
   privacy: "no external API calls unless configured"
   publishing: "only dedicated workflows can deploy"

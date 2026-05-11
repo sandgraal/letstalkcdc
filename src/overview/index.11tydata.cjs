@@ -1,6 +1,8 @@
 const series = require("../_data/series.mjs");
 
 module.exports = {
+  datePublished: "2026-02-06",
+  dateModified: "2026-02-06",
   heroConfig: {
     title: "Series Overview",
     description: `

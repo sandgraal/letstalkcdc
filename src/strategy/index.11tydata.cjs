@@ -1,4 +1,6 @@
 module.exports = {
+  datePublished: "2026-02-06",
+  dateModified: "2026-02-06",
   seriesKey: "strategy",
   heroConfig: {
     title: "The Strategic Advantage of CDC",

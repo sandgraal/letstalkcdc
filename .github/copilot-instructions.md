@@ -8,7 +8,6 @@ This is **Let's Talk CDC** — an educational static site about Change Data Capt
 
 - **Static-first**: All content is pre-rendered HTML at build time (`_site/` output)
 - **Path prefix handling**: Site must work at root (`/`) or subdirectory (`/letstalkcdc/`) for GitHub Pages project hosting
-- **Agent-augmented**: Autonomous AI agents handle routine maintenance (see `ai/` directory)
 - **Progressive enhancement**: Core content works without JavaScript; interactivity enhances UX
 
 ## Developer Workflow
@@ -77,77 +76,6 @@ Files like `search-index.11ty.cjs` and `sitemap.11ty.cjs` export classes with:
 - `render()` method: Generates output from collections
 
 **Example**: `search-index.11ty.cjs` creates `/search-index.json` by filtering all pages and extracting text.
-
-## AI Agent System
-
-### Agent Philosophy
-
-Agents are **autonomous maintenance workers**, not code generators. They:
-
-- Run on schedule (daily 03:00 UTC) via `.github/workflows/ai-agents.yml`
-- Produce **idempotent, deterministic** outputs
-- Log every run to `ai/logs/<agent-name>.jsonl`
-- **Never overwrite** user-authored Markdown or templates
-- Tag outputs with `ai-generated: true` in frontmatter
-
-### Active Agents (ai/scripts/)
-
-| Agent             | Script               | Trigger                | Purpose                                           |
-| ----------------- | -------------------- | ---------------------- | ------------------------------------------------- |
-| `site-content`    | Build job            | Schedule/push          | Builds site, updates content                      |
-| `site-image`      | `image-optimize.mjs` | Manual/schedule        | Optimizes images to WebP (report-only by default) |
-| `site-link-check` | `link-check.mjs`     | Schedule/manual        | Validates internal links in `_site/`              |
-| `site-data`       | `data-sync.mjs`      | On `src/_data/` change | Syncs structured data                             |
-| `site-analytics`  | `analytics.mjs`      | Nightly                | Aggregates build stats                            |
-| `site-packaging`  | `package-render.mjs` | On asset change        | Exports print-ready assets                        |
-
-#### Agent Details: Image Optimization
-
-**Script**: `ai/scripts/image-optimize.mjs`
-
-**Configuration** (in script):
-
-```javascript
-const CONFIG = {
-  targetFormats: ["webp"], // Formats to convert to
-  quality: 85, // Quality for compressed images (85%)
-  minFileSizeKB: 10, // Only optimize files > 10KB
-  supportedExtensions: [".jpg", ".jpeg", ".png", ".gif"],
-  excludeDirs: ["node_modules", "_site", "dist", ".git"],
-  enabled: process.env.IMAGE_OPTIMIZE_ENABLED === "true", // Default: report-only
-};
-```
-
-**Enabling optimization**:
-
-1. Install sharp: `npm install --save-dev sharp`
-2. Set environment variable: `IMAGE_OPTIMIZE_ENABLED=true`
-3. Run manually: `node ai/scripts/image-optimize.mjs`
-4. Agent will convert images to WebP format at 85% quality
-5. Original files are preserved; `.webp` versions created alongside
-
-**Behavior**:
-
-- Scans `src/` directory recursively
-- Checks if WebP version already exists (skips if present)
-- In report-only mode: Logs what _would_ be optimized
-- In enabled mode: Actually converts images using sharp
-- Logs activity to `ai/logs/site-image.jsonl`
-
-### Agent Constraints
-
-**Agents MUST NOT**:
-
-- Modify content semantics or tone
-- Delete working code without explicit config
-- Push directly to protected branches
-- Process files in `node_modules/`, `_site/`, `dist/`, `.git/`
-
-**Agents MUST**:
-
-- Exit with status code 0 (success) or non-zero (failure)
-- Respect `.gitignore`
-- Log via `ai/scripts/log-agent-run.mjs` with env vars: `AGENT_NAME`, `STATUS`, `DURATION_MS`
 
 ## Data Model
 
@@ -349,11 +277,8 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 
 1. Check **[docs/README.md](../docs/README.md)** for complete documentation index
 2. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Appwrite, tracing, deployment)
-3. Review **[ai/AGENTS.md](../ai/AGENTS.md)** for agent-specific rules
-4. Read **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** for AI agent constraints
-5. Check **[ai/CONTEXT.md](../ai/CONTEXT.md)** for brand voice and conventions
-6. Inspect existing pages in `src/` for patterns
-7. Run `npm run smoke` to validate changes
+3. Inspect existing pages in `src/` for patterns
+4. Run `npm run smoke` to validate changes
 
 ### Documentation Index
 
@@ -375,12 +300,6 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 **Development:**
 
 - **[docs/adding-modules.md](../docs/adding-modules.md)** — Guide for adding new content modules
-- **[AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)** — AI agent contribution guidelines
-
-**Architecture:**
-
-- **[ai/CONTEXT.md](../ai/CONTEXT.md)** — Brand voice and conventions
-- **[ai/AGENTS.md](../ai/AGENTS.md)** — AI agent system documentation
 
 **Archived (Historical Reference):**
 

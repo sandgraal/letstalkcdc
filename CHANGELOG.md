@@ -1,28 +1,56 @@
-## 2026-02-07
-- Initial changelog
-
-## 2026-02-07
-
-- Initial changelog
-
-## 2026-02-07
-
-- Initial changelog
-
-## 2026-02-07
-
-- Initial changelog
-
-## 2026-02-07
-
-- Initial changelog
-
 # Changelog
+
+All notable changes to this project are documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- `src/_data/author.mjs` — single source of truth for author identity
+  (used by the base layout, JSON-LD, and future RSS / advisory surfaces).
+- `datePublished` and `dateModified` front-matter on every module's
+  `*.11tydata.cjs` data file (defaulted to the v2.0.0 ship date; bump per
+  module as content is revised).
+- Article JSON-LD and `article:published_time` / `article:modified_time`
+  meta tags emitted in `<head>` for module pages.
+- Visible page-meta block on module pages — author, last-reviewed date,
+  optional advisory CTA — rendered at the bottom of `<main>`.
+
+### Removed
+
+- Retired the `ai/` agent subsystem and its auto-commit workflows
+  (`ai-readme-sync`, `ai-changelog`, `ai-agents`, `analytics-discussions`,
+  `quarterly-content-review`). The auto-synced `<!-- AI-STATUS -->` block in
+  `README.md` is gone. Manual maintenance from here on.
+- Removed the obsolete `prod-site-revamp` issue template; that project shipped
+  as `2.0.0` in February 2026.
+- Dropped `agent:analytics`, `agent:package`, and `agent:content-review` npm
+  scripts.
+
+### Changed
+
+- Rewrote `docs/CONTRIBUTING.md` to focus on human contributors (was previously
+  documentation of the retired agent system).
+- Trimmed the CI failure runbook in `docs/HOSTING.md` to match the workflows
+  that actually exist.
+- Cleaned up `.github/copilot-instructions.md` and `.chatgpt-context.yml` so
+  they no longer point at removed paths.
+
+### Deferred
+
+- Full CSS consolidation (target: ≤10 token-led layered files) is deferred to
+  a follow-up PR. The current `src/assets/css/` has ~47 files, a dead
+  `styles.css` aggregator, and duplicate `30-*` / `38-*` numbering. Doing the
+  merge safely needs a dedicated change with visual diffs; Month 0 keeps it
+  scoped to the new `page-meta` block in `04-components.css`.
 
 ## [2.0.0] — 2026-02-06
 
 Site Revamp — all 9 PRD phases complete. Eleventy 3.x, Vite build, modular JS,
-interactive components, enhanced search, improved assistant, and full test suite.
+interactive components, enhanced search, improved assistant, and full test
+suite.
 
 ### Phase 1 — Foundation
 
