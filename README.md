@@ -81,7 +81,6 @@ Recent additions to the platform:
 - ☁️ **Cloud progress sync** — Your learning progress automatically saved and synced via Appwrite
 - 🔍 **Client-side search** — Press `/` to search all content instantly
 - 📊 **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
-- 📦 **Print-ready exports** — Complete guide at `/downloads/cdc-complete-guide.html`
 - 🧪 **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
 - 🚀 **Deployment verification** — Post-deploy checks with `npm run verify:deployment`
 

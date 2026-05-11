@@ -1,6 +1,6 @@
 # Contributing
 
-Welcome — and thanks for considering a contribution to *CDC: The Missing Manual*.
+Welcome — and thanks for considering a contribution to _CDC: The Missing Manual_.
 This file covers the practical bits: how to run the site locally, what we expect
 in a pull request, and where the conventions live.
 
