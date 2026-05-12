@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CLAUDE.md` at repo root — single source of truth for AI agents (commands,
+  architecture, conventions, anti-patterns, the CSS byte-identity check).
+  `AGENTS.md` symlinked to it so Codex / cross-tool agentic systems pick up
+  the same doc.
+- `.claude/settings.json` — permission allowlist covering safe read/verify
+  commands (git status/diff/log, npm test, npm run build, prettier --check,
+  eslint, vitest, shell utils), plus a SessionStart hook that runs `npm ci`
+  if `node_modules/` is absent so fresh checkouts work out of the box.
+- `.claude/commands/css-byte-check.md` — codifies the production-CSS hash
+  verification pattern used across the Month-0 CSS refactors.
+- `.github/CODEOWNERS` — formalizes review ownership for the agent context
+  surfaces (`CLAUDE.md`, `.claude/`, `.chatgpt-context.yml`,
+  `copilot-instructions.md`), CI/build configs, and `main.css`.
 - `src/_data/author.mjs` — single source of truth for author identity
   (used by the base layout, JSON-LD, and future RSS / advisory surfaces).
 - `datePublished` and `dateModified` front-matter on every module's
@@ -37,14 +50,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that actually exist.
 - Cleaned up `.github/copilot-instructions.md` and `.chatgpt-context.yml` so
   they no longer point at removed paths.
+- Corrected stale facts throughout `.github/copilot-instructions.md`:
+  Eleventy 2.x → 3.1.x, `eleventy.config.cjs` → `.mjs`, `lib/path-prefix.cjs`
+  → `.mjs`, removed the dead CSS pipeline description (styles.css / CSSO),
+  refreshed the dependency list (csso gone, vite/vitest/playwright in), and
+  pruned doc links to files that don't exist
+  (`TRACING-QUICKSTART.md`, `APPWRITE_QUICKSTART.md`,
+  `assistant-feedback-setup.md`).
+- Expanded `.chatgpt-context.yml` with the current stack (Eleventy 3.1.x,
+  Vite 7, postcss + cssnano + autoprefixer, vitest, playwright, pa11y-ci),
+  CSS / JS entry paths, npm command map, and commit / branch conventions.
+- Added `.github/CODEOWNERS` to `.prettierignore` (prettier can't parse it)
+  and dropped the deleted `theme-playground` entry.
+- Dropped unused devDependencies `postcss-prefix-selector` (only used by
+  the retired `build-dark-theme.mjs`) and `serve` (the `npm run serve`
+  script uses `eleventy --serve`, not the `serve` package). `npm ci`
+  installs 685 fewer transitive packages.
+- Cleaned up `README.md` repo-tree diagram: removed the dangling
+  `src/assets/css/styles.css` line, added entries for `dist/`,
+  `vite.config.mjs`, and the new `CLAUDE.md`.
+- Rewrote `docs/README.md` (the docs index): removed 10+ broken links
+  pointing at non-existent files
+  (`APPWRITE_QUICKSTART.md`, `TRACING-QUICKSTART.md`,
+  `TRACING-BUNDLING.md`, `assistant-feedback-setup.md`,
+  `auth-setup.md`, etc.), dropped the retired-AI `AI-CONTRIBUTING.md`
+  link, and pointed agents at `CLAUDE.md` as the entry point.
+- Redirected two `AI-CONTRIBUTING.md` references in `docs/SETUP.md` to
+  the current `docs/CONTRIBUTING.md`.
+- Added a "Historical document" banner to `docs/PRD-SITE-REVAMP.md`
+  flagging that the `ai/` subsystem it describes was retired in Month 0
+  and that `CLAUDE.md` is now the authoritative project context.
+- Renumbered the trailing top-level CSS files so the source has clean
+  sequential numbering after the orphan purge:
+  `38-version-status.css` → `07-version-status.css`,
+  `39-video-embed.css` → `08-video-embed.css`,
+  `40-mobile-responsive.css` → `09-mobile-responsive.css`. `main.css`
+  imports and `docs/video-embeds.md` updated; production output is still
+  byte-identical (SHA256 `4843ff26…`).
+- Removed retired-`ai/` paths from `.gitignore` (the subsystem is gone, so
+  the ignore globs were dangling).
+- Deleted the broken duplicate `test-appwrite-connection.js` (it used
+  `require()` in an ESM-typed package and crashed on every invocation).
+  Kept the working `test-appwrite.cjs`, and corrected three stale
+  `test-appwrite.mjs` references in `docs/SETUP.md`.
+- Deleted the obsolete per-page CSS build pipeline:
+  `scripts/build-css.js`, `scripts/build-css.mjs`, `scripts/minify-css.js`.
+  Nothing referenced them — the active build is `postcss main.css` driven
+  from `package.json`. Also dropped the now-unused `csso` devDependency.
+- Untracked the stray repo-root `.DS_Store` and added the standard
+  `**/.DS_Store` ignore globs.
+- Deleted orphan `src/css/dashboard.css` — a green-on-black retro
+  terminal stylesheet not linked from any template. The active
+  dashboard styles live in `src/assets/css/dashboard-page.css`
+  (imported by `main.css`); the handoff/ dashboard ships inline CSS.
 
-### Deferred
+### Removed (CSS dead-code purge)
 
-- Full CSS consolidation (target: ≤10 token-led layered files) is deferred to
-  a follow-up PR. The current `src/assets/css/` has ~47 files, a dead
-  `styles.css` aggregator, and duplicate `30-*` / `38-*` numbering. Doing the
-  merge safely needs a dedicated change with visual diffs; Month 0 keeps it
-  scoped to the new `page-meta` block in `04-components.css`.
+- Retired the legacy `src/assets/css/styles.css` (2.3k-line monolith). The
+  production bundle is built from `src/assets/css/main.css`; the source
+  `styles.css` was never passthrough-copied, never reached the browser, and
+  was actively misleading.
+- Deleted 31 orphan numbered files that only `styles.css` referenced
+  (`07-code-blocks` through `37-chips-badges`, plus the duplicate-numbered
+  `30-progress-indicators`, `30-timeline`, `38-skill-level-badges`). Their
+  selectors were either unused or already covered by `02-base.css`,
+  `03-layout.css`, `04-components.css` (which imports `components/*.css`),
+  or page-specific CSS under `pages/`.
+- Deleted `src/assets/css/search.css` (loose copy of `06-search.css`,
+  unreferenced).
+- Deleted `src/assets/css/web-vitals-dashboard.css` (no template links it;
+  the JS just constructs the dashboard with `.web-vitals-dashboard` as an
+  unstyled className).
+- Retired the `theme-dark-prefixed.css` build pipeline:
+  `scripts/build-dark-theme.mjs`, the `theme-playground/styles.css` source,
+  the `build:dark-theme` npm script and its slot in the `build` chain. The
+  generated `theme-dark-prefixed.css` was never linked from any template.
+
+Net effect: `src/assets/css/` drops from 47 to 13 files. Verified the
+production output `_site/assets/css/styles.css` is byte-identical
+(SHA256 `4843ff26…`) before and after the purge — no shipped CSS rule
+changed.
 
 ## [2.0.0] — 2026-02-06
 

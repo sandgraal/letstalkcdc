@@ -1,0 +1,21 @@
+# GitHub CODEOWNERS — required reviewers per path.
+# Last matching pattern wins; later patterns override earlier ones.
+
+# Default: everything in the repo
+*                               @sandgraal
+
+# Agent / AI context surfaces — keep aligned across files
+/CLAUDE.md                      @sandgraal
+/AGENTS.md                      @sandgraal
+/.claude/                       @sandgraal
+/.chatgpt-context.yml           @sandgraal
+/.github/copilot-instructions.md @sandgraal
+
+# CI / deploy
+/.github/workflows/             @sandgraal
+/eleventy.config.mjs            @sandgraal
+/vite.config.mjs                @sandgraal
+/postcss.config.mjs             @sandgraal
+
+# Production stylesheet entry — see CLAUDE.md byte-identity rule
+/src/assets/css/main.css        @sandgraal

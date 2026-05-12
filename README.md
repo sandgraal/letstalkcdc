@@ -30,13 +30,16 @@ letstalkcdc/
 │   ├── index.njk                # Home page template
 │   └── …                        # Content directories (quickstarts, labs, guides, etc.)
 ├── _site/                      # Generated site output (`npm run build`)
-├── scripts/                    # Build helpers (CSS minification, etc.)
-├── src/assets/js/app.js        # Client-side interactions shared sitewide
-├── src/assets/css/styles.css   # Source stylesheet processed by PostCSS
+├── dist/                       # Vite-bundled JS (`npm run build:js`)
+├── scripts/                    # Build / smoke / verify helpers
+├── src/assets/js/app.js        # Client-side entry, bundled by Vite
+├── src/assets/css/main.css     # Production CSS entry; postcss bundles the 00-09 layers
 ├── eleventy.config.mjs         # Eleventy configuration
-├── postcss.config.js           # PostCSS configuration
+├── vite.config.mjs             # Vite configuration
+├── postcss.config.mjs          # PostCSS configuration
 ├── package.json                # Project metadata, scripts, tooling deps
 ├── package-lock.json
+├── CLAUDE.md                   # AI-agent quick reference (commands, conventions, anti-patterns)
 └── README.md
 ```
 

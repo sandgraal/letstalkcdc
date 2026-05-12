@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 2.x** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used only for storing assistant feedback.
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used only for storing assistant feedback.
 
 ### Key Architecture Decisions
 
@@ -21,11 +21,16 @@ npm run clean          # Remove all build artifacts
 npm run smoke          # Run all quality checks (smoke + a11y + perf)
 ```
 
-**Critical**: The build is a **two-stage process**:
+**Critical**: `npm run build` runs four stages in order:
 
-1. PostCSS processes `src/assets/css/styles.css` → `src/assets/css/styles.pref.css` (autoprefixer)
-2. CSSO minifies to `src/assets/css/styles.min.css`
-3. Eleventy generates HTML from `src/` → `_site/`
+1. `build:css` — `postcss src/assets/css/main.css -o src/assets/css/styles.min.css`
+2. `build:js` — `vite build` → `dist/`
+3. `build:11ty` — `eleventy --config=eleventy.config.mjs` → `_site/`
+4. Final `postcss _site/assets/css/styles.css -o _site/assets/css/styles.css`
+   (cssnano minify; only runs when `NODE_ENV=production`)
+
+The legacy `styles.css` source / CSSO pipeline was removed in Month 0. See
+[`CLAUDE.md`](../CLAUDE.md) for the full CSS pipeline diagram.
 
 ### Testing & Quality Gates
 
@@ -39,7 +44,7 @@ All CI checks run on push/PR via `.github/workflows/ci.yml`. **Smoke tests auto-
 
 ## Path Prefix System (Critical)
 
-The `lib/path-prefix.cjs` module handles URL prefixing for GitHub Pages:
+The `lib/path-prefix.mjs` module handles URL prefixing for GitHub Pages:
 
 - **Auto-detection**: If `ELEVENTY_PATH_PREFIX` not set, derives from `GITHUB_REPOSITORY` env
 - **Root deployment**: Returns `/` if repo is `owner.github.io`
@@ -225,7 +230,7 @@ Assistant feedback collection uses **Appwrite** (headless database) via:
 
 ### Adding a Passthrough Copy
 
-In `eleventy.config.cjs`:
+In `eleventy.config.mjs`:
 
 ```javascript
 eleventyConfig.addPassthroughCopy({
@@ -235,7 +240,7 @@ eleventyConfig.addPassthroughCopy({
 
 ### Adding a Nunjucks Filter
 
-In `eleventy.config.cjs`:
+In `eleventy.config.mjs`:
 
 ```javascript
 eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
@@ -264,7 +269,7 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 
 - Run `npm audit --production` before major releases
 - Fortify workflow (`.github/workflows/fortify.yml`) scans for vulnerabilities
-- Keep dependencies minimal (currently: Eleventy, PostCSS, pa11y, csso, rimraf)
+- Keep dependencies minimal (currently: Eleventy 3, Vite, PostCSS + cssnano + autoprefixer, pa11y-ci, vitest, playwright, rimraf)
 
 ## Deployment
 
@@ -292,18 +297,20 @@ The `handoff/` directory contains a **nightly prompt sync** for agent context:
 
 **Features:**
 
-- **[docs/TRACING.md](../docs/TRACING.md)** — OpenTelemetry tracing (comprehensive)
-- **[docs/TRACING-QUICKSTART.md](../docs/TRACING-QUICKSTART.md)** — Tracing quick start
-- **[docs/assistant-feedback-setup.md](../docs/assistant-feedback-setup.md)** — AI assistant collection setup
-- **[docs/APPWRITE_QUICKSTART.md](../docs/APPWRITE_QUICKSTART.md)** — 15-minute Appwrite setup
+- **[docs/TRACING.md](../docs/TRACING.md)** — OpenTelemetry tracing
+- **[docs/video-embeds.md](../docs/video-embeds.md)** — Video embed component
+- **[docs/adding-quizzes.md](../docs/adding-quizzes.md)** — Adding quizzes to modules
 
 **Development:**
 
+- **[CLAUDE.md](../CLAUDE.md)** — Quick reference for AI agents (commands, architecture, byte-identity check)
+- **[docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md)** — Human-contributor workflow
 - **[docs/adding-modules.md](../docs/adding-modules.md)** — Guide for adding new content modules
+- **[docs/javascript-architecture.md](../docs/javascript-architecture.md)** — JS module layout and Vite split
 
 **Archived (Historical Reference):**
 
-- **[docs/archive/](../docs/archive/)** — Archived status docs and decision records
+- **[docs/archive/](../docs/archive/)** — Archived status docs and decision records (read for context, do not act on as current spec)
 
 ## Anti-Patterns to Avoid
 

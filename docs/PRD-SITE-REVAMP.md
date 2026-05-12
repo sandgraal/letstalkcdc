@@ -1,12 +1,28 @@
 # Product Requirements Document: Let's Talk CDC Site Revamp
 
-| Field                | Value                   |
-| -------------------- | ----------------------- |
-| **Repository**       | `sandgraal/letstalkcdc` |
-| **Document Version** | 1.0.0                   |
-| **Created**          | 2026-02-05              |
-| **Owner**            | @sandgraal              |
-| **Status**           | Draft                   |
+> **Historical document.** This PRD scoped the 2.0.0 site revamp that
+> shipped on 2026-02-06 (see `CHANGELOG.md`). It is preserved as the
+> reference for why the current architecture exists, but **agents and
+> contributors should not treat it as a live spec**:
+>
+> - The `ai/` agent subsystem described throughout was retired in Month 0
+>   along with `ai-readme-sync`, `ai-changelog`, `ai-agents`,
+>   `analytics-discussions`, and the `quarterly-content-review` workflows.
+>   Links such as `ai/AGENTS.md` and `ai/CONTEXT.md` point to deleted
+>   paths.
+> - The CSS pipeline section describes the pre-purge `styles.css` /
+>   CSSO setup; the current pipeline is documented in `CLAUDE.md` and
+>   `.github/copilot-instructions.md`.
+> - For current authoritative project context, read **CLAUDE.md** at
+>   the repo root.
+
+| Field                | Value                                    |
+| -------------------- | ---------------------------------------- |
+| **Repository**       | `sandgraal/letstalkcdc`                  |
+| **Document Version** | 1.0.0                                    |
+| **Created**          | 2026-02-05                               |
+| **Owner**            | @sandgraal                               |
+| **Status**           | Shipped (2.0.0, 2026-02-06) — historical |
 
 ---
 

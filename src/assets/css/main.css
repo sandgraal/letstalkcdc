@@ -1,9 +1,18 @@
 /* =============================================================
-   Let's Talk CDC - Main Stylesheet
-   Modern, consolidated CSS architecture
+   Let's Talk CDC — Production CSS entry
+   --------------------------------------------------------------
+   This file is the single source of truth for the bundle shipped
+   at /assets/css/styles.css. The build pipeline is:
+
+     postcss src/assets/css/main.css
+       -> src/assets/css/styles.min.css   (build:css)
+       -> _site/assets/css/styles.css     (eleventy passthrough)
+       -> _site/assets/css/styles.css     (final postcss pass)
+
+   Cascade order matters — keep tokens before base, base before
+   layout, layout before components.
    ============================================================= */
 
-/* Import in correct order - cascade matters! */
 @import "00-reset.css";
 @import "01-variables.css";
 @import "02-base.css";
@@ -11,7 +20,7 @@
 @import "04-components.css";
 @import "05-utilities.css";
 @import "06-search.css";
-@import "38-version-status.css";
-@import "39-video-embed.css";
-@import "40-mobile-responsive.css";
+@import "07-version-status.css";
+@import "08-video-embed.css";
+@import "09-mobile-responsive.css";
 @import "dashboard-page.css";

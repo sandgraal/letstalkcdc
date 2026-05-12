@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git ls-files:*)",
+
+      "Bash(npm ci:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run format:check:*)",
+      "Bash(npm run smoke:*)",
+      "Bash(npm run clean:*)",
+
+      "Bash(npx prettier --check:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx vitest:*)",
+
+      "Bash(node scripts/smoke.mjs:*)",
+      "Bash(node scripts/visual-smoke.mjs:*)",
+      "Bash(node scripts/run-pa11y.mjs:*)",
+      "Bash(node scripts/perf-budget.mjs:*)",
+      "Bash(node scripts/lint-content.js:*)",
+      "Bash(node scripts/deployment-verify.mjs:*)",
+
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(stat:*)",
+      "Bash(file:*)",
+      "Bash(sha256sum:*)",
+      "Bash(diff:*)",
+      "Bash(jq:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(:(){ :|:& };::*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -d node_modules || (echo '[letstalkcdc] node_modules missing — running npm ci...' && npm ci --no-audit --no-fund) >&2",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}
