@@ -50,6 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `require()` in an ESM-typed package and crashed on every invocation).
   Kept the working `test-appwrite.cjs`, and corrected three stale
   `test-appwrite.mjs` references in `docs/SETUP.md`.
+- Deleted the obsolete per-page CSS build pipeline:
+  `scripts/build-css.js`, `scripts/build-css.mjs`, `scripts/minify-css.js`.
+  Nothing referenced them — the active build is `postcss main.css` driven
+  from `package.json`. Also dropped the now-unused `csso` devDependency.
+- Untracked the stray repo-root `.DS_Store` and added the standard
+  `**/.DS_Store` ignore globs.
 
 ### Removed (CSS dead-code purge)
 
