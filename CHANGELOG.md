@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from `package.json`. Also dropped the now-unused `csso` devDependency.
 - Untracked the stray repo-root `.DS_Store` and added the standard
   `**/.DS_Store` ignore globs.
+- Deleted orphan `src/css/dashboard.css` — a green-on-black retro
+  terminal stylesheet not linked from any template. The active
+  dashboard styles live in `src/assets/css/dashboard-page.css`
+  (imported by `main.css`); the handoff/ dashboard ships inline CSS.
 
 ### Removed (CSS dead-code purge)
 
