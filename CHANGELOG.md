@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `console.info(...)` calls (`scripts/progress.js`,
   `src/js/appwrite-config.js`) to `console.log(...)`, which the
   eslint config explicitly allows.
+- Deleted `scripts/test-auth-modules.mjs`. It was an unwired post-build
+  smoke check from the pre-Vite era — its substring check for
+  `auth-ui.js` in the rendered HTML no longer matched after Vite started
+  hashing bundles (`auth-ui.DzcSTLaD.js`), and the script crashed every
+  run. Auth module presence is still exercised by the regular smoke
+  pipeline + the Vite manifest resolution in `eleventy.config.mjs`.
 
 ### Changed
 
@@ -94,6 +100,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a "Historical document" banner to `docs/PRD-SITE-REVAMP.md`
   flagging that the `ai/` subsystem it describes was retired in Month 0
   and that `CLAUDE.md` is now the authoritative project context.
+- Documented the unwired-but-working sandbox debug scripts
+  (`scripts/verify.sh`, `scripts/test_stack.sh`, `scripts/test_connector.sh`,
+  `scripts/test_events.sh`, `scripts/test_chaos_smoke.sh`) in a new
+  "Verifying the Stack" subsection of `docs/SANDBOX.md`. They aren't
+  in CI and aren't `npm`-discoverable, but they're real operator tools
+  for debugging the Docker-Compose CDC stack; this section just makes
+  them discoverable.
 - Renumbered the trailing top-level CSS files so the source has clean
   sequential numbering after the orphan purge:
   `38-version-status.css` → `07-version-status.css`,
