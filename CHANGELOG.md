@@ -100,6 +100,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a "Historical document" banner to `docs/PRD-SITE-REVAMP.md`
   flagging that the `ai/` subsystem it describes was retired in Month 0
   and that `CLAUDE.md` is now the authoritative project context.
+- Deleted `src/static/sitemap.xml` — a 9-line stale sitemap from before
+  the path-prefix system landed. It still claimed
+  `https://letstalkcdc.github.io/index.html` (wrong host, wrong URL
+  shape). Eleventy's dynamic `src/sitemap.11ty.cjs` was already
+  overwriting it at `_site/sitemap.xml`, so production output is
+  unchanged.
+- Corrected stale `.cjs` references in `.github/copilot-instructions.md`:
+  every `src/_data/*.cjs` mention is now `.mjs` to match the actual
+  files (`appwrite`, `series`, `site`). Fixed the project-overview
+  sentence that claimed Appwrite "is optionally used only for storing
+  assistant feedback" — `cloud-progress.js` actually uses the
+  `progress` and `events` Appwrite collections too when a user is
+  signed in, and the doc now lists all three collections from
+  `appwrite.collections.json`. The earlier "These have been removed"
+  note about `progress`/`events` was wrong and is gone.
+- Added an `npm run seed:discussions` script (wraps the existing
+  `scripts/seed-discussions.mjs`) so the GitHub-Discussions seeder is
+  discoverable from `npm run`. Updated `README.md` to use the npm
+  alias instead of the raw `node scripts/...` invocation.
 - Documented the unwired-but-working sandbox debug scripts
   (`scripts/verify.sh`, `scripts/test_stack.sh`, `scripts/test_connector.sh`,
   `scripts/test_events.sh`, `scripts/test_chaos_smoke.sh`) in a new

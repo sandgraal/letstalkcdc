@@ -137,7 +137,7 @@ npm run smoke:a11y       # Accessibility tests (requires Chromium)
 npm run smoke:perf       # Performance budget checks
 
 # Community Management
-node scripts/seed-discussions.mjs  # Seed GitHub Discussions with starter threads
+GITHUB_TOKEN=ghp_xxx npm run seed:discussions  # Seed GitHub Discussions with starter threads
 
 # Deployment
 npm run verify:deployment # Verify production deployment
