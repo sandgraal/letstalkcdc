@@ -214,7 +214,7 @@ Check these files for real examples:
 ### Files
 
 - **Component**: `src/_includes/components/video-embed.njk`
-- **Styles**: `src/assets/css/39-video-embed.css`
+- **Styles**: `src/assets/css/08-video-embed.css`
 - **JavaScript**: `src/assets/js/video-embed.js`
 
 ### Browser Support

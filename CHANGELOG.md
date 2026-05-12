@@ -37,6 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that actually exist.
 - Cleaned up `.github/copilot-instructions.md` and `.chatgpt-context.yml` so
   they no longer point at removed paths.
+- Renumbered the trailing top-level CSS files so the source has clean
+  sequential numbering after the orphan purge:
+  `38-version-status.css` → `07-version-status.css`,
+  `39-video-embed.css` → `08-video-embed.css`,
+  `40-mobile-responsive.css` → `09-mobile-responsive.css`. `main.css`
+  imports and `docs/video-embeds.md` updated; production output is still
+  byte-identical (SHA256 `4843ff26…`).
+- Removed retired-`ai/` paths from `.gitignore` (the subsystem is gone, so
+  the ignore globs were dangling).
+- Deleted the broken duplicate `test-appwrite-connection.js` (it used
+  `require()` in an ESM-typed package and crashed on every invocation).
+  Kept the working `test-appwrite.cjs`, and corrected three stale
+  `test-appwrite.mjs` references in `docs/SETUP.md`.
 
 ### Removed (CSS dead-code purge)
 

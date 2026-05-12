@@ -187,7 +187,7 @@ COL_ASSISTANT_ID=assistant_feedback
 
 ```bash
 # Test Appwrite connection (optional helper)
-node test-appwrite.mjs
+node test-appwrite.cjs
 
 # Start dev server
 npm run dev
@@ -342,7 +342,7 @@ npm run smoke:perf   # Performance budget checks
 
 ```bash
 # Test Appwrite connection and collection setup
-node test-appwrite.mjs
+node test-appwrite.cjs
 ```
 
 Should output:
@@ -426,7 +426,7 @@ The site follows a **layered architecture**:
 
 **Tracing not working**: Ensure AI Toolkit is running and tracing viewer is open
 
-**Appwrite connection fails**: Run `node test-appwrite.mjs` to diagnose
+**Appwrite connection fails**: Run `node test-appwrite.cjs` to diagnose
 
 **Progress not updating**: Ensure `localStorage` is enabled and not cleared automatically
 
