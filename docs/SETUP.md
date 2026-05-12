@@ -259,7 +259,7 @@ The site automatically converts YAML → JSON during build.
 #### Documentation
 
 - **Collection schema**: See section 2 above for collection setup details
-- **Contributing guide**: [AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)
+- **Contributing guide**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 
@@ -414,7 +414,7 @@ The site follows a **layered architecture**:
 - **Hosting** — [docs/HOSTING.md](HOSTING.md)
 - **Tracing** — [docs/TRACING.md](TRACING.md)
 - **Adding modules** — [docs/adding-modules.md](adding-modules.md)
-- **Contributing** — [AI-CONTRIBUTING.md](../AI-CONTRIBUTING.md)
+- **Contributing** — [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Architecture** — [.github/copilot-instructions.md](../.github/copilot-instructions.md)
 - **Archived docs** — [docs/archive/](archive/) (historical reference)
 

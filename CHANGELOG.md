@@ -62,6 +62,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CSS / JS entry paths, npm command map, and commit / branch conventions.
 - Added `.github/CODEOWNERS` to `.prettierignore` (prettier can't parse it)
   and dropped the deleted `theme-playground` entry.
+- Dropped unused devDependencies `postcss-prefix-selector` (only used by
+  the retired `build-dark-theme.mjs`) and `serve` (the `npm run serve`
+  script uses `eleventy --serve`, not the `serve` package). `npm ci`
+  installs 685 fewer transitive packages.
+- Cleaned up `README.md` repo-tree diagram: removed the dangling
+  `src/assets/css/styles.css` line, added entries for `dist/`,
+  `vite.config.mjs`, and the new `CLAUDE.md`.
+- Rewrote `docs/README.md` (the docs index): removed 10+ broken links
+  pointing at non-existent files
+  (`APPWRITE_QUICKSTART.md`, `TRACING-QUICKSTART.md`,
+  `TRACING-BUNDLING.md`, `assistant-feedback-setup.md`,
+  `auth-setup.md`, etc.), dropped the retired-AI `AI-CONTRIBUTING.md`
+  link, and pointed agents at `CLAUDE.md` as the entry point.
+- Redirected two `AI-CONTRIBUTING.md` references in `docs/SETUP.md` to
+  the current `docs/CONTRIBUTING.md`.
+- Added a "Historical document" banner to `docs/PRD-SITE-REVAMP.md`
+  flagging that the `ai/` subsystem it describes was retired in Month 0
+  and that `CLAUDE.md` is now the authoritative project context.
 - Renumbered the trailing top-level CSS files so the source has clean
   sequential numbering after the orphan purge:
   `38-version-status.css` → `07-version-status.css`,
