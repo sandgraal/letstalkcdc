@@ -413,7 +413,7 @@ const CDCProgress = {
     return Promise.resolve(false);
   },
   signOut: () => {
-    console.info("CDCProgress: OAuth sign-out has been removed.");
+    console.log("CDCProgress: OAuth sign-out has been removed.");
     return Promise.resolve(false);
   },
   onStepChange: onStepChangeInternal,
