@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CLAUDE.md` at repo root — single source of truth for AI agents (commands,
+  architecture, conventions, anti-patterns, the CSS byte-identity check).
+  `AGENTS.md` symlinked to it so Codex / cross-tool agentic systems pick up
+  the same doc.
+- `.claude/settings.json` — permission allowlist covering safe read/verify
+  commands (git status/diff/log, npm test, npm run build, prettier --check,
+  eslint, vitest, shell utils), plus a SessionStart hook that runs `npm ci`
+  if `node_modules/` is absent so fresh checkouts work out of the box.
+- `.claude/commands/css-byte-check.md` — codifies the production-CSS hash
+  verification pattern used across the Month-0 CSS refactors.
+- `.github/CODEOWNERS` — formalizes review ownership for the agent context
+  surfaces (`CLAUDE.md`, `.claude/`, `.chatgpt-context.yml`,
+  `copilot-instructions.md`), CI/build configs, and `main.css`.
 - `src/_data/author.mjs` — single source of truth for author identity
   (used by the base layout, JSON-LD, and future RSS / advisory surfaces).
 - `datePublished` and `dateModified` front-matter on every module's
@@ -37,6 +50,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that actually exist.
 - Cleaned up `.github/copilot-instructions.md` and `.chatgpt-context.yml` so
   they no longer point at removed paths.
+- Corrected stale facts throughout `.github/copilot-instructions.md`:
+  Eleventy 2.x → 3.1.x, `eleventy.config.cjs` → `.mjs`, `lib/path-prefix.cjs`
+  → `.mjs`, removed the dead CSS pipeline description (styles.css / CSSO),
+  refreshed the dependency list (csso gone, vite/vitest/playwright in), and
+  pruned doc links to files that don't exist
+  (`TRACING-QUICKSTART.md`, `APPWRITE_QUICKSTART.md`,
+  `assistant-feedback-setup.md`).
+- Expanded `.chatgpt-context.yml` with the current stack (Eleventy 3.1.x,
+  Vite 7, postcss + cssnano + autoprefixer, vitest, playwright, pa11y-ci),
+  CSS / JS entry paths, npm command map, and commit / branch conventions.
+- Added `.github/CODEOWNERS` to `.prettierignore` (prettier can't parse it)
+  and dropped the deleted `theme-playground` entry.
 - Renumbered the trailing top-level CSS files so the source has clean
   sequential numbering after the orphan purge:
   `38-version-status.css` → `07-version-status.css`,

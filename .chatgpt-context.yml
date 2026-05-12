@@ -1,14 +1,34 @@
 project_name: "Let's Talk CDC"
-repo_url: https://github.com/letstalkcdc/letstalkcdc
+repo_url: https://github.com/sandgraal/letstalkcdc
+production_url: https://sandgraal.github.io/letstalkcdc/
 stack:
-  ssg: eleventy
+  ssg: eleventy@3.1.x
+  bundler: vite@7
+  css: postcss + cssnano + autoprefixer
+  tests: vitest + playwright + pa11y-ci
   node: ">=20"
+entry_doc_for_agents: CLAUDE.md
 directories:
   source: src
   data: src/_data
   layouts: src/_includes/layouts
+  components: src/_includes/components
   assets: src/assets
+  css_entry: src/assets/css/main.css
+  js_entry: src/assets/js/app.js
   output: _site
+  vite_dist: dist
+build:
+  install: npm ci
+  dev: npm run dev
+  prod: npm run build
+  test: npm test
+  lint: npm run lint
+  format_check: npm run format:check
 constraints:
-  privacy: "no external API calls unless configured"
-  publishing: "only dedicated workflows can deploy"
+  privacy: no external API calls unless configured via env vars
+  publishing: only .github/workflows/deploy.yml deploys to GitHub Pages
+  path_prefix: site lives at /letstalkcdc/; use the | url Nunjucks filter
+  css_pipeline: main.css is the sole production CSS entry; do not edit styles.min.css or _site/
+commit_convention: Conventional Commits (feat:, fix:, chore:, docs:, refactor:, test:, ci:)
+branch_convention: claude/<topic>-<id> for AI sessions; PRs into main
