@@ -4,11 +4,18 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DATE=$(date +%Y-%m-%d)
 HANDOFF_MD="$ROOT_DIR/Handoff.md"
 LOG_JSON="$ROOT_DIR/handoff-log.json"
+# Export ROOT_DIR / DATE so the Python heredoc subprocess can read them.
+# Without this, os.environ.get("ROOT_DIR") returned None and the script
+# crashed in os.path.join. Bash locals are NOT inherited unless exported.
+export ROOT_DIR DATE
 echo "🌙 Nightly sync for $DATE"
 python3 - <<'PY'
-import json, re, os
-root = os.environ.get("ROOT_DIR")
-date = os.environ.get("DATE")
+import json, re, os, sys
+try:
+    root = os.environ["ROOT_DIR"]
+    date = os.environ["DATE"]
+except KeyError as missing:
+    sys.exit(f"nightly-sync: required env var {missing} is not set")
 md_path = os.path.join(root, "Handoff.md")
 json_path = os.path.join(root, "handoff-log.json")
 with open(md_path, "r", encoding="utf-8") as f:
