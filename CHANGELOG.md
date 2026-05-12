@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   if `node_modules/` is absent so fresh checkouts work out of the box.
 - `.claude/commands/css-byte-check.md` — codifies the production-CSS hash
   verification pattern used across the Month-0 CSS refactors.
+- `.claude/commands/verify-all.md` — `/verify-all` runs the standard
+  pre-PR chain (`format:check + lint + test + build`). Replaces the
+  copy-paste sequence agents kept reinventing.
+- `.claude/agents/css-refactor.md` — specialised subagent for any
+  change under `src/assets/css/`. Enforces the byte-identity check
+  workflow (capture hash → change → re-hash → revert or update
+  baseline) and the CSS anti-pattern list. Invoke via the Agent tool.
+- `docs/IMPLEMENTATION-PLAN.md` — phased checklist of the active
+  revitalization work. Agents flip `- [ ]` to `- [x]` in the same
+  commit that closes the task; the plan is the durable record of what
+  shipped. Linked from `CLAUDE.md` and `docs/README.md`.
 - `.github/CODEOWNERS` — formalizes review ownership for the agent context
   surfaces (`CLAUDE.md`, `.claude/`, `.chatgpt-context.yml`,
   `copilot-instructions.md`), CI/build configs, and `main.css`.
@@ -41,6 +52,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as `2.0.0` in February 2026.
 - Dropped `agent:analytics`, `agent:package`, and `agent:content-review` npm
   scripts.
+- Deleted `src/assets/js/tracing.js` (278-line full-OpenTelemetry SDK
+  implementation that's been unwired since 2.0.0 — nothing imports it).
+  Production tracing has always been handled by the dependency-free
+  `tracing-lite.js`. Removed the nine `@opentelemetry/*` devDependencies
+  it was the sole consumer of (`api`, `exporter-trace-otlp-http`,
+  `instrumentation-document-load`, `instrumentation-fetch`,
+  `instrumentation-user-interaction`,
+  `instrumentation-xml-http-request`, `resources`, `sdk-trace-web`,
+  `semantic-conventions`). Trimmed `docs/TRACING.md` to match.
+- Cleared the three remaining ESLint warnings: deleted the unused
+  `parseJsonArray` helper in `eleventy.config.mjs`, and switched two
+  `console.info(...)` calls (`scripts/progress.js`,
+  `src/js/appwrite-config.js`) to `console.log(...)`, which the
+  eslint config explicitly allows.
+- Deleted `scripts/test-auth-modules.mjs`. It was an unwired post-build
+  smoke check from the pre-Vite era — its substring check for
+  `auth-ui.js` in the rendered HTML no longer matched after Vite started
+  hashing bundles (`auth-ui.DzcSTLaD.js`), and the script crashed every
+  run. Auth module presence is still exercised by the regular smoke
+  pipeline + the Vite manifest resolution in `eleventy.config.mjs`.
 
 ### Changed
 
@@ -80,6 +111,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a "Historical document" banner to `docs/PRD-SITE-REVAMP.md`
   flagging that the `ai/` subsystem it describes was retired in Month 0
   and that `CLAUDE.md` is now the authoritative project context.
+- Deleted `src/static/sitemap.xml` — a 9-line stale sitemap from before
+  the path-prefix system landed. It still claimed
+  `https://letstalkcdc.github.io/index.html` (wrong host, wrong URL
+  shape). Eleventy's dynamic `src/sitemap.11ty.cjs` was already
+  overwriting it at `_site/sitemap.xml`, so production output is
+  unchanged.
+- Corrected stale `.cjs` references in `.github/copilot-instructions.md`:
+  every `src/_data/*.cjs` mention is now `.mjs` to match the actual
+  files (`appwrite`, `series`, `site`). Fixed the project-overview
+  sentence that claimed Appwrite "is optionally used only for storing
+  assistant feedback" — `cloud-progress.js` actually uses the
+  `progress` and `events` Appwrite collections too when a user is
+  signed in, and the doc now lists all three collections from
+  `appwrite.collections.json`. The earlier "These have been removed"
+  note about `progress`/`events` was wrong and is gone.
+- Added an `npm run seed:discussions` script (wraps the existing
+  `scripts/seed-discussions.mjs`) so the GitHub-Discussions seeder is
+  discoverable from `npm run`. Updated `README.md` to use the npm
+  alias instead of the raw `node scripts/...` invocation.
+- Documented the unwired-but-working sandbox debug scripts
+  (`scripts/verify.sh`, `scripts/test_stack.sh`, `scripts/test_connector.sh`,
+  `scripts/test_events.sh`, `scripts/test_chaos_smoke.sh`) in a new
+  "Verifying the Stack" subsection of `docs/SANDBOX.md`. They aren't
+  in CI and aren't `npm`-discoverable, but they're real operator tools
+  for debugging the Docker-Compose CDC stack; this section just makes
+  them discoverable.
 - Renumbered the trailing top-level CSS files so the source has clean
   sequential numbering after the orphan purge:
   `38-version-status.css` → `07-version-status.css`,

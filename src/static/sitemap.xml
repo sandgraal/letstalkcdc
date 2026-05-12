@@ -1,9 +1,0 @@
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://letstalkcdc.github.io/</loc></url>
-  <url><loc>https://letstalkcdc.github.io/index.html</loc></url>
-  <url><loc>https://letstalkcdc.github.io/overview.html</loc></url>
-  <url><loc>https://letstalkcdc.github.io/intro.html</loc></url>
-  <url><loc>https://letstalkcdc.github.io/exactly-once.html</loc></url>
-  <url><loc>https://letstalkcdc.github.io/multi-tenancy.html</loc></url>
-  <url><loc>https://letstalkcdc.github.io/lab-kafka-debezium.html</loc></url>
-</urlset>

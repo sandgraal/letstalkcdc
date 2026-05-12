@@ -126,7 +126,12 @@ The site uses **`tracing-lite.js`** — a custom, dependency-free implementation
 ✅ **OTLP-compatible** — Sends standard OpenTelemetry protocol traces  
 ✅ **Progressive enhancement** — Site works even if tracing fails
 
-> **Note**: A full OpenTelemetry implementation exists in `tracing.js` but requires bundling. The lite version is used for simplicity and browser compatibility.
+> **Note**: The site uses a custom, dependency-free OTLP-compatible
+> tracer rather than the full `@opentelemetry/*` SDKs. The SDK-based
+> implementation was removed in the Month-0 cleanup after sitting unused
+> since 2.0.0. If you ever need full SDK features (e.g. richer
+> instrumentations), reintroduce the dependencies and write a fresh
+> implementation against the current `tracing-lite.js` API surface.
 
 ### Components
 
@@ -317,16 +322,6 @@ The tracing is automatically initialized when `app.js` loads. No additional setu
 - Creates no-op tracer if initialization fails
 - Tracks module views, progress, interactions, searches
 
-### Alternative: Full OpenTelemetry SDK
-
-A full OpenTelemetry Web SDK implementation exists in `src/assets/js/tracing.js` but is **not currently used** because it requires:
-
-- ❌ Bundler (webpack/rollup/esbuild) to work in browsers
-- ❌ Build step to bundle npm dependencies
-- ❌ Additional complexity for deployment
-
-The lite version provides equivalent functionality without these requirements.
-
 ### Error Handling
 
 The tracing implementation includes graceful error handling:
@@ -337,13 +332,8 @@ The tracing implementation includes graceful error handling:
 
 ### Debugging
 
-Enable debug logging in browser console:
-
-```javascript
-localStorage.debug = "@opentelemetry/*";
-```
-
-Then reload the page to see detailed OpenTelemetry logs.
+The lite tracer logs failures via `console.debug`, which is hidden by
+default in DevTools. Enable "Verbose"-level logs to see them.
 
 ## Production Considerations
 
@@ -379,21 +369,8 @@ const exporter = new OTLPTraceExporter({
 
 ## Dependencies
 
-OpenTelemetry packages installed:
-
-```json
-{
-  "@opentelemetry/api": "^1.9.0",
-  "@opentelemetry/sdk-trace-web": "^2.2.0",
-  "@opentelemetry/instrumentation-document-load": "^0.53.0",
-  "@opentelemetry/instrumentation-user-interaction": "^0.52.0",
-  "@opentelemetry/instrumentation-xml-http-request": "^0.207.0",
-  "@opentelemetry/instrumentation-fetch": "^0.207.0",
-  "@opentelemetry/exporter-trace-otlp-http": "^0.207.0",
-  "@opentelemetry/resources": "^2.0.0",
-  "@opentelemetry/semantic-conventions": "^1.27.0"
-}
-```
+None — `tracing-lite.js` is a dependency-free implementation that emits
+OTLP-formatted JSON via the Fetch API.
 
 ## Troubleshooting
 

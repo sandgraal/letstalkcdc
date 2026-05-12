@@ -7,6 +7,17 @@ For AI agents: start at **[../CLAUDE.md](../CLAUDE.md)** at the repo root.
 It is the canonical quick-reference and is kept in sync with the build
 pipeline; this index links the deeper docs.
 
+The running checklist for in-flight work is
+**[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)**.
+
+---
+
+## 🗺️ Active Work
+
+- **[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)** — Phased
+  checklist for the revitalization work. Agents flip `- [ ]` to `- [x]`
+  in the same commit that closes the task.
+
 ---
 
 ## 🚀 Setup & Configuration

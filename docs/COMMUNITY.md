@@ -53,9 +53,11 @@ To kickstart community engagement, use the automated seeding script or manually 
 Use the `seed-discussions.mjs` script to automatically create all starter threads:
 
 ```bash
-# Generate a GitHub token with 'repo' and 'discussion' permissions
-# Then run:
-GITHUB_TOKEN=ghp_your_token_here node scripts/seed-discussions.mjs
+# Generate a GitHub token with 'repo' and 'discussion' permissions.
+# Pass it via your shell environment (or `gh auth token`) — don't
+# inline real PATs in command lines.
+export GITHUB_TOKEN="$(gh auth token)"
+npm run seed:discussions
 ```
 
 The script will:

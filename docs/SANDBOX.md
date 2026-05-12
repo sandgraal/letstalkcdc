@@ -216,6 +216,34 @@ curl -X PUT http://localhost:8083/connectors/postgres-inventory-connector/resume
 curl -X DELETE http://localhost:8083/connectors/postgres-inventory-connector
 ```
 
+### Verifying the Stack
+
+Repo-local shell scripts under `scripts/` exercise the sandbox end-to-end.
+They assume the compose stack is already up and the connectors are
+registered (Steps 1–3 above).
+
+```bash
+# Verify the whole lab stack — containers + Kafka + Connect + jq smoke
+# checks. Requires docker, docker compose v2, kafka-topics, curl, jq.
+./scripts/verify.sh
+
+# Lighter "is the stack alive?" check — just container state and the
+# Kafka Connect REST API.
+./scripts/test_stack.sh
+
+# Verify a registered connector is healthy.
+./scripts/test_connector.sh
+
+# Confirm change events are landing in the expected topic.
+./scripts/test_events.sh
+
+# Chaos smoke: restart a connector and confirm offsets advance after.
+./scripts/test_chaos_smoke.sh
+```
+
+These are operator tools, not part of the npm test suite, and are not
+wired into CI. Run them by hand when debugging the sandbox.
+
 ## Database Schemas
 
 Both databases have identical schemas for comparison:

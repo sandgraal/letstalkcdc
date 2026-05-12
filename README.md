@@ -137,7 +137,9 @@ npm run smoke:a11y       # Accessibility tests (requires Chromium)
 npm run smoke:perf       # Performance budget checks
 
 # Community Management
-node scripts/seed-discussions.mjs  # Seed GitHub Discussions with starter threads
+# Provide a token via your shell (or `gh auth token`) — don't paste
+# real PATs into the command line. See docs/DISCUSSIONS_SEED.md.
+GITHUB_TOKEN="$(gh auth token)" npm run seed:discussions
 
 # Deployment
 npm run verify:deployment # Verify production deployment

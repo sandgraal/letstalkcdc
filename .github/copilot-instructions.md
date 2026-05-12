@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used only for storing assistant feedback.
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used for assistant feedback and cross-device progress sync (anonymous visitors stay on localStorage-based progress).
 
 ### Key Architecture Decisions
 
@@ -70,7 +70,7 @@ ai-generated: true # Required for AI agent outputs
 
 - **Kebab-case**: `quickstart-mysql.html.njk` → `/quickstart-mysql/`
 - **Section directories**: Content lives in `src/<topic>/` (e.g., `src/quickstarts/`)
-- **Data files**: Global data in `src/_data/*.cjs` (exported modules, not JSON)
+- **Data files**: Global data in `src/_data/*.mjs` (exported modules, not JSON)
 - **Layouts**: Base template is `src/_includes/layouts/base.njk`
 
 ### Dynamic Pages (.11ty.cjs)
@@ -84,7 +84,7 @@ Files like `search-index.11ty.cjs` and `sitemap.11ty.cjs` export classes with:
 
 ## Data Model
 
-### Series Data (`src/_data/series.cjs`)
+### Series Data (`src/_data/series.mjs`)
 
 The series/modules are defined as an array of objects with the following structure:
 
@@ -113,7 +113,7 @@ The series/modules are defined as an array of objects with the following structu
 - Filtered by `seriesKey` to show current module context
 - Used by `series-nav.njk` component for prev/next navigation
 
-### Site Data (`src/_data/site.cjs`)
+### Site Data (`src/_data/site.mjs`)
 
 Global site configuration derived from environment variables:
 
@@ -127,7 +127,7 @@ Global site configuration derived from environment variables:
 }
 ```
 
-### Appwrite Data (`src/_data/appwrite.cjs`)
+### Appwrite Data (`src/_data/appwrite.mjs`)
 
 Optional configuration for assistant feedback collection:
 
@@ -149,7 +149,7 @@ Provides prev/next navigation and progress tracking UI.
 **Required variables**:
 
 - `seriesKey`: Current module identifier (e.g., `'intro'`, `'snapshotting'`)
-- `series`: Array from `src/_data/series.cjs`
+- `series`: Array from `src/_data/series.mjs`
 
 **Generated elements**:
 
@@ -178,27 +178,36 @@ Shared UI components (buttons, cards, badges) used across the site.
 
 ## Appwrite Integration (Optional)
 
-Assistant feedback collection uses **Appwrite** (headless database) via:
+Appwrite is the optional headless backend for two features:
 
-- **Config**: `src/_data/appwrite.cjs` reads env vars (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, etc.)
-- **Collections**: `assistant_feedback` collection defined in `appwrite.collections.json`
+- **Config**: `src/_data/appwrite.mjs` reads env vars
+  (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, `APPWRITE_DB_ID`,
+  `COL_ASSISTANT_ID`).
+- **Collections** defined in `appwrite.collections.json`:
+  - `assistant_feedback` — 👍/👎 ratings on AI-assistant responses.
+  - `progress` — per-user module-completion snapshots, synced by
+    `src/assets/js/cloud-progress.js` when the user is signed in.
+  - `events` — auth-gated activity events written alongside progress
+    syncs.
 
 ### When Appwrite is Needed
 
 **Use Appwrite when**:
 
 - Collecting assistant feedback (👍/👎 ratings on AI assistant responses)
+- Syncing per-user progress across devices for signed-in users
 - Storing user questions and intents for analytics
-- Analyzing assistant effectiveness and improving knowledge base
 
 **Site works WITHOUT Appwrite**:
 
 - All educational content renders correctly
 - Navigation functions normally
 - Static search works via `search-index.json`
-- Progress tracking works via browser localStorage
+- Progress tracking falls back to browser localStorage
+  (`src/assets/js/local-progress.js`); cloud sync is a strict
+  progressive enhancement layered on top.
 - Assistant works with local-only feedback storage
-- Only loses: centralized assistant feedback analytics
+- Only loses: centralized analytics and cross-device progress sync
 
 ### Collection Schema
 
@@ -216,7 +225,10 @@ Assistant feedback collection uses **Appwrite** (headless database) via:
 - Indexed by: `ts` (descending) for recent feedback queries
 - Permissions: Anonymous users can create documents; admins can read/update/delete
 
-**Note**: The site previously used `progress` and `events` collections for user progress tracking and authentication. These have been removed as progress tracking is now entirely browser-based using localStorage.
+The `progress` and `events` collections are likewise defined in
+`appwrite.collections.json`. They're written by `cloud-progress.js`
+only when the visitor is signed in; anonymous visitors stay on
+localStorage-based progress.
 
 ## Common Patterns
 
