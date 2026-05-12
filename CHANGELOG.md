@@ -41,6 +41,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as `2.0.0` in February 2026.
 - Dropped `agent:analytics`, `agent:package`, and `agent:content-review` npm
   scripts.
+- Deleted `src/assets/js/tracing.js` (278-line full-OpenTelemetry SDK
+  implementation that's been unwired since 2.0.0 — nothing imports it).
+  Production tracing has always been handled by the dependency-free
+  `tracing-lite.js`. Removed the nine `@opentelemetry/*` devDependencies
+  it was the sole consumer of (`api`, `exporter-trace-otlp-http`,
+  `instrumentation-document-load`, `instrumentation-fetch`,
+  `instrumentation-user-interaction`,
+  `instrumentation-xml-http-request`, `resources`, `sdk-trace-web`,
+  `semantic-conventions`). Trimmed `docs/TRACING.md` to match.
+- Cleared the three remaining ESLint warnings: deleted the unused
+  `parseJsonArray` helper in `eleventy.config.mjs`, and switched two
+  `console.info(...)` calls (`scripts/progress.js`,
+  `src/js/appwrite-config.js`) to `console.log(...)`, which the
+  eslint config explicitly allows.
 
 ### Changed
 
