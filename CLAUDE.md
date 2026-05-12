@@ -197,6 +197,30 @@ under explicit opt-in).
 - ❌ `npm install` in CI — use `npm ci` to honor the lockfile.
 - ❌ Skipping `npm run format` / `eslint` before pushing; CI will reject.
 
+## The running task list
+
+**[`docs/IMPLEMENTATION-PLAN.md`](docs/IMPLEMENTATION-PLAN.md)** is the
+authoritative checklist for the revitalization work. When you pick up a
+task:
+
+1. Find it in the plan.
+2. Do the work.
+3. Flip `- [ ]` to `- [x]` **in the same commit that closes it**.
+
+New work that doesn't fit any existing phase: add it to the lowest
+phase it logically belongs to, or append a new `## Phase N` heading.
+
+## Slash commands and subagents
+
+- [`/verify-all`](.claude/commands/verify-all.md) — run
+  `format:check + lint + test + build`. The minimum bar before pushing.
+- [`/css-byte-check`](.claude/commands/css-byte-check.md) — verify the
+  production CSS bundle is byte-identical to the `main`-branch
+  baseline. Use any time you touch `src/assets/css/`.
+- **`css-refactor` subagent** (`.claude/agents/css-refactor.md`) —
+  spawn it via the Agent tool for any CSS change. It enforces the
+  byte-identity workflow and the anti-pattern list automatically.
+
 ## Where to read more
 
 - `docs/CONTRIBUTING.md` — human-contributor workflow

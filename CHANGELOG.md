@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   if `node_modules/` is absent so fresh checkouts work out of the box.
 - `.claude/commands/css-byte-check.md` — codifies the production-CSS hash
   verification pattern used across the Month-0 CSS refactors.
+- `.claude/commands/verify-all.md` — `/verify-all` runs the standard
+  pre-PR chain (`format:check + lint + test + build`). Replaces the
+  copy-paste sequence agents kept reinventing.
+- `.claude/agents/css-refactor.md` — specialised subagent for any
+  change under `src/assets/css/`. Enforces the byte-identity check
+  workflow (capture hash → change → re-hash → revert or update
+  baseline) and the CSS anti-pattern list. Invoke via the Agent tool.
+- `docs/IMPLEMENTATION-PLAN.md` — phased checklist of the active
+  revitalization work. Agents flip `- [ ]` to `- [x]` in the same
+  commit that closes the task; the plan is the durable record of what
+  shipped. Linked from `CLAUDE.md` and `docs/README.md`.
 - `.github/CODEOWNERS` — formalizes review ownership for the agent context
   surfaces (`CLAUDE.md`, `.claude/`, `.chatgpt-context.yml`,
   `copilot-instructions.md`), CI/build configs, and `main.css`.
