@@ -5,9 +5,11 @@ This guide explains how to populate GitHub Discussions with starter threads to k
 ## Quick Start
 
 ```bash
-# Generate a GitHub personal access token with 'repo' and 'discussion' scopes
-# Then run:
-GITHUB_TOKEN=ghp_your_token_here node scripts/seed-discussions.mjs
+# Generate a GitHub personal access token with 'repo' and 'discussion'
+# scopes. Pass it via your shell or `gh auth token` — don't paste real
+# PATs into command lines or commit history.
+export GITHUB_TOKEN="$(gh auth token)"   # or set it however you prefer
+npm run seed:discussions
 ```
 
 ## What Gets Created
@@ -63,16 +65,18 @@ The script uses fuzzy matching, so category names don't need to be exact.
 ### Standard Usage
 
 ```bash
-GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs
+# Pass the token via your shell environment, not on the command line:
+export GITHUB_TOKEN="$(gh auth token)"
+npm run seed:discussions
 ```
 
 ### Custom Repository
 
 ```bash
+export GITHUB_TOKEN="$(gh auth token)"
 GITHUB_REPOSITORY_OWNER=myorg \
 GITHUB_REPOSITORY_NAME=myrepo \
-GITHUB_TOKEN=ghp_xxx \
-node scripts/seed-discussions.mjs
+  npm run seed:discussions
 ```
 
 ## Script Behavior

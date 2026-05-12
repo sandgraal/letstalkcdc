@@ -10,8 +10,9 @@
  * - GITHUB_TOKEN environment variable with repo and discussion permissions
  * - Repository categories must be created (Show and Tell, Q&A, etc.)
  *
- * Usage:
- *   GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs
+ * Usage (pass the token via the environment, not the command line):
+ *   export GITHUB_TOKEN="$(gh auth token)"
+ *   npm run seed:discussions
  */
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -360,7 +361,8 @@ async function main() {
   if (!GITHUB_TOKEN) {
     console.error("❌ Error: GITHUB_TOKEN environment variable is required");
     console.error("\nUsage:");
-    console.error("  GITHUB_TOKEN=ghp_xxx node scripts/seed-discussions.mjs\n");
+    console.error('  export GITHUB_TOKEN="$(gh auth token)"');
+    console.error("  npm run seed:discussions\n");
     console.error('The token needs "repo" and "discussion" permissions.\n');
     process.exit(1);
   }
