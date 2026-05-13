@@ -6,14 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- `docs/javascript-architecture.md` no longer lists the deleted
-  `tracing.js` (removed in the OpenTelemetry-deps purge) and replaces
-  the hardcoded "Total: 238 tests, 90.5% coverage" sentence with a
-  pointer to `npm test`'s footer. Test count was 268 as of this pass;
-  it will drift again, so the doc no longer asserts a specific number.
-
 ### Changed
 
 - `.lighthouserc.json` re-introduces the error-level
@@ -21,10 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `assertMatrix`. Backed by 3 consecutive local LHCI runs that all
   scored 1.0 — the earlier CI failure on PR #265 must have been a
   cold-start blip on the GitHub-Actions runner. Threshold stays at
-  `minScore: 0.9`.
+  `minScore: 0.9`. **Note:** LHCI throws
+  `Cannot use assertMatrix with other options` if `assertMatrix` is
+  used alongside top-level `assertions`, so the global warn-level
+  category checks now live as a `matchingUrlPattern: ".*"` entry in
+  the same matrix.
 
 ### Fixed
 
+- `docs/javascript-architecture.md` no longer lists the deleted
+  `tracing.js` (removed in the OpenTelemetry-deps purge). The
+  hardcoded "Total: 238 tests, 90.5% coverage" sentence now points
+  readers at `npm test`'s footer to discover the current count.
 - **Vendor doc URL drift (3 citations).** Three upstream docs URLs that
   `.lycheeignore` had been suppressing 404s for are now updated to
   their current canonical locations and re-enabled in the link-check:

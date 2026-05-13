@@ -154,11 +154,9 @@ tests/unit/modules/
 ```
 
 The list above is illustrative — counts drift as suites are added.
-For the current total, run `npm test` and read the footer line. As of
-May 2026 the suite was at **268 tests** across 14 files (added
-`tests/unit/lib/path-prefix.test.js` and
-`tests/unit/lib/render-head-extra.test.js` since this doc was first
-written).
+For the current total, run `npm test` and read the summary footer.
+There's also coverage under `tests/unit/lib/` for repo-level helpers
+(`path-prefix.mjs`, `render-head-extra.mjs`).
 
 Run tests:
 
