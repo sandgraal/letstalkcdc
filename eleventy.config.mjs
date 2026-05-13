@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getPathPrefix } from "./lib/path-prefix.mjs";
+import { renderHeadExtra } from "./lib/render-head-extra.mjs";
 
 // ---------------------------------------------------------------------------
 // Vite manifest helpers — resolve hashed asset paths in production builds.
@@ -289,27 +290,16 @@ export default function (eleventyConfig) {
 
   // ---- Vite asset filters --------------------------------------------------
 
-  /**
-   * Render a `head_extra` string from front-matter through the same template
-   * mini-language the page body uses. Front-matter strings are not re-parsed
-   * by Nunjucks, so e.g. `<link href="{{ '/foo' | url }}">` would emit the
-   * literal text without this filter. Handles the two patterns currently
-   * used in `head_extra` across the site:
-   *   {{ '/some/path' | url }}    → pathPrefix + path
-   *   {{ site.host }}             → site.host
-   * Unknown expressions pass through unchanged.
-   */
+  // See `lib/render-head-extra.mjs` for the supported expression set and
+  // the rule about mirroring new substitutions into the unit test.
   eleventyConfig.addNunjucksFilter("renderHeadExtra", function (str) {
-    if (!str) return "";
-    const pp = (getPathPrefix() || "/").replace(/\/$/, "");
     const ctx = (this && this.ctx) || {};
-    const host = (ctx.site && ctx.site.host) || "";
-    return str
-      .replace(
-        /\{\{\s*['"]([^'"]+)['"]\s*\|\s*url\s*\}\}/g,
-        (_, p) => `${pp}${p}`,
-      )
-      .replace(/\{\{\s*site\.host\s*\}\}/g, host);
+    const site = ctx.site || {};
+    return renderHeadExtra(str, {
+      pathPrefix: (getPathPrefix() || "/").replace(/\/$/, ""),
+      host: site.host || "",
+      origin: site.origin || "",
+    });
   });
 
   /**

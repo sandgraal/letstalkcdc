@@ -8,10 +8,24 @@ const normalizeHost = (host) => {
   return host.replace(/\/$/, "");
 };
 
-const defaultHost = "https://letstalkcdc.github.io";
+// Production lives at https://sandgraal.github.io/letstalkcdc/, so this
+// default matches reality. CI / deploy workflows should still set
+// SITE_HOST explicitly (see .github/workflows/deploy.yml,
+// linkcheck.yml); this default is a fallback so canonical / OG / JSON-LD
+// URLs don't ship pointing at a host that doesn't exist.
+const defaultHost = "https://sandgraal.github.io";
 const pathPrefix = getPathPrefix();
 const hostPathPrefix = getPathPrefixForHost(pathPrefix);
-const resolvedHost = normalizeHost(process.env.SITE_HOST) || defaultHost;
+const envHost = normalizeHost(process.env.SITE_HOST);
+
+if (!envHost && process.env.NODE_ENV === "production") {
+  console.warn(
+    `[site] SITE_HOST is unset in a production build; falling back to ${defaultHost}. ` +
+      `Set vars.SITE_HOST in repo Variables (or env) to silence this warning.`,
+  );
+}
+
+const resolvedHost = envHost || defaultHost;
 const hostWithPrefix = hostPathPrefix
   ? `${resolvedHost}${hostPathPrefix}`
   : resolvedHost;

@@ -43,26 +43,21 @@ GitHub-side state and decisions.
 
 ### `defaultHost` in `src/_data/site.mjs`
 
-- [ ] `src/_data/site.mjs:11` hardcodes
-      `const defaultHost = "https://letstalkcdc.github.io"`. Production
-      lives at `https://sandgraal.github.io/letstalkcdc/`. If
-      `process.env.SITE_HOST` is ever unset (or set to a placeholder),
-      every canonical/OG/JSON-LD URL ships pointing at a host that
-      doesn't exist. Decide one of:
-  - Change the default to `https://sandgraal.github.io`.
-  - Add a build-time guard that fails when `SITE_HOST` is missing in
-    `NODE_ENV=production`.
-  - Leave it (if the maintainer plans to register
-    `letstalkcdc.github.io` as a vanity org host).
+- [x] `src/_data/site.mjs` default host changed from
+      `https://letstalkcdc.github.io` to `https://sandgraal.github.io`
+      (matches production). Also added a `console.warn` when
+      `SITE_HOST` is unset under `NODE_ENV=production`, so the
+      fallback isn't silent on deploys.
 
 ### Path-prefix doubling in redirect stubs
 
-- [ ] `.lycheeignore` excludes `^https?://[^/]+/letstalkcdc/letstalkcdc/`
-      with the note "Redirect stubs use `{{ site.host }}{{ '/path/' | url }}`
-      which doubles the path-prefix." Find the offending template(s) —
-      grep for `site.host` + `| url` in close proximity — and fix to use
-      either `site.origin` (host without prefix) or drop the `| url`
-      filter. Remove the `.lycheeignore` entry once fixed.
+- [x] Fixed the `{{ site.host }}{{ '/path/' | url }}` doubling bug
+      across 32 templates (mostly `src/_redirects/*.html.njk` plus a
+      handful of JSON-LD `BreadcrumbList`s in `overview`, `intro`,
+      `exactly-once`, `multi-tenancy`). Switched every offending
+      occurrence to `{{ site.origin }}{{ '/path/' | url }}`. Removed
+      the `^https?://[^/]+/letstalkcdc/letstalkcdc/` entry from
+      `.lycheeignore`.
 
 ### Handoff nightly system
 
@@ -123,27 +118,48 @@ remove the matching regex from `.lycheeignore`.
 
 ### Tracing-lite review
 
-- [ ] `src/assets/js/tracing-lite.js` is imported by `app.js` and posts
-      OTLP-formatted JSON via Fetch. Verify the configured endpoint
-      actually resolves in production — if it doesn't, the tracer
-      silently no-ops and the import is dead weight. Decide:
-  - Wire it to a real collector (and document the endpoint env var
-    handling); or
-  - Remove the import from `app.js` and the entry from
-    `vite.config.mjs`.
+- [ ] **Investigation done; decision still required.** Confirmed:
+      `src/assets/js/tracing-lite.js:9` hardcodes its default endpoint
+      to `http://localhost:4318/v1/traces`, and `getEducationTracer()`
+      (the only entry point, called from `app.js`) instantiates
+      `new EducationTracer()` with no args. So in production every
+      visitor's browser POSTs to _their own_ `localhost:4318`, which
+      always fails (silently swallowed by the `catch` in
+      `_sendTrace`). The tracer is dead weight in prod — ~363 LOC + a
+      failed fetch per tracked event. Decide:
+  - **Wire it up:** read the endpoint from `window.OTLP_TRACING_ENDPOINT`
+    (set by the base layout from a build-time env var), no-op
+    instantiation if unset. Document the endpoint env-var in
+    `docs/TRACING.md`.
+  - **Remove it:** drop the `import { getEducationTracer }` from
+    `src/assets/js/app.js`, the `"tracing-lite"` entry from
+    `vite.config.mjs`'s `rollupOptions.input`, and the file itself.
+    Trim `docs/TRACING.md` to describe the feature as "removed in
+    Month-N, was unused since 2.0.0".
 
 ---
 
 ## Phase 5 — Quality & test polish
 
-- [ ] Add a vitest case for `lib/path-prefix.mjs` covering the
-      `owner.github.io` root-deploy branch (currently only the
-      project-pages path is exercised).
+- [x] Added a vitest suite for `lib/path-prefix.mjs` — 14 cases
+      covering both env-var precedence, the `owner.github.io`
+      root-deploy branch (incl. case-insensitive match), malformed
+      `GITHUB_REPOSITORY` fallback, the `getPathPrefixForHost`
+      trailing-slash strip, and `normalizePathPrefix` edge cases.
+      See `tests/unit/lib/path-prefix.test.js`.
 - [ ] Add a Playwright e2e for the cloud-progress sync flow
       (sign-in → complete a module → reload → progress persists).
       No test currently exercises Appwrite-backed paths.
-- [ ] Add a Lighthouse perf assertion on `/intro/` (the largest
-      user-facing module page) to `.lighthouserc.json`.
+- [ ] Add a Lighthouse perf assertion on `/intro/` at **error** level.
+      The first attempt (raising it to `error` at `minScore: 0.9` via
+      `assertMatrix` in `.lighthouserc.json`) failed the LHCI run on
+      PR #265 — the actual CI perf score on `/intro/` is below 0.9, so
+      the assertion needs either a realistic threshold or genuine perf
+      work first. Walked back to the global warn-level coverage. To
+      close: run LHCI locally against `_site/intro/index.html` to
+      establish the actual baseline, then either tighten the score
+      threshold to match (e.g. `minScore: 0.8`) or fix the perf
+      regression and keep `0.9`.
 
 ---
 
