@@ -61,9 +61,9 @@ The running checklist for in-flight work is
 
 ## 📚 Reference & Historical
 
-- **[PRD-SITE-REVAMP.md](PRD-SITE-REVAMP.md)** — Historical PRD for the
-  2.0.0 site revamp (shipped 2026-02-06). Preserved as architectural
-  context; **not a live spec**.
+- **[archive/PRD-SITE-REVAMP.md](archive/PRD-SITE-REVAMP.md)** —
+  Historical PRD for the 2.0.0 site revamp (shipped 2026-02-06).
+  Preserved as architectural context; **not a live spec**.
 - **[archive/](archive/)** — Older status docs, decision records, and
   pre-revamp guides. Read for context only.
 
