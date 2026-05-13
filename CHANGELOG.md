@@ -6,8 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `.lighthouserc.json` re-introduces the error-level
+  `categories:performance` assertion on `*/intro/index.html` via
+  `assertMatrix`. Backed by 3 consecutive local LHCI runs that all
+  scored 1.0 — the earlier CI failure on PR #265 must have been a
+  cold-start blip on the GitHub-Actions runner. Threshold stays at
+  `minScore: 0.9`. **Note:** LHCI throws
+  `Cannot use assertMatrix with other options` if `assertMatrix` is
+  used alongside top-level `assertions`, so the global warn-level
+  category checks now live as a `matchingUrlPattern: ".*"` entry in
+  the same matrix.
+
 ### Fixed
 
+- **`ci.yml` smoke/a11y jobs hung on `apt install chromium-browser`.**
+  On Ubuntu 24.04 (the GitHub-Actions Noble runner), `chromium-browser`
+  is a Snap transitional package that needs `snapd`. CI containers
+  don't run `snapd`, so the install hangs indefinitely. Switched both
+  `smoke-tests` and `a11y-tests` jobs (and their
+  `PUPPETEER_EXECUTABLE_PATH` env vars) to `google-chrome-stable` — a
+  real `.deb` from the `dl.google.com/linux/chrome-stable` repo that's
+  preconfigured on the runner.
+- `docs/javascript-architecture.md` no longer lists the deleted
+  `tracing.js` (removed in the OpenTelemetry-deps purge). The
+  hardcoded "Total: 238 tests, 90.5% coverage" sentence now points
+  readers at `npm test`'s footer to discover the current count.
 - **Vendor doc URL drift (3 citations).** Three upstream docs URLs that
   `.lycheeignore` had been suppressing 404s for are now updated to
   their current canonical locations and re-enabled in the link-check:

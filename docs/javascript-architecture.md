@@ -18,8 +18,7 @@ All modules use **ES Modules** (ESM) syntax and are bundled by **Vite** for prod
 src/assets/js/
 ├── app.js                    # Entry point / orchestrator (85 lines)
 ├── search.js                 # Standalone search entry (Vite input)
-├── tracing-lite.js           # Lightweight OpenTelemetry wrapper
-├── tracing.js                # Full OpenTelemetry setup (optional)
+├── tracing-lite.js           # Dependency-free OTLP-compatible tracer
 ├── auth.js                   # Appwrite authentication
 ├── auth-ui.js                # Auth modal & profile UI
 ├── cloud-progress.js         # Cloud progress sync (Appwrite)
@@ -154,7 +153,10 @@ tests/unit/modules/
 └── assistant.test.js          (21 tests)
 ```
 
-**Total: 238 tests, 90.5% statement coverage**
+The list above is illustrative — counts drift as suites are added.
+For the current total, run `npm test` and read the summary footer.
+There's also coverage under `tests/unit/lib/` for repo-level helpers
+(`path-prefix.mjs`, `render-head-extra.mjs`).
 
 Run tests:
 
