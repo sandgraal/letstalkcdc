@@ -121,7 +121,7 @@
               class="header-progress"
               data-header-progress
               href="{{ '/dashboard/' | url }}"
-              title="View detailed progress dashboard"
+              aria-describedby="header-progress-desc"
             >
               <span class="header-progress__label">Progress</span>
               <div class="header-progress__bar">
@@ -139,6 +139,9 @@
                 </div>
               </div>
               <span class="header-progress__text" data-global-progress-text>0%</span>
+              <span id="header-progress-desc" class="sr-only">
+                View detailed progress dashboard
+              </span>
             </a>
             <button aria-label="Toggle dark mode" class="theme-toggle" data-toggle-theme type="button">🌓</button>
           </div>

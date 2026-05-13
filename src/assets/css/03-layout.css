@@ -160,9 +160,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* WCAG 2.2 target-size + box-model belt-and-braces: width/height
-     alone reported 16x6 in LHCI when the icon was missing pre-JS;
-     adding min-* makes the rule unconditional. */
+  /* WCAG 2.2 target-size + box-model belt-and-braces. The min-* +
+     width/height pair is intentional: width/height alone got reported
+     as 16x6 by LHCI, but that was because the audit ran against an
+     unstyled page (LHCI serves `_site/` at root while pages reference
+     assets under `/letstalkcdc/`). In production the width/height
+     rules apply; the min-* values just guarantee the touch-target
+     size unconditionally. */
   width: 44px;
   height: 44px;
   min-width: 44px;
