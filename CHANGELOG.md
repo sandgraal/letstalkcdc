@@ -10,14 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `.lighthouserc.json` re-introduces the error-level
   `categories:performance` assertion on `*/intro/index.html` via
-  `assertMatrix`. Backed by 3 consecutive local LHCI runs that all
-  scored 1.0 — the earlier CI failure on PR #265 must have been a
-  cold-start blip on the GitHub-Actions runner. Threshold stays at
-  `minScore: 0.9`. **Note:** LHCI throws
+  `assertMatrix`. **Note:** LHCI throws
   `Cannot use assertMatrix with other options` if `assertMatrix` is
   used alongside top-level `assertions`, so the global warn-level
   category checks now live as a `matchingUrlPattern: ".*"` entry in
-  the same matrix.
+  the same matrix. (Threshold history: re-introduced at
+  `minScore: 0.9` on the (since-discovered-to-be-unstyled) 1.0
+  baseline; lowered to `minScore: 0.8` once the styled-page
+  baseline of 0.86 was measured — see the **Fixed** section below.)
 
 ### Fixed
 

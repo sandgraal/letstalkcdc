@@ -165,13 +165,21 @@ remove the matching regex from `.lycheeignore`.
 - [ ] Add a Playwright e2e for the cloud-progress sync flow
       (sign-in → complete a module → reload → progress persists).
       No test currently exercises Appwrite-backed paths.
-- [x] Add a Lighthouse perf assertion on `/intro/` at **error** level.
-      Re-introduced after measuring locally: 3 consecutive LHCI runs
-      against `_site/intro/index.html` (numberOfRuns=3, matching CI
-      config) all produced **performance: 1.0**. The earlier CI
-      failure must have been a cold-start blip in the GitHub Actions
-      runner — the page is well within `minScore: 0.9` so the
-      assertion will hold under normal variance.
+- [x] Add a Lighthouse perf assertion on `/intro/` at **error**
+      level. Done — but the threshold has shifted as the test setup
+      became honest:
+  - First attempt (PR #265): `minScore: 0.9` at `error` level,
+    failed CI immediately, walked back to `warn`.
+  - Second attempt (PR #267): re-introduced at `minScore: 0.9` after
+    3 local runs all scored 1.0.
+  - PR #268 discovery: that 1.0 was measured against an unstyled
+    page (LHCI path-prefix bug). Real CSS / JS never loaded.
+  - **Current state (PR #269):** LHCI now tests the styled page via
+    `npm run build:lhci`. Honest baseline is `performance: 0.86`.
+    Threshold set to `minScore: 0.8` at `error` level — gives a
+    ~0.06 buffer to catch real regressions while perf debt is
+    worked off. Raise as scores improve (see the "perf debt" item
+    further down this phase).
 - [x] **Accessibility regressions on `/intro/`** — five of the six
       failing audits fixed at the DOM level; a11y score went from
       **0.88 → 0.97**. Fixes:
