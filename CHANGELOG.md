@@ -21,8 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     → `https://docs.matillion.com/metl/docs/release-notes-index/`
     (moved from the marketing site to the docs subdomain). Cited from
     `src/_data/toolVersions.mjs`.
-    All three regex entries removed from `.lycheeignore`; lychee will
-    now catch a regression on any of them.
+
+  All three regex entries removed from `.lycheeignore`; lychee will
+  now catch a regression on any of them.
+
 - **Path-prefix doubling in URLs.** 32 templates used
   `{{ site.host }}{{ '/path/' | url }}`, but `site.host` already
   contains the path prefix (`https://…/letstalkcdc`) and the `| url`
