@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.lycheeignore`. Touched: `src/_redirects/*.html.njk` (26 files) +
   `src/{overview,intro,exactly-once,multi-tenancy}/index.njk` (4
   JSON-LD breadcrumbs).
+- **`head_extra` rendering shipped literal `{{ site.origin }}`.** The
+  initial path-prefix fix in PR #265 switched four `head_extra` JSON-LD
+  blocks to `{{ site.origin }}{{ '/path/' | url }}`, but
+  `renderHeadExtra` in `eleventy.config.mjs` only knew about
+  `{{ site.host }}` and `{{ '...' | url }}`. Result: production HTML
+  shipped the literal six-character string `{{ site.origin }}` in
+  every `BreadcrumbList` `item` URL. Caught by Codex in PR review.
+  Fixed by extracting the renderer into `lib/render-head-extra.mjs`,
+  adding `{{ site.origin }}` to the substitution list, and locking it
+  in with 16 vitest cases.
 - **Wrong `defaultHost` in `src/_data/site.mjs`.** Hardcoded fallback
   was `https://letstalkcdc.github.io`, but production lives at
   `https://sandgraal.github.io/letstalkcdc/`. If `SITE_HOST` was ever
@@ -37,11 +47,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GITHUB_REPOSITORY` fallback, the `getPathPrefixForHost`
   trailing-slash strip, and `normalizePathPrefix` edge cases. The
   module was previously uncovered.
-- `.lighthouserc.json` `assertMatrix` entry that raises the
-  performance assertion on `*/intro/index.html` (the largest
-  user-facing module page) from `warn` to `error` at the same
-  ≥ 0.9 threshold. The remaining pages stay at `warn` until each
-  one's perf budget is tightened individually.
+- `lib/render-head-extra.mjs` — extracted the front-matter
+  `head_extra` mini-renderer out of `eleventy.config.mjs` so it has
+  a single home and a single unit-test target. Adds support for
+  `{{ site.origin }}` alongside the pre-existing
+  `{{ '/path' | url }}` and `{{ site.host }}` patterns; Codex caught
+  the omitted-substitution bug on PR #265 where rendered HTML
+  shipped the literal string `{{ site.origin }}` in JSON-LD
+  `BreadcrumbList`s.
+- `tests/unit/lib/render-head-extra.test.js` — 16 cases covering
+  every supported expression, falsy input, root-deploy
+  `pathPrefix=""`, multi-expression strings, missing context options,
+  and unsupported-expression passthrough. **Adding a new
+  substitution to `lib/render-head-extra.mjs` requires adding a test
+  here**; the test header restates that contract.
 - `CLAUDE.md` at repo root — single source of truth for AI agents (commands,
   architecture, conventions, anti-patterns, the CSS byte-identity check).
   `AGENTS.md` symlinked to it so Codex / cross-tool agentic systems pick up

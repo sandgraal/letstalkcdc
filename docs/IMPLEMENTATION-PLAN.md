@@ -150,11 +150,16 @@ remove the matching regex from `.lycheeignore`.
 - [ ] Add a Playwright e2e for the cloud-progress sync flow
       (sign-in → complete a module → reload → progress persists).
       No test currently exercises Appwrite-backed paths.
-- [x] Added an `assertMatrix` entry to `.lighthouserc.json` raising
-      the `categories:performance` assertion for `*/intro/index.html`
-      to `error` level (≥ 0.9). Other URLs stay at `warn`. This makes
-      the budget enforceable on the largest user-facing module page
-      without flipping every page to error at once.
+- [ ] Add a Lighthouse perf assertion on `/intro/` at **error** level.
+      The first attempt (raising it to `error` at `minScore: 0.9` via
+      `assertMatrix` in `.lighthouserc.json`) failed the LHCI run on
+      PR #265 — the actual CI perf score on `/intro/` is below 0.9, so
+      the assertion needs either a realistic threshold or genuine perf
+      work first. Walked back to the global warn-level coverage. To
+      close: run LHCI locally against `_site/intro/index.html` to
+      establish the actual baseline, then either tighten the score
+      threshold to match (e.g. `minScore: 0.8`) or fix the perf
+      regression and keep `0.9`.
 
 ---
 

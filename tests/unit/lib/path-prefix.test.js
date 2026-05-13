@@ -23,15 +23,27 @@ import {
 } from "../../../lib/path-prefix.mjs";
 
 describe("lib/path-prefix.mjs", () => {
-  const originalEnv = { ...process.env };
+  // Capture the original values of just the env vars these tests
+  // mutate. We avoid reassigning `process.env` itself — Node treats it
+  // as a special object and other code (including the rest of the
+  // vitest run) may hold references to it.
+  const ENV_KEYS = ["ELEVENTY_PATH_PREFIX", "GITHUB_REPOSITORY"];
+  const originalValues = Object.fromEntries(
+    ENV_KEYS.map((k) => [k, process.env[k]]),
+  );
 
   beforeEach(() => {
-    delete process.env.ELEVENTY_PATH_PREFIX;
-    delete process.env.GITHUB_REPOSITORY;
+    for (const k of ENV_KEYS) delete process.env[k];
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
+    for (const k of ENV_KEYS) {
+      if (originalValues[k] === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = originalValues[k];
+      }
+    }
   });
 
   describe("normalizePathPrefix", () => {
