@@ -21,6 +21,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`/intro/` accessibility regressions (a11y score 0.88 → 0.97).**
+  Five of the six failing axe audits fixed at the DOM level. All are
+  real semantic improvements that screen readers consume regardless
+  of CSS:
+  - `aria-prohibited-attr` (4 nodes): added `role="status"` to the
+    `.stage-events` divs in `src/intro/index.njk` so their
+    `aria-label`s are valid.
+  - `aria-allowed-role` (~15 nodes): removed `role="listitem"` from
+    `<article>` cards and `role="list"` from their grid parents in
+    `src/intro/index.njk`. axe rejects `listitem` on `<article>`;
+    `<article>` already conveys grouped content.
+  - `aria-allowed-attr` (1 node): added `role="progressbar"` (plus
+    `aria-valuemin`, `aria-valuemax`, `aria-label`) to the series-nav
+    progress bar fill so `aria-valuenow` is allowed.
+  - `heading-order` (2 nodes): bumped the `.intro-callout` `<h3>`s
+    ("Outcome" / "Who it's for") to `<h2>` so the page doesn't jump
+    from h1 → h3.
+  - `label-content-name-mismatch` (1 node): the header progress link
+    had visible text "Progress" + percentage but
+    `aria-label="View detailed progress dashboard"`. Dropped the
+    conflicting `aria-label`; visible text is now the accessible
+    name, with the descriptive copy moved to `title`.
+- **Touch-target sizing (`min-height: 44px`) on nav-chip,
+  dropdown-menu links, and mobile-menu-toggle.** Defensive against
+  the `target-size` axe rule (WCAG 2.2 AA = 24px, kept at the
+  44px touch-friendly tier). The LHCI test setup currently serves
+  `_site/` at root and HTML pages reference assets at
+  `/letstalkcdc/...`, so CSS doesn't actually load in the audit —
+  meaning this change moves the production experience but **not** the
+  LHCI score. See `docs/IMPLEMENTATION-PLAN.md` Phase 5 for the
+  test-setup fix that needs to land before re-measuring.
 - **`ci.yml` smoke/a11y jobs hung on `apt install chromium-browser`.**
   On Ubuntu 24.04 (the GitHub-Actions Noble runner), `chromium-browser`
   is a Snap transitional package that needs `snapd`. CI containers

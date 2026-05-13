@@ -65,19 +65,12 @@ GitHub-side state and decisions.
 
 - [x] Fix `ROOT_DIR`/`DATE` not-exported bug in
       `handoff/nightly-sync.sh` (commit `8dbec26`).
-- [ ] Verify the next scheduled nightly at 05:00 UTC succeeds — see
-      <https://github.com/sandgraal/letstalkcdc/actions/workflows/handoff-nightly.yml>.
-      **⚠️ Blocked by:** the workflow is almost certainly **disabled
-      by GitHub**. The bug fixed in `8dbec26` had been failing the
-      nightly continuously since 2025-10-26 (~6.5 months); GitHub
-      Actions auto-disables scheduled workflows after 60 days of
-      failures. As of 2026-05-13 (post-fix), `handoff-log.json` has
-      no entry for today, and the most recent log commit on `main` is
-      `5911201 chore(handoff): nightly sync 2026-05-12` — which was
-      the local-smoke-test artifact, **not** the workflow. To close:
-      re-enable the workflow in the GitHub UI (or hit it once via
-      `workflow_dispatch` to confirm the fix works end-to-end), then
-      wait one cron tick.
+- [x] Verify the next scheduled nightly at 05:00 UTC succeeds —
+      commit `cf1a5d1 chore(handoff): nightly sync 2026-05-13` on
+      `main` confirms the workflow ran and appended a new entry to
+      `handoff/handoff-log.json` cleanly. The earlier suspicion that
+      GitHub had auto-disabled the workflow was wrong; the export-env
+      fix in `8dbec26` was the entire problem.
 - [ ] Decide what `handoff/Handoff.md` actually represents. Today it's
       placeholder template content ("Initial setup complete... None
       today...") that gets re-parsed every night into an identical
@@ -179,23 +172,55 @@ remove the matching regex from `.lycheeignore`.
       failure must have been a cold-start blip in the GitHub Actions
       runner — the page is well within `minScore: 0.9` so the
       assertion will hold under normal variance.
-- [ ] **Accessibility regressions on `/intro/`** — uncovered while
-      establishing the perf baseline above. LHCI consistently scores
-      a11y at **0.88** (below the global `warn ≥ 0.9` threshold). The
-      failing audits in `_site/intro/index.html`:
-  - `aria-allowed-attr` — `[aria-*]` attributes don't match their
-    roles
-  - `aria-allowed-role` — ARIA roles on incompatible elements
-  - `aria-prohibited-attr` — Elements use prohibited ARIA attributes
-  - `heading-order` — Heading elements not sequentially-descending
-  - `label-content-name-mismatch` — Visible text labels don't match
-    accessible names
-  - `target-size` — Touch targets insufficient size or spacing
+- [x] **Accessibility regressions on `/intro/`** — five of the six
+      failing audits fixed at the DOM level; a11y score went from
+      **0.88 → 0.97**. Fixes:
+  - `aria-prohibited-attr` — added `role="status"` to the four
+    `.stage-events` `<div>`s in `src/intro/index.njk` so
+    `aria-label` is valid.
+  - `aria-allowed-role` — removed `role="listitem"` from `<article>`
+    cards (axe rejects `listitem` on `<article>`) and the matching
+    `role="list"` from their `.cdc-methods-grid` / `#cdc-grid`
+    parents. The semantic `<article>` element conveys grouped
+    content without explicit list semantics.
+  - `aria-allowed-attr` — added `role="progressbar"` (plus
+    `aria-valuemin`, `aria-valuemax`, `aria-label`) to
+    `.progress-bar-fill` in `src/_includes/components/series-nav.njk`
+    so `aria-valuenow` is valid.
+  - `heading-order` — bumped the two `.intro-callout` `<h3>`s
+    ("Outcome" and "Who it's for") to `<h2>` so the lede sub-section
+    titles don't skip from h1 → h3.
+  - `label-content-name-mismatch` — dropped the conflicting
+    `aria-label` from the header progress link in `base.njk`; visible
+    text ("Progress" + the percentage) is now the accessible name,
+    with the descriptive copy moved to `title`.
+- [ ] **Follow-up: `target-size` still fails.** Added defensive
+      `min-height: 44px` / `min-width: 44px` to `.nav-chip`,
+      `.nav-dropdown-menu a`, and `.mobile-menu-toggle` in
+      `src/assets/css/03-layout.css`. Real users will see the bigger
+      touch targets in production — but the LHCI test setup
+      **doesn't load the CSS at all** because it serves `_site/` at
+      root while pages reference assets at `/letstalkcdc/...` (the
+      production path-prefix). Pages render unstyled in the LHCI
+      runner, so CSS-based target-size fixes don't move the score.
+      See new Phase 5 item below — fix that test-setup issue, then
+      re-measure the touch-target audit.
 
-  All six are real DOM bugs in `src/intro/index.njk` (or components
-  it includes). Fix them one at a time, re-running LHCI to confirm
-  each push improves the score. Goal: a11y ≥ 0.95 on `/intro/`, then
-  add an error-level `assertMatrix` entry similar to the perf one.
+- [ ] **LHCI test setup serves an unstyled page.** Discovered while
+      working on the a11y item above. The build at `_site/` uses the
+      production path-prefix `/letstalkcdc/`, so HTML pages reference
+      assets at `/letstalkcdc/assets/css/styles.css`. But
+      `.lighthouserc.json` sets `staticDistDir: ./_site` and visits
+      `http://localhost/intro/index.html` — that root-relative asset
+      URL resolves to `http://localhost/letstalkcdc/assets/css/styles.css`,
+      which 404s (no `_site/letstalkcdc/` directory exists). The
+      `performance: 1.0` baseline and the `accessibility: 0.97`
+      target are both measuring **an unstyled DOM**.
+      To fix: either re-build with `ELEVENTY_PATH_PREFIX=/` for the
+      LHCI step (cleanest — produces a true root-deployable artifact),
+      or use a server middleware that rewrites the `/letstalkcdc/`
+      prefix. Re-measure all the Lighthouse scores afterwards and
+      adjust the assertion thresholds against the real numbers.
 
 ---
 

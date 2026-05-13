@@ -160,8 +160,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* WCAG 2.2 target-size + box-model belt-and-braces: width/height
+     alone reported 16x6 in LHCI when the icon was missing pre-JS;
+     adding min-* makes the rule unconditional. */
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   background: none;
   border: none;
   color: var(--color-text-primary);
@@ -369,6 +374,12 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-3xs);
+  /* WCAG 2.2 target-size (level AA): >= 24x24px. Forcing it via
+     min-height/min-width because computed box-height with just
+     padding + line-height has been measuring 17–21px in LHCI. */
+  min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
@@ -503,6 +514,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2xs);
+  /* WCAG 2.2 target-size — see .nav-chip rule above. */
+  min-height: 44px;
   padding: var(--space-sm) var(--space-md);
   font-size: var(--type-sm);
   font-weight: 500;
