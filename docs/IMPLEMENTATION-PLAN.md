@@ -16,7 +16,9 @@ be worked in parallel by separate agents.
   check, anti-patterns) and the file paths called out per item.
 - New work belongs in the lowest-numbered phase it logically fits; if a
   phase grows past ~10 items, split it.
-- Mark blockers with `> ⚠️ Blocked by: <reason>` directly under the item.
+- Mark blockers with **⚠️ Blocked by:** `<reason>` as a continuation
+  paragraph under the list item (don't use Markdown blockquotes
+  inside list items — prettier collapses them onto one line).
 
 ---
 
@@ -65,6 +67,17 @@ GitHub-side state and decisions.
       `handoff/nightly-sync.sh` (commit `8dbec26`).
 - [ ] Verify the next scheduled nightly at 05:00 UTC succeeds — see
       <https://github.com/sandgraal/letstalkcdc/actions/workflows/handoff-nightly.yml>.
+      **⚠️ Blocked by:** the workflow is almost certainly **disabled
+      by GitHub**. The bug fixed in `8dbec26` had been failing the
+      nightly continuously since 2025-10-26 (~6.5 months); GitHub
+      Actions auto-disables scheduled workflows after 60 days of
+      failures. As of 2026-05-13 (post-fix), `handoff-log.json` has
+      no entry for today, and the most recent log commit on `main` is
+      `5911201 chore(handoff): nightly sync 2026-05-12` — which was
+      the local-smoke-test artifact, **not** the workflow. To close:
+      re-enable the workflow in the GitHub UI (or hit it once via
+      `workflow_dispatch` to confirm the fix works end-to-end), then
+      wait one cron tick.
 - [ ] Decide what `handoff/Handoff.md` actually represents. Today it's
       placeholder template content ("Initial setup complete... None
       today...") that gets re-parsed every night into an identical
@@ -159,16 +172,30 @@ remove the matching regex from `.lycheeignore`.
 - [ ] Add a Playwright e2e for the cloud-progress sync flow
       (sign-in → complete a module → reload → progress persists).
       No test currently exercises Appwrite-backed paths.
-- [ ] Add a Lighthouse perf assertion on `/intro/` at **error** level.
-      The first attempt (raising it to `error` at `minScore: 0.9` via
-      `assertMatrix` in `.lighthouserc.json`) failed the LHCI run on
-      PR #265 — the actual CI perf score on `/intro/` is below 0.9, so
-      the assertion needs either a realistic threshold or genuine perf
-      work first. Walked back to the global warn-level coverage. To
-      close: run LHCI locally against `_site/intro/index.html` to
-      establish the actual baseline, then either tighten the score
-      threshold to match (e.g. `minScore: 0.8`) or fix the perf
-      regression and keep `0.9`.
+- [x] Add a Lighthouse perf assertion on `/intro/` at **error** level.
+      Re-introduced after measuring locally: 3 consecutive LHCI runs
+      against `_site/intro/index.html` (numberOfRuns=3, matching CI
+      config) all produced **performance: 1.0**. The earlier CI
+      failure must have been a cold-start blip in the GitHub Actions
+      runner — the page is well within `minScore: 0.9` so the
+      assertion will hold under normal variance.
+- [ ] **Accessibility regressions on `/intro/`** — uncovered while
+      establishing the perf baseline above. LHCI consistently scores
+      a11y at **0.88** (below the global `warn ≥ 0.9` threshold). The
+      failing audits in `_site/intro/index.html`:
+  - `aria-allowed-attr` — `[aria-*]` attributes don't match their
+    roles
+  - `aria-allowed-role` — ARIA roles on incompatible elements
+  - `aria-prohibited-attr` — Elements use prohibited ARIA attributes
+  - `heading-order` — Heading elements not sequentially-descending
+  - `label-content-name-mismatch` — Visible text labels don't match
+    accessible names
+  - `target-size` — Touch targets insufficient size or spacing
+
+  All six are real DOM bugs in `src/intro/index.njk` (or components
+  it includes). Fix them one at a time, re-running LHCI to confirm
+  each push improves the score. Goal: a11y ≥ 0.95 on `/intro/`, then
+  add an error-level `assertMatrix` entry similar to the perf one.
 
 ---
 
@@ -178,6 +205,18 @@ remove the matching regex from `.lycheeignore`.
       references; one doc per agent session is plenty. Look for: file
       paths that no longer exist, `.cjs`/`.mjs` mismatches, npm scripts
       that were renamed.
+  - [x] `docs/javascript-architecture.md` — removed `tracing.js`
+        listing (deleted in PR #261), replaced the hardcoded
+        "Total: 238 tests, 90.5% coverage" sentence with a "run
+        `npm test` and read the footer" pointer (count drifts as suites
+        are added; was 268 as of May 2026).
+  - [x] Other docs (`SETUP.md`, `INTEGRATION.md`, `CONTRIBUTING.md`,
+        `HOSTING.md`, `COMMUNITY.md`, `DISCUSSIONS_SEED.md`, `SANDBOX.md`,
+        `TRACING.md`, `video-embeds.md`, `adding-modules.md`,
+        `adding-quizzes.md`) audited for the usual stale-term set
+        (`styles.css`, `csso`, `@opentelemetry`, deleted scripts,
+        AI-CONTRIBUTING refs, `eleventy.config.cjs`, `ghp_` PAT
+        placeholders): no remaining stale refs.
 - [x] Moved `docs/PRD-SITE-REVAMP.md` → `docs/archive/PRD-SITE-REVAMP.md`.
       The "Historical document" banner at the top already declared its
       status; archive placement makes the status obvious from the file
