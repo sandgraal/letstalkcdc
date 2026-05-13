@@ -6,8 +6,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Path-prefix doubling in URLs.** 32 templates used
+  `{{ site.host }}{{ '/path/' | url }}`, but `site.host` already
+  contains the path prefix (`https://…/letstalkcdc`) and the `| url`
+  filter adds it again — so every redirect-stub canonical and every
+  `BreadcrumbList` `item` shipped pointing at
+  `https://…/letstalkcdc/letstalkcdc/…`. Switched all 32 occurrences
+  to `{{ site.origin }}{{ '/path/' | url }}` (the bare host, plus
+  prefix from the filter). Removed the corresponding
+  `^https?://[^/]+/letstalkcdc/letstalkcdc/` entry from
+  `.lycheeignore`. Touched: `src/_redirects/*.html.njk` (26 files) +
+  `src/{overview,intro,exactly-once,multi-tenancy}/index.njk` (4
+  JSON-LD breadcrumbs).
+- **Wrong `defaultHost` in `src/_data/site.mjs`.** Hardcoded fallback
+  was `https://letstalkcdc.github.io`, but production lives at
+  `https://sandgraal.github.io/letstalkcdc/`. If `SITE_HOST` was ever
+  unset, every canonical / OG / JSON-LD URL shipped pointing at a
+  host that doesn't exist. Changed the default to the real production
+  host and added a build-time `console.warn` if `SITE_HOST` is unset
+  under `NODE_ENV=production`, so the fallback isn't silent on
+  deploys.
+
 ### Added
 
+- `tests/unit/lib/path-prefix.test.js` — 14 vitest cases for
+  `lib/path-prefix.mjs`. Covers the `owner.github.io` root-deploy
+  branch (case-insensitive), explicit-env-var precedence, malformed
+  `GITHUB_REPOSITORY` fallback, the `getPathPrefixForHost`
+  trailing-slash strip, and `normalizePathPrefix` edge cases. The
+  module was previously uncovered.
+- `.lighthouserc.json` `assertMatrix` entry that raises the
+  performance assertion on `*/intro/index.html` (the largest
+  user-facing module page) from `warn` to `error` at the same
+  ≥ 0.9 threshold. The remaining pages stay at `warn` until each
+  one's perf budget is tightened individually.
 - `CLAUDE.md` at repo root — single source of truth for AI agents (commands,
   architecture, conventions, anti-patterns, the CSS byte-identity check).
   `AGENTS.md` symlinked to it so Codex / cross-tool agentic systems pick up
