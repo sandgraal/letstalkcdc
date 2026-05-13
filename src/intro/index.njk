@@ -89,13 +89,13 @@ scripts:
       </p>
       <div class="intro-callouts">
         <div class="intro-callout outcome" id="intro-outcome">
-          <h3>Outcome</h3>
+          <h2>Outcome</h2>
           <p>
             You leave with a mental model for CDC, the vocabulary to compare approaches, and a roadmap into the deeper modules.
           </p>
         </div>
         <div class="intro-callout audience">
-          <h3>Who it’s for</h3>
+          <h2>Who it’s for</h2>
           <ul>
             <li>Data engineers modernizing nightly batch ETL into streaming pipelines.</li>
             <li>Platform and infra teams tasked with selecting CDC tooling.</li>
@@ -144,8 +144,8 @@ scripts:
 
     <h2 id="cdc-methods">CDC methods</h2>
     <p class="intro-muted">Choose the capture approach that matches your constraints. Each card highlights the trade-offs—expand any card for the full details.</p>
-    <div class="cdc-methods-grid" role="list">
-      <article class="method-card" id="method-log" role="listitem">
+    <div class="cdc-methods-grid">
+      <article class="method-card" id="method-log">
         <header class="method-card-header">
           <span class="method-icon" aria-hidden="true">📜</span>
           <h3>Log-based CDC (The Gold Standard)</h3>
@@ -187,7 +187,7 @@ scripts:
           </ul>
         </details>
       </article>
-      <article class="method-card" id="method-trigger" role="listitem">
+      <article class="method-card" id="method-trigger">
         <header class="method-card-header">
           <span class="method-icon" aria-hidden="true">🔔</span>
           <h3>Trigger-Based CDC</h3>
@@ -221,7 +221,7 @@ scripts:
           </ul>
         </details>
       </article>
-      <article class="method-card" id="method-polling" role="listitem">
+      <article class="method-card" id="method-polling">
         <header class="method-card-header">
           <span class="method-icon" aria-hidden="true">⏱️</span>
           <h3>Query-Based CDC (Polling)</h3>
@@ -514,25 +514,25 @@ scripts:
         <div id="source-db" class="pipeline-stage">
           <span class="stage-icon" aria-hidden="true">🗄️</span>
           <span class="stage-label">Source Database</span>
-          <div class="stage-events" aria-live="polite" aria-label="Source database events"></div>
+          <div class="stage-events" role="status" aria-live="polite" aria-label="Source database events"></div>
         </div>
 
         <div id="cdc-connector" class="pipeline-stage">
           <span class="stage-icon" aria-hidden="true">🔌</span>
           <span class="stage-label">CDC Connector</span>
-          <div class="stage-events" aria-live="polite" aria-label="CDC connector events"></div>
+          <div class="stage-events" role="status" aria-live="polite" aria-label="CDC connector events"></div>
         </div>
 
         <div id="message-broker" class="pipeline-stage">
           <span class="stage-icon" aria-hidden="true">📬</span>
           <span class="stage-label">Message Broker</span>
-          <div class="stage-events" aria-live="polite" aria-label="Message broker events"></div>
+          <div class="stage-events" role="status" aria-live="polite" aria-label="Message broker events"></div>
         </div>
 
         <div id="target-sink" class="pipeline-stage">
           <span class="stage-icon" aria-hidden="true">🎯</span>
           <span class="stage-label">Target Sink</span>
-          <div class="stage-events" aria-live="polite" aria-label="Target sink events"></div>
+          <div class="stage-events" role="status" aria-live="polite" aria-label="Target sink events"></div>
         </div>
       </div>
 
@@ -700,9 +700,9 @@ COMMIT;</code></pre>
         </div>
         <div id="cdc-chips" class="row" role="toolbar" aria-label="Tag filters"></div>
       </div>
-      <div class="cdc-grid" id="cdc-grid" role="list">
+      <div class="cdc-grid" id="cdc-grid">
 <!-- cards (unchanged) -->
-          <article class="cdc-card" data-tags="open source,log-based,DIY ops" role="listitem">
+          <article class="cdc-card" data-tags="open source,log-based,DIY ops">
             <h3>Debezium + Kafka Connect</h3>
             <p>
               Open-source log-based CDC connectors. Flexible; you operate
@@ -713,7 +713,7 @@ COMMIT;</code></pre>
                 ops</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="managed,log-based,ELT + orchestration" role="listitem">
+          <article class="cdc-card" data-tags="managed,log-based,ELT + orchestration">
             <h3>Matillion (Data Loader / Designer)</h3>
             <p>
               Wizard-driven CDC into cloud warehouses plus
@@ -724,7 +724,7 @@ COMMIT;</code></pre>
                 orchestration</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="managed,log-based" role="listitem">
+          <article class="cdc-card" data-tags="managed,log-based">
             <h3>Fivetran</h3>
             <p>
               Managed connectors with log-based CDC options; emphasizes quick
@@ -734,7 +734,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="enterprise,log-based,heterogeneous" role="listitem">
+          <article class="cdc-card" data-tags="enterprise,log-based,heterogeneous">
             <h3>Precisely (Connect)</h3>
             <p>
               Enterprise replication including mainframe/legacy into modern
@@ -745,7 +745,7 @@ COMMIT;</code></pre>
                 class="cdc-pill">heterogeneous</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="enterprise,log-based" role="listitem">
+          <article class="cdc-card" data-tags="enterprise,log-based">
             <h3>Qlik Replicate (Attunity)</h3>
             <p>
               UI-driven enterprise CDC across a wide range of sources/targets.
@@ -754,7 +754,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="enterprise,log-based" role="listitem">
+          <article class="cdc-card" data-tags="enterprise,log-based">
             <h3>Oracle GoldenGate</h3>
             <p>
               Oracle’s CDC/replication stack (supports several non-Oracle
@@ -764,7 +764,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="managed,log-based" role="listitem">
+          <article class="cdc-card" data-tags="managed,log-based">
             <h3>AWS DMS</h3>
             <p>
               Managed migrations and ongoing CDC into AWS targets (and beyond
@@ -774,7 +774,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="serverless,log-based" role="listitem">
+          <article class="cdc-card" data-tags="serverless,log-based">
             <h3>Google Cloud Datastream</h3>
             <p>
               Serverless CDC for MySQL/Postgres/Oracle streaming into
@@ -784,7 +784,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">serverless</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="commercial,log-based" role="listitem">
+          <article class="cdc-card" data-tags="commercial,log-based">
             <h3>Confluent Commercial Connectors</h3>
             <p>
               Kafka Connect ecosystem with additional commercial CDC connectors
@@ -794,7 +794,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">commercial</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="platform,CDC connectors" role="listitem">
+          <article class="cdc-card" data-tags="platform,CDC connectors">
             <h3>StreamSets</h3>
             <p>
               Streaming pipelines with CDC connectors into warehouses/lakes.
@@ -803,7 +803,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">platform</span><span class="cdc-pill">CDC connectors</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="platform,CDC + transform" role="listitem">
+          <article class="cdc-card" data-tags="platform,CDC + transform">
             <h3>Striim</h3>
             <p>
               CDC + in-flight SQL-like processing for real-time ops analytics.
@@ -812,7 +812,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">platform</span><span class="cdc-pill">CDC + transform</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="enterprise,log-based" role="listitem">
+          <article class="cdc-card" data-tags="enterprise,log-based">
             <h3>IBM Data Replication</h3>
             <p>
               Log-based CDC for Db2 and mixed mainframe/distributed estates.
@@ -821,7 +821,7 @@ COMMIT;</code></pre>
               <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="SAP,trigger/log" role="listitem">
+          <article class="cdc-card" data-tags="SAP,trigger/log">
             <h3>SAP SLT</h3>
             <p>
               Native trigger/log-based replication from SAP ECC/S/4HANA to
@@ -831,14 +831,14 @@ COMMIT;</code></pre>
               <span class="cdc-pill">SAP</span><span class="cdc-pill">trigger/log</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="managed,CDC" role="listitem">
+          <article class="cdc-card" data-tags="managed,CDC">
             <h3>Hevo Data</h3>
             <p>Managed ELT with CDC support into cloud targets.</p>
             <div class="meta">
               <span class="cdc-pill">managed</span><span class="cdc-pill">CDC</span>
             </div>
           </article>
-          <article class="cdc-card" data-tags="open source,mixed CDC" role="listitem">
+          <article class="cdc-card" data-tags="open source,mixed CDC">
             <h3>Airbyte</h3>
             <p>
               Open-source ELT; CDC varies by connector (check docs for log-based

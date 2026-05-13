@@ -85,7 +85,7 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 4843ff26f485a7133ae27f65b6c00c93bd82a90ffc72dc56c73ddccd5df1decf
+# baseline at HEAD of main is: d326b17e9512016ade02da85c5e9b9902f703b5007a7a55e534bf615ef9d7718
 ```
 
 If the hash matches, your change is a pure source refactor and visually safe.

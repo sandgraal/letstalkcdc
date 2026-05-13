@@ -160,8 +160,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* WCAG 2.2 target-size + box-model belt-and-braces. The min-* +
+     width/height pair is intentional: width/height alone got reported
+     as 16x6 by LHCI, but that was because the audit ran against an
+     unstyled page (LHCI serves `_site/` at root while pages reference
+     assets under `/letstalkcdc/`). In production the width/height
+     rules apply; the min-* values just guarantee the touch-target
+     size unconditionally. */
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   background: none;
   border: none;
   color: var(--color-text-primary);
@@ -369,6 +378,12 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-3xs);
+  /* WCAG 2.2 target-size (level AA): >= 24x24px. Forcing it via
+     min-height/min-width because computed box-height with just
+     padding + line-height has been measuring 17–21px in LHCI. */
+  min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
@@ -503,6 +518,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2xs);
+  /* WCAG 2.2 target-size — see .nav-chip rule above. */
+  min-height: 44px;
   padding: var(--space-sm) var(--space-md);
   font-size: var(--type-sm);
   font-weight: 500;
