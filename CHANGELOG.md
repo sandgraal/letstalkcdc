@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ci.yml` smoke/a11y jobs hung on `apt install chromium-browser`.**
+  On Ubuntu 24.04 (the GitHub-Actions Noble runner), `chromium-browser`
+  is a Snap transitional package that needs `snapd`. CI containers
+  don't run `snapd`, so the install hangs indefinitely. Switched both
+  `smoke-tests` and `a11y-tests` jobs (and their
+  `PUPPETEER_EXECUTABLE_PATH` env vars) to `google-chrome-stable` — a
+  real `.deb` from the `dl.google.com/linux/chrome-stable` repo that's
+  preconfigured on the runner.
 - `docs/javascript-architecture.md` no longer lists the deleted
   `tracing.js` (removed in the OpenTelemetry-deps purge). The
   hardcoded "Total: 238 tests, 90.5% coverage" sentence now points

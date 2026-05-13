@@ -120,10 +120,14 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install Chromium
+      - name: Install Chrome
+        # `chromium-browser` on Ubuntu 24.04 (Noble) is a Snap
+        # transitional package — `apt install` hangs in CI because
+        # snapd isn't running. google-chrome-stable is a real .deb
+        # and the dl.google.com repo is preconfigured on the runner.
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser
+          sudo apt-get install -y google-chrome-stable
         env:
           DEBIAN_FRONTEND: noninteractive
 
@@ -131,7 +135,7 @@ jobs:
         run: npm ci
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
 
       - name: Download site artifact
         uses: actions/download-artifact@v4
@@ -142,7 +146,7 @@ jobs:
       - name: Smoke tests
         run: npm run smoke
         env:
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
 
   # ───────────────────────────────────────────────────
   # Job 5: Accessibility with pa11y (needs build)
@@ -160,10 +164,12 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install Chromium
+      - name: Install Chrome
+        # See the smoke-tests job above for why google-chrome-stable
+        # instead of chromium-browser on Ubuntu 24.04 runners.
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser
+          sudo apt-get install -y google-chrome-stable
         env:
           DEBIAN_FRONTEND: noninteractive
 
@@ -171,7 +177,7 @@ jobs:
         run: npm ci
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
 
       - name: Download site artifact
         uses: actions/download-artifact@v4
@@ -182,7 +188,7 @@ jobs:
       - name: Accessibility tests (pa11y)
         run: npm run a11y
         env:
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
 
   # ───────────────────────────────────────────────────
   # Job 6: E2E tests with Playwright (needs build)
