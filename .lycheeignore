@@ -3,13 +3,6 @@
 # Each pattern is a regex. Add a comment above any new entry explaining
 # why it's excluded and when it can be re-enabled.
 
-# Vendor docs URL drift — these pages have moved upstream. Updating the
-# citations is content work, not infrastructure. Re-enable as each page is
-# touched in the modern-CDC dossier rewrite (Month 2).
-^https://debezium\.io/documentation/reference/stable/operations/signals\.html$
-^https://fivetran\.com/docs/getting-started/changelog$
-^https://www\.matillion\.com/resources/release-notes$
-
 # Broken YouTube embed in src/intro/index.njk — the video (id 5CjPj9ShJVA)
 # was deleted upstream. Replacing it requires picking a new canonical
 # intro-to-CDC video; tracked as content work. Excluded so the link-check

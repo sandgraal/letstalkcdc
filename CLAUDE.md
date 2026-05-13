@@ -229,7 +229,7 @@ phase it logically belongs to, or append a new `## Phase N` heading.
 - `docs/adding-modules.md` — how to add a new content section
 - `docs/javascript-architecture.md` — JS module layout + Vite split
 - `docs/TRACING.md` — client-side tracing (the lite OTLP-compatible tracer in `src/assets/js/tracing-lite.js`)
-- `docs/PRD-SITE-REVAMP.md` — historical PRD for the 2.0 revamp
+- `docs/archive/PRD-SITE-REVAMP.md` — historical PRD for the 2.0 revamp
 - `docs/archive/` — historical records; read for context, do not act on as
   current spec
 - `CHANGELOG.md` — `[Unreleased]` block is the running scratchpad for the

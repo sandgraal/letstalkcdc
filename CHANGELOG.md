@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Vendor doc URL drift (3 citations).** Three upstream docs URLs that
+  `.lycheeignore` had been suppressing 404s for are now updated to
+  their current canonical locations and re-enabled in the link-check:
+  - Debezium signaling — `…/operations/signals.html` →
+    `…/configuration/signalling.html` (note the upstream spelling
+    change `signaling` → `signalling`). Cited from
+    `src/reconciliation-surgery/index.njk:526`.
+  - Fivetran changelog — `…/docs/getting-started/changelog` →
+    `…/docs/changelog`. Cited from `src/_data/toolVersions.mjs`.
+  - Matillion release notes — `…/matillion.com/resources/release-notes`
+    → `https://docs.matillion.com/metl/docs/release-notes-index/`
+    (moved from the marketing site to the docs subdomain). Cited from
+    `src/_data/toolVersions.mjs`.
+
+  All three regex entries removed from `.lycheeignore`; lychee will
+  now catch a regression on any of them.
+
 - **Path-prefix doubling in URLs.** 32 templates used
   `{{ site.host }}{{ '/path/' | url }}`, but `site.host` already
   contains the path prefix (`https://…/letstalkcdc`) and the `| url`
@@ -164,6 +181,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a "Historical document" banner to `docs/PRD-SITE-REVAMP.md`
   flagging that the `ai/` subsystem it describes was retired in Month 0
   and that `CLAUDE.md` is now the authoritative project context.
+- Moved `docs/PRD-SITE-REVAMP.md` → `docs/archive/PRD-SITE-REVAMP.md`.
+  The historical-document banner already declared the file's status;
+  archive placement makes the same status obvious from the file tree.
+  References in `CLAUDE.md` and `docs/README.md` updated.
 - Deleted `src/static/sitemap.xml` — a 9-line stale sitemap from before
   the path-prefix system landed. It still claimed
   `https://letstalkcdc.github.io/index.html` (wrong host, wrong URL

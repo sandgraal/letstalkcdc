@@ -32,7 +32,8 @@ export default {
     matillion: {
       version: "1.71",
       releaseDate: "2024-09-01",
-      releaseNotesUrl: "https://www.matillion.com/resources/release-notes",
+      releaseNotesUrl:
+        "https://docs.matillion.com/metl/docs/release-notes-index/",
       status: "stable",
     },
     awsDms: {
@@ -45,7 +46,7 @@ export default {
     fivetran: {
       version: "N/A",
       releaseDate: "N/A",
-      releaseNotesUrl: "https://fivetran.com/docs/getting-started/changelog",
+      releaseNotesUrl: "https://fivetran.com/docs/changelog",
       status: "saas",
     },
     goldenGate: {

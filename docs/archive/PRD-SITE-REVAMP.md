@@ -1346,32 +1346,42 @@ graph TD
 > - AI guidelines moved to `docs/CONTRIBUTING.md`
 > - Technical integration guide at `docs/INTEGRATION.md`
 
+<!--
+  Relative paths below are rooted at `docs/archive/` (where this PRD
+  now lives). When this file was moved out of `docs/` in May 2026, the
+  `../` prefixes were added so the sibling-doc references still
+  resolve to `docs/<name>.md` rather than `docs/archive/<name>.md`.
+  The `../ai/...` entries point at the retired ai/ subsystem and are
+  intentionally dead — see the "Historical document" banner at the
+  top of this file.
+-->
+
 **Setup & Configuration**:
 
-- [Setup Guide](SETUP.md) — Complete setup including Appwrite, auth, and assistant
-- [Hosting Guide](HOSTING.md) — GitHub Pages deployment
-- [Tracing Guide](TRACING.md) — OpenTelemetry tracing (includes quickstart)
-- [Sandbox Guide](SANDBOX.md) — Docker CDC lab environment
+- [Setup Guide](../SETUP.md) — Complete setup including Appwrite, auth, and assistant
+- [Hosting Guide](../HOSTING.md) — GitHub Pages deployment
+- [Tracing Guide](../TRACING.md) — OpenTelemetry tracing (includes quickstart)
+- [Sandbox Guide](../SANDBOX.md) — Docker CDC lab environment
 
 **Content & Features**:
 
-- [Adding Modules](adding-modules.md) — Content contribution guide
-- [Video Embeds](video-embeds.md) — Video component usage
-- [Community Guide](COMMUNITY.md) — GitHub Discussions setup
+- [Adding Modules](../adding-modules.md) — Content contribution guide
+- [Video Embeds](../video-embeds.md) — Video component usage
+- [Community Guide](../COMMUNITY.md) — GitHub Discussions setup
 
 **Development & Architecture**:
 
-- [Contributing Guide](CONTRIBUTING.md) — AI agent guidelines (moved from root)
-- [Integration Guide](INTEGRATION.md) — Progress tracking implementation
-- [JavaScript Architecture](javascript-architecture.md) — Module system documentation
-- [AI Agent System](../ai/AGENTS.md) — Agent documentation
-- [AI Context](../ai/CONTEXT.md) — Brand voice and conventions
-- [Security Policy](../SECURITY.md) — Security guidelines
+- [Contributing Guide](../CONTRIBUTING.md) — AI agent guidelines (moved from root)
+- [Integration Guide](../INTEGRATION.md) — Progress tracking implementation
+- [JavaScript Architecture](../javascript-architecture.md) — Module system documentation
+- [AI Agent System](../../ai/AGENTS.md) — Agent documentation (retired Month 0)
+- [AI Context](../../ai/CONTEXT.md) — Brand voice and conventions (retired Month 0)
+- [Security Policy](../../SECURITY.md) — Security guidelines
 
 **Reference**:
 
-- [README](../README.md) — Project overview and quick start
-- [Changelog](../CHANGELOG.md) — Version history
+- [README](../../README.md) — Project overview and quick start
+- [Changelog](../../CHANGELOG.md) — Version history
 
 ### Appendix C: Change Log
 

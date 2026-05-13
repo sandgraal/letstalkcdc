@@ -92,13 +92,22 @@ GitHub-side state and decisions.
 Each of the three is the URL on the right; fix in the citing page, then
 remove the matching regex from `.lycheeignore`.
 
-- [ ] Debezium signals docs —
-      `https://debezium.io/documentation/reference/stable/operations/signals.html`
-      is gone. Find the current canonical URL upstream.
-- [ ] Fivetran changelog —
-      `https://fivetran.com/docs/getting-started/changelog` has moved.
-- [ ] Matillion release notes —
-      `https://www.matillion.com/resources/release-notes` has moved.
+- [x] Debezium signals docs — updated
+      `src/reconciliation-surgery/index.njk:526` to point at
+      `https://debezium.io/documentation/reference/stable/configuration/signalling.html`
+      (the page moved from `/operations/signals.html` to
+      `/configuration/signalling.html`, also note the upstream
+      spelling change `signaling` → `signalling`).
+- [x] Fivetran changelog — updated
+      `src/_data/toolVersions.mjs` to point at
+      `https://fivetran.com/docs/changelog` (the `/getting-started/`
+      segment was dropped upstream).
+- [x] Matillion release notes — updated
+      `src/_data/toolVersions.mjs` to point at
+      `https://docs.matillion.com/metl/docs/release-notes-index/`
+      (moved from the marketing site to the docs subdomain).
+- [x] All three corresponding entries removed from `.lycheeignore`;
+      lychee will now catch a regression on any of them.
 
 ---
 
@@ -169,9 +178,10 @@ remove the matching regex from `.lycheeignore`.
       references; one doc per agent session is plenty. Look for: file
       paths that no longer exist, `.cjs`/`.mjs` mismatches, npm scripts
       that were renamed.
-- [ ] Decide whether `docs/PRD-SITE-REVAMP.md` should move to
-      `docs/archive/` now that the "Historical document" banner at the
-      top makes its status explicit.
+- [x] Moved `docs/PRD-SITE-REVAMP.md` → `docs/archive/PRD-SITE-REVAMP.md`.
+      The "Historical document" banner at the top already declared its
+      status; archive placement makes the status obvious from the file
+      tree too. Updated references in `CLAUDE.md` and `docs/README.md`.
 
 ---
 
