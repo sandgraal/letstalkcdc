@@ -206,21 +206,48 @@ remove the matching regex from `.lycheeignore`.
       See new Phase 5 item below — fix that test-setup issue, then
       re-measure the touch-target audit.
 
-- [ ] **LHCI test setup serves an unstyled page.** Discovered while
-      working on the a11y item above. The build at `_site/` uses the
-      production path-prefix `/letstalkcdc/`, so HTML pages reference
-      assets at `/letstalkcdc/assets/css/styles.css`. But
-      `.lighthouserc.json` sets `staticDistDir: ./_site` and visits
-      `http://localhost/intro/index.html` — that root-relative asset
-      URL resolves to `http://localhost/letstalkcdc/assets/css/styles.css`,
-      which 404s (no `_site/letstalkcdc/` directory exists). The
-      `performance: 1.0` baseline and the `accessibility: 0.97`
-      target are both measuring **an unstyled DOM**.
-      To fix: either re-build with `ELEVENTY_PATH_PREFIX=/` for the
-      LHCI step (cleanest — produces a true root-deployable artifact),
-      or use a server middleware that rewrites the `/letstalkcdc/`
-      prefix. Re-measure all the Lighthouse scores afterwards and
-      adjust the assertion thresholds against the real numbers.
+- [x] **LHCI test setup serves an unstyled page.** Added
+      `npm run build:lhci` (`ELEVENTY_PATH_PREFIX=/ npm run build`)
+      which produces a root-deployable artifact, and updated the
+      `lighthouse` CI job to call it instead of downloading the
+      production-prefixed `site-build` artifact. LHCI now exercises a
+      properly styled / scripted page.
+
+      Honest baseline against the styled page (`/intro/`, single run):
+
+  - performance: **0.86** (was a fake 1.0)
+  - accessibility: **0.94** (was a fake 0.97)
+  - best-practices: **0.96** (unchanged)
+  - seo: **1.0** (unchanged)
+
+  Adjusted the `/intro/` error-level performance assertion from
+  `minScore: 0.9` to `minScore: 0.8` so CI doesn't fail immediately
+  on the honest baseline; the threshold gives a ~0.06 buffer for
+  catching regressions while perf-improvement work lands. Raise it as
+  scores improve.
+
+- [ ] **`/intro/` perf debt — uncovered by the LHCI fix above.** The
+      0.86 score is held back by:
+  - `cumulative-layout-shift: 0.58` — large layout shifts during load
+  - `layout-shifts: 0` (CLS culprits) — investigate `cls-culprits-insight`
+  - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS
+  - `mainthread-work-breakdown: 0.5` — minimize main-thread work
+  - `unsized-images: 0.5` — add explicit `width`/`height` to images
+  - `dom-size: 0.5` — DOM is excessively large
+
+  Fix iteratively; raise the `/intro/` perf threshold to match.
+
+- [ ] **`/intro/` a11y debt — uncovered by the LHCI fix above.** The
+      remaining 0.94 a11y score has two failing audits that only
+      surface with CSS loaded:
+  - `color-contrast` — at least one foreground/background pair below
+    WCAG AA. Find the offender(s) via the LHCI report and adjust
+    color tokens.
+  - `target-size` — still failing; the CSS rules added in commit
+    `97954fc` should now actually apply, but a re-measurement is
+    needed to confirm which targets (if any) still fail with the
+    styled page. Likely an off-screen mobile-drawer chip that
+    measures wrong while the drawer is closed.
 
 ---
 

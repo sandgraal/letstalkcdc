@@ -248,11 +248,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download site artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: site-build
-          path: _site/
+      # Don't reuse the `site-build` artifact: the production build
+      # emits asset URLs under the `/letstalkcdc/` path prefix, but
+      # LHCI serves `_site/` at root, so referenced assets 404 and
+      # the audit measures an unstyled page. `build:lhci` is the
+      # same build pipeline with `ELEVENTY_PATH_PREFIX=/`, producing
+      # a root-deployable artifact that LHCI can actually exercise.
+      - name: Build root-prefixed site for LHCI
+        run: npm run build:lhci
 
       - name: Run Lighthouse CI
         run: npx @lhci/cli autorun

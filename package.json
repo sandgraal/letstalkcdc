@@ -8,6 +8,7 @@
     "build:js": "vite build",
     "build:11ty": "NODE_ENV=production eleventy --config=eleventy.config.mjs",
     "build": "NODE_ENV=production npm run build:css && NODE_ENV=production npm run build:js && npm run build:11ty && NODE_ENV=production npx postcss _site/assets/css/styles.css -o _site/assets/css/styles.css",
+    "build:lhci": "ELEVENTY_PATH_PREFIX=/ npm run build",
     "lint:content": "node scripts/lint-content.js",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
     "smoke:a11y": "node scripts/run-pa11y.mjs",
