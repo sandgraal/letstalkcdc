@@ -6,60 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Color tokens — `--color-text-muted` swapped between themes.**
-  The dark-theme value (`#64748b` / slate-500) was darker than the
-  light-theme value (`#94a3b8` / slate-400), which is the wrong
-  direction for legibility on each theme's background: dark muted
-  text on near-black hit 4.0:1 (below WCAG AA's 4.5:1), and light
-  muted text on white was even worse at 3.0:1. Swapped: dark now
-  uses #94a3b8, light uses #64748b — both pass AA on their
-  respective backgrounds.
-- **Added legacy variable aliases in `01-variables.css`** so
-  `var(--text-primary)`, `var(--text-muted)`, `var(--bg-primary)`,
-  `var(--border-color)`, `var(--color-text)`, `var(--color-accent)`,
-  `var(--color-surface*)`, `var(--color-border)`, and
-  `var(--color-{success|error|warning|info}-light)` resolve to the
-  correct `--color-*` design tokens per theme. Page-specific and
-  component-specific stylesheets (cdc-simulation, quiz, assistant,
-  dashboard-page, exactly-once, multi-tenancy, …) were authored
-  against these alternate names, which never existed in the design
-  system — so every `var(--text-primary, …)` call was falling
-  through to its hardcoded light-mode fallback and breaking
-  contrast on the dark default theme. Lighthouse `color-contrast`
-  on `/intro/` was failing 20 nodes; after this change it's 0.
-  Renaming the legacy callers is a separate cleanup — tracked in
-  IMPLEMENTATION-PLAN Phase 7.
-
-### Fixed
-
-- **`/intro/` accessibility, `color-contrast: 0 → 1.0`** (a11y score
-  0.94 → 0.97). See **Changed** section above for the token swap +
-  alias mechanism. Direct fixes in this PR:
-  - `.sim-btn-reset` swapped hardcoded `#6b7280` for
-    `var(--color-text-secondary)` (the previous color failed 3.7:1
-    on the dark-mode page background).
-  - `#cdc-reset` (the vendor-filter Reset button on `/intro/`) was a
-    bare `<button>` with browser-default styling — black text on the
-    dark page. Gave it the existing `.cdc-chip` class.
-- **`/intro/` perf: 0.86 → 0.95 (best run) baseline.** Locked in
-  from PR #270 — `unsized-images` 0.5 → 1.0, CLS 0.58 → 0,
-  mainthread-work-breakdown 0.5 → 1.0. The 0.5 → 1.0 jump on
-  mainthread-work is a happy side-effect: with the SVG dimensions
-  set, the browser stops re-doing layout passes on every image
-  decode. Three-run averages still vary between 0.87 and 0.95
-  depending on machine load, so the `.lighthouserc.json` threshold
-  raise (Phase 7 final item) waits until that variance settles.
-- **`.assistant-send` button bumped from 36×36 to 44×44** to comply
-  with WCAG 2.2 `target-size`. Real users only see this button when
-  they open the assistant via the FAB, at which point it's now the
-  same 44px touch-friendly tier used elsewhere. Lighthouse still
-  reports the audit failing because axe inspects the `hidden`
-  panel computationally (with `display: none` it reports the
-  button at "44px by 7px"); the audit will clear once a visible-
-  state e2e test runs against the rendered panel.
-
 ### Added
 
 - `npm run verify-all` — single command for the full pre-PR chain
@@ -80,6 +26,38 @@ DELETE` so the expansion can't grant write or destructive
 
 ### Changed
 
+- **Color tokens — `--color-text-muted` updated.** The dark-theme
+  value (`#64748b` / slate-500) was darker than the light-theme
+  value (`#94a3b8` / slate-400), the wrong direction for
+  legibility on each theme's background: dark muted on near-black
+  hit 4.0:1 (below WCAG AA), light muted on white was 3.0:1. Dark
+  now uses `#94a3b8` and light uses `#52606d`. Light moved to
+  `#52606d` rather than `#64748b` so the value also passes 4.5:1
+  on the elevated surface (`--color-bg-elevated` = `#f1f5f9`) —
+  `#64748b` against that is ≈4.07:1, which would have left
+  muted-on-elevated cases (the assistant panel, quiz callouts)
+  below AA in light mode.
+- **Expanded legacy variable aliases in `01-variables.css`** —
+  ~35 aliases total — so the text, surface, border, accent, and
+  semantic families used across the page-specific stylesheets
+  (cdc-simulation, quiz, assistant, dashboard-page, exactly-once,
+  multi-tenancy, scorecard, …) all resolve to the design system's
+  `--color-*` tokens. Specifically: `--text-{primary,secondary,
+tertiary,muted,inverse}`, `--muted`, `--color-text`,
+  `--color-heading`, `--bg`, `--bg-{primary,secondary,elevated,
+code}`, `--surface`, `--card-bg`, `--color-background[-soft]`,
+  `--color-bg[-code]`, `--color-surface[-alt|-hover]`, `--border`,
+  `--border-color`, `--color-border`, `--accent`, `--accent-
+{primary,light,hover}`, `--color-accent`, `--color-primary`,
+  `--focus`, `--success`, `--ok`, `--warning`, `--warn`, `--err`,
+  `--color-danger`, and the four `--color-{success|error|warning|
+info}-light` callout backgrounds. Defined only in the dark/
+  default `:root` block — the CSS cascade resolves each per-theme
+  at the use site, so the light theme block does NOT duplicate the
+  aliases. Lighthouse `color-contrast` on `/intro/`: **0 → 1.0**
+  (20 nodes → 0). Renaming the 12 legacy callers to use
+  `--color-*` directly is a separate cleanup, tracked in
+  IMPLEMENTATION-PLAN Phase 7.
 - `.lighthouserc.json` re-introduces the error-level
   `categories:performance` assertion on `*/intro/index.html` via
   `assertMatrix`. **Note:** LHCI throws
@@ -125,6 +103,34 @@ DELETE` so the expansion can't grant write or destructive
 
 ### Fixed
 
+- **`/intro/` accessibility, `color-contrast: 0 → 1.0`** (a11y
+  score 0.94 → 0.97). See the alias + token-swap entries in
+  **Changed** above for the mechanism. Direct call-site fixes:
+  - `.sim-btn-reset`: swapped hardcoded `#6b7280` (3.7:1 on the
+    dark page background, failed AA) for
+    `var(--color-text-secondary)`.
+  - `#cdc-reset` (vendor-filter Reset on `/intro/`) was a bare
+    `<button>` with browser-default styling — black text on the
+    dark page. Gave it the existing `.cdc-chip` class.
+  - `.assistant-suggestion-chip`: pointed `background` at
+    `var(--color-accent-hover)` so white-on-accent passes AA
+    (`#fff` on `#3b82f6` is 3.7:1; on `#2563eb` is 5.2:1).
+- **`/intro/` perf baseline 0.86 → 0.95 (best run)** locked in
+  from PR #270 — `unsized-images` 0.5 → 1.0, CLS 0.58 → 0,
+  `mainthread-work-breakdown` 0.5 → 1.0. The `mainthread-work`
+  jump is a side-effect: with SVG dimensions set, the browser
+  stops re-laying-out on every image decode. Three-run averages
+  still vary 0.87–0.95 by machine load, so the
+  `.lighthouserc.json` threshold raise (Phase 7 final item) waits
+  for that variance to settle.
+- **`.assistant-send` button bumped from 36×36 to 44×44** for
+  WCAG 2.2 `target-size`. Real users only see this when the FAB
+  opens the panel, at which point it's the same 44px tier used on
+  `.nav-chip` and the mobile menu toggle. Lighthouse still reports
+  the audit failing because axe inspects the `hidden` panel
+  computationally and reports `"44px by 7px"` for `display: none`;
+  the audit will clear once a visible-state e2e test runs against
+  the rendered panel.
 - **268 vitest failures on `main`.** Every test errored before it ran
   at `tests/setup.js:8` with `localStorage` undefined. Root cause: a
   three-way collision between vitest 4 (which no longer promotes

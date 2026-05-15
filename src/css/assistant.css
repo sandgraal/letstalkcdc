@@ -170,7 +170,10 @@
   display: inline-block;
   font-size: 0.78rem;
   padding: 0.2rem 0.6rem;
-  background: var(--color-accent, #2a9d8f);
+  /* Use the hover-shade accent so white text passes WCAG AA. The
+     default --color-accent-primary (#3b82f6) on white is 3.7:1;
+     --color-accent-hover (#2563eb) is 5.2:1. */
+  background: var(--color-accent-hover, #2563eb);
   color: #fff;
   text-decoration: none;
   border-radius: 1rem;

@@ -338,29 +338,41 @@ first so the threshold can ratchet up as we land them.
       went from **0 → 1.0** on `/intro/` (20 nodes → 0). Root cause
       was deeper than a single token: every page-specific stylesheet
       (cdc-simulation, quiz, assistant, dashboard-page, ...) was
-      authored against alternate variable names (`--text-primary`,
-      `--bg-primary`, `--color-text`, `--color-accent`,
-      `--color-surface*`, `--color-border`, `--color-{success|error|
-warning|info}-light`) that never existed in the design system,
-      so every `var()` lookup fell through to its hardcoded
-      light-mode fallback and broke contrast on the dark default
-      theme. Fix in `src/assets/css/01-variables.css`:
-  - Added 16 legacy aliases mapping the alternate names to their
-    `--color-*` equivalents, defined inside the dark/default `:root`
-    block (the CSS cascade resolves them per-theme at use site).
-  - Swapped `--color-text-muted` values between themes — dark was
-    `#64748b` (slate-500, too dark for 4.5:1 on near-black), light
-    was `#94a3b8` (slate-400, too light for 4.5:1 on white). Now
-    dark uses `#94a3b8` and light uses `#64748b`. Both pass AA.
-  - Replaced hardcoded `#6b7280` in `.sim-btn-reset` with
-    `var(--color-text-secondary)`.
-  - Gave `<button id="cdc-reset">` in `src/intro/index.njk` the
-    existing `.cdc-chip` class (was a bare browser-default button —
-    black text on the dark page background).
+      authored against alternate variable names — text family
+      (`--text-primary` / `-secondary` / `-tertiary` / `-muted` /
+      `-inverse`, `--muted`, `--color-text`, `--color-heading`),
+      surface family (`--bg`, `--bg-primary`, `--bg-secondary`,
+      `--bg-elevated`, `--bg-code`, `--surface`, `--card-bg`,
+      `--color-background`, `--color-bg*`, `--color-surface*`),
+      border (`--border`, `--border-color`, `--color-border`), accent
+      (`--accent`, `--accent-primary`, `--accent-light`, `--accent-hover`,
+      `--color-accent`, `--color-primary`), and semantic
+      (`--success`, `--ok`, `--warning`, `--warn`, `--err`,
+      `--color-danger`, `--color-{success|error|warning|info}-light`).
+      None of those existed in the design system, so every `var()`
+      lookup fell through to its hardcoded light-mode fallback and
+      broke contrast on the dark default theme. Fix in
+      `src/assets/css/01-variables.css`:
 
-  Renaming all the legacy callers across 12 files to use `--color-*`
-  directly is a separate cleanup, kept out of this PR to stay
-  scoped — opens the door for an `@layer` migration too.
+      - Added ~35 legacy aliases mapping every alternate name found in
+        a real call site to its `--color-*` equivalent. Defined inside
+        the dark/default `:root, :root[data-theme="dark"]` rule only —
+        the CSS cascade resolves them per-theme at use site, so the
+        light theme block does NOT need to duplicate the aliases.
+      - Swapped `--color-text-muted` values between themes. Dark was
+        `#64748b` (too dark for 4.5:1 on near-black), light was
+        `#94a3b8` (too light for 4.5:1 on white). Now dark uses
+        `#94a3b8` and light uses `#52606d` (≥5.6:1 on white AND
+        ≥4.5:1 on `--color-bg-elevated`, which `#64748b` did not).
+      - Replaced hardcoded `#6b7280` in `.sim-btn-reset` with
+        `var(--color-text-secondary)`.
+      - Gave `<button id="cdc-reset">` the existing `.cdc-chip` class.
+      - Pointed `.assistant-suggestion-chip` at
+        `var(--color-accent-hover)` so white-on-accent passes AA
+        (`#fff` on `#3b82f6` is 3.7:1; on `#2563eb` is 5.2:1).
+
+      Renaming the 12 legacy callers to use `--color-*` directly is a
+      separate cleanup — opens the door for an `@layer` migration too.
 
 - [ ] Raise the `/intro/` perf threshold in `.lighthouserc.json` from
       `minScore: 0.8` toward `0.9` as fixes land. **DoD:** perf ≥ 0.92,
