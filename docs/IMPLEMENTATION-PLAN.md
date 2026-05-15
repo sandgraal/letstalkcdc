@@ -71,14 +71,17 @@ GitHub-side state and decisions.
       `handoff/handoff-log.json` cleanly. The earlier suspicion that
       GitHub had auto-disabled the workflow was wrong; the export-env
       fix in `8dbec26` was the entire problem.
-- [ ] Decide what `handoff/Handoff.md` actually represents. Today it's
-      placeholder template content ("Initial setup complete... None
-      today...") that gets re-parsed every night into an identical
-      log entry. Either:
-  - Edit `Handoff.md` between maintainer sessions so each nightly sync
-    captures real wins/stumbles/next-tasks; or
-  - Retire the system (delete `handoff/`, the workflow, and
-    `publish-dashboard.yml`).
+- [x] **Retired.** `handoff/` (folder + `Handoff.md`, `README.md`,
+      `dashboard.html`, `handoff-log.json`, `index.html`,
+      `nightly-sync.sh`, `.gitkeep`), `.github/workflows/handoff-nightly.yml`,
+      and `.github/workflows/publish-dashboard.yml` deleted. The
+      `Handoff.md` template was never edited between maintainer sessions,
+      so the nightly sync had been logging empty entries for ≥3 days
+      running and pushing `chore(handoff): nightly sync …` commits to
+      `main` for noise. The public `handoff/index.html` dashboard
+      rendering three consecutive empty days was an anti-credibility
+      surface for a public educational site. Also dropped the handoff
+      section from `.github/copilot-instructions.md`.
 
 ---
 
@@ -137,24 +140,24 @@ remove the matching regex from `.lycheeignore`.
 
 ### Tracing-lite review
 
-- [ ] **Investigation done; decision still required.** Confirmed:
-      `src/assets/js/tracing-lite.js:9` hardcodes its default endpoint
-      to `http://localhost:4318/v1/traces`, and `getEducationTracer()`
-      (the only entry point, called from `app.js`) instantiates
-      `new EducationTracer()` with no args. So in production every
-      visitor's browser POSTs to _their own_ `localhost:4318`, which
-      always fails (silently swallowed by the `catch` in
-      `_sendTrace`). The tracer is dead weight in prod — ~363 LOC + a
-      failed fetch per tracked event. Decide:
-  - **Wire it up:** read the endpoint from `window.OTLP_TRACING_ENDPOINT`
-    (set by the base layout from a build-time env var), no-op
-    instantiation if unset. Document the endpoint env-var in
-    `docs/TRACING.md`.
-  - **Remove it:** drop the `import { getEducationTracer }` from
-    `src/assets/js/app.js`, the `"tracing-lite"` entry from
-    `vite.config.mjs`'s `rollupOptions.input`, and the file itself.
-    Trim `docs/TRACING.md` to describe the feature as "removed in
-    Month-N, was unused since 2.0.0".
+- [x] **Removed.** `src/assets/js/tracing-lite.js` deleted; the
+      `import { getEducationTracer }` and `try`/`catch` initialization
+      block in `src/assets/js/app.js` replaced with a literal no-op
+      `educationTracer` object so the per-module `init*(tracer)` call
+      sites and unit tests that pass their own mock tracers keep
+      working without further refactor. `docs/TRACING.md` rewritten as
+      a one-page "this feature was removed; how to re-introduce it
+      properly if ever needed." `docs/javascript-architecture.md`
+      tracing-integration section rewritten to describe the
+      vestigial no-op shape. (Vite config: no entry to remove — the
+      `"tracing-lite"` rollup input had already been cleaned up in a
+      prior PR.) The original details from the open-decision item are
+      preserved below for context — the tracer hardcoded its default
+      endpoint to `http://localhost:4318/v1/traces` and instantiated
+      with no args, so in production every visitor's browser POSTed to
+      _their own_ `localhost:4318` where every request was silently
+      swallowed by the fetch `catch`. ~363 LOC + a failed fetch per
+      tracked event for zero collected data.
 
 ---
 

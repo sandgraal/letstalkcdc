@@ -10,7 +10,6 @@
  * @module app
  */
 
-import { getEducationTracer } from "./tracing-lite.js";
 import { initTheme } from "./modules/theme.js";
 import { initNavigation } from "./modules/navigation.js";
 import { initSearch } from "./modules/search.js";
@@ -22,22 +21,17 @@ import { showToast } from "./modules/toast.js";
 import { initInteractiveDiagrams } from "./modules/interactive-diagrams.js";
 import { initTimelines } from "./modules/timeline.js";
 
-// --- Initialize OpenTelemetry tracing ---
-
-let educationTracer;
-try {
-  educationTracer = getEducationTracer();
-  console.log("✓ Education tracing initialized");
-} catch (error) {
-  console.warn("Tracing initialization failed:", error);
-  educationTracer = {
-    trackModuleView: () => {},
-    trackProgress: () => {},
-    trackInteraction: () => {},
-    trackSearch: () => {},
-    trackWebVital: () => {},
-  };
-}
+// Modules accept a `tracer` parameter shaped like the old EducationTracer.
+// The full tracer was removed (it POSTed to localhost:4318 in every visitor's
+// browser and was always swallowed). Passing this no-op keeps the per-module
+// call sites stable for tests that pass their own mock tracers.
+const educationTracer = {
+  trackModuleView: () => {},
+  trackProgress: () => {},
+  trackInteraction: () => {},
+  trackSearch: () => {},
+  trackWebVital: () => {},
+};
 
 // --- Export toast globally for backward compatibility ---
 

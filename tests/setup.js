@@ -3,9 +3,57 @@
  * Provides mocks for browser APIs not available in jsdom.
  */
 
-// --- localStorage mock (jsdom has a basic one, but we ensure reset) ---
+// --- localStorage / sessionStorage polyfill ---
+// vitest 4's jsdom 28 environment ships without a working `Storage` impl, and
+// Node 26's experimental `--localstorage-file` flag is gated behind a CLI arg
+// we don't pass. Define a minimal in-memory Storage that satisfies every
+// production code path (getItem/setItem/removeItem/clear + .length + index
+// access). Mounted on `globalThis`, `window`, and `globalThis.localStorage`
+// so all spelling styles resolve.
+class MemoryStorage {
+  constructor() {
+    this._data = new Map();
+  }
+  get length() {
+    return this._data.size;
+  }
+  key(i) {
+    return Array.from(this._data.keys())[i] ?? null;
+  }
+  getItem(k) {
+    return this._data.has(String(k)) ? this._data.get(String(k)) : null;
+  }
+  setItem(k, v) {
+    this._data.set(String(k), String(v));
+  }
+  removeItem(k) {
+    this._data.delete(String(k));
+  }
+  clear() {
+    this._data.clear();
+  }
+}
+const installStorage = (name) => {
+  const store = new MemoryStorage();
+  Object.defineProperty(globalThis, name, {
+    value: store,
+    writable: true,
+    configurable: true,
+  });
+  if (typeof window !== "undefined" && window !== globalThis) {
+    Object.defineProperty(window, name, {
+      value: store,
+      writable: true,
+      configurable: true,
+    });
+  }
+};
+installStorage("localStorage");
+installStorage("sessionStorage");
+
 beforeEach(() => {
-  localStorage.clear();
+  globalThis.localStorage.clear();
+  globalThis.sessionStorage.clear();
 });
 
 // --- Mock IntersectionObserver ---

@@ -16,9 +16,8 @@ All modules use **ES Modules** (ESM) syntax and are bundled by **Vite** for prod
 
 ```
 src/assets/js/
-├── app.js                    # Entry point / orchestrator (85 lines)
+├── app.js                    # Entry point / orchestrator
 ├── search.js                 # Standalone search entry (Vite input)
-├── tracing-lite.js           # Dependency-free OTLP-compatible tracer
 ├── auth.js                   # Appwrite authentication
 ├── auth-ui.js                # Auth modal & profile UI
 ├── cloud-progress.js         # Cloud progress sync (Appwrite)
@@ -185,19 +184,15 @@ npm run test:e2e:ui   # Interactive UI mode
 
 ---
 
-## Tracing Integration
+## Tracing Integration (vestigial)
 
-Modules that accept a `tracer` parameter use the `EducationTracer` class from `tracing-lite.js`. The tracer provides:
-
-| Method               | Used By        | Tracks                          |
-| -------------------- | -------------- | ------------------------------- |
-| `trackModuleView()`  | `app.js`       | Page visits                     |
-| `trackProgress()`    | `scorecard.js` | Learning progress               |
-| `trackInteraction()` | Multiple       | Clicks, completions, quizzes    |
-| `trackSearch()`      | `search.js`    | Search queries and result count |
-| `trackWebVital()`    | `tracing-lite` | Core Web Vitals (LCP, FID, CLS) |
-
-If tracing initialization fails, a no-op stub is used — modules never throw on missing tracer.
+`app.js` constructs a no-op `educationTracer` object and passes it
+through to every module via the `init*(tracer)` signature. The shape
+matches the removed `EducationTracer` (`trackModuleView`,
+`trackProgress`, `trackInteraction`, `trackSearch`, `trackWebVital`)
+so unit tests that pass their own mock tracers continue to work, but
+nothing is collected. See [TRACING.md](TRACING.md) for the removal
+context and how to re-introduce tracing properly if it's ever wanted.
 
 ---
 
@@ -215,7 +210,7 @@ If tracing initialization fails, a no-op stub is used — modules never throw on
 
    /**
     * Initialize the module.
-    * @param {object} [tracer] - EducationTracer instance (optional)
+    * @param {object} [tracer] - tracer-shaped no-op forwarded from app.js
     */
    export function initMyModule(tracer) {
      // Implementation
