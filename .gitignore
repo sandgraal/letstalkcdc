@@ -18,3 +18,8 @@ coverage/
 playwright-report/
 test-results/
 .lighthouseci/
+
+# Per-user state for the merged-PR auto-continue hook (see
+# .claude/scripts/check-merged-prs.sh). Stores the last-acknowledged
+# PR number; resetting it just means the next merge re-triggers.
+.claude/.merge-watcher-state.json

@@ -97,6 +97,26 @@
             "type": "command",
             "command": "test -d node_modules || (echo '[letstalkcdc] node_modules missing — running npm ci...' && npm ci --no-audit --no-fund) >&2",
             "timeout": 180
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/check-merged-prs.sh",
+            "timeout": 30,
+            "statusMessage": "Checking for merged PRs..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/check-merged-prs.sh",
+            "timeout": 30,
+            "asyncRewake": true,
+            "rewakeSummary": "A claude/* PR merged — auto-continuing per IMPLEMENTATION-PLAN.md"
           }
         ]
       }
