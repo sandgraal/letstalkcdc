@@ -4,8 +4,30 @@
  */
 
 // --- localStorage mock (jsdom has a basic one, but we ensure reset) ---
+// vitest 4 + jsdom 28 no longer auto-expose window globals (localStorage,
+// sessionStorage) as bare identifiers. Re-alias them onto globalThis so the
+// existing test suite (and source modules) can keep using bare `localStorage`.
+// vitest 4 + jsdom 28: vitest's jsdom env only copies a fixed allowlist of
+// window keys onto globalThis, and `localStorage` / `sessionStorage` /
+// `Storage` aren't on it. Node 22+ also has an experimental `localStorage`
+// global that requires --localstorage-file and otherwise throws, so we
+// explicitly forward jsdom's storage objects onto globalThis here.
+const jsdomWindow = globalThis.jsdom?.window;
+if (jsdomWindow) {
+  for (const key of ["localStorage", "sessionStorage", "Storage"]) {
+    if (key in jsdomWindow) {
+      Object.defineProperty(globalThis, key, {
+        get: () => jsdomWindow[key],
+        configurable: true,
+      });
+    }
+  }
+}
+
 beforeEach(() => {
-  localStorage.clear();
+  if (typeof localStorage !== "undefined") {
+    localStorage.clear();
+  }
 });
 
 // --- Mock IntersectionObserver ---
