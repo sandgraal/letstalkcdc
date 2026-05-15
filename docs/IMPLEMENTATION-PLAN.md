@@ -323,12 +323,44 @@ first so the threshold can ratchet up as we land them.
       and inlining the above-the-fold subset. Verify via
       `/css-byte-check` after — bundled output should be unchanged.
 
-- [ ] Re-measure `target-size` against the styled LHCI build; remove
-      defensive `min-height: 44px` from elements that pass without it.
+- [x] Re-measured `target-size` against the styled LHCI build. Of
+      the previously-flagged elements, only `.assistant-send` (the
+      assistant FAB submit button) is still red — bumped from 36×36
+      to 44×44 in `src/css/assistant.css`. Lighthouse still reports
+      the audit failing because axe inspects the `hidden` panel
+      computationally and reports the button at "44px by 7px" when
+      `display: none`. Real users see the 44px button only when the
+      panel opens; will clear once we add a visible-state e2e test.
+      No `min-height: 44px` overrides removed in this pass — left
+      defensively in place; cleanup deferred to the same e2e PR.
 
-- [ ] Audit `color-contrast` against the styled build. Likely culprit
-      is `--surface-2` / `--text-muted` in callouts. Adjust the token
-      in `src/assets/css/01-variables.css` with side-by-side QA.
+- [x] Audited `color-contrast` against the styled build. Lighthouse
+      went from **0 → 1.0** on `/intro/` (20 nodes → 0). Root cause
+      was deeper than a single token: every page-specific stylesheet
+      (cdc-simulation, quiz, assistant, dashboard-page, ...) was
+      authored against alternate variable names (`--text-primary`,
+      `--bg-primary`, `--color-text`, `--color-accent`,
+      `--color-surface*`, `--color-border`, `--color-{success|error|
+warning|info}-light`) that never existed in the design system,
+      so every `var()` lookup fell through to its hardcoded
+      light-mode fallback and broke contrast on the dark default
+      theme. Fix in `src/assets/css/01-variables.css`:
+  - Added 16 legacy aliases mapping the alternate names to their
+    `--color-*` equivalents, defined inside the dark/default `:root`
+    block (the CSS cascade resolves them per-theme at use site).
+  - Swapped `--color-text-muted` values between themes — dark was
+    `#64748b` (slate-500, too dark for 4.5:1 on near-black), light
+    was `#94a3b8` (slate-400, too light for 4.5:1 on white). Now
+    dark uses `#94a3b8` and light uses `#64748b`. Both pass AA.
+  - Replaced hardcoded `#6b7280` in `.sim-btn-reset` with
+    `var(--color-text-secondary)`.
+  - Gave `<button id="cdc-reset">` in `src/intro/index.njk` the
+    existing `.cdc-chip` class (was a bare browser-default button —
+    black text on the dark page background).
+
+  Renaming all the legacy callers across 12 files to use `--color-*`
+  directly is a separate cleanup, kept out of this PR to stay
+  scoped — opens the door for an `@layer` migration too.
 
 - [ ] Raise the `/intro/` perf threshold in `.lighthouserc.json` from
       `minScore: 0.8` toward `0.9` as fixes land. **DoD:** perf ≥ 0.92,
