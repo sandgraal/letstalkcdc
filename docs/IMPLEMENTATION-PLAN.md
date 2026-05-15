@@ -71,14 +71,17 @@ GitHub-side state and decisions.
       `handoff/handoff-log.json` cleanly. The earlier suspicion that
       GitHub had auto-disabled the workflow was wrong; the export-env
       fix in `8dbec26` was the entire problem.
-- [ ] Decide what `handoff/Handoff.md` actually represents. Today it's
-      placeholder template content ("Initial setup complete... None
-      today...") that gets re-parsed every night into an identical
-      log entry. Either:
-  - Edit `Handoff.md` between maintainer sessions so each nightly sync
-    captures real wins/stumbles/next-tasks; or
-  - Retire the system (delete `handoff/`, the workflow, and
-    `publish-dashboard.yml`).
+- [x] **Retired.** `handoff/` (folder + `Handoff.md`, `README.md`,
+      `dashboard.html`, `handoff-log.json`, `index.html`,
+      `nightly-sync.sh`, `.gitkeep`), `.github/workflows/handoff-nightly.yml`,
+      and `.github/workflows/publish-dashboard.yml` deleted. The
+      `Handoff.md` template was never edited between maintainer sessions,
+      so the nightly sync had been logging empty entries for ≥3 days
+      running and pushing `chore(handoff): nightly sync …` commits to
+      `main` for noise. The public `handoff/index.html` dashboard
+      rendering three consecutive empty days was an anti-credibility
+      surface for a public educational site. Also dropped the handoff
+      section from `.github/copilot-instructions.md`.
 
 ---
 
@@ -86,12 +89,16 @@ GitHub-side state and decisions.
 
 ### Video embeds
 
-- [ ] Pick a canonical intro-to-CDC video and replace the two deleted
-      YouTube embeds in `src/intro/index.njk` (the upstream IDs
-      `5CjPj9ShJVA` and `zYJn6GA5t1Q` are 404). Update the `<iframe>`
-      `src`s + thumbnails, then drop the two
-      `^https://img\.youtube\.com/vi/<id>/` patterns from
-      `.lycheeignore`.
+- [x] Removed both 404'd YouTube embeds — `5CjPj9ShJVA` from
+      `src/intro/index.njk` and `zYJn6GA5t1Q` from
+      `src/quickstart/quickstart-postgres/index.njk`. Cleared the
+      corresponding `^https://img\.youtube\.com/vi/<id>/` entries from
+      `.lycheeignore` and dropped the now-unused
+      `youtubeEmbed` / `videoEmbed` macro imports from both pages. The
+      decision to pick canonical replacements is parked under Phase 10
+      (interactive demo or curated video); shipping a working page beats
+      a broken embed waiting on a content call. The 404'd thumbnails
+      were also the prime CLS contributor on `/intro/`.
 
 ### Vendor doc URL drift
 
@@ -133,24 +140,24 @@ remove the matching regex from `.lycheeignore`.
 
 ### Tracing-lite review
 
-- [ ] **Investigation done; decision still required.** Confirmed:
-      `src/assets/js/tracing-lite.js:9` hardcodes its default endpoint
-      to `http://localhost:4318/v1/traces`, and `getEducationTracer()`
-      (the only entry point, called from `app.js`) instantiates
-      `new EducationTracer()` with no args. So in production every
-      visitor's browser POSTs to _their own_ `localhost:4318`, which
-      always fails (silently swallowed by the `catch` in
-      `_sendTrace`). The tracer is dead weight in prod — ~363 LOC + a
-      failed fetch per tracked event. Decide:
-  - **Wire it up:** read the endpoint from `window.OTLP_TRACING_ENDPOINT`
-    (set by the base layout from a build-time env var), no-op
-    instantiation if unset. Document the endpoint env-var in
-    `docs/TRACING.md`.
-  - **Remove it:** drop the `import { getEducationTracer }` from
-    `src/assets/js/app.js`, the `"tracing-lite"` entry from
-    `vite.config.mjs`'s `rollupOptions.input`, and the file itself.
-    Trim `docs/TRACING.md` to describe the feature as "removed in
-    Month-N, was unused since 2.0.0".
+- [x] **Removed.** `src/assets/js/tracing-lite.js` deleted; the
+      `import { getEducationTracer }` and `try`/`catch` initialization
+      block in `src/assets/js/app.js` replaced with a literal no-op
+      `educationTracer` object so the per-module `init*(tracer)` call
+      sites and unit tests that pass their own mock tracers keep
+      working without further refactor. `docs/TRACING.md` rewritten as
+      a one-page "this feature was removed; how to re-introduce it
+      properly if ever needed." `docs/javascript-architecture.md`
+      tracing-integration section rewritten to describe the
+      vestigial no-op shape. (Vite config: no entry to remove — the
+      `"tracing-lite"` rollup input had already been cleaned up in a
+      prior PR.) The original details from the open-decision item are
+      preserved below for context — the tracer hardcoded its default
+      endpoint to `http://localhost:4318/v1/traces` and instantiated
+      with no args, so in production every visitor's browser POSTed to
+      _their own_ `localhost:4318` where every request was silently
+      swallowed by the fetch `catch`. ~363 LOC + a failed fetch per
+      tracked event for zero collected data.
 
 ---
 
@@ -281,6 +288,51 @@ remove the matching regex from `.lycheeignore`.
       The "Historical document" banner at the top already declared its
       status; archive placement makes the status obvious from the file
       tree too. Updated references in `CLAUDE.md` and `docs/README.md`.
+
+---
+
+## Phase 7 — `/intro/` perf & a11y honest baselines
+
+Uncovered by the LHCI test-setup fix in Phase 5 (the styled-page audit
+revealed perf 0.86 with CLS 0.58). Walk these in order — the cheap fixes
+first so the threshold can ratchet up as we land them.
+
+- [x] **`unsized-images` audit was failing site-wide.** The custom
+      `{% img %}` shortcode in `eleventy.config.mjs` emitted `<img>`
+      tags with no `width`/`height` attributes. Reserved layout space
+      at build time by parsing `viewBox` / explicit `width`/`height`
+      attrs from the SVG file on disk and emitting them on every
+      `<img>` produced from a local `.svg`. Caller-provided
+      `width`/`height` always win. Cache keyed on `src` so we read each
+      SVG once per build. Remote URLs (e.g. YouTube thumbnails) fall
+      through unchanged. Affected call sites resolved automatically:
+      `src/intro/index.njk:433`, `src/_includes/layouts/base.njk:71`,
+      `src/snapshotting/index.njk:189`, `src/schema-evolution/index.njk:50`,
+      `src/cloud-labs/index.njk:21`, `src/overview/index.njk:30`,
+      `src/exactly-once/index.njk:260`. **DoD:** `unsized-images` audit
+      → 1.0 across all module pages.
+
+- [ ] Identify remaining CLS culprits on `/intro/` via the LHCI
+      `cls-culprits-insight` audit (run `npm run lighthouse` after
+      `build:lhci`). With the 404'd video embed gone and SVGs now
+      dimensioned, suspects narrow to font-swap reflow on the long
+      lede and the `.cdc-methods-grid` reveal.
+
+- [ ] Eliminate render-blocking by moving non-critical CSS to a
+      deferred `<link rel="preload" as="style" onload="this.rel='stylesheet'">`
+      and inlining the above-the-fold subset. Verify via
+      `/css-byte-check` after — bundled output should be unchanged.
+
+- [ ] Re-measure `target-size` against the styled LHCI build; remove
+      defensive `min-height: 44px` from elements that pass without it.
+
+- [ ] Audit `color-contrast` against the styled build. Likely culprit
+      is `--surface-2` / `--text-muted` in callouts. Adjust the token
+      in `src/assets/css/01-variables.css` with side-by-side QA.
+
+- [ ] Raise the `/intro/` perf threshold in `.lighthouserc.json` from
+      `minScore: 0.8` toward `0.9` as fixes land. **DoD:** perf ≥ 0.92,
+      a11y = 1.0, CLS ≤ 0.1.
 
 ---
 

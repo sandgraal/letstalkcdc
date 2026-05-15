@@ -260,16 +260,6 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 });
 ```
 
-## Handoff System
-
-The `handoff/` directory contains a **nightly prompt sync** for agent context:
-
-- `nightly-sync.sh`: Shell script to run daily (via cron/launchd)
-- `dashboard.html`: Visual dashboard of agent activity
-- `handoff-log.json`: Structured log of handoffs
-
-**Purpose**: Provides agents with updated context before each run.
-
 ## Accessibility Requirements
 
 - Alt text required for all images

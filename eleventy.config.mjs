@@ -365,14 +365,64 @@ export default function (eleventyConfig) {
   eleventyConfig.addWatchTarget("src/assets/css");
   eleventyConfig.addWatchTarget("src/assets/js");
 
+  // Cache SVG intrinsic dimensions resolved from disk so we don't re-parse on
+  // every shortcode call during builds with many pages.
+  const _svgDimCache = new Map();
+  const resolveLocalSvgDims = (src) => {
+    if (typeof src !== "string") return null;
+    // Only local paths (e.g. "/diagrams/foo.svg", "/letstalkcdc/images/x.svg").
+    if (!src.endsWith(".svg")) return null;
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(src)) return null;
+    if (_svgDimCache.has(src)) return _svgDimCache.get(src);
+
+    // Strip the path prefix (if any) and resolve under src/static.
+    const prefix = getPathPrefix();
+    let rel = src;
+    if (prefix && prefix !== "/" && rel.startsWith(prefix)) {
+      rel = rel.slice(prefix.length);
+    }
+    if (rel.startsWith("/")) rel = rel.slice(1);
+    const diskPath = path.join("src", "static", rel);
+
+    let dims = null;
+    try {
+      if (fs.existsSync(diskPath)) {
+        const svg = fs.readFileSync(diskPath, "utf-8");
+        const rootMatch = svg.match(/<svg\b[^>]*>/i);
+        if (rootMatch) {
+          const root = rootMatch[0];
+          const wAttr = root.match(/\bwidth="([\d.]+)(?:px)?"/i);
+          const hAttr = root.match(/\bheight="([\d.]+)(?:px)?"/i);
+          if (wAttr && hAttr) {
+            dims = { width: wAttr[1], height: hAttr[1] };
+          } else {
+            const vb = root.match(
+              /\bviewBox="\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)\s*"/i,
+            );
+            if (vb) dims = { width: vb[1], height: vb[2] };
+          }
+        }
+      }
+    } catch {
+      dims = null;
+    }
+    _svgDimCache.set(src, dims);
+    return dims;
+  };
+
   eleventyConfig.addShortcode("img", (src, alt = "", attrs = {}) => {
     const extraAttrs = attrs && typeof attrs === "object" ? attrs : {};
+
+    // Reserve layout space for local SVGs by resolving their intrinsic
+    // dimensions at build time. Caller-provided width/height always wins.
+    const svgDims = resolveLocalSvgDims(src);
 
     const attributes = {
       loading: extraAttrs.loading ?? "lazy",
       decoding: extraAttrs.decoding ?? "async",
       src,
       alt,
+      ...(svgDims ? { width: svgDims.width, height: svgDims.height } : {}),
       ...extraAttrs,
     };
 
