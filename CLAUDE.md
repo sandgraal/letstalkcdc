@@ -227,6 +227,32 @@ phase it logically belongs to, or append a new `## Phase N` heading.
   spawn it via the Agent tool for any CSS change. It enforces the
   byte-identity workflow and the anti-pattern list automatically.
 
+## Auto-continue on merge
+
+When a `claude/*` PR you authored merges on GitHub, the next session
+(or even the current one, between turns) will automatically re-wake
+with a directive to continue work from
+`docs/IMPLEMENTATION-PLAN.md`. Mechanism:
+
+- [`.claude/scripts/check-merged-prs.sh`](.claude/scripts/check-merged-prs.sh)
+  polls `gh pr list --state merged --author @me` for `claude/*`
+  branches, tracks the highest-acknowledged PR in
+  `.claude/.merge-watcher-state.json` (gitignored), and emits a
+  `hookSpecificOutput.additionalContext` envelope on a fresh merge.
+- Wired via two hooks in [`.claude/settings.json`](.claude/settings.json):
+  `SessionStart` (catches merges between sessions) and `Stop` with
+  `asyncRewake: true` (catches merges that land during a session — the
+  script exits 2 and the harness rewakes the model with the script's
+  stdout as a system-reminder).
+- If you genuinely want to _not_ auto-continue, delete the state file
+  and either disable the hook via the `/hooks` UI or remove the
+  `Stop` entry from settings.json for that session.
+
+There is no GitHub webhook event in the harness. The hook is a poll
+that fires on session boundaries / between turns — not a true push.
+A merge that lands while a session is idle won't trigger until the
+next turn finishes, but in practice that's seconds, not minutes.
+
 ## Where to read more
 
 - `docs/CONTRIBUTING.md` — human-contributor workflow
