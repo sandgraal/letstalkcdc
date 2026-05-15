@@ -49,32 +49,74 @@ latest="$(printf '%s' "$prs_json" | jq -c '
 ')"
 [ -n "$latest" ] && [ "$latest" != "null" ] || exit 0
 
-latest_num="$(printf '%s' "$latest" | jq -r '.number')"
-latest_title="$(printf '%s' "$latest" | jq -r '.title')"
-latest_branch="$(printf '%s' "$latest" | jq -r '.headRefName')"
-latest_merged_at="$(printf '%s' "$latest" | jq -r '.mergedAt')"
+latest_num="$(printf '%s' "$latest" | jq -r '.number' 2>/dev/null)"
+latest_title="$(printf '%s' "$latest" | jq -r '.title' 2>/dev/null)"
+latest_branch="$(printf '%s' "$latest" | jq -r '.headRefName' 2>/dev/null)"
+latest_merged_at="$(printf '%s' "$latest" | jq -r '.mergedAt' 2>/dev/null)"
+[ -n "$latest_merged_at" ] && [ "$latest_merged_at" != "null" ] || exit 0
 
-# Read last-acknowledged PR number from state file (defaults to 0).
-last_seen=0
+# Freshness is by `mergedAt` (ISO 8601, lexicographically comparable), NOT by
+# PR number. A long-lived branch can merge after a higher-numbered PR has
+# already landed; PR-number ordering would silently skip that case. We also
+# carry an ackedPRs list so two PRs sharing a mergedAt second don't collide.
+last_merged_at=""
+acked_prs_json="[]"
 if [ -f "$state_file" ]; then
-  last_seen="$(jq -r '.lastSeenPR // 0' "$state_file" 2>/dev/null || echo 0)"
+  last_merged_at="$(jq -r '.lastSeenMergedAt // ""' "$state_file" 2>/dev/null || true)"
+  # Coerce non-array `ackedPRs` (corrupt or hand-edited state) to `[]` so
+  # the merge below doesn't error and a single bad write doesn't
+  # permanently block future triggers.
+  acked_prs_json="$(jq -c '(if (.ackedPRs | type) == "array" then .ackedPRs else [] end)' \
+    "$state_file" 2>/dev/null || echo '[]')"
+  [ -n "$acked_prs_json" ] || acked_prs_json="[]"
 fi
 
-# Nothing new — silent exit.
-if [ "$latest_num" -le "$last_seen" ]; then
+# Already-acknowledged check: if this exact PR number is in ackedPRs, skip.
+already_acked="$(printf '%s' "$acked_prs_json" | jq --argjson n "$latest_num" \
+  'any(. == $n)' 2>/dev/null || echo false)"
+if [ "$already_acked" = "true" ]; then
   exit 0
 fi
 
-# Record the new acknowledgement *before* emitting context, so even if the
-# downstream rewake fails for any reason we don't loop on the same PR.
-mkdir -p "$(dirname "$state_file")"
-jq -n \
+# Timestamp freshness check: skip if the latest merge is not strictly newer
+# than the last one we've seen. Empty `last_merged_at` (first run) sorts
+# before any real timestamp, so the first valid merge always fires.
+if [ -n "$last_merged_at" ] && [ ! "$latest_merged_at" \> "$last_merged_at" ]; then
+  exit 0
+fi
+
+# Record the acknowledgement *atomically and before* emitting context. If
+# either the directory-create or the rename fails, exit 0 with no output —
+# emitting an envelope without advancing state would loop on the same PR
+# every turn. tmp file is in the same dir so `mv` is a real atomic rename.
+if ! mkdir -p "$(dirname "$state_file")" 2>/dev/null; then
+  exit 0
+fi
+tmp_state="${state_file}.tmp.$$"
+# Subshell + outer 2>/dev/null catches redirection errors (e.g.
+# read-only directory) that happen *before* jq runs and would
+# otherwise leak to the terminal.
+if ! ( jq -n \
   --argjson n "$latest_num" \
   --arg t "$latest_title" \
   --arg b "$latest_branch" \
   --arg m "$latest_merged_at" \
-  '{ lastSeenPR: $n, lastSeenTitle: $t, lastSeenBranch: $b, lastSeenMergedAt: $m, acknowledgedAt: (now | todate) }' \
-  > "$state_file"
+  --argjson acked "$acked_prs_json" \
+  '{
+    lastSeenPR: $n,
+    lastSeenTitle: $t,
+    lastSeenBranch: $b,
+    lastSeenMergedAt: $m,
+    ackedPRs: ($acked + [$n] | unique | sort_by(. | tonumber? // 0) | reverse | .[:50]),
+    acknowledgedAt: (now | todate)
+  }' > "$tmp_state" ) 2>/dev/null; then
+  rm -f "$tmp_state" 2>/dev/null
+  exit 0
+fi
+if ! mv "$tmp_state" "$state_file" 2>/dev/null; then
+  rm -f "$tmp_state" 2>/dev/null
+  exit 0
+fi
 
 # Determine the hook event from the JSON the harness piped in on stdin.
 # SessionStart and Stop are the two registered call sites; default to
