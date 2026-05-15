@@ -19,13 +19,14 @@ Appwrite integration only stores assistant-feedback events.
 npm ci                 # install (use this, not `npm install`, in fresh checkouts)
 npm run dev            # eleventy --serve on http://localhost:8080
 npm run build          # full production build → _site/
-npm test               # vitest (unit, 238 tests)
+npm test               # vitest (unit suite — run npm test for the current count)
 npm run lint           # eslint
 npm run format         # prettier --write
 npm run format:check   # prettier --check (CI uses this)
 npm run smoke          # smoke:core + smoke:a11y + smoke:perf (slow)
 npm run smoke:core     # HTML/links smoke; fastest of the three
 npm run clean          # rimraf dist _site styles.min.css
+npm run verify-all     # format:check + lint + test + build — minimum bar before pushing
 ```
 
 `npm run build` runs four stages in order:
@@ -144,6 +145,11 @@ https://claude.ai/code/session_<id>
 Prefer creating **new commits** over `--amend`. Never `--no-verify` or
 `--no-gpg-sign` unless the user explicitly asks.
 
+The `https://claude.ai/code/session_<id>` footer is **only** for
+sessions where the harness gave you a real session id. If you don't
+have one, omit the footer rather than inventing one — recent commits
+in this repo follow that rule.
+
 ### Branch naming
 
 Feature branches for Claude sessions land on `claude/<short-name>-<id>`. The
@@ -228,19 +234,52 @@ phase it logically belongs to, or append a new `## Phase N` heading.
 - `docs/HOSTING.md` — deploy pipeline + CI runbook
 - `docs/adding-modules.md` — how to add a new content section
 - `docs/javascript-architecture.md` — JS module layout + Vite split
-- `docs/TRACING.md` — client-side tracing (the lite OTLP-compatible tracer in `src/assets/js/tracing-lite.js`)
+- `docs/TRACING.md` — _retired_; explains why and how to re-introduce
+  tracing properly if it's ever wanted
 - `docs/archive/PRD-SITE-REVAMP.md` — historical PRD for the 2.0 revamp
 - `docs/archive/` — historical records; read for context, do not act on as
   current spec
 - `CHANGELOG.md` — `[Unreleased]` block is the running scratchpad for the
   current dev cycle
 
+## First-run for agents — don't trip on these
+
+A fresh Claude session in this repo should be able to ship a PR
+without asking. The mines that catch new agents:
+
+1. **`npm test` was historically broken on `main` after the vitest 4 /
+   jsdom 28 / Node 26 bumps** (`localStorage` was undefined). Fixed in
+   May 2026 by polyfilling `Storage` in `tests/setup.js`. If `npm test`
+   ever explodes pre-emptively at `tests/setup.js`, the environment
+   changed again — fix the setup, don't ship around it.
+2. **There is no agent handoff system.** A previous nightly-sync
+   workflow under `handoff/` was retired (it logged empty entries to
+   `main` for days). Don't recreate it. Cross-session context lives
+   in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
+   and `git log` — that's the durable record.
+3. **`/css-byte-check` baseline is in this file** (`d326b17e9512…`).
+   If you touch any CSS, prove the production bundle is unchanged or
+   walk the diff. Don't assume CI catches it — only the lighthouse
+   job re-builds CSS.
+4. **The LHCI baseline is honest as of May 2026** (perf 0.86 on
+   `/intro/`). Earlier `1.0` scores measured an unstyled DOM; ignore
+   any pre-May docs claiming higher numbers and trust the threshold
+   in `.lighthouserc.json`.
+5. **The `viteAsset` filter falls back to source paths in dev.** If
+   you're seeing 404s for hashed JS in dev, that's a `.vite/manifest.json`
+   absence, not a real bug. Run `npm run build:js` once or use `npm run dev`.
+6. **Don't add a `console.log` to ship.** ESLint's `no-console` is on
+   warn with the usual allowlist — the lint job is non-zero-exit clean
+   currently. Keep it that way.
+
 ## When in doubt
 
 1. Search the codebase before asking — patterns usually exist already.
-2. Run the relevant smoke test before pushing
-   (`npm run smoke:core` is fast).
-3. For CSS or visual changes: verify the byte-identity hash above, or build
-   the site and screenshot the affected pages.
-4. Ask the user, don't guess, on anything that affects shared state
+2. Run `npm run verify-all` before pushing. If any step fails, fix
+   it before opening a PR.
+3. Run `npm run smoke:core` if you touched routing / passthroughs /
+   page templates.
+4. For CSS or visual changes: verify the byte-identity hash above, or
+   build the site and screenshot the affected pages.
+5. Ask the user, don't guess, on anything that affects shared state
    (force-push, dropping a dependency, changing CI behavior).
