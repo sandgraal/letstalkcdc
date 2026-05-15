@@ -23,9 +23,11 @@ The running checklist for in-flight work is
 ## 🚀 Setup & Configuration
 
 - **[SETUP.md](SETUP.md)** — Complete development environment setup
-  (Appwrite, tracing, env vars, troubleshooting)
+  (Appwrite, env vars, troubleshooting)
 - **[HOSTING.md](HOSTING.md)** — GitHub Pages deploy + CI runbook
-- **[TRACING.md](TRACING.md)** — OpenTelemetry implementation
+- **[TRACING.md](TRACING.md)** — Removal note (the client-side tracer
+  was retired in May 2026); kept as a recipe for reintroducing tracing
+  properly if it's ever wanted
 
 ---
 

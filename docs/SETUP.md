@@ -24,7 +24,7 @@ The site is built with **progressive enhancement** — core features work immedi
 | ------------------------------------- | ------------- | ----------------------------------- |
 | **Static site** (educational content) | ✅ Ready      | None — works out of the box         |
 | **Local progress tracking**           | ✅ Ready      | None — uses browser localStorage    |
-| **AI Toolkit tracing**                | ⚠️ Optional   | AI Toolkit + start dev server       |
+| **Client-side tracing**               | ❌ Removed    | See [TRACING.md](TRACING.md)        |
 | **Appwrite assistant feedback**       | ⚠️ Optional   | Appwrite project + collection setup |
 | **User authentication**               | ⚠️ Deprecated | Authentication has been removed     |
 | **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed         |
@@ -62,44 +62,16 @@ SITE_HOST=https://letstalkcdc.github.io
 
 ## Feature Setup Guides
 
-### 1. OpenTelemetry Tracing (Optional)
+### 1. Client-side tracing — removed
 
-**Status**: ✅ **Implemented with tracing-lite.js** (no bundler required)
+The previous `tracing-lite.js` implementation was removed in May 2026.
+It POSTed to `http://localhost:4318/v1/traces` for every visitor — i.e.
+to _their own_ localhost — and was always swallowed by the fetch
+`catch`. See [TRACING.md](TRACING.md) for the removal context and the
+recipe for re-introducing tracing properly if it's ever wanted.
 
-The site uses a **lightweight tracing implementation** (`src/assets/js/tracing-lite.js`) that works without bundling. It sends telemetry to AI Toolkit's OTLP collector.
-
-#### What Gets Tracked
-
-- **Page load performance** — Document load timing, resource loading
-- **User interactions** — Clicks, form submissions, navigation
-- **Learning progress** — Module completion, step tracking
-- **Search queries** — Search usage and result counts
-- **Code copy events** — When users copy code snippets
-- **Core Web Vitals** — LCP, FID, CLS metrics
-
-#### Prerequisites
-
-1. **VS Code** with **AI Toolkit extension** installed
-2. **AI Toolkit tracing viewer** enabled
-
-#### Enable Tracing
-
-1. Open **VS Code → View → AI Toolkit → Tracing**
-2. Start dev server: `npm run dev`
-3. Browse the site at http://localhost:8080
-4. View traces in AI Toolkit panel
-
-#### Documentation
-
-- **Comprehensive guide**: [docs/TRACING.md](TRACING.md)
-
-#### Notes
-
-- ✅ **No bundler required** — Uses fetch API directly
-- ✅ **No external dependencies** at runtime
-- ✅ **Works in all modern browsers**
-- ⚠️ Requires AI Toolkit running for trace collection
-- ⚠️ Localhost-only by default (can be configured for production)
+There is nothing to set up here. `app.js` keeps a no-op
+`educationTracer` so per-module call sites don't change.
 
 ---
 
@@ -368,13 +340,6 @@ Should output:
 - [ ] Submit thumbs-up or thumbs-down feedback
 - [ ] Confirm a new document appears in Appwrite → Database → `assistant_feedback`
 
-#### Tracing
-
-- [ ] AI Toolkit tracing panel shows spans
-- [ ] `module.view` span appears when visiting a module
-- [ ] `learning.progress` span appears when completing steps
-- [ ] `search.query` span appears when searching
-
 ---
 
 ## Architecture Notes
@@ -412,7 +377,7 @@ The site follows a **layered architecture**:
 
 - **Setup** — This file
 - **Hosting** — [docs/HOSTING.md](HOSTING.md)
-- **Tracing** — [docs/TRACING.md](TRACING.md)
+- **Tracing (removed)** — [docs/TRACING.md](TRACING.md)
 - **Adding modules** — [docs/adding-modules.md](adding-modules.md)
 - **Contributing** — [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Architecture** — [.github/copilot-instructions.md](../.github/copilot-instructions.md)
@@ -424,8 +389,6 @@ The site follows a **layered architecture**:
 
 **Port 8080 in use**: Kill the process or use `npx eleventy --serve --port=3000`
 
-**Tracing not working**: Ensure AI Toolkit is running and tracing viewer is open
-
 **Appwrite connection fails**: Run `node test-appwrite.cjs` to diagnose
 
 **Progress not updating**: Ensure `localStorage` is enabled and not cleared automatically
@@ -436,9 +399,8 @@ The site follows a **layered architecture**:
 
 1. ✅ Complete basic setup (clone, install, run)
 2. ⚠️ Optional: Configure Appwrite for assistant feedback sync
-3. ⚠️ Optional: Enable tracing with AI Toolkit
-4. ⚠️ Optional: Deploy to production (GitHub Pages)
-5. 📖 Read [docs/adding-modules.md](adding-modules.md) to contribute content
+3. ⚠️ Optional: Deploy to production (GitHub Pages)
+4. 📖 Read [docs/adding-modules.md](adding-modules.md) to contribute content
 
 ---
 

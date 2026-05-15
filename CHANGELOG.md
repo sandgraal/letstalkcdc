@@ -17,8 +17,25 @@ format`, `npm run verify-all`, `npm run lighthouse`, `npm run
 test:coverage`, `npm run test:e2e`, `npm run a11y`, `npm run
 lint:fix`, plus `npx playwright`, `npx update-browserslist-db`,
   `shasum`, `awk`, basic shell tests, and a read-only `gh` subset
-  for PR / run inspection. Cuts the permission-prompt noise during
+  (`gh pr view/list/checks/diff`, `gh run list/view`,
+  `gh issue view/list`) for PR / run inspection. The `deny` list
+  blocks any `gh api` invocation with `-X|--method PATCH|POST|PUT|
+DELETE` so the expansion can't grant write or destructive
+  repository capabilities. Cuts permission-prompt noise during
   routine agent work without expanding write/destructive surface.
+
+### Changed
+
+- `.lighthouserc.json` re-introduces the error-level
+  `categories:performance` assertion on `*/intro/index.html` via
+  `assertMatrix`. **Note:** LHCI throws
+  `Cannot use assertMatrix with other options` if `assertMatrix` is
+  used alongside top-level `assertions`, so the global warn-level
+  category checks now live as a `matchingUrlPattern: ".*"` entry in
+  the same matrix. (Threshold history: re-introduced at
+  `minScore: 0.9` on the (since-discovered-to-be-unstyled) 1.0
+  baseline; lowered to `minScore: 0.8` once the styled-page
+  baseline of 0.86 was measured — see the **Fixed** section below.)
 
 ### Removed
 
@@ -49,7 +66,8 @@ lint:fix`, plus `npx playwright`, `npx update-browserslist-db`,
   tracers continue to work without further refactor. `docs/TRACING.md`
   rewritten as a one-page removal note + reintroduction recipe;
   `docs/javascript-architecture.md` tracing section rewritten to
-  describe the vestigial no-op.
+  describe the vestigial no-op. Stale references in `docs/SETUP.md`
+  and `docs/README.md` updated to point at the removal note.
 
 ### Fixed
 
@@ -63,22 +81,6 @@ lint:fix`, plus `npx playwright`, `npx update-browserslist-db`,
   `MemoryStorage` polyfill in `tests/setup.js` that's mounted on
   `globalThis`, `window`, and `globalThis.localStorage` /
   `sessionStorage`. All 268 tests now run and pass.
-
-### Changed
-
-- `.lighthouserc.json` re-introduces the error-level
-  `categories:performance` assertion on `*/intro/index.html` via
-  `assertMatrix`. **Note:** LHCI throws
-  `Cannot use assertMatrix with other options` if `assertMatrix` is
-  used alongside top-level `assertions`, so the global warn-level
-  category checks now live as a `matchingUrlPattern: ".*"` entry in
-  the same matrix. (Threshold history: re-introduced at
-  `minScore: 0.9` on the (since-discovered-to-be-unstyled) 1.0
-  baseline; lowered to `minScore: 0.8` once the styled-page
-  baseline of 0.86 was measured — see the **Fixed** section below.)
-
-### Fixed
-
 - **`unsized-images` audit failing site-wide.** The custom `{% img %}`
   shortcode in `eleventy.config.mjs` emitted `<img>` tags with no
   `width`/`height` attributes, so every diagram on the site contributed

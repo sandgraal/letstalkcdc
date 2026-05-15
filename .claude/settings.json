@@ -70,15 +70,22 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(gh issue view:*)",
-      "Bash(gh issue list:*)",
-      "Bash(gh api repos/:*)"
+      "Bash(gh issue list:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git reset --hard:*)",
       "Bash(rm -rf /:*)",
-      "Bash(:(){ :|:& };::*)"
+      "Bash(:(){ :|:& };::*)",
+      "Bash(gh api * --method PATCH:*)",
+      "Bash(gh api * --method POST:*)",
+      "Bash(gh api * --method PUT:*)",
+      "Bash(gh api * --method DELETE:*)",
+      "Bash(gh api * -X PATCH:*)",
+      "Bash(gh api * -X POST:*)",
+      "Bash(gh api * -X PUT:*)",
+      "Bash(gh api * -X DELETE:*)"
     ]
   },
   "hooks": {
