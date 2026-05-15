@@ -58,8 +58,28 @@
       </script>
     {% endif %}
     {% if head_extra %}{{ head_extra | renderHeadExtra | safe }}{% endif %}
-    <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
-    <link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}">
+    {# Minimal inline critical CSS — sets page background and font defaults
+       so the brief window before the deferred stylesheets apply doesn't
+       flash white. Dark theme is the default; the theme-toggle script
+       (loaded as part of app.js) flips to light if the user previously
+       chose it. ~250 bytes uncompressed. #}
+    <style>
+      :root { color-scheme: dark light; }
+      html, body { background: #0a0e1a; color: #f1f5f9; }
+      html[data-theme="light"], html[data-theme="light"] body { background: #ffffff; color: #0f172a; }
+      body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; }
+      .skip-link { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+    </style>
+    {# Render-blocking-resources fix: load the three site stylesheets via
+       rel=preload + onload, so they don't block first paint. <noscript>
+       provides the blocking fallback for JS-disabled browsers (correctness
+       beats perf score there). Lighthouse `render-blocking-resources`
+       audit on /intro/ was scoring 0 with the previous blocking links;
+       this pattern should clear it. #}
+    <link rel="preload" href="{{ '/assets/css/styles.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}"></noscript>
+    <link rel="preload" href="{{ '/assets/css/auth.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}"></noscript>
     {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/cloud-progress.js, src/assets/js/auth-ui.js, src/assets/js/search.js' | vitePreloads | safe }}
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
@@ -390,7 +410,8 @@
         </div>
       </div>
     </footer>
-    <link rel="stylesheet" href="{{ '/css/assistant.css' | url }}">
+    <link rel="preload" href="{{ '/css/assistant.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ '/css/assistant.css' | url }}"></noscript>
     <button id="askBtn" type="button" aria-label="Ask the CDC Assistant" aria-expanded="false" aria-controls="askPanel">💬</button>
     <div id="askPanel" hidden role="complementary" aria-label="CDC Assistant chat"></div>
     <script type="module" src="{{ '/js/assistant.js' | url }}" defer></script>
