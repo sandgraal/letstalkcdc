@@ -86,12 +86,16 @@ GitHub-side state and decisions.
 
 ### Video embeds
 
-- [ ] Pick a canonical intro-to-CDC video and replace the two deleted
-      YouTube embeds in `src/intro/index.njk` (the upstream IDs
-      `5CjPj9ShJVA` and `zYJn6GA5t1Q` are 404). Update the `<iframe>`
-      `src`s + thumbnails, then drop the two
-      `^https://img\.youtube\.com/vi/<id>/` patterns from
-      `.lycheeignore`.
+- [x] Removed both 404'd YouTube embeds — `5CjPj9ShJVA` from
+      `src/intro/index.njk` and `zYJn6GA5t1Q` from
+      `src/quickstart/quickstart-postgres/index.njk`. Cleared the
+      corresponding `^https://img\.youtube\.com/vi/<id>/` entries from
+      `.lycheeignore` and dropped the now-unused
+      `youtubeEmbed` / `videoEmbed` macro imports from both pages. The
+      decision to pick canonical replacements is parked under Phase 10
+      (interactive demo or curated video); shipping a working page beats
+      a broken embed waiting on a content call. The 404'd thumbnails
+      were also the prime CLS contributor on `/intro/`.
 
 ### Vendor doc URL drift
 
@@ -281,6 +285,51 @@ remove the matching regex from `.lycheeignore`.
       The "Historical document" banner at the top already declared its
       status; archive placement makes the status obvious from the file
       tree too. Updated references in `CLAUDE.md` and `docs/README.md`.
+
+---
+
+## Phase 7 — `/intro/` perf & a11y honest baselines
+
+Uncovered by the LHCI test-setup fix in Phase 5 (the styled-page audit
+revealed perf 0.86 with CLS 0.58). Walk these in order — the cheap fixes
+first so the threshold can ratchet up as we land them.
+
+- [x] **`unsized-images` audit was failing site-wide.** The custom
+      `{% img %}` shortcode in `eleventy.config.mjs` emitted `<img>`
+      tags with no `width`/`height` attributes. Reserved layout space
+      at build time by parsing `viewBox` / explicit `width`/`height`
+      attrs from the SVG file on disk and emitting them on every
+      `<img>` produced from a local `.svg`. Caller-provided
+      `width`/`height` always win. Cache keyed on `src` so we read each
+      SVG once per build. Remote URLs (e.g. YouTube thumbnails) fall
+      through unchanged. Affected call sites resolved automatically:
+      `src/intro/index.njk:433`, `src/_includes/layouts/base.njk:71`,
+      `src/snapshotting/index.njk:189`, `src/schema-evolution/index.njk:50`,
+      `src/cloud-labs/index.njk:21`, `src/overview/index.njk:30`,
+      `src/exactly-once/index.njk:260`. **DoD:** `unsized-images` audit
+      → 1.0 across all module pages.
+
+- [ ] Identify remaining CLS culprits on `/intro/` via the LHCI
+      `cls-culprits-insight` audit (run `npm run lighthouse` after
+      `build:lhci`). With the 404'd video embed gone and SVGs now
+      dimensioned, suspects narrow to font-swap reflow on the long
+      lede and the `.cdc-methods-grid` reveal.
+
+- [ ] Eliminate render-blocking by moving non-critical CSS to a
+      deferred `<link rel="preload" as="style" onload="this.rel='stylesheet'">`
+      and inlining the above-the-fold subset. Verify via
+      `/css-byte-check` after — bundled output should be unchanged.
+
+- [ ] Re-measure `target-size` against the styled LHCI build; remove
+      defensive `min-height: 44px` from elements that pass without it.
+
+- [ ] Audit `color-contrast` against the styled build. Likely culprit
+      is `--surface-2` / `--text-muted` in callouts. Adjust the token
+      in `src/assets/css/01-variables.css` with side-by-side QA.
+
+- [ ] Raise the `/intro/` perf threshold in `.lighthouserc.json` from
+      `minScore: 0.8` toward `0.9` as fixes land. **DoD:** perf ≥ 0.92,
+      a11y = 1.0, CLS ≤ 0.1.
 
 ---
 

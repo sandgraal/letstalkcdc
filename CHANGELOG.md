@@ -21,6 +21,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`unsized-images` audit failing site-wide.** The custom `{% img %}`
+  shortcode in `eleventy.config.mjs` emitted `<img>` tags with no
+  `width`/`height` attributes, so every diagram on the site contributed
+  to CLS. The shortcode now resolves intrinsic dimensions from local
+  SVGs at build time (parsing explicit `width`/`height` attrs first,
+  falling back to `viewBox`) and emits them on the rendered tag.
+  Caller-provided dimensions always win; remote URLs fall through
+  unchanged. Cached per `src` so each SVG is read once per build.
+  Closes the first Phase 7 sub-item.
+- **Two 404'd YouTube embeds removed.** The deleted videos
+  `5CjPj9ShJVA` (`/intro/`, Gunnar Morling intro talk) and
+  `zYJn6GA5t1Q` (`/quickstart/quickstart-postgres/`, Postgres CDC
+  tutorial) were rendering broken thumbnails on otherwise-marquee
+  pages. The dead thumbnail on `/intro/` was the prime suspect for
+  the 0.58 CLS baseline measured against the styled LHCI build.
+  Removed both embeds and their now-unused `youtubeEmbed` macro
+  imports; cleared both `^https://img\.youtube\.com/vi/<id>/` entries
+  from `.lycheeignore`. Replacement videos remain a content decision
+  parked under Phase 10.
 - **LHCI was measuring an unstyled page.** The Lighthouse CI job
   has been auditing `_site/intro/index.html` etc. against a runner
   that 404s on every CSS / JS asset. Root cause: the production

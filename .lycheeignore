@@ -2,10 +2,3 @@
 #
 # Each pattern is a regex. Add a comment above any new entry explaining
 # why it's excluded and when it can be re-enabled.
-
-# Broken YouTube embed in src/intro/index.njk — the video (id 5CjPj9ShJVA)
-# was deleted upstream. Replacing it requires picking a new canonical
-# intro-to-CDC video; tracked as content work. Excluded so the link-check
-# isn't blocked on it.
-^https://img\.youtube\.com/vi/5CjPj9ShJVA/
-^https://img\.youtube\.com/vi/zYJn6GA5t1Q/
