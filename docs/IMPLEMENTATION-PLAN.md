@@ -545,8 +545,17 @@ inline `<svg>` across all module pages.
       feature is alive (add the e2e) or dead (remove the code
       and update the plan).
 
-- [ ] **README badges.** CI status, Lighthouse perf, license. The
-      repo IS high-quality; the README doesn't sell it.
+- [x] **README badges.** Three CI status badges added to the
+      README header: CI (build/lint/test), Deploy (GitHub Pages),
+      and Link check (lychee). Each is a GitHub-native
+      auto-updating SVG badge that links back to the workflow
+      run history. Skipped two items from the original brutal
+      review: (1) a Lighthouse perf badge — would have to be
+      static (would rot) or backed by an LHCI hosted store
+      (overkill for now); (2) a license badge — there is no
+      `LICENSE` file at the repo root, so adding one would
+      fabricate status. Both are easy to add later if a license
+      lands or LHCI gets a hosted backend.
 
 - [ ] **`BreadcrumbList` JSON-LD audit.** Post-PR-#263 path-prefix
       fix, sample 5–10 module pages and confirm the breadcrumb

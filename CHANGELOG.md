@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Three CI status badges in the README header** — CI
+  (build/lint/test), Deploy (GitHub Pages), and Link check
+  (lychee). Each is a GitHub-native auto-updating SVG badge that
+  links back to the workflow run history. Closes the Phase 11
+  README-badges item. Skipped a Lighthouse badge (no hosted
+  results store yet; a static shield would rot) and a license
+  badge (no `LICENSE` file at the repo root — fabricating one
+  would be misleading).
 - **"Edit this page on GitHub" link** in
   `src/_includes/layouts/base.njk` footer. Rendered on every page
   that uses the base layout (every module + content page;
