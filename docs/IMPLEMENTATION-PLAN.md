@@ -411,17 +411,27 @@ narrative, edit affordances. Each item is sized to one PR.
       `src/_includes/layouts/base.njk` `.footer-meta` now appends a
       link of the form
       `https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}`
-      on every rendered page. Uses Eleventy's built-in `page.inputPath`
-      and the existing `site.repository` config. Verified resolves
-      correctly on module pages (`src/intro/index.njk`), home
-      (`src/index.njk`), and content pages (`src/errata/index.njk`).
+      on every page that uses the base layout. `layout: null`
+      outputs — `src/404.njk`, `src/mermaid-sandbox/index.njk`,
+      and the redirect stubs under `src/_redirects/` — don't get
+      a footer at all, so they intentionally don't carry the link.
+      Uses Eleventy's built-in `page.inputPath` and the existing
+      `site.repository` config. Verified resolves correctly on
+      module pages (`src/intro/index.njk`), home
+      (`src/index.njk`), and content pages
+      (`src/errata/index.njk`). `scripts/smoke.mjs` now asserts
+      the link is present and correctly-shaped on those three
+      representative outputs.
 
-- [ ] **Author photo.** `src/_data/author.mjs` still has
-      `image: null  // TODO: add /static/author/christopher.jpg when
-an asset is ready`. Ship the asset, flip the field, and the
-      base layout already renders it (via the `author.image` ref in
-      the Article JSON-LD and footer). Content decision — needs the
-      actual photo.
+- [ ] **Author photo.** Two steps, neither currently done: (1) add
+      the asset under `src/static/author/` and flip the `image`
+      field in `src/_data/author.mjs` from `null` to the public
+      path; (2) add an `<img>` to the page-meta aside in
+      `base.njk` and reference `image` in the Article JSON-LD
+      author block — currently that block only emits `name` +
+      optional `url`, so the data flip alone is a no-op. Content
+      decision blocks step 1; the template work is
+      straightforward once the asset lands.
 
 - [ ] **`/methodology/` page.** How content is researched, how
       vendor claims are tested, who reviews. Single new directory
@@ -491,9 +501,16 @@ inline `<svg>` across all module pages.
       no framework, canvas-based, respects
       `prefers-reduced-motion`, lazy-loaded (no main-thread cost
       on initial paint of `/intro/`).
-- [ ] **Replace the two 404'd YouTube embeds** with either this
-      demo or curated working third-party videos (Phase 3
-      carry-over, deferred from PR #270).
+- [ ] **Fill the slots that previously held the two 404'd
+      YouTube embeds.** PR #270 already removed the broken embeds
+      (Gunnar Morling intro talk on `src/intro/index.njk`; Postgres
+      CDC tutorial on `src/quickstart/quickstart-postgres/index.njk`) —
+      so this isn't "replace existing embeds" anymore; it's
+      "decide what should be at those positions now that the pages
+      ship clean." Options: the demo above, curated working
+      third-party videos, an interactive snippet, or just leave
+      the prose denser. The currently-shipping `tooling`-page
+      YouTube embed (`QYbXDp4Vu-8`) is fine and unaffected.
 
 ---
 
