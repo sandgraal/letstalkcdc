@@ -119,6 +119,45 @@ describe("lib/render-head-extra.mjs", () => {
     });
   });
 
+  describe("stylesheet preload conversion", () => {
+    it('rewrites <link rel="stylesheet"> to preload + onload + noscript', () => {
+      const input = `<link rel="stylesheet" href="{{ '/assets/css/pages/intro.css' | url }}">`;
+      const output = renderHeadExtra(input, ctx);
+      const resolved = "/letstalkcdc/assets/css/pages/intro.css";
+      expect(output).toBe(
+        `<link rel="preload" href="${resolved}" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${resolved}"></noscript>`,
+      );
+    });
+
+    it("also rewrites href-first stylesheet links", () => {
+      const input = `<link href="{{ '/assets/css/styles.css' | url }}" rel="stylesheet" />`;
+      const output = renderHeadExtra(input, ctx);
+      const resolved = "/letstalkcdc/assets/css/styles.css";
+      expect(output).toBe(
+        `<link rel="preload" href="${resolved}" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${resolved}"></noscript>`,
+      );
+    });
+
+    it("converts multiple stylesheet links in one head_extra block", () => {
+      const input =
+        `<link rel="stylesheet" href="/a.css">` +
+        `\n<link href="/b.css" rel="stylesheet">`;
+      const output = renderHeadExtra(input, ctx);
+      expect(output).toContain(
+        '<noscript><link rel="stylesheet" href="/a.css"></noscript>',
+      );
+      expect(output).toContain(
+        '<noscript><link rel="stylesheet" href="/b.css"></noscript>',
+      );
+      expect((output.match(/rel="preload"/g) || []).length).toBe(2);
+    });
+
+    it("leaves non-stylesheet <link> tags alone", () => {
+      const input = `<link rel="canonical" href="https://example.com/">`;
+      expect(renderHeadExtra(input, ctx)).toBe(input);
+    });
+  });
+
   describe("defaults", () => {
     it("treats omitted context options as empty strings", () => {
       // No second arg at all.

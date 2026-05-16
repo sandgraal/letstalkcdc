@@ -318,10 +318,17 @@ first so the threshold can ratchet up as we land them.
       dimensioned, suspects narrow to font-swap reflow on the long
       lede and the `.cdc-methods-grid` reveal.
 
-- [ ] Eliminate render-blocking by moving non-critical CSS to a
-      deferred `<link rel="preload" as="style" onload="this.rel='stylesheet'">`
-      and inlining the above-the-fold subset. Verify via
-      `/css-byte-check` after — bundled output should be unchanged.
+- [x] Eliminate render-blocking by moving the three base-layout
+      stylesheets and page-specific `head_extra` stylesheet links to
+      deferred preload stylesheet tags with
+      `onload="this.onload=null;this.rel='stylesheet'"` and
+      `<noscript>` fallbacks. The rewrite is attribute-order agnostic
+      for any remaining href-first `head_extra` links, and redundant
+      page-level base-bundle links such as the old one in
+      `src/tooling/index.njk` are removed. A small inline critical rule
+      set keeps the default theme background/font stable before the
+      full CSS arrives. Verify via `/css-byte-check` after — bundled
+      output should be unchanged.
 
 - [x] Re-measured `target-size` against the styled LHCI build. Of
       the previously-flagged elements, only `.assistant-send` (the
