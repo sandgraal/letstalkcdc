@@ -50,6 +50,18 @@ DELETE` so the expansion can't grant write or destructive
 
 ### Changed
 
+- **`/intro/` LHCI thresholds tightened — Phase 7 final item.**
+  Perf error-level assertion bumped from `minScore: 0.8` to
+  `0.82`, and a new error-level `categories:accessibility`
+  assertion locked in at `minScore: 0.95`. Picked 0.82 (not 0.85)
+  to keep a ~0.05 noise buffer against the worst observed perf
+  outlier (0.79 on a heavily-loaded dev machine); typical 3-run
+  distribution after PR #270/#274/#275 sits at perf 0.86–0.94
+  with median 0.87, and a11y at 0.97 across every URL. The
+  original Phase 7 DoD (perf ≥ 0.92, a11y = 1.0, CLS ≤ 0.1) is
+  the next bump target — remaining headroom is in `dom-size`
+  (still 0.5, 1,068 elements on `/intro/`) and the deferred
+  `cls-culprits-insight` audit.
 - **Stylesheets no longer block first paint.** All five
   `<link rel="stylesheet">` tags emitted by the site — the three in
   `src/_includes/layouts/base.njk` (main bundle, auth.css,
