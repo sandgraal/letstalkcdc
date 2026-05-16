@@ -10,7 +10,11 @@ const toFileUrl = (...segments) => {
 module.exports = {
   defaults: {
     standard: "WCAG2AA",
-    wait: 1000,
+    // PR #275 deferred all stylesheets via rel=preload+onload.
+    // 1000ms wasn't enough on slow CI VMs — pa11y was inspecting
+    // before the onload-swap fired, catching browser-default blue
+    // link colors on the inline dark bg (2.05:1 contrast).
+    wait: 2000,
     timeout: 30000,
     chromeLaunchConfig: {
       args: ["--no-sandbox", "--disable-dev-shm-usage"],

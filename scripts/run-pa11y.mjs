@@ -29,6 +29,12 @@ for (const { label, url } of targets) {
     const results = await pa11y(url, {
       standard: "WCAG2AA",
       chromeLaunchConfig,
+      // PR #275 deferred all stylesheets via rel=preload+onload. pa11y's
+      // default wait (0ms after load) inspects the page BEFORE the
+      // onload-swap fires, so nav links inherit browser-default blue
+      // (#0000EE) on the inline dark body bg (#0a0e1a) = 2.05:1
+      // contrast. 2000ms gives the swap plenty of time on slow CI VMs.
+      wait: 2000,
       log: {
         debug() {},
         info() {},

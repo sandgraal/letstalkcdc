@@ -392,6 +392,165 @@ first so the threshold can ratchet up as we land them.
 
 ---
 
+## Phase 8 — Trust & credibility surface
+
+Derived from the May 2026 brutal state-of-the-project review. Tier-1
+items competitors flagged as making the site look "static and
+untrusted": missing author identity, freshness signals, methodology
+narrative, edit affordances. Each item is sized to one PR.
+
+- [x] **`dateModified` rendered prominently on every module page.**
+      Already shipped — `src/_includes/layouts/base.njk:197-209`
+      renders an `<aside class="page-meta">` with a semantic `<time>`
+      element ("Last reviewed YYYY-MM-DD" plus "Originally published"
+      when different), gated on `seriesKey` so non-module pages don't
+      get the metadata block. Confirmed in built `_site/intro/`,
+      `_site/snapshotting/` etc.
+
+- [x] **"Edit this page on GitHub" link in the global footer.**
+      `src/_includes/layouts/base.njk` `.footer-meta` now appends a
+      link of the form
+      `https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}`
+      on every page that uses the base layout. `layout: null`
+      outputs — `src/404.njk`, `src/mermaid-sandbox/index.njk`,
+      and the redirect stubs under `src/_redirects/` — don't get
+      a footer at all, so they intentionally don't carry the link.
+      Uses Eleventy's built-in `page.inputPath` and the existing
+      `site.repository` config. Verified resolves correctly on
+      module pages (`src/intro/index.njk`), home
+      (`src/index.njk`), and content pages
+      (`src/errata/index.njk`). `scripts/smoke.mjs` now asserts
+      the link is present and correctly-shaped on those three
+      representative outputs.
+
+- [ ] **Author photo.** Two steps, neither currently done: (1) add
+      the asset under `src/static/author/` and flip the `image`
+      field in `src/_data/author.mjs` from `null` to the public
+      path; (2) add an `<img>` to the page-meta aside in
+      `base.njk` and reference `image` in the Article JSON-LD
+      author block — currently that block only emits `name` +
+      optional `url`, so the data flip alone is a no-op. Content
+      decision blocks step 1; the template work is
+      straightforward once the asset lands.
+
+- [ ] **`/methodology/` page.** How content is researched, how
+      vendor claims are tested, who reviews. Single new directory
+      under `src/methodology/`; link from the base footer's
+      "Resources" column.
+
+- [ ] **Surface errata inline per module.** `src/errata/index.njk`
+      exists as a hub, but a tagged-errata callout doesn't render on
+      the affected module page. When an entry exists tagged to a
+      module, the module should show a "Known errata" disclosure
+      near the top.
+
+- [ ] **Author identity expansion.** `src/_data/author.mjs`
+      `sameAs: ["https://github.com/sandgraal"]` is the only
+      cross-platform link. Add LinkedIn, conference talks, podcast
+      appearances when they exist. `advisoryUrl: null` keeps the
+      footer CTA hidden — set when ready to surface it.
+
+---
+
+## Phase 9 — Comparison & conversion surface
+
+Tier-1 competitor gap: no head-to-head comparison content (Estuary,
+Airbyte, Fivetran rank for these queries), no glossary as a
+first-class page, no RSS, no email capture.
+
+- [ ] **`/compare/` hub.** Initial pages: Debezium vs AWS DMS,
+      Debezium vs Fivetran, Fivetran vs Airbyte for CDC,
+      self-host vs managed decision tree. Add a shared
+      comparison-table component under
+      `src/_includes/components/`.
+
+- [ ] **Glossary as a standalone page** at `/glossary/`. Rendered
+      from a single data file. Move the per-module inline glossary
+      snippets (currently inline in `src/index.njk`, `intro/`,
+      etc.) to references against it.
+
+- [ ] **RSS feed at `/feed.xml`.** Emit from module pages + errata.
+      Use Eleventy's first-party plugin
+      (`@11ty/eleventy-plugin-rss`) or a hand-rolled `feed.11ty.js`.
+
+- [ ] **Newsletter capture.** Static-first: a Buttondown / Kit /
+      ConvertKit embed in the base layout footer + a dedicated
+      `/newsletter/` page. Pick provider before building.
+
+- [ ] **"Suggested next module" component.** Driven by
+      `src/_data/series.mjs` order + `skillLevel` adjacency.
+      Rendered at the bottom of every module page (alongside
+      `series-nav.njk`).
+
+---
+
+## Phase 10 — One real interactive demo
+
+Tier-1 gap: zero working interactive demos across the site. Confluent
+Developer, Debezium, Estuary, Materialize all have one — we have one
+inline `<svg>` across all module pages.
+
+- [ ] **Pick one and ship it.** Two candidates:
+  - Animated WAL → broker → sink simulator on `/intro/` (most
+    leverage; the `src/assets/css/pages/cdc-simulation.css`
+    scaffold suggests prior intent).
+  - Live Debezium-event-envelope decoder on `/debezium-decoder/`
+    (lowest scope).
+- [ ] Ship as a single ESM module under
+      `src/assets/js/pages/cdc-simulation.js` (or `…/event-decoder.js`),
+      no framework, canvas-based, respects
+      `prefers-reduced-motion`, lazy-loaded (no main-thread cost
+      on initial paint of `/intro/`).
+- [ ] **Fill the slots that previously held the two 404'd
+      YouTube embeds.** PR #270 already removed the broken embeds
+      (Gunnar Morling intro talk on `src/intro/index.njk`; Postgres
+      CDC tutorial on `src/quickstart/quickstart-postgres/index.njk`) —
+      so this isn't "replace existing embeds" anymore; it's
+      "decide what should be at those positions now that the pages
+      ship clean." Options: the demo above, curated working
+      third-party videos, an interactive snippet, or just leave
+      the prose denser. The currently-shipping `tooling`-page
+      YouTube embed (`QYbXDp4Vu-8`) is fine and unaffected.
+
+---
+
+## Phase 11 — Repo hygiene & dead-system retirement
+
+- [x] **Retire the handoff system.** Already done in PR #270
+      (folder + workflows + dashboard removed; cross-session
+      context now in IMPLEMENTATION-PLAN.md + CHANGELOG.md + git
+      log). Listed here for completeness — closes the brutal
+      review's "anti-credibility surface" tier-2 item.
+
+- [ ] **Playwright e2e for cloud-progress sync flow.** Plan item
+      from Phase 5 is stale — the auth/cloud-progress flow may
+      have been removed (see `docs/SETUP.md` "User authentication
+      ⚠️ Deprecated", "Cloud progress sync ⚠️ Deprecated") but
+      `src/assets/js/cloud-progress.js` (283 LOC) and
+      `src/assets/js/auth.js` (216 LOC) still exist and are wired
+      via `vite.config.mjs` entries. Reconcile: either the
+      feature is alive (add the e2e) or dead (remove the code
+      and update the plan).
+
+- [ ] **README badges.** CI status, Lighthouse perf, license. The
+      repo IS high-quality; the README doesn't sell it.
+
+- [ ] **`BreadcrumbList` JSON-LD audit.** Post-PR-#263 path-prefix
+      fix, sample 5–10 module pages and confirm the breadcrumb
+      `item` URLs resolve correctly under both root and
+      prefixed deploys.
+
+- [ ] **CSS `@layer` migration** (Phase 4 carry-over). Pure
+      refactor with byte-identity verification. Defer unless
+      a real specificity bug forces it; no user value otherwise.
+
+- [ ] **e2e test for `.assistant-send` target-size.** Open the
+      FAB panel via simulated click, then run axe target-size
+      against the visible state. Clears the false-positive
+      Lighthouse keeps reporting on the `hidden` element.
+
+---
+
 ## Adding new phases
 
 Append below this line. Keep phases narrow; if a phase grows past ~10

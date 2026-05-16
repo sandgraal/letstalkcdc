@@ -68,6 +68,15 @@
       html, body { background: #0a0e1a; color: #f1f5f9; }
       html[data-theme="light"], html[data-theme="light"] body { background: #ffffff; color: #0f172a; }
       body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; }
+      /* Inline an a11y-passing link color so headless inspectors
+         (pa11y) that catch the page between the page-load event and
+         the deferred-CSS onload-swap don't measure browser-default
+         blue (#0000EE) on the dark inline bg — that was 2.05:1, well
+         below WCAG AA. #60a5fa on #0a0e1a is ~7.5:1, on white ~3.0:1
+         (light theme is intentionally less saturated to match the
+         design system's --color-link in light mode). */
+      a { color: #60a5fa; }
+      html[data-theme="light"] a { color: #2563eb; }
       .skip-link { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
       .skip-link:focus, .skip-link:active { left: 1rem; top: 1rem; width: auto; height: auto; overflow: visible; z-index: 1000; }
     </style>
@@ -407,7 +416,12 @@
         
         <div class="footer-bottom">
           <p class="footer-copyright">{{ site.copyright }}</p>
-          <p class="footer-meta">Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project</p>
+          <p class="footer-meta">
+            Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project
+            {% if page.inputPath %} •
+              <a href="https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}" target="_blank" rel="noopener" class="footer-edit-link">Edit this page on GitHub</a>
+            {% endif %}
+          </p>
         </div>
       </div>
     </footer>
