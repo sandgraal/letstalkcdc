@@ -387,7 +387,7 @@ first so the threshold can ratchet up as we land them.
       separate cleanup — opens the door for an `@layer` migration too.
 
 - [x] Raised the `/intro/` perf threshold in `.lighthouserc.json`
-      from `minScore: 0.8` to `0.85`. Honest 3-run distribution
+      from `minScore: 0.8` to `0.82`. Honest 3-run distribution
       after PR #270/#274/#275 lands at perf 0.86–0.94 with median
       0.87 on a loaded dev machine. **Picked 0.82 (not 0.85)** for
       a ~0.05 noise buffer against the worst observed outlier
