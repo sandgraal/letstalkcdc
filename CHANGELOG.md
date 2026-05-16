@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Three CI status badges in the README header** — CI
   (build/lint/test), Deploy (GitHub Pages), and Link check
   (lychee). Each is a GitHub-native auto-updating SVG badge that
-  links back to the workflow run history. Closes the Phase 11
-  README-badges item. Skipped a Lighthouse badge (no hosted
-  results store yet; a static shield would rot) and a license
-  badge (no `LICENSE` file at the repo root — fabricating one
-  would be misleading).
+  links back to the workflow run history. Closes the
+  auto-updating slice of the Phase 11 README-badges item. The
+  remaining two badges from the original brutal-review wording
+  (Lighthouse perf, license) are tracked as explicit open
+  follow-ups in `docs/IMPLEMENTATION-PLAN.md` Phase 11 — license
+  is blocked on a license-file decision; Lighthouse is blocked
+  on a hosted LHCI store or a manual-bump policy.
 - **"Edit this page on GitHub" link** in
   `src/_includes/layouts/base.njk` footer. Rendered on every page
   that uses the base layout (every module + content page;
@@ -61,15 +63,19 @@ DELETE` so the expansion can't grant write or destructive
 - **`/intro/` LHCI thresholds tightened — Phase 7 final item.**
   Perf error-level assertion bumped from `minScore: 0.8` to
   `0.82`, and a new error-level `categories:accessibility`
-  assertion locked in at `minScore: 0.95`. Picked 0.82 (not 0.85)
-  to keep a ~0.05 noise buffer against the worst observed perf
-  outlier (0.79 on a heavily-loaded dev machine); typical 3-run
-  distribution after PR #270/#274/#275 sits at perf 0.86–0.94
-  with median 0.87, and a11y at 0.97 across every URL. The
-  original Phase 7 DoD (perf ≥ 0.92, a11y = 1.0, CLS ≤ 0.1) is
-  the next bump target — remaining headroom is in `dom-size`
-  (still 0.5, 1,068 elements on `/intro/`) and the deferred
-  `cls-culprits-insight` audit.
+  assertion locked in at `minScore: 0.93`. Picked 0.82 (not 0.85)
+  for perf to keep a ~0.05 noise buffer against the worst
+  observed outlier (0.79 on a heavily-loaded dev machine).
+  Picked 0.93 (not 0.95) for a11y after PR #280's CI run
+  surfaced a chromedriver/axe delta — local macOS Chrome
+  consistently reports 0.97 on `/intro/`, but Ubuntu Noble's
+  `google-chrome-stable` (the CI runner) reports 0.94 across
+  three consecutive runs. 0.93 leaves a 0.01 buffer on the CI
+  measurement and still locks in the Phase 7 a11y gains
+  (originally 0.88). The original Phase 7 DoD (perf ≥ 0.92,
+  a11y = 1.0, CLS ≤ 0.1) is the next bump target — remaining
+  headroom is in `dom-size` (still 0.5, 1,068 elements on
+  `/intro/`) and the deferred `cls-culprits-insight` audit.
 - **Stylesheets no longer block first paint.** All five
   `<link rel="stylesheet">` tags emitted by the site — the three in
   `src/_includes/layouts/base.njk` (main bundle, auth.css,
