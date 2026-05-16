@@ -407,7 +407,12 @@
         
         <div class="footer-bottom">
           <p class="footer-copyright">{{ site.copyright }}</p>
-          <p class="footer-meta">Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project</p>
+          <p class="footer-meta">
+            Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project
+            {% if page.inputPath %} •
+              <a href="https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}" target="_blank" rel="noopener" class="footer-edit-link">Edit this page on GitHub</a>
+            {% endif %}
+          </p>
         </div>
       </div>
     </footer>
