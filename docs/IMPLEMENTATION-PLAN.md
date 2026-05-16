@@ -482,9 +482,21 @@ first-class page, no RSS, no email capture.
       snippets (currently inline in `src/index.njk`, `intro/`,
       etc.) to references against it.
 
-- [ ] **RSS feed at `/feed.xml`.** Emit from module pages + errata.
-      Use Eleventy's first-party plugin
-      (`@11ty/eleventy-plugin-rss`) or a hand-rolled `feed.11ty.js`.
+- [x] **RSS feed at `/feed.xml`.** Hand-rolled
+      `src/feed.11ty.cjs` — rejected `@11ty/eleventy-plugin-rss`
+      to avoid a new runtime dep for what is ~20 lines of XML.
+      Filters `collections.all` to items with `seriesKey` set,
+      sorts by `dateModified` desc with `datePublished` as
+      tiebreaker, caps at 30 entries. Emits RSS 2.0 with the
+      `atom:` self-link and `dc:creator` namespace; renders the
+      same `--color-*` prefix-aware URLs as `sitemap.11ty.cjs`
+      (uses `site.host`, not `site.origin`, so the prefix is
+      applied in prod). An `application/rss+xml` alternate link
+      was added to the base layout `<head>` for feed-reader
+      auto-discovery. Errata aren't included yet — the errata
+      page is a single static doc, not a stream of entries;
+      revisit when individual errata get their own per-entry
+      pages.
 
 - [ ] **Newsletter capture.** Static-first: a Buttondown / Kit /
       ConvertKit embed in the base layout footer + a dedicated

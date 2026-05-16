@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **RSS 2.0 feed at `/feed.xml`** — closes the Phase 9
+  "no RSS" gap from the brutal review. Hand-rolled
+  `src/feed.11ty.cjs` (no new runtime dep; the format we emit is
+  ~20 lines of XML and `@11ty/eleventy-plugin-rss` would have
+  introduced its own Nunjucks shortcodes we'd then need to
+  wire). Filters `collections.all` to items with `seriesKey`
+  set, sorts by `dateModified` desc with `datePublished` as
+  tiebreaker, caps at 30 entries. Emits the `atom:` self-link
+  and `dc:creator` namespace; URLs use `site.host` (path-prefix
+  aware) so prod and root-deploy builds both render correctly.
+  `<link rel="alternate" type="application/rss+xml">` added to
+  the base layout `<head>` so feed readers can auto-discover.
 - **Three CI status badges in the README header** — CI
   (build/lint/test), Deploy (GitHub Pages), and Link check
   (lychee). Each is a GitHub-native auto-updating SVG badge that
