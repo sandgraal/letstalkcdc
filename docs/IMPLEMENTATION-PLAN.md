@@ -318,12 +318,14 @@ first so the threshold can ratchet up as we land them.
       dimensioned, suspects narrow to font-swap reflow on the long
       lede and the `.cdc-methods-grid` reveal.
 
-- [x] Eliminated render-blocking. All five stylesheet links emitted
-      by the site (3 in `base.njk` — main bundle, auth, assistant;
-      and 2 in per-page `head_extra` blocks — page-specific +
-      cdc-simulation) now use rel=preload + onload + a `<noscript>`
-      blocking fallback for JS-disabled browsers. The head_extra
-      rewrite is centralized via a regex in
+- [x] Eliminated render-blocking for the stylesheet links emitted via
+      `base.njk` and rewritten per-page `head_extra` content (3 in
+      `base.njk` — main bundle, auth, assistant; and 2 in per-page
+      `head_extra` blocks — page-specific + cdc-simulation). Those
+      links now use rel=preload + onload + a `<noscript>` blocking
+      fallback for JS-disabled browsers. Standalone `layout: null`
+      templates are outside this centralized conversion. The
+      head_extra rewrite is centralized via a regex in
       `lib/render-head-extra.mjs` so the 20 pages that inject
       page-specific CSS get the fix without per-page edits; added 4
       vitest cases covering single-quote, multi-link, and
