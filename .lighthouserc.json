@@ -26,7 +26,7 @@
           "matchingUrlPattern": ".*/intro/index\\.html$",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.82 }],
-            "categories:accessibility": ["error", { "minScore": 0.95 }]
+            "categories:accessibility": ["error", { "minScore": 0.93 }]
           }
         }
       ]

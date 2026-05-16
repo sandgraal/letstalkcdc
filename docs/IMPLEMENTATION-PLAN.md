@@ -557,8 +557,30 @@ inline `<svg>` across all module pages.
       feature is alive (add the e2e) or dead (remove the code
       and update the plan).
 
-- [ ] **README badges.** CI status, Lighthouse perf, license. The
-      repo IS high-quality; the README doesn't sell it.
+- [x] **README badges — auto-updating CI subset.** Three
+      GitHub-native badges added to the README header: CI
+      (build/lint/test), Deploy (GitHub Pages), and Link check
+      (lychee). Each is an auto-updating SVG that links back to
+      the workflow run history. Closes the auto-updating slice
+      of the original brutal-review item; the Lighthouse and
+      license badges from that item are tracked as explicit
+      follow-ups below so the roadmap doesn't lose track.
+
+- [ ] **README badge: license.** Skipped above because there is
+      no `LICENSE` file at the repo root. Pick a license (MIT,
+      Apache-2.0, CC-BY for content + MIT for code are the
+      common choices for an educational repo), commit the file,
+      then add a shields.io static badge linked to the license
+      file.
+
+- [ ] **README badge: Lighthouse perf.** Skipped above because
+      a static shield would rot as scores drift and the project
+      has no hosted LHCI store. Two ways to unblock: (1) wire
+      LHCI's GitHub-token mode so each PR run uploads a public
+      report; (2) accept a static perf badge that's bumped
+      manually each time the threshold raises in
+      `.lighthouserc.json`. Option 2 is cheaper if option 1
+      keeps slipping.
 
 - [ ] **`BreadcrumbList` JSON-LD audit.** Post-PR-#263 path-prefix
       fix, sample 5–10 module pages and confirm the breadcrumb

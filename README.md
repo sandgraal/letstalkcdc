@@ -1,5 +1,9 @@
 # Let's Talk CDC — README
 
+[![CI](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml)
+[![Deploy](https://github.com/sandgraal/letstalkcdc/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/deploy.yml)
+[![Link check](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml)
+
 _A lightweight, open learning project for Change Data Capture (CDC) and streaming. Built with Eleventy as a static site (all HTML/CSS/JS generated at build time) so anyone can clone, run locally, and contribute._
 
 Status: **beta** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/JS + CSV/JSON content**
