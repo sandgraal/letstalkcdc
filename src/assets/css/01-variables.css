@@ -100,7 +100,11 @@
   --color-text-secondary: #cbd5e1;
   --color-text-tertiary: #94a3b8;
   --color-text-inverse: #0f172a;
-  --color-text-muted: #64748b;
+  /* `muted` is the lowest-emphasis on-background text. In dark mode it
+     must be LIGHTER than `tertiary` to stay legible on a near-black
+     background; previously this was #64748b (slate-500), which fell
+     to 4.0:1 against #0a0e1a — below WCAG AA. */
+  --color-text-muted: #94a3b8;
 
   /* Brand/Accent Colors - Modern, vibrant */
   --color-accent-primary: #3b82f6;
@@ -170,6 +174,77 @@
 
   /* Button Colors - Ensures readability on gradient backgrounds */
   --button-primary-text: #fde047;
+
+  /* ──────────────────────────────────────────────────────────────────────
+     Legacy token aliases. Page-specific and component-specific
+     stylesheets (cdc-simulation.css, quiz.css, assistant.css,
+     dashboard-page.css, exactly-once.css, multi-tenancy.css, ...) were
+     authored against alternate variable names that never existed in the
+     design system. Without these aliases, every `var(--text-primary, …)`
+     call falls through to its hardcoded fallback — which is always a
+     light-mode color, breaking contrast in dark mode (the default).
+     Lighthouse `color-contrast` audit on `/intro/` flagged 20 such
+     nodes (e.g. #1e293b on #0f172a, contrast 1.22:1).
+
+     These declarations live ONLY in the dark/default `:root,
+     :root[data-theme="dark"]` rule. They don't need to be duplicated
+     in the light block because every right-hand-side `var(--color-*)`
+     resolves through the CSS cascade at the use site — the light
+     theme block redefines the same `--color-*` tokens, so when light
+     is active, the alias `var()` calls naturally pick up the light
+     values.
+
+     New code: use the `--color-*` names directly. Renaming all 12
+     legacy callers is a separate cleanup, tracked in
+     docs/IMPLEMENTATION-PLAN.md Phase 7.
+     ────────────────────────────────────────────────────────────────── */
+  /* text */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --text-muted: var(--color-text-muted);
+  --text-inverse: var(--color-text-inverse);
+  --muted: var(--color-text-muted);
+  --color-text: var(--color-text-primary);
+  --color-heading: var(--color-text-primary);
+  /* surfaces */
+  --bg-primary: var(--color-bg-primary);
+  --bg-secondary: var(--color-bg-secondary);
+  --bg-elevated: var(--color-bg-elevated);
+  --bg: var(--color-bg-primary);
+  --bg-code: var(--color-bg-elevated);
+  --surface: var(--color-bg-elevated);
+  --card-bg: var(--color-bg-elevated);
+  --color-background: var(--color-bg-primary);
+  --color-background-soft: var(--color-bg-secondary);
+  --color-bg: var(--color-bg-primary);
+  --color-bg-code: var(--color-bg-elevated);
+  --color-surface: var(--color-bg-elevated);
+  --color-surface-alt: var(--color-bg-secondary);
+  --color-surface-hover: var(--color-bg-subtle);
+  /* borders */
+  --border: var(--color-border-default);
+  --border-color: var(--color-border-default);
+  --color-border: var(--color-border-default);
+  /* accents */
+  --accent: var(--color-accent-primary);
+  --accent-primary: var(--color-accent-primary);
+  --accent-light: var(--color-accent-light);
+  --accent-hover: var(--color-accent-hover);
+  --color-accent: var(--color-accent-primary);
+  --color-primary: var(--color-accent-primary);
+  --focus: var(--color-focus);
+  /* semantic */
+  --success: var(--color-success);
+  --ok: var(--color-success);
+  --warning: var(--color-warning);
+  --warn: var(--color-warning);
+  --err: var(--color-error);
+  --color-danger: var(--color-error);
+  --color-success-light: var(--color-success-subtle);
+  --color-error-light: var(--color-error-subtle);
+  --color-warning-light: var(--color-warning-subtle);
+  --color-info-light: var(--color-info-subtle);
 }
 
 /* Light Theme - Clean, professional */
@@ -191,7 +266,15 @@
   --color-text-secondary: #475569;
   --color-text-tertiary: #64748b;
   --color-text-inverse: #ffffff;
-  --color-text-muted: #94a3b8;
+  /* See dark-theme note: mirrored swap. In light mode `muted` must be
+     DARKER than `tertiary` for legibility on a white background;
+     previously this was #94a3b8 (slate-400), which fell to 3.0:1
+     against #ffffff — below WCAG AA. #52606d gives ≥5.6:1 on white
+     AND ≥4.5:1 on the elevated surface --color-bg-elevated (#f1f5f9),
+     which #64748b did NOT (≈4.07:1, below AA on elevated). The
+     assistant panel and quiz callouts both render muted labels on
+     elevated surfaces. */
+  --color-text-muted: #52606d;
 
   /* Brand/Accent Colors */
   --color-accent-primary: #3b82f6;

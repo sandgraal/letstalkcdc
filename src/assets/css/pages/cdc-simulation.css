@@ -100,13 +100,13 @@
 }
 
 .sim-btn-reset {
-  border-color: #6b7280;
-  color: #6b7280;
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .sim-btn-reset:hover {
-  background: #6b7280;
-  color: white;
+  background: var(--color-text-secondary);
+  color: var(--color-bg-primary);
 }
 
 .mode-toggle-wrapper {
