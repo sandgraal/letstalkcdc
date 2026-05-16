@@ -119,6 +119,45 @@ describe("lib/render-head-extra.mjs", () => {
     });
   });
 
+  describe("stylesheet preload conversion", () => {
+    it('rewrites <link rel="stylesheet"> to preload + onload + noscript', () => {
+      const input = `<link rel="stylesheet" href="{{ '/assets/css/pages/intro.css' | url }}">`;
+      const output = renderHeadExtra(input, ctx);
+      const resolved = "/letstalkcdc/assets/css/pages/intro.css";
+      expect(output).toBe(
+        `<link rel="preload" href="${resolved}" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${resolved}"></noscript>`,
+      );
+    });
+
+    it("handles single-quoted href", () => {
+      const input = `<link rel="stylesheet" href='/foo.css'>`;
+      const output = renderHeadExtra(input, ctx);
+      expect(output).toBe(
+        `<link rel="preload" href='/foo.css' as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href='/foo.css'></noscript>`,
+      );
+    });
+
+    it("converts multiple stylesheet links in a single head_extra block", () => {
+      const input =
+        `<link rel="stylesheet" href="/a.css">` +
+        `\n<link rel="stylesheet" href="/b.css">`;
+      const output = renderHeadExtra(input, ctx);
+      const occurrences = (output.match(/rel="preload"/g) || []).length;
+      expect(occurrences).toBe(2);
+      expect(output).toContain(
+        '<noscript><link rel="stylesheet" href="/a.css"></noscript>',
+      );
+      expect(output).toContain(
+        '<noscript><link rel="stylesheet" href="/b.css"></noscript>',
+      );
+    });
+
+    it("leaves non-stylesheet <link> tags alone", () => {
+      const input = `<link rel="canonical" href="https://example.com/">`;
+      expect(renderHeadExtra(input, ctx)).toBe(input);
+    });
+  });
+
   describe("defaults", () => {
     it("treats omitted context options as empty strings", () => {
       // No second arg at all.

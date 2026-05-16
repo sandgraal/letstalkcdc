@@ -26,6 +26,26 @@ DELETE` so the expansion can't grant write or destructive
 
 ### Changed
 
+- **Stylesheets no longer block first paint.** All five
+  `<link rel="stylesheet">` tags emitted by the site — the three in
+  `src/_includes/layouts/base.njk` (main bundle, auth.css,
+  assistant.css) and the two emitted from per-page `head_extra`
+  blocks (page-specific CSS + cdc-simulation.css on `/intro/`,
+  `/snapshotting/`, etc.) — now use `<link rel="preload" as="style"
+  onload="this.onload=null;this.rel='stylesheet'">` with a
+  `<noscript>` blocking fallback for JS-disabled browsers. The
+  head_extra transform is centralized in
+  `lib/render-head-extra.mjs` so the 20 pages that inject
+  page-specific CSS pick up the fix without per-page front-matter
+  edits.
+
+  A ~250-byte inline `<style>` block in `<head>` masks the brief
+  pre-style window with the dark default body background + Inter
+  font + `.skip-link` visually-hidden rule, so the FOUC isn't
+  visually disruptive. CSS bundle is unchanged — only the load
+  mechanism moved. Lighthouse `render-blocking-resources` audit on
+  `/intro/`: **0 → 1.0** across all three LHCI runs.
+
 - **Color tokens — `--color-text-muted` updated.** The dark-theme
   value (`#64748b` / slate-500) was darker than the light-theme
   value (`#94a3b8` / slate-400), the wrong direction for

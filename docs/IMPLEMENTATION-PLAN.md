@@ -318,10 +318,22 @@ first so the threshold can ratchet up as we land them.
       dimensioned, suspects narrow to font-swap reflow on the long
       lede and the `.cdc-methods-grid` reveal.
 
-- [ ] Eliminate render-blocking by moving non-critical CSS to a
-      deferred `<link rel="preload" as="style" onload="this.rel='stylesheet'">`
-      and inlining the above-the-fold subset. Verify via
-      `/css-byte-check` after — bundled output should be unchanged.
+- [x] Eliminated render-blocking for the stylesheet links emitted via
+      `base.njk` and rewritten per-page `head_extra` content (3 in
+      `base.njk` — main bundle, auth, assistant; and 2 in per-page
+      `head_extra` blocks — page-specific + cdc-simulation). Those
+      links now use rel=preload + onload + a `<noscript>` blocking
+      fallback for JS-disabled browsers. Standalone `layout: null`
+      templates are outside this centralized conversion. The
+      head_extra rewrite is centralized via a regex in
+      `lib/render-head-extra.mjs` so the 20 pages that inject
+      page-specific CSS get the fix without per-page edits; added 4
+      vitest cases covering single-quote, multi-link, and
+      non-stylesheet `<link>` passthrough. A ~250-byte inline
+      `<style>` block in `base.njk`'s `<head>` masks the brief
+      pre-style window with the dark default background + body
+      font. Lighthouse `render-blocking-resources` on `/intro/`:
+      0 → 1.0 across all three LHCI runs. CSS bundle unchanged.
 
 - [x] Re-measured `target-size` against the styled LHCI build. Of
       the previously-flagged elements, only `.assistant-send` (the
