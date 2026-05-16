@@ -170,7 +170,10 @@
   display: inline-block;
   font-size: 0.78rem;
   padding: 0.2rem 0.6rem;
-  background: var(--color-accent, #2a9d8f);
+  /* Use the hover-shade accent so white text passes WCAG AA. The
+     default --color-accent-primary (#3b82f6) on white is 3.7:1;
+     --color-accent-hover (#2563eb) is 5.2:1. */
+  background: var(--color-accent-hover, #2563eb);
   color: #fff;
   text-decoration: none;
   border-radius: 1rem;
@@ -236,8 +239,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  /* WCAG 2.2 target-size compliance — bumped from 36px to the 44px
+     touch-friendly tier already used on .nav-chip and the mobile menu
+     toggle (see 03-layout.css). Lighthouse `target-size` audit on
+     /intro/ scored 0 against the styled build with the 36px size. */
+  width: 44px;
+  height: 44px;
   background: var(--color-accent, #2a9d8f);
   color: #fff;
   border: none;
