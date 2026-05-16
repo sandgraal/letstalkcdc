@@ -129,6 +129,13 @@ describe("lib/render-head-extra.mjs", () => {
       );
     });
 
+    it("escapes href values before re-emitting them into HTML", () => {
+      const input = `<link rel="stylesheet" href="/a?x=1&y=2">`;
+      expect(renderHeadExtra(input, ctx)).toBe(
+        `<link rel="preload" href="/a?x=1&amp;y=2" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/a?x=1&amp;y=2"></noscript>`,
+      );
+    });
+
     it("also rewrites href-first stylesheet links", () => {
       const input = `<link href="{{ '/assets/css/styles.css' | url }}" rel="stylesheet" />`;
       const output = renderHeadExtra(input, ctx);
@@ -150,6 +157,13 @@ describe("lib/render-head-extra.mjs", () => {
         '<noscript><link rel="stylesheet" href="/b.css"></noscript>',
       );
       expect((output.match(/rel="preload"/g) || []).length).toBe(2);
+    });
+
+    it("normalizes single-quoted href values to safe double-quoted output", () => {
+      const input = `<link rel="stylesheet" href='/foo.css'>`;
+      expect(renderHeadExtra(input, ctx)).toBe(
+        `<link rel="preload" href="/foo.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/foo.css"></noscript>`,
+      );
     });
 
     it("leaves non-stylesheet <link> tags alone", () => {
