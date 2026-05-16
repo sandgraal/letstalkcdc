@@ -32,7 +32,7 @@ DELETE` so the expansion can't grant write or destructive
   assistant.css) and the two emitted from per-page `head_extra`
   blocks (page-specific CSS + cdc-simulation.css on `/intro/`,
   `/snapshotting/`, etc.) — now use `<link rel="preload" as="style"
-onload="this.onload=null;this.rel='stylesheet'">` with a
+  onload="this.onload=null;this.rel='stylesheet'">` with a
   `<noscript>` blocking fallback for JS-disabled browsers. The
   head_extra transform is centralized in
   `lib/render-head-extra.mjs` so the 20 pages that inject
