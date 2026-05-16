@@ -159,7 +159,7 @@ describe("lib/render-head-extra.mjs", () => {
       expect((output.match(/rel="preload"/g) || []).length).toBe(2);
     });
 
-    it("normalizes single-quoted href values to safe double-quoted output", () => {
+    it("converts single-quoted href attributes to double-quoted output", () => {
       const input = `<link rel="stylesheet" href='/foo.css'>`;
       expect(renderHeadExtra(input, ctx)).toBe(
         `<link rel="preload" href="/foo.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/foo.css"></noscript>`,
