@@ -316,11 +316,35 @@ if (offendingSource.length > 0) {
   );
 }
 
+// PR #278 added a per-page "Edit this page on GitHub" link built from
+// `site.repository` + `page.inputPath`. Assert each representative
+// page renders a correctly-shaped edit URL, so a future change to
+// either the layout, the `site.repository` config, or Eleventy's
+// `page.inputPath` semantics doesn't silently ship broken links.
+// Only base-layout pages are checked — `layout: null` outputs (404,
+// mermaid-sandbox, redirect stubs) intentionally don't get a footer.
+const editLinkChecks = [
+  { file: "index.html", expectedPath: "src/index.njk" },
+  { file: "intro/index.html", expectedPath: "src/intro/index.njk" },
+  { file: "errata/index.html", expectedPath: "src/errata/index.njk" },
+];
+const repoOwnerRepo = "sandgraal/letstalkcdc";
+for (const { file, expectedPath } of editLinkChecks) {
+  if (!existsSync(join(outputDir, file))) continue;
+  const html = read(file);
+  const expectedHref = `https://github.com/${repoOwnerRepo}/edit/main/${expectedPath}`;
+  if (!html.includes(`href="${expectedHref}"`)) {
+    failures.push(
+      `${file}: Edit-on-GitHub link missing or malformed (expected href="${expectedHref}")`,
+    );
+  }
+}
+
 if (failures.length) {
   console.error("Smoke test failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
 console.log(
-  "Smoke test passed: critical canvases present, CSP hardened, no external fonts.",
+  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed.",
 );

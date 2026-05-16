@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **"Edit this page on GitHub" link** in
+  `src/_includes/layouts/base.njk` footer. Rendered on every page
+  that uses the base layout (every module + content page;
+  `layout: null` outputs like `src/404.njk`,
+  `src/mermaid-sandbox/index.njk`, and the redirect stubs
+  intentionally have no footer). Uses Eleventy's built-in
+  `page.inputPath` and the existing `site.repository` config to
+  point at `https://github.com/{owner}/{repo}/edit/main/{path}`.
+  Matches the contributor-affordance convention from Debezium,
+  Eleventy, and Confluent Developer docs. Closes the Tier-2
+  "no per-page edit link" gap from the May 2026 brutal review.
+  `scripts/smoke.mjs` now asserts the link is present and
+  correctly-shaped on three representative outputs (`index.html`,
+  `intro/index.html`, `errata/index.html`).
+- **`docs/IMPLEMENTATION-PLAN.md` Phases 8–11** appended, derived
+  from the brutal-review roadmap: Phase 8 (trust & credibility —
+  author photo, methodology page, inline errata, identity
+  expansion), Phase 9 (comparison & conversion — `/compare/` hub,
+  glossary, RSS, newsletter, suggested-next), Phase 10 (one real
+  interactive demo), Phase 11 (repo hygiene — README badges,
+  BreadcrumbList audit, e2e test for assistant-send visible-state
+  target-size). Items in Phase 7 already done by PR #270/#274/#275
+  are flipped to `[x]`; the open items in Phases 8–11 give
+  auto-continue something concrete to pick up next.
 - `npm run verify-all` — single command for the full pre-PR chain
   (`format:check && lint && test && build`). Same behavior as the
   long-standing `/verify-all` Claude slash command, but now runnable
@@ -25,6 +49,25 @@ DELETE` so the expansion can't grant write or destructive
   routine agent work without expanding write/destructive surface.
 
 ### Changed
+
+- **Stylesheets no longer block first paint.** All five
+  `<link rel="stylesheet">` tags emitted by the site — the three in
+  `src/_includes/layouts/base.njk` (main bundle, auth.css,
+  assistant.css) and the two emitted from per-page `head_extra`
+  blocks (page-specific CSS + cdc-simulation.css on `/intro/`,
+  `/snapshotting/`, etc.) — now use rel=preload + onload with a
+  `<noscript>` blocking fallback for JS-disabled browsers. The
+  head_extra transform is centralized in
+  `lib/render-head-extra.mjs` so the 20 pages that inject
+  page-specific CSS pick up the fix without per-page front-matter
+  edits.
+
+  A ~250-byte inline `<style>` block in `<head>` masks the brief
+  pre-style window with the dark default body background + Inter
+  font + `.skip-link` visually-hidden rule, so the FOUC isn't
+  visually disruptive. CSS bundle is unchanged — only the load
+  mechanism moved. Lighthouse `render-blocking-resources` audit on
+  `/intro/`: **0 → 1.0** across all three LHCI runs.
 
 - **Color tokens — `--color-text-muted` updated.** The dark-theme
   value (`#64748b` / slate-500) was darker than the light-theme
