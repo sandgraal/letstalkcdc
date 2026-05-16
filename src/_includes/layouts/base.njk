@@ -26,6 +26,7 @@
       {% set canonicalUrl = '/' ~ canonicalUrl %}
     {% endif %}
     <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
+    <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ '/feed.xml' | url }}">
     <meta name="theme-color" content="#0f172a">
     {% if seriesKey and (datePublished or dateModified) %}
       <meta property="article:published_time" content="{{ datePublished | default(dateModified) }}">
