@@ -27,15 +27,17 @@ import { test, expect } from "@playwright/test";
 // `src/assets/css/09-mobile-responsive.css:321-336` and
 // `src/css/assistant.css:295-307`.
 test.describe("assistant panel", () => {
-  test.beforeEach(({ page }, testInfo) => {
-    void page;
+  function skipMobileChrome(testInfo) {
     test.skip(
       testInfo.project.name === "mobile-chrome",
       "mobile-chrome viewport has flaky pointer-intercept on the FAB; covered by chromium + webkit",
     );
-  });
+  }
 
-  test("FAB opens the panel and assistant-send is 44×44", async ({ page }) => {
+  test("FAB opens the panel and assistant-send is 44×44", async ({
+    page,
+  }, testInfo) => {
+    skipMobileChrome(testInfo);
     // Home page (not /intro/) — /intro/'s .sticky-subnav overlaps the
     // FAB on mobile viewports, intercepting clicks. The FAB renders
     // on every page via base.njk; home is simpler.
@@ -70,7 +72,10 @@ test.describe("assistant panel", () => {
     }
   });
 
-  test("the close button inside the panel closes it", async ({ page }) => {
+  test("the close button inside the panel closes it", async ({
+    page,
+  }, testInfo) => {
+    skipMobileChrome(testInfo);
     await page.goto("/");
 
     const fab = page.locator("#askBtn");
@@ -90,7 +95,8 @@ test.describe("assistant panel", () => {
     await expect(fab).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("Escape inside the panel closes it", async ({ page }) => {
+  test("Escape inside the panel closes it", async ({ page }, testInfo) => {
+    skipMobileChrome(testInfo);
     await page.goto("/");
 
     const fab = page.locator("#askBtn");
