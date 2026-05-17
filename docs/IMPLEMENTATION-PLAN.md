@@ -498,10 +498,15 @@ first-class page, no RSS, no email capture.
       ConvertKit embed in the base layout footer + a dedicated
       `/newsletter/` page. Pick provider before building.
 
-- [ ] **"Suggested next module" component.** Driven by
-      `src/_data/series.mjs` order + `skillLevel` adjacency.
-      Rendered at the bottom of every module page (alongside
-      `series-nav.njk`).
+- [x] **"Suggested next module" component — already shipped.**
+      `src/_includes/components/series-nav.njk` (rendered by
+      `base.njk:248-250` on every page where `seriesKey` is set)
+      already surfaces prev/next module links by `series.mjs`
+      array order — the brutal review missed this on its first
+      pass. The cross-skill-level `skillLevel` adjacency variant
+      I sketched isn't implemented and isn't an obvious win;
+      revisit only if reader feedback indicates the strict
+      next-in-order navigation is confusing.
 
 ---
 
@@ -578,10 +583,27 @@ inline `<svg>` across all module pages.
       `.lighthouserc.json`. Option 2 is cheaper if option 1
       keeps slipping.
 
-- [ ] **`BreadcrumbList` JSON-LD audit.** Post-PR-#263 path-prefix
-      fix, sample 5–10 module pages and confirm the breadcrumb
-      `item` URLs resolve correctly under both root and
-      prefixed deploys.
+- [x] **`BreadcrumbList` JSON-LD audit — found and fixed a real
+      shipping bug.** Sampled the three pages with BreadcrumbList
+      JSON-LD (`/intro/`, `/multi-tenancy/`, `/exactly-once/`)
+      against both `NODE_ENV=production` and
+      `ELEVENTY_PATH_PREFIX=/` builds. `/intro/` rendered
+      correctly; the other two shipped a literal unexpanded
+      Nunjucks expression as the `item` URL because their
+      front-matter used the plain `head_extra:` key rather than
+      `eleventyComputed: head_extra:`. The plain key bypasses
+      Nunjucks pre-processing, and `lib/render-head-extra.mjs`
+      only handles `{{ '/path' | url }}`, `{{ site.host }}`, and
+      `{{ site.origin }}` — not `{{ page.url }}` or
+      `{{ canonicalUrl }}`. Converted both pages to
+      `eleventyComputed: head_extra:`, matching the pattern
+      intro/, snapshotting/, etc. already use. Verified all
+      three BreadcrumbList blocks now produce correct
+      prefixed/unprefixed URLs in both builds. The
+      "mirror new substitutions" caveat at
+      `lib/render-head-extra.mjs:18` is still the rule for the
+      plain-`head_extra:` path; the `eleventyComputed:` path
+      bypasses the filter entirely and is the safer default.
 
 - [ ] **CSS `@layer` migration** (Phase 4 carry-over). Pure
       refactor with byte-identity verification. Defer unless
