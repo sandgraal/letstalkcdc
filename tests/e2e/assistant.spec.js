@@ -93,6 +93,11 @@ test.describe("assistant panel", () => {
     const fab = page.locator("#askBtn");
     const panel = page.locator("#askPanel");
 
+    // assistant.js injects the panel internals only after its async
+    // KB bootstrap completes. Wait for a known injected control so the
+    // panel markup and Escape listener are initialized before opening.
+    await expect(panel.locator(".assistant-input")).toHaveCount(1);
+
     await fab.click();
     await expect(panel).toBeVisible();
 
