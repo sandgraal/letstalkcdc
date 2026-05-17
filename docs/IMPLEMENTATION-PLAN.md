@@ -599,11 +599,27 @@ inline `<svg>` across all module pages.
       `eleventyComputed: head_extra:`, matching the pattern
       intro/, snapshotting/, etc. already use. Verified all
       three BreadcrumbList blocks now produce correct
-      prefixed/unprefixed URLs in both builds. The
+      prefixed/unprefixed URLs in both builds.
+
+      Mechanics, to be precise: `eleventyComputed` does NOT
+      bypass `renderHeadExtra` — `base.njk:60` still pipes the
+      computed value through
+      `{{ head_extra | renderHeadExtra | safe }}` for things
+      like the stylesheet-link preload rewrite (PR #275). What
+      `eleventyComputed` adds is a Nunjucks evaluation pass
+      BEFORE the filter, with `page` in scope, so `page.url`
+      and `canonicalUrl` resolve there. The filter then only
+      sees the leftover patterns it knows about. The
       "mirror new substitutions" caveat at
-      `lib/render-head-extra.mjs:18` is still the rule for the
-      plain-`head_extra:` path; the `eleventyComputed:` path
-      bypasses the filter entirely and is the safer default.
+      `lib/render-head-extra.mjs:18` is still load-bearing for
+      anything that genuinely can't get pre-evaluated, but the
+      `eleventyComputed:` path makes it less risky.
+
+      Also dropped the duplicate `<meta name="description">`
+      from `multi-tenancy/index.njk`'s head_extra block —
+      `base.njk:7` already emits one from the page-level
+      `description` field, and SEO crawlers see conflicting
+      duplicate meta as a smell.
 
 - [ ] **CSS `@layer` migration** (Phase 4 carry-over). Pure
       refactor with byte-identity verification. Defer unless

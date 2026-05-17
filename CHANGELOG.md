@@ -199,7 +199,10 @@ info}-light` callout backgrounds. Defined only in the dark/
   snapshotting/ pattern); verified all three BreadcrumbList
   blocks now produce correctly-prefixed URLs in both
   `NODE_ENV=production` and `ELEVENTY_PATH_PREFIX=/` builds.
-  Found during the Phase 11 BreadcrumbList audit.
+  Found during the Phase 11 BreadcrumbList audit. Also dropped
+  a duplicate `<meta name="description">` from
+  multi-tenancy's head_extra block — `base.njk` already
+  emits one from the page-level `description` field.
 - **`/intro/` accessibility, `color-contrast: 0 → 1.0`** (a11y
   score 0.94 → 0.97). See the alias + token-swap entries in
   **Changed** above for the mechanism. Direct call-site fixes:
