@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **e2e coverage of the assistant FAB panel** at
+  `tests/e2e/assistant.spec.js`. Three tests: opens the panel via
+  FAB click and asserts `.assistant-send` measures ≥44×44 CSS
+  pixels (the WCAG 2.2 touch-friendly tier); the close button
+  closes the panel; Escape with focus inside closes the panel.
+  Closes the Phase 11 "assistant-send visible-state e2e" item —
+  Lighthouse's `target-size` audit can't see the panel's real
+  44×44 button because axe inspects the `hidden` element
+  computationally; this spec is the real proof for real users.
+  Skipped on the mobile-chrome project (Pixel 5 viewport has
+  consistent pointer-intercept flake in headless Playwright;
+  desktop chromium + webkit coverage is sufficient).
 - **RSS 2.0 feed at `/feed.xml`** — closes the Phase 9
   "no RSS" gap from the brutal review. Hand-rolled
   `src/feed.11ty.cjs` (no new runtime dep; the format we emit is
@@ -184,6 +196,15 @@ info}-light` callout backgrounds. Defined only in the dark/
 
 ### Fixed
 
+- **`#askPanel` with the `hidden` attribute was still
+  hit-testable.** `src/css/assistant.css:36` set
+  `#askPanel { display: flex }` at ID specificity, overriding
+  the UA default `[hidden] { display: none }` rule. Visible
+  consequences: keyboard tab traversal landed inside the
+  "hidden" assistant input; pointer events near the FAB could
+  land on the off-screen panel. Added an explicit
+  `#askPanel[hidden] { display: none }` rule. Found while
+  writing the e2e spec for the FAB.
 - **`/intro/` accessibility, `color-contrast: 0 → 1.0`** (a11y
   score 0.94 → 0.97). See the alias + token-swap entries in
   **Changed** above for the mechanism. Direct call-site fixes:

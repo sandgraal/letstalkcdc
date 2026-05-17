@@ -49,6 +49,16 @@
   font-family: var(--font-body, system-ui, -apple-system, sans-serif);
   z-index: 1000;
 }
+/* The `#askPanel` rule above has ID-level specificity, which beats
+   the UA default `[hidden] { display: none }`. Without this restore,
+   `<div id="askPanel" hidden>` still renders flex — the panel is
+   visually positioned off the natural reading flow but stays in the
+   pointer-event hit-test path and in the keyboard tab order. Real
+   consequences: tab traversal lands on a "hidden" input; click
+   targets near the FAB get intercepted. */
+#askPanel[hidden] {
+  display: none;
+}
 
 /* ── Header ───────────────────────────────────────────────────────────── */
 
