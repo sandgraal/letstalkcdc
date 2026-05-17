@@ -129,26 +129,40 @@ describe("lib/render-head-extra.mjs", () => {
       );
     });
 
-    it("handles single-quoted href", () => {
-      const input = `<link rel="stylesheet" href='/foo.css'>`;
-      const output = renderHeadExtra(input, ctx);
-      expect(output).toBe(
-        `<link rel="preload" href='/foo.css' as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href='/foo.css'></noscript>`,
+    it("escapes href values before re-emitting them into HTML", () => {
+      const input = `<link rel="stylesheet" href="/a?x=1&y=2">`;
+      expect(renderHeadExtra(input, ctx)).toBe(
+        `<link rel="preload" href="/a?x=1&amp;y=2" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/a?x=1&amp;y=2"></noscript>`,
       );
     });
 
-    it("converts multiple stylesheet links in a single head_extra block", () => {
+    it("also rewrites href-first stylesheet links", () => {
+      const input = `<link href="{{ '/assets/css/styles.css' | url }}" rel="stylesheet" />`;
+      const output = renderHeadExtra(input, ctx);
+      const resolved = "/letstalkcdc/assets/css/styles.css";
+      expect(output).toBe(
+        `<link rel="preload" href="${resolved}" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${resolved}"></noscript>`,
+      );
+    });
+
+    it("converts multiple stylesheet links in one head_extra block", () => {
       const input =
         `<link rel="stylesheet" href="/a.css">` +
-        `\n<link rel="stylesheet" href="/b.css">`;
+        `\n<link href="/b.css" rel="stylesheet">`;
       const output = renderHeadExtra(input, ctx);
-      const occurrences = (output.match(/rel="preload"/g) || []).length;
-      expect(occurrences).toBe(2);
       expect(output).toContain(
         '<noscript><link rel="stylesheet" href="/a.css"></noscript>',
       );
       expect(output).toContain(
         '<noscript><link rel="stylesheet" href="/b.css"></noscript>',
+      );
+      expect((output.match(/rel="preload"/g) || []).length).toBe(2);
+    });
+
+    it("converts single-quoted href attributes to double-quoted output", () => {
+      const input = `<link rel="stylesheet" href='/foo.css'>`;
+      expect(renderHeadExtra(input, ctx)).toBe(
+        `<link rel="preload" href="/foo.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/foo.css"></noscript>`,
       );
     });
 
