@@ -28,8 +28,6 @@ export default defineConfig({
         app: resolve("src/assets/js/app.js"),
         search: resolve("src/assets/js/search.js"),
         "progress-ui": resolve("src/assets/js/progress-ui.js"),
-        "auth-ui": resolve("src/assets/js/auth-ui.js"),
-        "cloud-progress": resolve("src/assets/js/cloud-progress.js"),
         "video-embed": resolve("src/assets/js/video-embed.js"),
         "web-vitals-dashboard": resolve(
           "src/assets/js/web-vitals-dashboard.js",

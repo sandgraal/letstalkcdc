@@ -89,9 +89,7 @@
        this pattern should clear it. #}
     <link rel="preload" href="{{ '/assets/css/styles.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}"></noscript>
-    <link rel="preload" href="{{ '/assets/css/auth.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ '/assets/css/auth.css' | url }}"></noscript>
-    {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/cloud-progress.js, src/assets/js/auth-ui.js, src/assets/js/search.js' | vitePreloads | safe }}
+    {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/search.js' | vitePreloads | safe }}
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -338,8 +336,6 @@
     <script type="module" src="{{ '/scripts/dashboard.js' | url }}" defer></script>
     <script type="module" src="{{ 'src/assets/js/app.js' | viteAsset | url }}" defer></script>
     <script type="module" src="{{ 'src/assets/js/progress-ui.js' | viteAsset | url }}" defer></script>
-    <script type="module" src="{{ 'src/assets/js/auth-ui.js' | viteAsset | url }}" defer></script>
-    <script type="module" src="{{ 'src/assets/js/cloud-progress.js' | viteAsset | url }}" defer></script>
     <script type="module" src="{{ 'src/assets/js/video-embed.js' | viteAsset | url }}" defer></script>
     {% if scripts %}
       {% for script in scripts %}
