@@ -27,7 +27,8 @@ import { test, expect } from "@playwright/test";
 // `src/assets/css/09-mobile-responsive.css:321-336` and
 // `src/css/assistant.css:295-307`.
 test.describe("assistant panel", () => {
-  test.beforeEach((_fixtures, testInfo) => {
+  test.beforeEach(({ page }, testInfo) => {
+    void page;
     test.skip(
       testInfo.project.name === "mobile-chrome",
       "mobile-chrome viewport has flaky pointer-intercept on the FAB; covered by chromium + webkit",
@@ -49,6 +50,7 @@ test.describe("assistant panel", () => {
     // DOMContentLoaded, then kept `hidden` until the FAB is clicked.
     const panel = page.locator("#askPanel");
     await expect(panel).toHaveCount(1);
+    await expect(panel.locator(".assistant-input")).toHaveCount(1);
 
     // Open the panel.
     await fab.click();
@@ -73,6 +75,7 @@ test.describe("assistant panel", () => {
 
     const fab = page.locator("#askBtn");
     const panel = page.locator("#askPanel");
+    await expect(panel.locator(".assistant-input")).toHaveCount(1);
 
     await fab.click();
     await expect(panel).toBeVisible();
