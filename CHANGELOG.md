@@ -205,6 +205,25 @@ info}-light` callout backgrounds. Defined only in the dark/
   land on the off-screen panel. Added an explicit
   `#askPanel[hidden] { display: none }` rule. Found while
   writing the e2e spec for the FAB.
+- **`BreadcrumbList` JSON-LD shipped a literal `{{ page.url }}`
+  on `/multi-tenancy/` and `/exactly-once/`** — production HTML
+  contained the unexpanded Nunjucks expression as a URL,
+  breaking schema.org parsing. `/intro/` was unaffected because
+  its front-matter used `eleventyComputed: head_extra:`; the
+  two broken pages used plain `head_extra:`, which bypasses
+  Nunjucks pre-processing and only goes through
+  `lib/render-head-extra.mjs` — that filter handles
+  `{{ '/path' | url }}`, `{{ site.host }}`, and
+  `{{ site.origin }}`, but not `{{ page.url }}` or
+  `{{ canonicalUrl }}`. Converted both pages to
+  `eleventyComputed: head_extra:` (matching the intro/
+  snapshotting/ pattern); verified all three BreadcrumbList
+  blocks now produce correctly-prefixed URLs in both
+  `NODE_ENV=production` and `ELEVENTY_PATH_PREFIX=/` builds.
+  Found during the Phase 11 BreadcrumbList audit. Also dropped
+  a duplicate `<meta name="description">` from
+  multi-tenancy's head_extra block — `base.njk` already
+  emits one from the page-level `description` field.
 - **`/intro/` accessibility, `color-contrast: 0 → 1.0`** (a11y
   score 0.94 → 0.97). See the alias + token-swap entries in
   **Changed** above for the mechanism. Direct call-site fixes:

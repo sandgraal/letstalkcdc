@@ -6,42 +6,36 @@ canonicalPath: "/multi-tenancy/"
 scripts:
   - "/assets/js/pages/multi-tenancy.js"
   - "/assets/js/lib/quiz.js"
-head_extra: |
-  <meta
-        name="description"
-        content="Interactive explorer for multi-tenant CDC: isolation levels, topic strategy, consumer groups, and egress sizing with shareable presets."
-      />
-
-      <link rel="stylesheet" href="{{ '/assets/css/pages/multi-tenancy.css' | url }}">
-
-      <!-- Structured data -->
-      <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "TechArticle",
-          "headline": "Multi-Tenancy: Cost vs Isolation",
-          "description": "Isolation models, throughput math, topic strategy, and operational guardrails for multi-tenant CDC.",
-          "url": "{{ site.host }}{{ page.url }}",
-          "inLanguage": "en",
-          "about": [
-            "Multi-Tenancy",
-            "Kafka Topics",
-            "Isolation",
-            "Throughput",
-            "RBAC"
-          ]
-        }
-      </script>
-      <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Series Overview",
-              "item": "{{ site.origin }}{{ '/overview/' | url }}"
+eleventyComputed:
+  head_extra: |
+    <link rel="stylesheet" href="{{ '/assets/css/pages/multi-tenancy.css' | url }}">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Multi-Tenancy: Cost vs Isolation",
+        "description": "Isolation models, throughput math, topic strategy, and operational guardrails for multi-tenant CDC.",
+        "url": "{{ site.host }}{{ page.url }}",
+        "inLanguage": "en",
+        "about": [
+          "Multi-Tenancy",
+          "Kafka Topics",
+          "Isolation",
+          "Throughput",
+          "RBAC"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Series Overview",
+            "item": "{{ site.origin }}{{ '/overview/' | url }}"
           },
           {
             "@type": "ListItem",
@@ -51,33 +45,31 @@ head_extra: |
           }
         ]
       }
-      </script>
-      <!-- FAQPage -->
-      <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "Do per-tenant topics improve security?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "RBAC is simpler and audits map to tenants, but cost/metadata overhead rises; cluster boundaries may be required for regulated data."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Will per-tenant clusters always cost more?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "They usually increase footprint, but contain blast radius and enable tenant-scoped ops; worth it for VIPs, noisy tenants, or compliance."
-              }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Do per-tenant topics improve security?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "RBAC is simpler and audits map to tenants, but cost/metadata overhead rises; cluster boundaries may be required for regulated data."
             }
-          ]
-        }
-      </script>
-
+          },
+          {
+            "@type": "Question",
+            "name": "Will per-tenant clusters always cost more?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "They usually increase footprint, but contain blast radius and enable tenant-scoped ops; worth it for VIPs, noisy tenants, or compliance."
+            }
+          }
+        ]
+      }
+    </script>
 ---
 {% import "components/ui.njk" as ui %}
 {% import "components/quiz.njk" as quizMacro %}
