@@ -340,6 +340,31 @@ for (const { file, expectedPath } of editLinkChecks) {
   }
 }
 
+// Inline errata callout is rendered by `base.njk` from `src/_data/errata.mjs`
+// for any entry whose `urls` matches the current page. Assert that pages
+// listed in the seed entry get the callout and that an unrelated module
+// page does NOT (the callout's whole point is that it disappears when
+// there are no matching entries — a regression there would render the
+// "Known errata for this page" disclosure on every page).
+const errataCalloutChecks = [
+  { file: "intro/index.html", expectCallout: true },
+  { file: "quickstarts/quickstart-postgres/index.html", expectCallout: true },
+  { file: "exactly-once/index.html", expectCallout: false },
+];
+for (const { file, expectCallout } of errataCalloutChecks) {
+  if (!existsSync(join(outputDir, file))) continue;
+  const hasCallout = read(file).includes('class="errata-callout"');
+  if (expectCallout && !hasCallout) {
+    failures.push(
+      `${file}: expected errata-callout aside but found none — check src/_data/errata.mjs urls list`,
+    );
+  } else if (!expectCallout && hasCallout) {
+    failures.push(
+      `${file}: unexpected errata-callout aside — partial should render nothing when no entries match page.url`,
+    );
+  }
+}
+
 // /glossary/ is data-driven from src/_data/glossary.mjs. Assert the
 // page exists, includes a known anchor, and has at least a handful
 // of terms — guards against the data file being accidentally
@@ -368,5 +393,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed, glossary populated.",
+  "Smoke test passed: critical canvases, CSP, fonts, edit links, errata callout, glossary.",
 );
