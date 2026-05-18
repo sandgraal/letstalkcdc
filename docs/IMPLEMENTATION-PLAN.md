@@ -449,11 +449,26 @@ narrative, edit affordances. Each item is sized to one PR.
       under `src/methodology/`; link from the base footer's
       "Resources" column.
 
-- [ ] **Surface errata inline per module.** `src/errata/index.njk`
-      exists as a hub, but a tagged-errata callout doesn't render on
-      the affected module page. When an entry exists tagged to a
-      module, the module should show a "Known errata" disclosure
-      near the top.
+- [x] **Surface errata inline per module.** Plumbing shipped:
+      new data file `src/_data/errata.mjs` (URL-tagged entries with
+      `id`, `urls`, `title`, `dateModified`, `body` HTML),
+      `errataForUrl` Nunjucks filter in `eleventy.config.mjs`,
+      and `src/_includes/components/errata-callout.njk` rendered
+      from `base.njk` at the top of `<main>` (above the hero).
+      The partial renders a collapsed `<details>` "Known errata
+      for this page (N)" disclosure with a link to the hub at
+      `/errata/`; it emits nothing when no entry matches
+      `page.url`, so it's safe to include unconditionally.
+      Seeded with one real entry for the May 2026 video-embed
+      removal (PR #270), tagged to `/intro/` and
+      `/quickstarts/quickstart-postgres/`. CSS lives next to the
+      `page-meta` rules in `src/assets/css/04-components.css`.
+      `scripts/smoke.mjs` asserts presence on the two tagged
+      pages and absence on `/exactly-once/` so a regression in
+      the filter (or the partial accidentally rendering
+      everywhere) fails CI. The errata-hub page itself is
+      unchanged and keeps its hand-written prose; the data file
+      handles only the per-page surfacing.
 
 - [ ] **Author identity expansion.** `src/_data/author.mjs`
       `sameAs: ["https://github.com/sandgraal"]` is the only
