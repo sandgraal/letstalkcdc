@@ -41,6 +41,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CDC platforms catalog data-driven.** The 15 hard-coded
+  `<article class="cdc-card">` blocks in `src/intro/index.njk`
+  (the "CDC platforms" filterable grid) moved into a new
+  `src/_data/cdcVendors.mjs` data file; a Nunjucks loop in the
+  template renders them. Pure structural refactor: rendered
+  HTML on `/intro/` is byte-identical (965 = 965 raw element
+  opens before and after); the client-side filter in
+  `src/assets/js/pages/intro.js` reads `.cdc-card` +
+  `data-tags` and is unchanged. Drops ~135 lines from the
+  template and centralizes the vendor list, which sets up two
+  follow-ups cheaply: the "show first 6 with expand" affordance
+  that's the actual `dom-size` win, and a future `/compare/` or
+  `/tooling/` rendering that reads from the same source. Per
+  PR #288's audit (Phase 5 perf-debt sub-item).
+
 - **`/intro/` operational-checklist no longer ships no-op
   checkboxes.** Five `<input type="checkbox">` + `<label>`
   wrappers in the "Operational gotchas (day-one checks)" list

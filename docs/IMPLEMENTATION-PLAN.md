@@ -262,11 +262,16 @@ remove the matching regex from `.lycheeignore`.
     JS-injected nodes). Heaviest sections by raw element count
     (informational audit for future trim work; sums are
     approximate because section boundaries overlap):
-    - **CDC platforms card grid** (15 hard-coded vendor cards × ~9
-      elements = ~135). The cleanest reduction here is to data-
-      drive from a shared `src/_data/*.mjs`, then show only the
-      first 6 with a "show all" expand affordance; the full
-      list belongs on `/tooling/` anyway.
+    - **CDC platforms card grid** — first half done: the 15
+      vendor entries moved from hard-coded `<article>` blocks in
+      `src/intro/index.njk` into `src/_data/cdcVendors.mjs` and
+      a Nunjucks loop renders them; rendered HTML is byte-
+      identical (965 → 965 raw element opens), so this is a
+      pure maintainability refactor that drops ~135 lines from
+      the template. The "show first 6 with a 'show all' expand"
+      affordance is still open and is the actual DOM trim — it
+      now needs ~10 lines of template + a small JS toggle to
+      lift since the data is already centralized.
     - **Methods at a Glance table** (~135 elements). Each cell
       uses `<span class="cell-indicator">` + `<span class="cell-text">`;
       collapsing the indicator into a `::before` pseudo-element
