@@ -200,6 +200,7 @@
     {% endif %}
 
     <main id="main">
+      {% include "components/errata-callout.njk" %}
       {{ content | safe }}
 
       {% if seriesKey and (datePublished or dateModified) %}
