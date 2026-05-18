@@ -8,3 +8,7 @@
 # would otherwise 404 on the canonical loopback. Remove this entry
 # after the next deploy lands.
 ^https://sandgraal\.github\.io/letstalkcdc/glossary/$
+
+# New page: /methodology/. Same canonical-loopback chicken-and-egg as
+# above. Remove after the next deploy publishes the page.
+^https://sandgraal\.github\.io/letstalkcdc/methodology/$
