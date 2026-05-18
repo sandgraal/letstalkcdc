@@ -148,7 +148,7 @@ What's left on `/intro/` perf:
 
 - `cumulative-layout-shift: 0.58` — culprits not yet localized.
 - `mainthread-work-breakdown: 0.5` — never investigated.
-- `dom-size: 0.5` — 957 raw elements; PR #288 started chipping.
+- `dom-size: 0.5` — 947 raw elements after the operational-checklist trim; PR #288 started chipping.
 
 **Next moves**:
 
