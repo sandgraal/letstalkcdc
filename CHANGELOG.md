@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`npm run dev` no longer renders an unstyled site on a fresh
+  clone.** `src/assets/css/styles.min.css` is gitignored (it's a
+  PostCSS build artifact) but `npm run serve` / `npm run dev`
+  did not build it before starting the Eleventy dev server.
+  Result on a clean checkout: a fully-formed HTML site served
+  against a missing stylesheet, rendering as unstyled content
+  until the contributor figured out they needed to run
+  `npm run build:css` separately. Added a `preserve` script
+  (npm's implicit pre-hook for `serve`) that runs `build:css`
+  first. Single-file change to `package.json`. Mid-session
+  edits to `main.css` still require a manual rebuild — the
+  Eleventy `addWatchTarget("src/assets/css")` only watches for
+  passthrough-copy, not the PostCSS rebuild; a CSS watcher is a
+  follow-up.
+
 ### Changed
 
 - **`/intro/` operational-checklist no longer ships no-op
