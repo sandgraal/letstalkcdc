@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Standalone glossary at `/glossary/`.** Closes the Phase 9
+  "no first-class glossary" gap. 14 seed terms live in
+  `src/_data/glossary.mjs` — log internals (WAL, LSN, log
+  retention, checkpoint), event shapes (tombstone, compaction,
+  snapshot, schema evolution), delivery semantics (idempotent
+  write, exactly-once vs. effectively-once, lag), and streaming
+  infrastructure (partition key, DLQ). Each entry carries a
+  `slug` for a stable anchor (`/glossary/#tombstone`), optional
+  `aliases`, and optional `related` cross-link slugs the page
+  resolves to canonical term names at build time. The page
+  renders as a semantic `<dl>` sorted alphabetically by term,
+  with permalink anchors that fade in on hover. The 5-term
+  inline glossary list previously on `src/index.njk` is now a
+  one-paragraph teaser linking to the new page, so the homepage
+  stays light and there's one source of truth. Footer
+  "Resources" column gains a Glossary link as its first entry.
+  CSS lives in `04-components.css` next to the page-meta /
+  errata blocks and uses existing tokens. `scripts/smoke.mjs`
+  asserts the page renders ≥ 10 terms and the `id="tombstone"`
+  anchor exists.
 - **Inline errata callouts per module.** New data file
   `src/_data/errata.mjs` lets a maintainer tag a correction or
   caveat to one or more page URLs; `base.njk` then renders a

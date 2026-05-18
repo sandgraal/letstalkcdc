@@ -81,13 +81,14 @@ eleventyComputed:
 </section>
 <section aria-labelledby="glossary" class="prose">
   <h2 id="glossary">Glossary</h2>
-  <ul>
-    <li><strong>WAL/redo log:</strong> append-only record of committed DB changes.</li>
-    <li><strong>LSN/SCN:</strong> monotonically increasing sequence used for checkpoints.</li>
-    <li><strong>Tombstone:</strong> delete event with key so sinks can remove a row.</li>
-    <li><strong>Idempotent write:</strong> repeated apply yields the same state (keyed <code>MERGE</code>).</li>
-    <li><strong>Lag:</strong> time from source commit → sink apply (track p50/p95/p99).</li>
-  </ul>
+  <p>
+    Need to nail down the vocabulary first? The
+    <a href="{{ '/glossary/' | url }}">CDC glossary</a> defines
+    WAL/redo log, LSN/SCN, tombstones, snapshots, exactly-once vs.
+    effectively-once, partition keys, and the rest of the terms used
+    across the modules — each with a stable anchor you can
+    deep-link to.
+  </p>
 </section>
 <section aria-labelledby="learn" class="prose learn">
   <section id="learning-path">

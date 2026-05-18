@@ -490,10 +490,29 @@ first-class page, no RSS, no email capture.
       comparison-table component under
       `src/_includes/components/`.
 
-- [ ] **Glossary as a standalone page** at `/glossary/`. Rendered
-      from a single data file. Move the per-module inline glossary
-      snippets (currently inline in `src/index.njk`, `intro/`,
-      etc.) to references against it.
+- [x] **Glossary shipped at `/glossary/`.** New
+      `src/_data/glossary.mjs` holds 14 seed entries (log
+      internals, event shapes, delivery semantics, streaming
+      infrastructure), each with a kebab-case `slug` for stable
+      anchor IDs (`/glossary/#tombstone`, etc.), optional
+      `aliases` list, and optional `related` cross-link slugs.
+      `src/glossary/index.njk` renders an alpha-sorted semantic
+      `<dl>` with per-entry permalink anchors that fade in on
+      hover; the page template resolves `related` slugs back to
+      the canonical term display string at build time.
+      `src/index.njk` Glossary section was a 5-term inline list —
+      replaced with a one-paragraph teaser linking to the new
+      page so the homepage stays light and there's one source of
+      truth for definitions. Footer "Resources" column now has a
+      Glossary link as its first entry. CSS lives in
+      `04-components.css` next to the page-meta / errata blocks
+      and uses existing tokens (no new variables).
+      `scripts/smoke.mjs` asserts the page renders ≥ 10 terms
+      and the `id="tombstone"` anchor exists, so a regression in
+      the for-loop or a typo in the slug fails CI. The
+      `intro/` etc. pages don't actually have inline glossary
+      lists today (the plan wording was aspirational); only the
+      homepage list was real and is now migrated.
 
 - [ ] **RSS feed at `/feed.xml`.** Emit from module pages + errata.
 - [x] **RSS feed at `/feed.xml`.** Hand-rolled

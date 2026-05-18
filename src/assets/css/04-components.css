@@ -804,3 +804,68 @@
 .errata-callout__hub a:focus-visible {
   text-decoration: underline;
 }
+
+/* =============================================================
+   Glossary — semantic <dl> rendered at /glossary/ from
+   src/_data/glossary.mjs. Each <dt> has a stable id so other
+   pages can deep-link with /glossary/#slug.
+   ============================================================= */
+.glossary {
+  margin: var(--space-lg, 1.5rem) 0;
+}
+
+.glossary__term {
+  font-weight: 700;
+  font-size: var(--text-lg, 1.125rem);
+  color: var(--color-text-primary, #f8fafc);
+  margin-top: var(--space-lg, 1.5rem);
+  scroll-margin-top: var(--space-2xl, 4rem);
+}
+
+.glossary__term:first-of-type {
+  margin-top: 0;
+}
+
+.glossary__anchor {
+  color: var(--color-text-muted, #94a3b8);
+  font-weight: 400;
+  text-decoration: none;
+  margin-right: var(--space-xs, 0.25rem);
+  opacity: 0;
+  transition: opacity var(--transition-fast, 120ms ease-out);
+}
+
+.glossary__term:hover .glossary__anchor,
+.glossary__term:focus-within .glossary__anchor,
+.glossary__anchor:focus-visible {
+  opacity: 1;
+}
+
+.glossary__anchor:focus-visible {
+  outline: 2px solid var(--color-focus, #3b82f6);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 0.25rem);
+}
+
+.glossary__aliases {
+  font-weight: 400;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-text-secondary, #cbd5e1);
+}
+
+.glossary__definition {
+  margin: var(--space-xs, 0.5rem) 0 0;
+  padding-left: var(--space-md, 1rem);
+  border-left: 2px solid var(--color-border-subtle, rgba(148, 163, 184, 0.2));
+  color: var(--color-text-primary, #f8fafc);
+}
+
+.glossary__definition :first-child {
+  margin-top: 0;
+}
+
+.glossary__related {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-text-secondary, #cbd5e1);
+  margin-bottom: 0;
+}
