@@ -679,153 +679,17 @@ COMMIT;</code></pre>
         <div id="cdc-chips" class="row" role="toolbar" aria-label="Tag filters"></div>
       </div>
       <div class="cdc-grid" id="cdc-grid">
-<!-- cards (unchanged) -->
-          <article class="cdc-card" data-tags="open source,log-based,DIY ops">
-            <h3>Debezium + Kafka Connect</h3>
-            <p>
-              Open-source log-based CDC connectors. Flexible; you operate
-              Kafka/Connect or use managed Kafka.
-            </p>
+        {%- for vendor in cdcVendors %}
+          <article class="cdc-card" data-tags="{{ vendor.tags | join(',') }}">
+            <h3>{{ vendor.name }}</h3>
+            <p>{{ vendor.blurb }}</p>
             <div class="meta">
-              <span class="cdc-pill">open source</span><span class="cdc-pill">log-based</span><span class="cdc-pill">DIY
-                ops</span>
+              {%- for tag in vendor.tags -%}
+                <span class="cdc-pill">{{ tag }}</span>
+              {%- endfor %}
             </div>
           </article>
-          <article class="cdc-card" data-tags="managed,log-based,ELT + orchestration">
-            <h3>Matillion (Data Loader / Designer)</h3>
-            <p>
-              Wizard-driven CDC into cloud warehouses plus
-              orchestration/transform in one place.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span><span class="cdc-pill">ELT +
-                orchestration</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="managed,log-based">
-            <h3>Fivetran</h3>
-            <p>
-              Managed connectors with log-based CDC options; emphasizes quick
-              setup and hands-off operations.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="enterprise,log-based,heterogeneous">
-            <h3>Precisely (Connect)</h3>
-            <p>
-              Enterprise replication including mainframe/legacy into modern
-              targets.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span><span
-                class="cdc-pill">heterogeneous</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="enterprise,log-based">
-            <h3>Qlik Replicate (Attunity)</h3>
-            <p>
-              UI-driven enterprise CDC across a wide range of sources/targets.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="enterprise,log-based">
-            <h3>Oracle GoldenGate</h3>
-            <p>
-              Oracle’s CDC/replication stack (supports several non-Oracle
-              endpoints) for mission-critical use.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="managed,log-based">
-            <h3>AWS DMS</h3>
-            <p>
-              Managed migrations and ongoing CDC into AWS targets (and beyond
-              via connectors).
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">managed</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="serverless,log-based">
-            <h3>Google Cloud Datastream</h3>
-            <p>
-              Serverless CDC for MySQL/Postgres/Oracle streaming into
-              BigQuery/Cloud Storage.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">serverless</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="commercial,log-based">
-            <h3>Confluent Commercial Connectors</h3>
-            <p>
-              Kafka Connect ecosystem with additional commercial CDC connectors
-              like Oracle.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">commercial</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="platform,CDC connectors">
-            <h3>StreamSets</h3>
-            <p>
-              Streaming pipelines with CDC connectors into warehouses/lakes.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">platform</span><span class="cdc-pill">CDC connectors</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="platform,CDC + transform">
-            <h3>Striim</h3>
-            <p>
-              CDC + in-flight SQL-like processing for real-time ops analytics.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">platform</span><span class="cdc-pill">CDC + transform</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="enterprise,log-based">
-            <h3>IBM Data Replication</h3>
-            <p>
-              Log-based CDC for Db2 and mixed mainframe/distributed estates.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">enterprise</span><span class="cdc-pill">log-based</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="SAP,trigger/log">
-            <h3>SAP SLT</h3>
-            <p>
-              Native trigger/log-based replication from SAP ECC/S/4HANA to
-              downstream stores.
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">SAP</span><span class="cdc-pill">trigger/log</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="managed,CDC">
-            <h3>Hevo Data</h3>
-            <p>Managed ELT with CDC support into cloud targets.</p>
-            <div class="meta">
-              <span class="cdc-pill">managed</span><span class="cdc-pill">CDC</span>
-            </div>
-          </article>
-          <article class="cdc-card" data-tags="open source,mixed CDC">
-            <h3>Airbyte</h3>
-            <p>
-              Open-source ELT; CDC varies by connector (check docs for log-based
-              maturity per source).
-            </p>
-            <div class="meta">
-              <span class="cdc-pill">open source</span><span class="cdc-pill">mixed CDC</span>
-            </div>
-          </article>
+        {%- endfor %}
       </div>
     </section>
 
