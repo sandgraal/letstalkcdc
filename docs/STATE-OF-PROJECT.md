@@ -73,8 +73,8 @@ Methods at a Glance table ≈ 135, footer ≈ 199).
 
 - Rebase [#289](https://github.com/sandgraal/letstalkcdc/pull/289)
   after [#288](https://github.com/sandgraal/letstalkcdc/pull/288)'s
-  merge into main (it conflicts on `scripts/smoke.mjs`); land the
-  three doc-only PRs (#289 + #290 + #291).
+  merge into main (it conflicts on `scripts/smoke.mjs`); then land
+  #289 and the two doc-only PRs (#290 + #291).
 - Pick up the deferred `dom-size` sub-items from PR #288's audit —
   data-drive the CDC platforms cards from `src/_data/`, collapse the
   Methods-at-a-Glance `<span class="cell-indicator">` /
