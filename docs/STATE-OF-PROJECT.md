@@ -253,20 +253,20 @@ numbers in [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
 
 | Phase | Line | Item                                | Status            |
 | ----- | ---- | ----------------------------------- | ----------------- |
-| 1     | 30   | Confirm `vars.SITE_HOST`            | maintainer-only   |
-| 1     | 35   | Confirm `vars.ELEVENTY_PATH_PREFIX` | maintainer-only   |
-| 1     | 38   | Trigger `deploy.yml` + spot-check   | maintainer-only   |
-| 4     | 131  | CSS `@layer` migration              | deferred (Ph. 11) |
-| 5     | 215  | target-size follow-up               | closing in #291   |
-| 5     | 247  | `/intro/` perf debt parent          | partial           |
-| 5     | 283  | `/intro/` a11y debt parent          | closing in #291   |
-| 6     | 299  | doc audit parent                    | closing in #291   |
-| 7     | 343  | CLS culprits investigation          | needs LHCI run    |
-| 8     | 462  | Author photo                        | maintainer-only   |
-| 8     | 518  | Author identity expansion           | maintainer-only   |
-| 9     | 532  | `/compare/` vendor hub              | maintainer-only   |
-| 9     | 562  | RSS [ ] (stale dup of [x])          | closing in #291   |
-| 9     | 579  | Newsletter capture                  | maintainer-only   |
+| 1     | 34   | Confirm `vars.SITE_HOST`            | maintainer-only   |
+| 1     | 39   | Confirm `vars.ELEVENTY_PATH_PREFIX` | maintainer-only   |
+| 1     | 42   | Trigger `deploy.yml` + spot-check   | maintainer-only   |
+| 4     | 135  | CSS `@layer` migration              | deferred (Ph. 11) |
+| 5     | 219  | target-size follow-up               | closing in #291   |
+| 5     | 251  | `/intro/` perf debt parent          | partial           |
+| 5     | 287  | `/intro/` a11y debt parent          | closing in #291   |
+| 6     | 303  | doc audit parent                    | closing in #291   |
+| 7     | 347  | CLS culprits investigation          | needs LHCI run    |
+| 8     | 466  | Author photo                        | maintainer-only   |
+| 8     | 522  | Author identity expansion           | maintainer-only   |
+| 9     | 536  | `/compare/` vendor hub              | maintainer-only   |
+| 9     | 566  | RSS [ ] (stale dup of [x])          | closing in #291   |
+| 9     | 583  | Newsletter capture                  | maintainer-only   |
 | 10    | 601  | Pick one interactive demo           | maintainer-only   |
 | 10    | 607  | Ship demo as ESM module             | depends on 601    |
 | 10    | 612  | Fill old YouTube embed slots        | depends on 601    |
