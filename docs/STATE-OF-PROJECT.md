@@ -33,9 +33,9 @@ dashboard, not its replacement.
   CLS (0.58), main-thread work, and DOM size (947 raw HTML elements
   on `/intro/`).
 - **Plan checkbox totals on `origin/main`**: 36 `[x]` / 20 `[ ]`. Of
-  those 20, eight require maintainer-only decisions (assets, vendor
-  stance, licence, provider choice); four will close on PR #291
-  merge; the rest are deferred or partial.
+  those 20, 10 are marked `maintainer-only` (assets, vendor stance,
+  licence, provider choice); four will close on PR #291 merge; the
+  rest are deferred or partial.
 - **Agent workflow is healthy**. The `Stop` hook auto-continue
   mechanism uses the current `asyncRewake: true` schema and atomic
   state writes correctly. One friction point: the hook's
