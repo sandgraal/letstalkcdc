@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used for assistant feedback and cross-device progress sync (anonymous visitors stay on localStorage-based progress).
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking via localStorage. Appwrite is optionally used for one feature only — collecting 👍/👎 assistant feedback. (User authentication and cross-device cloud progress sync used to be Appwrite-backed too but were removed; see `docs/SETUP.md`.)
 
 ### Key Architecture Decisions
 
@@ -178,36 +178,35 @@ Shared UI components (buttons, cards, badges) used across the site.
 
 ## Appwrite Integration (Optional)
 
-Appwrite is the optional headless backend for two features:
+Appwrite is the optional headless backend for one shipping feature
+— assistant feedback. The historical auth + cloud-progress-sync
+feature was removed; only its collection schemas linger in
+`appwrite.collections.json` as a vestigial reference.
 
 - **Config**: `src/_data/appwrite.mjs` reads env vars
   (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, `APPWRITE_DB_ID`,
   `COL_ASSISTANT_ID`).
 - **Collections** defined in `appwrite.collections.json`:
   - `assistant_feedback` — 👍/👎 ratings on AI-assistant responses.
-  - `progress` — per-user module-completion snapshots, synced by
-    `src/assets/js/cloud-progress.js` when the user is signed in.
-  - `events` — auth-gated activity events written alongside progress
-    syncs.
+    This is the only live consumer. The `progress` and `events`
+    collections in the schema file are vestigial — the auth + cloud
+    progress sync feature was removed (see `docs/SETUP.md`).
 
 ### When Appwrite is Needed
 
 **Use Appwrite when**:
 
 - Collecting assistant feedback (👍/👎 ratings on AI assistant responses)
-- Syncing per-user progress across devices for signed-in users
-- Storing user questions and intents for analytics
 
 **Site works WITHOUT Appwrite**:
 
 - All educational content renders correctly
 - Navigation functions normally
 - Static search works via `search-index.json`
-- Progress tracking falls back to browser localStorage
-  (`src/assets/js/local-progress.js`); cloud sync is a strict
-  progressive enhancement layered on top.
+- Progress tracking runs entirely in browser localStorage
+  (`src/assets/js/local-progress.js`).
 - Assistant works with local-only feedback storage
-- Only loses: centralized analytics and cross-device progress sync
+- Only loses: centralized assistant-feedback analytics
 
 ### Collection Schema
 
@@ -225,10 +224,11 @@ Appwrite is the optional headless backend for two features:
 - Indexed by: `ts` (descending) for recent feedback queries
 - Permissions: Anonymous users can create documents; admins can read/update/delete
 
-The `progress` and `events` collections are likewise defined in
-`appwrite.collections.json`. They're written by `cloud-progress.js`
-only when the visitor is signed in; anonymous visitors stay on
-localStorage-based progress.
+The `progress` and `events` collection definitions in
+`appwrite.collections.json` are vestigial. The cloud-sync feature
+that wrote to them was removed; the schema file is retained as a
+historical reference. New deployments can leave both collections
+absent.
 
 ## Common Patterns
 

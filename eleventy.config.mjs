@@ -261,7 +261,6 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "src/static": "/",
     "src/assets/css/styles.min.css": "assets/css/styles.css",
-    "src/assets/css/auth.css": "assets/css/auth.css",
     "src/assets/css/pages": "assets/css/pages",
     // In production the Vite-bundled JS lives in dist/; copy it into _site.
     // The source JS tree is still copied for page-specific scripts (pages/*.js,

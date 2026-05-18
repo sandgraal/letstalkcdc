@@ -164,6 +164,28 @@ info}-light` callout backgrounds. Defined only in the dark/
 
 ### Removed
 
+- **Deprecated auth + cloud-progress sync code.** `docs/SETUP.md`
+  had marked the feature "⚠️ Deprecated — has been removed" since
+  the May 2026 simplification, but the implementation was still
+  on disk and still shipping. Deleted
+  `src/assets/js/auth.js` (216 LOC),
+  `src/assets/js/auth-ui.js` (474 LOC),
+  `src/assets/js/cloud-progress.js` (283 LOC), and
+  `src/assets/css/auth.css` (~430 LOC of orphan styles). Removed
+  the `auth-ui` and `cloud-progress` entries from
+  `vite.config.mjs`, the `src/assets/css/auth.css` passthrough
+  from `eleventy.config.mjs`, and the four `<script>`/`<link>`
+  references in `src/_includes/layouts/base.njk`. The `auth-ui`
+  bundle had been injecting a non-functional "Log In" button into
+  the global header on every page — clicking it opened an auth
+  modal that `console.log`ed "Appwrite not configured;
+  authentication unavailable" and did nothing. The `progress`
+  and `events` collection definitions in
+  `appwrite.collections.json` are retained as a historical
+  reference but are no longer written by any shipping code; the
+  only live Appwrite consumer is `assistant_feedback`. Closes the
+  Phase 11 reconciliation item and obsoletes the Phase 5
+  "cloud-progress sync e2e" item (no feature left to test).
 - `handoff/` (the entire nightly-prompt-sync ritual, including
   `Handoff.md`, `dashboard.html`, `handoff-log.json`, `index.html`,
   `nightly-sync.sh`, and `README.md`),

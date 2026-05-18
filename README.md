@@ -53,7 +53,7 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 ### Quick Start
 
-For complete setup instructions including optional features (Appwrite progress tracking, OpenTelemetry tracing, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
+For complete setup instructions including optional features (Appwrite assistant-feedback collection, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
 
 ### 🚀 CDC Sandbox for Hands-On Practice
 
@@ -84,8 +84,6 @@ open http://localhost:8080
 Recent additions to the platform:
 
 - 🐳 **Docker Compose CDC Sandbox** — Complete CDC environment with one command
-- 🔐 **User authentication** — Create an account and log in to sync progress across devices
-- ☁️ **Cloud progress sync** — Your learning progress automatically saved and synced via Appwrite
 - 🔍 **Client-side search** — Press `/` to search all content instantly
 - 📊 **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
 - 🧪 **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
@@ -105,15 +103,15 @@ The site automatically rebuilds and deploys on every push to `main`.
 
 The site is built with progressive enhancement — core features work immediately:
 
-| Feature                               | Status      | Documentation                            |
-| ------------------------------------- | ----------- | ---------------------------------------- |
-| **Static site** (educational content) | ✅ Ready    | This README                              |
-| **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage       |
-| **User authentication**               | ✅ Ready    | [docs/auth-setup.md](docs/auth-setup.md) |
-| **Cloud progress sync**               | ✅ Ready    | [docs/auth-setup.md](docs/auth-setup.md) |
-| **OpenTelemetry tracing**             | ⚠️ Optional | [docs/TRACING.md](docs/TRACING.md)       |
-| **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)           |
-| **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)           |
+| Feature                               | Status      | Documentation                      |
+| ------------------------------------- | ----------- | ---------------------------------- |
+| **Static site** (educational content) | ✅ Ready    | This README                        |
+| **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage |
+| **Client-side tracing**               | ❌ Removed  | [docs/TRACING.md](docs/TRACING.md) |
+| **User authentication**               | ❌ Removed  | [docs/SETUP.md](docs/SETUP.md)     |
+| **Cloud progress sync**               | ❌ Removed  | [docs/SETUP.md](docs/SETUP.md)     |
+| **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+| **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
 
 ### Serverless Function Hosting
 

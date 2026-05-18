@@ -169,9 +169,12 @@ remove the matching regex from `.lycheeignore`.
       `GITHUB_REPOSITORY` fallback, the `getPathPrefixForHost`
       trailing-slash strip, and `normalizePathPrefix` edge cases.
       See `tests/unit/lib/path-prefix.test.js`.
-- [ ] Add a Playwright e2e for the cloud-progress sync flow
-      (sign-in → complete a module → reload → progress persists).
-      No test currently exercises Appwrite-backed paths.
+- [x] **Obsolete — feature removed.** Cloud-progress sync and the
+      auth flow it depended on were deleted along with their two
+      Vite entries (`auth-ui` and `cloud-progress`; `auth.js` was
+      a dependency of `auth-ui`, not its own entry); no
+      Appwrite-backed user-facing path remains to e2e. See the
+      Phase 11 reconciliation item below for the deletion details.
 - [x] Add a Lighthouse perf assertion on `/intro/` at **error**
       level. Done — but the threshold has shifted as the test setup
       became honest:
@@ -548,15 +551,32 @@ inline `<svg>` across all module pages.
       log). Listed here for completeness — closes the brutal
       review's "anti-credibility surface" tier-2 item.
 
-- [ ] **Playwright e2e for cloud-progress sync flow.** Plan item
-      from Phase 5 is stale — the auth/cloud-progress flow may
-      have been removed (see `docs/SETUP.md` "User authentication
-      ⚠️ Deprecated", "Cloud progress sync ⚠️ Deprecated") but
-      `src/assets/js/cloud-progress.js` (283 LOC) and
-      `src/assets/js/auth.js` (216 LOC) still exist and are wired
-      via `vite.config.mjs` entries. Reconcile: either the
-      feature is alive (add the e2e) or dead (remove the code
-      and update the plan).
+- [x] **Reconciled — feature is dead, code removed.** Reconciliation
+      finding: `docs/SETUP.md` had marked auth + cloud progress
+      sync "⚠️ Deprecated — has been removed" since the May 2026
+      simplification, but `src/assets/js/auth.js` (216 LOC),
+      `src/assets/js/auth-ui.js` (474 LOC) and
+      `src/assets/js/cloud-progress.js` (283 LOC) — 973 LOC total —
+      were still on disk, still bundled by Vite (`auth-ui` and
+      `cloud-progress` entries in `vite.config.mjs`), and still
+      loaded as deferred scripts on every page via `base.njk`. The
+      `auth-ui` bundle was even injecting a non-functional "Log In"
+      button into the global header on every page; clicking it
+      opened an auth modal that `console.log`ed
+      "Appwrite not configured; authentication unavailable" and
+      did nothing — visible broken UI shipping in production.
+      Deleted the three JS files plus the `auth.css` stylesheet
+      (~430 LOC of orphan styles) and its eleventy passthrough,
+      removed the two Vite entries, removed the four `base.njk`
+      script/preload references, and updated
+      `docs/javascript-architecture.md`,
+      `.github/copilot-instructions.md`, and this plan to match.
+      The `progress` and `events` collection definitions in
+      `appwrite.collections.json` are retained as a historical
+      reference but are no longer written by any shipping code;
+      the only live Appwrite consumer is `assistant_feedback`.
+      Closes the related Phase 5 e2e item — there is no
+      Appwrite-backed user flow left to test end-to-end.
 
 - [x] **README badges — auto-updating CI subset.** Three
       GitHub-native badges added to the README header: CI
