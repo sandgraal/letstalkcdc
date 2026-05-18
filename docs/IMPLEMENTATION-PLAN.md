@@ -444,10 +444,30 @@ narrative, edit affordances. Each item is sized to one PR.
       decision blocks step 1; the template work is
       straightforward once the asset lands.
 
-- [ ] **`/methodology/` page.** How content is researched, how
-      vendor claims are tested, who reviews. Single new directory
-      under `src/methodology/`; link from the base footer's
-      "Resources" column.
+- [x] **`/methodology/` page shipped.** New
+      `src/methodology/index.njk` covers: who writes the site
+      (pulls from `src/_data/author.mjs`), why it stays
+      vendor-neutral by default, the three verification
+      pipelines (lychee link-check via `linkcheck.yml`, LHCI
+      perf/a11y assertions via `ci.yml`, `verify-all` +
+      `smoke:core` as the local minimum bar), how freshness
+      signals work (`dateModified` + RSS feed sort order +
+      `toolVersions.mjs`), where corrections surface (errata
+      hub + inline errata callouts shipped earlier this phase),
+      what's intentionally NOT here (no vendor benchmarks, no
+      paraphrase-the-docs cargo cult, no consulting advice).
+      Footer "Resources" column now links to it. CSS
+      (`.methodology__pipeline` definition list) lives in
+      `04-components.css` next to glossary/errata blocks, uses
+      existing tokens. `scripts/smoke.mjs` asserts the page
+      exists and that four major section anchors (`who`,
+      `vendor-neutral`, `how-verified`, `corrections`) are
+      present so a content edit that accidentally drops a
+      section fails CI. The page is intentionally tone-flat and
+      derived from observable repo signals — no claim is made
+      about a review process that doesn't exist; everything
+      asserted is something a reader can verify by walking the
+      Git history themselves.
 
 - [x] **Surface errata inline per module.** Plumbing shipped:
       new data file `src/_data/errata.mjs` (URL-tagged entries with

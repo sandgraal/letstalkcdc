@@ -869,3 +869,29 @@
   color: var(--color-text-secondary, #cbd5e1);
   margin-bottom: 0;
 }
+
+/* =============================================================
+   Methodology page — pipeline <dl> describing the verification
+   stages. Mirrors the glossary visual treatment so it reads as
+   "definition list" rather than "decorative grid."
+   ============================================================= */
+.methodology__pipeline {
+  margin: var(--space-md, 1rem) 0;
+}
+
+.methodology__pipeline > dt {
+  font-weight: 700;
+  color: var(--color-text-primary, #f8fafc);
+  margin-top: var(--space-md, 1rem);
+}
+
+.methodology__pipeline > dt:first-of-type {
+  margin-top: 0;
+}
+
+.methodology__pipeline > dd {
+  margin: var(--space-xs, 0.5rem) 0 0;
+  padding-left: var(--space-md, 1rem);
+  border-left: 2px solid var(--color-border-subtle, rgba(148, 163, 184, 0.2));
+  color: var(--color-text-primary, #f8fafc);
+}
