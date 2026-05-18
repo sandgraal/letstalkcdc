@@ -248,10 +248,35 @@ remove the matching regex from `.lycheeignore`.
       0.86 score is held back by:
   - `cumulative-layout-shift: 0.58` — large layout shifts during load
   - `layout-shifts: 0` (CLS culprits) — investigate `cls-culprits-insight`
-  - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS
+  - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS [✓ closed by PR #275]
   - `mainthread-work-breakdown: 0.5` — minimize main-thread work
-  - `unsized-images: 0.5` — add explicit `width`/`height` to images
-  - `dom-size: 0.5` — DOM is excessively large
+  - `unsized-images: 0.5` — add explicit `width`/`height` to images [✓ closed by Phase 7 SVG dimensions]
+  - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 957
+    elements after the operational-checklist input-removal trim;
+    LHCI's count is slightly higher because it includes
+    JS-injected nodes). Heaviest sections by raw element count
+    (informational audit for future trim work; sums are
+    approximate because section boundaries overlap):
+    - **CDC platforms card grid** (15 hard-coded vendor cards × ~9
+      elements = ~135). The cleanest reduction here is to data-
+      drive from a shared `src/_data/*.mjs`, then show only the
+      first 6 with a "show all" expand affordance; the full
+      list belongs on `/tooling/` anyway.
+    - **Methods at a Glance table** (~135 elements). Each cell
+      uses `<span class="cell-indicator">` + `<span class="cell-text">`;
+      collapsing the indicator into a `::before` pseudo-element
+      would save ~36 spans across the table at the cost of a
+      small a11y trade-off (currently `aria-hidden="true"` is
+      explicit on the indicator span).
+    - **Operational gotchas checklist** (was ~144, now ~134
+      after this PR — five no-op `<input type="checkbox">` +
+      `<label>` wrappers removed; the badges had no JS
+      persistence, so the affordance was a UX false-positive
+      anyway).
+    - **Trailing footer / scripts area** (~199 elements). Mostly
+      the global footer (4 columns × ~10 links) plus JSON-LD
+      and module preload scripts. Trimming would affect every
+      page — not an `/intro/`-specific fix.
 
   Fix iteratively; raise the `/intro/` perf threshold to match.
 

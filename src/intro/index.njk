@@ -630,43 +630,28 @@ COMMIT;</code></pre>
     <h2 id="operational-gotchas">Operational gotchas (day-one checks)</h2>
     <ul class="operational-checklist">
       <li>
-        <input type="checkbox" id="op-log">
-        <label for="op-log">
-          <span class="severity severity-must" aria-label="Must do">Must</span>
-          <span class="item-text"><strong>Log retention &amp; bloat:</strong> Logical slots (PG) or paused connectors can block log truncation; size WAL/binlog/T-log appropriately and alert on backlog.</span>
-        </label>
+        <span class="severity severity-must" aria-label="Must do">Must</span>
+        <span class="item-text"><strong>Log retention &amp; bloat:</strong> Logical slots (PG) or paused connectors can block log truncation; size WAL/binlog/T-log appropriately and alert on backlog.</span>
         <a class="checklist-link" href="{{ '/troubleshooting/' | url }}">Troubleshooting playbook</a>
       </li>
       <li>
-        <input type="checkbox" id="op-perms">
-        <label for="op-perms">
-          <span class="severity severity-must" aria-label="Must do">Must</span>
-          <span class="item-text"><strong>Privileges &amp; network:</strong> Connectors need replication permissions and stable network paths (no NAT timeouts) to avoid stalls.</span>
-        </label>
+        <span class="severity severity-must" aria-label="Must do">Must</span>
+        <span class="item-text"><strong>Privileges &amp; network:</strong> Connectors need replication permissions and stable network paths (no NAT timeouts) to avoid stalls.</span>
         <a class="checklist-link" href="{{ '/strategy/' | url }}">Deployment checklist</a>
       </li>
       <li>
-        <input type="checkbox" id="op-ddl">
-        <label for="op-ddl">
-          <span class="severity severity-should" aria-label="Should do">Should</span>
-          <span class="item-text"><strong>DDL changes:</strong> Schema changes may need registry rules and phased rollouts to avoid breaking consumers.</span>
-        </label>
+        <span class="severity severity-should" aria-label="Should do">Should</span>
+        <span class="item-text"><strong>DDL changes:</strong> Schema changes may need registry rules and phased rollouts to avoid breaking consumers.</span>
         <a class="checklist-link" href="{{ '/schema-evolution/' | url }}">Schema change guide</a>
       </li>
       <li>
-        <input type="checkbox" id="op-sinks">
-        <label for="op-sinks">
-          <span class="severity severity-must" aria-label="Must do">Must</span>
-          <span class="item-text"><strong>Sinks are the hard part:</strong> Upsert/delete semantics and idempotency in the warehouse/search system determine data correctness under replay.</span>
-        </label>
+        <span class="severity severity-must" aria-label="Must do">Must</span>
+        <span class="item-text"><strong>Sinks are the hard part:</strong> Upsert/delete semantics and idempotency in the warehouse/search system determine data correctness under replay.</span>
         <a class="checklist-link" href="{{ '/merge-cookbook/' | url }}">Merge &amp; upsert patterns</a>
       </li>
       <li>
-        <input type="checkbox" id="op-observability">
-        <label for="op-observability">
-          <span class="severity severity-nice" aria-label="Nice to have">Nice</span>
-          <span class="item-text">Instrument CDC-specific metrics (lag, slot depth, consumer replay time) so you can rehearse incident response without touching production.</span>
-        </label>
+        <span class="severity severity-nice" aria-label="Nice to have">Nice</span>
+        <span class="item-text">Instrument CDC-specific metrics (lag, slot depth, consumer replay time) so you can rehearse incident response without touching production.</span>
         <a class="checklist-link" href="{{ '/tooling/' | url }}">Observability tooling</a>
       </li>
     </ul>

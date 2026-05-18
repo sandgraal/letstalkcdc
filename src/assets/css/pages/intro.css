@@ -693,18 +693,6 @@
   background: var(--bg-secondary);
 }
 
-.operational-checklist input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
-  margin-top: 0.35rem;
-}
-
-.operational-checklist label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
 .operational-checklist .severity {
   display: inline-flex;
   align-items: center;
@@ -731,10 +719,6 @@
 .severity-nice {
   background: rgba(99, 102, 241, 0.18);
   color: #a5b4fc;
-}
-
-.operational-checklist .item-text {
-  display: inline;
 }
 
 .operational-checklist .checklist-link {
