@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`/intro/` operational-checklist no longer ships no-op
+  checkboxes.** Five `<input type="checkbox">` + `<label>`
+  wrappers in the "Operational gotchas (day-one checks)" list
+  had no JavaScript handler — clicking them toggled a checked
+  state that never persisted and never affected anything. The
+  badge-and-text-with-link list now renders without those
+  wrappers: 10 fewer DOM nodes on the page (957 → 947 raw HTML
+  element opens), the affordance is no longer a UX
+  false-positive, and the severity badge sits inline next to
+  the text rather than stacked above it. Dropped the two
+  now-stale CSS rules in `src/assets/css/pages/intro.css`
+  (`.operational-checklist input[type="checkbox"]` and
+  `.operational-checklist label`) plus the no-longer-needed
+  `.item-text { display: inline }` (a holdover from the old
+  flex-column label layout). Part of the Phase 5 `/intro/`
+  `dom-size` debt; the plan now carries a structured audit of
+  the remaining heavy sections (CDC platforms cards, methods
+  table, footer) for future trim work.
+
 ### Added
 
 - **`/methodology/` page.** Closes the Phase 8 brutal-review
