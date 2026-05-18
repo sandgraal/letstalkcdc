@@ -2,3 +2,13 @@
 #
 # Each pattern is a regex. Add a comment above any new entry explaining
 # why it's excluded and when it can be re-enabled.
+
+# New page: /glossary/. The page's own canonical link points at the
+# production URL, which doesn't exist until this PR deploys — lychee
+# would otherwise 404 on the canonical loopback. Remove this entry
+# after the next deploy lands.
+^https://sandgraal\.github\.io/letstalkcdc/glossary/$
+
+# New page: /methodology/. Same canonical-loopback chicken-and-egg as
+# above. Remove after the next deploy publishes the page.
+^https://sandgraal\.github\.io/letstalkcdc/methodology/$

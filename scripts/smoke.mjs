@@ -340,11 +340,81 @@ for (const { file, expectedPath } of editLinkChecks) {
   }
 }
 
+// Inline errata callout is rendered by `base.njk` from `src/_data/errata.mjs`
+// for any entry whose `urls` matches the current page. Assert that pages
+// listed in the seed entry get the callout and that an unrelated module
+// page does NOT (the callout's whole point is that it disappears when
+// there are no matching entries — a regression there would render the
+// "Known errata for this page" disclosure on every page).
+const errataCalloutChecks = [
+  { file: "intro/index.html", expectCallout: true },
+  { file: "quickstarts/quickstart-postgres/index.html", expectCallout: true },
+  { file: "exactly-once/index.html", expectCallout: false },
+];
+for (const { file, expectCallout } of errataCalloutChecks) {
+  if (!existsSync(join(outputDir, file))) continue;
+  const hasCallout = read(file).includes('class="errata-callout"');
+  if (expectCallout && !hasCallout) {
+    failures.push(
+      `${file}: expected errata-callout aside but found none — check src/_data/errata.mjs urls list`,
+    );
+  } else if (!expectCallout && hasCallout) {
+    failures.push(
+      `${file}: unexpected errata-callout aside — partial should render nothing when no entries match page.url`,
+    );
+  }
+}
+
+// /glossary/ is data-driven from src/_data/glossary.mjs. Assert the
+// page exists, includes a known anchor, and has at least a handful
+// of terms — guards against the data file being accidentally
+// emptied or the page template losing its for-loop.
+const glossaryFile = "glossary/index.html";
+if (existsSync(join(outputDir, glossaryFile))) {
+  const html = read(glossaryFile);
+  const termCount = (html.match(/class="glossary__term"/g) ?? []).length;
+  if (termCount < 10) {
+    failures.push(
+      `${glossaryFile}: expected at least 10 glossary terms, found ${termCount}`,
+    );
+  }
+  if (!html.includes('id="tombstone"')) {
+    failures.push(
+      `${glossaryFile}: expected anchor id="tombstone" missing — slug renamed?`,
+    );
+  }
+} else {
+  failures.push(`${glossaryFile}: page missing — /glossary/ build broken`);
+}
+
+// /methodology/ is a static credibility-surface page; assert that
+// the page exists and the major section anchors are present so a
+// content edit that accidentally removes a section fails CI.
+const methodologyFile = "methodology/index.html";
+if (existsSync(join(outputDir, methodologyFile))) {
+  const html = read(methodologyFile);
+  const requiredAnchors = [
+    'id="who"',
+    'id="vendor-neutral"',
+    'id="how-verified"',
+    'id="corrections"',
+  ];
+  for (const anchor of requiredAnchors) {
+    if (!html.includes(anchor)) {
+      failures.push(`${methodologyFile}: expected anchor ${anchor} missing`);
+    }
+  }
+} else {
+  failures.push(
+    `${methodologyFile}: page missing — /methodology/ build broken`,
+  );
+}
+
 if (failures.length) {
   console.error("Smoke test failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
 console.log(
-  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed.",
+  "Smoke test passed: critical canvases, CSP, fonts, edit links, errata callout, glossary, methodology.",
 );

@@ -469,16 +469,51 @@ narrative, edit affordances. Each item is sized to one PR.
       decision blocks step 1; the template work is
       straightforward once the asset lands.
 
-- [ ] **`/methodology/` page.** How content is researched, how
-      vendor claims are tested, who reviews. Single new directory
-      under `src/methodology/`; link from the base footer's
-      "Resources" column.
+- [x] **`/methodology/` page shipped.** New
+      `src/methodology/index.njk` covers: who writes the site
+      (pulls from `src/_data/author.mjs`), why it stays
+      vendor-neutral by default, the three verification
+      pipelines (lychee link-check via `linkcheck.yml`, LHCI
+      perf/a11y assertions via `ci.yml`, `verify-all` +
+      `smoke:core` as the local minimum bar), how freshness
+      signals work (`dateModified` + RSS feed sort order +
+      `toolVersions.mjs`), where corrections surface (errata
+      hub + inline errata callouts shipped earlier this phase),
+      what's intentionally NOT here (no vendor benchmarks, no
+      paraphrase-the-docs cargo cult, no consulting advice).
+      Footer "Resources" column now links to it. CSS
+      (`.methodology__pipeline` definition list) lives in
+      `04-components.css` next to glossary/errata blocks, uses
+      existing tokens. `scripts/smoke.mjs` asserts the page
+      exists and that four major section anchors (`who`,
+      `vendor-neutral`, `how-verified`, `corrections`) are
+      present so a content edit that accidentally drops a
+      section fails CI. The page is intentionally tone-flat and
+      derived from observable repo signals — no claim is made
+      about a review process that doesn't exist; everything
+      asserted is something a reader can verify by walking the
+      Git history themselves.
 
-- [ ] **Surface errata inline per module.** `src/errata/index.njk`
-      exists as a hub, but a tagged-errata callout doesn't render on
-      the affected module page. When an entry exists tagged to a
-      module, the module should show a "Known errata" disclosure
-      near the top.
+- [x] **Surface errata inline per module.** Plumbing shipped:
+      new data file `src/_data/errata.mjs` (URL-tagged entries with
+      `id`, `urls`, `title`, `dateModified`, `body` HTML),
+      `errataForUrl` Nunjucks filter in `eleventy.config.mjs`,
+      and `src/_includes/components/errata-callout.njk` rendered
+      from `base.njk` at the top of `<main>` (above the hero).
+      The partial renders a collapsed `<details>` "Known errata
+      for this page (N)" disclosure with a link to the hub at
+      `/errata/`; it emits nothing when no entry matches
+      `page.url`, so it's safe to include unconditionally.
+      Seeded with one real entry for the May 2026 video-embed
+      removal (PR #270), tagged to `/intro/` and
+      `/quickstarts/quickstart-postgres/`. CSS lives next to the
+      `page-meta` rules in `src/assets/css/04-components.css`.
+      `scripts/smoke.mjs` asserts presence on the two tagged
+      pages and absence on `/exactly-once/` so a regression in
+      the filter (or the partial accidentally rendering
+      everywhere) fails CI. The errata-hub page itself is
+      unchanged and keeps its hand-written prose; the data file
+      handles only the per-page surfacing.
 
 - [ ] **Author identity expansion.** `src/_data/author.mjs`
       `sameAs: ["https://github.com/sandgraal"]` is the only
@@ -500,10 +535,29 @@ first-class page, no RSS, no email capture.
       comparison-table component under
       `src/_includes/components/`.
 
-- [ ] **Glossary as a standalone page** at `/glossary/`. Rendered
-      from a single data file. Move the per-module inline glossary
-      snippets (currently inline in `src/index.njk`, `intro/`,
-      etc.) to references against it.
+- [x] **Glossary shipped at `/glossary/`.** New
+      `src/_data/glossary.mjs` holds 14 seed entries (log
+      internals, event shapes, delivery semantics, streaming
+      infrastructure), each with a kebab-case `slug` for stable
+      anchor IDs (`/glossary/#tombstone`, etc.), optional
+      `aliases` list, and optional `related` cross-link slugs.
+      `src/glossary/index.njk` renders an alpha-sorted semantic
+      `<dl>` with per-entry permalink anchors that fade in on
+      hover; the page template resolves `related` slugs back to
+      the canonical term display string at build time.
+      `src/index.njk` Glossary section was a 5-term inline list —
+      replaced with a one-paragraph teaser linking to the new
+      page so the homepage stays light and there's one source of
+      truth for definitions. Footer "Resources" column now has a
+      Glossary link as its first entry. CSS lives in
+      `04-components.css` next to the page-meta / errata blocks
+      and uses existing tokens (no new variables).
+      `scripts/smoke.mjs` asserts the page renders ≥ 10 terms
+      and the `id="tombstone"` anchor exists, so a regression in
+      the for-loop or a typo in the slug fails CI. The
+      `intro/` etc. pages don't actually have inline glossary
+      lists today (the plan wording was aspirational); only the
+      homepage list was real and is now migrated.
 
 - [ ] **RSS feed at `/feed.xml`.** Emit from module pages + errata.
 - [x] **RSS feed at `/feed.xml`.** Hand-rolled
