@@ -251,7 +251,7 @@ remove the matching regex from `.lycheeignore`.
   - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS [✓ closed by PR #275]
   - `mainthread-work-breakdown: 0.5` — minimize main-thread work
   - `unsized-images: 0.5` — add explicit `width`/`height` to images [✓ closed by Phase 7 SVG dimensions]
-  - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 957
+  - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 947
     elements after the operational-checklist input-removal trim;
     LHCI's count is slightly higher because it includes
     JS-injected nodes). Heaviest sections by raw element count
