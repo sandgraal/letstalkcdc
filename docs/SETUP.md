@@ -350,8 +350,12 @@ The site follows a **layered architecture**:
 
 1. **Base Layer** — Static HTML/CSS, works without JavaScript
 2. **Local Storage** — Progress tracking in browser (no backend)
-3. **Cloud Sync** — Appwrite adds cross-device persistence (optional)
-4. **Authentication** — GitHub OAuth for user accounts (optional)
+3. **Assistant Feedback** — Appwrite collects 👍/👎 ratings on the
+   AI assistant's responses (optional; site works without it)
+
+A previous cloud-sync + GitHub-OAuth tier existed on top of this
+stack but was removed; see "Archived: User Authentication and
+Cloud Progress Sync" above.
 
 ### Security
 
@@ -365,9 +369,6 @@ The site follows a **layered architecture**:
 
 - ✅ Static site generation (fast load times)
 - ✅ Lazy-loading of Appwrite SDK (only when needed)
-- ✅ Debounced progress saves (400ms)
-- ✅ Efficient pagination for dashboard
-- ✅ Background sync doesn't block UI
 
 ---
 

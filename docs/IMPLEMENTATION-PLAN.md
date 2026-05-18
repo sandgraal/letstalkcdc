@@ -170,10 +170,11 @@ remove the matching regex from `.lycheeignore`.
       trailing-slash strip, and `normalizePathPrefix` edge cases.
       See `tests/unit/lib/path-prefix.test.js`.
 - [x] **Obsolete — feature removed.** Cloud-progress sync and the
-      auth flow it depended on were deleted along with their three
-      Vite entries; no Appwrite-backed user-facing path remains to
-      e2e. See the Phase 11 reconciliation item below for the
-      deletion details.
+      auth flow it depended on were deleted along with their two
+      Vite entries (`auth-ui` and `cloud-progress`; `auth.js` was
+      a dependency of `auth-ui`, not its own entry); no
+      Appwrite-backed user-facing path remains to e2e. See the
+      Phase 11 reconciliation item below for the deletion details.
 - [x] Add a Lighthouse perf assertion on `/intro/` at **error**
       level. Done — but the threshold has shifted as the test setup
       became honest:

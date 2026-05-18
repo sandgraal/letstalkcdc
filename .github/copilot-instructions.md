@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking. Appwrite is optionally used for assistant feedback and cross-device progress sync (anonymous visitors stay on localStorage-based progress).
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking via localStorage. Appwrite is optionally used for one feature only — collecting 👍/👎 assistant feedback. (User authentication and cross-device cloud progress sync used to be Appwrite-backed too but were removed; see `docs/SETUP.md`.)
 
 ### Key Architecture Decisions
 
@@ -178,7 +178,10 @@ Shared UI components (buttons, cards, badges) used across the site.
 
 ## Appwrite Integration (Optional)
 
-Appwrite is the optional headless backend for two features:
+Appwrite is the optional headless backend for one shipping feature
+— assistant feedback. The historical auth + cloud-progress-sync
+feature was removed; only its collection schemas linger in
+`appwrite.collections.json` as a vestigial reference.
 
 - **Config**: `src/_data/appwrite.mjs` reads env vars
   (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, `APPWRITE_DB_ID`,
