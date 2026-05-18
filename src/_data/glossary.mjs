@@ -79,14 +79,18 @@ export default [
   {
     term: "Tombstone",
     slug: "tombstone",
-    definition: `<p>A delete event in the change stream — payload
-        is typically <code>null</code> with the primary key in the
-        message key. Sinks need tombstones to physically remove
-        rows (or compact them out of a compacted Kafka topic);
-        without one, a soft-delete in the source leaves the row
-        live downstream. Kafka's log-compaction relies on a
-        non-zero <code>delete.retention.ms</code> long enough for
-        every consumer to see the tombstone.</p>`,
+    definition: `<p>A Kafka message with a <code>null</code> value
+        and a populated key, used by log compaction as the
+        "delete this key" marker. In Debezium and similar CDC
+        producers, a source-row delete is carried by the normal
+        change event (the envelope's <code>op</code> field is
+        <code>"d"</code> and the <code>before</code> block holds the
+        pre-delete row); the tombstone is an <em>optional</em>
+        follow-up message that lets a compacted topic eventually
+        drop the key. Sinks read the delete from the change event,
+        not from the tombstone. Tombstones need a non-zero
+        <code>delete.retention.ms</code> long enough for every
+        consumer to see them before compaction reclaims the slot.</p>`,
     related: ["compaction"],
   },
   {
@@ -94,11 +98,12 @@ export default [
     slug: "compaction",
     definition: `<p>Kafka's "keep the latest value per key" retention
         mode. Combined with tombstones it gives you a materialized
-        view of source state on the topic, which is how Debezium
-        snapshots can be bootstrapped from a compacted topic. The
-        gotcha: until compaction runs (it's lazy), readers see
-        every intermediate value; until <code>delete.retention.ms</code>
-        elapses, tombstones linger.</p>`,
+        view of state on the topic that a late-joining consumer can
+        rebuild without replaying every historical write — useful
+        for downstream state stores. The gotcha: until compaction
+        actually runs (it's a background process, not instant),
+        readers still see every intermediate value; until
+        <code>delete.retention.ms</code> elapses, tombstones linger.</p>`,
     related: ["tombstone"],
   },
   {
