@@ -340,11 +340,34 @@ for (const { file, expectedPath } of editLinkChecks) {
   }
 }
 
+// /methodology/ is a static credibility-surface page; assert that
+// the page exists and the major section anchors are present so a
+// content edit that accidentally removes a section fails CI.
+const methodologyFile = "methodology/index.html";
+if (existsSync(join(outputDir, methodologyFile))) {
+  const html = read(methodologyFile);
+  const requiredAnchors = [
+    'id="who"',
+    'id="vendor-neutral"',
+    'id="how-verified"',
+    'id="corrections"',
+  ];
+  for (const anchor of requiredAnchors) {
+    if (!html.includes(anchor)) {
+      failures.push(`${methodologyFile}: expected anchor ${anchor} missing`);
+    }
+  }
+} else {
+  failures.push(
+    `${methodologyFile}: page missing — /methodology/ build broken`,
+  );
+}
+
 if (failures.length) {
   console.error("Smoke test failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
 console.log(
-  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed.",
+  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed, methodology page intact.",
 );

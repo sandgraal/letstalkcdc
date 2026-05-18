@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/methodology/` page.** Closes the Phase 8 brutal-review
+  trust-surface gap "no methodology narrative." Covers who
+  writes the site, why it stays vendor-neutral, the three
+  verification pipelines (lychee link-check, LHCI perf/a11y
+  thresholds, `verify-all` + `smoke:core` as the local minimum
+  bar), how freshness signals work (`dateModified`, RSS
+  ordering, the `toolVersions.mjs`-driven version matrix),
+  where corrections surface (errata hub + inline errata
+  callouts), and an explicit list of what the site is NOT
+  (vendor benchmarks, paraphrase-the-docs cargo cult, or
+  consulting advice). Footer "Resources" column links to it.
+  CSS (`.methodology__pipeline` definition list) lives in
+  `04-components.css` next to the glossary/errata blocks.
+  `scripts/smoke.mjs` asserts the page exists and that four
+  major section anchors are present so a content edit that
+  accidentally drops a section fails CI. The page is
+  intentionally tone-flat and derived from observable repo
+  signals — no claim is made about a review process that
+  doesn't exist; everything asserted can be verified by walking
+  the Git history.
 - **e2e coverage of the assistant FAB panel** at
   `tests/e2e/assistant.spec.js`. Three tests: opens the panel via
   FAB click and asserts `.assistant-send` measures ≥44×44 CSS
