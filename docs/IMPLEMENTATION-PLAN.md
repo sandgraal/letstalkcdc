@@ -4,6 +4,10 @@ The running checklist for the Let's Talk CDC revitalization work. Phases
 are ordered by priority within each tier; tiers are independent and can
 be worked in parallel by separate agents.
 
+For a dated snapshot of where the project is overall — five expert-lens
+sections, a PR queue, and an outstanding-items table — see
+[`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md).
+
 ## How to use this doc
 
 - **Agents:** when you complete an item, change `- [ ]` to `- [x]` **in
