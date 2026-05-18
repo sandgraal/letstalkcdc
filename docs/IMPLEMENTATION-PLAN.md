@@ -212,17 +212,18 @@ remove the matching regex from `.lycheeignore`.
     `aria-label` from the header progress link in `base.njk`; visible
     text ("Progress" + the percentage) is now the accessible name,
     with the descriptive copy moved to `title`.
-- [ ] **Follow-up: `target-size` still fails.** Added defensive
-      `min-height: 44px` / `min-width: 44px` to `.nav-chip`,
-      `.nav-dropdown-menu a`, and `.mobile-menu-toggle` in
-      `src/assets/css/03-layout.css`. Real users will see the bigger
-      touch targets in production — but the LHCI test setup
-      **doesn't load the CSS at all** because it serves `_site/` at
-      root while pages reference assets at `/letstalkcdc/...` (the
-      production path-prefix). Pages render unstyled in the LHCI
-      runner, so CSS-based target-size fixes don't move the score.
-      See new Phase 5 item below — fix that test-setup issue, then
-      re-measure the touch-target audit.
+- [x] **Follow-up: `target-size`** — closed end-to-end by later
+      Phase 7 work. The LHCI test-setup issue this item flagged
+      (unstyled DOM under root-served `_site/` vs. production
+      `/letstalkcdc/` prefix) was fixed by the `build:lhci` script
+      in PR #269, and the residual `target-size` failure on
+      `.assistant-send` was resolved in Phase 7 + PR #283's
+      visible-state e2e. Defensive `min-height: 44px` /
+      `min-width: 44px` on `.nav-chip` / `.nav-dropdown-menu a` /
+      `.mobile-menu-toggle` (added in this Phase 5 pass) remain in
+      place; cleanup is deferred to a future CSS audit since they
+      don't hurt and they make the touch targets honest even if a
+      future LHCI run regresses.
 
 - [x] **LHCI test setup serves an unstyled page.** Added
       `npm run build:lhci` (`ELEVENTY_PATH_PREFIX=/ npm run build`)
@@ -255,26 +256,26 @@ remove the matching regex from `.lycheeignore`.
 
   Fix iteratively; raise the `/intro/` perf threshold to match.
 
-- [ ] **`/intro/` a11y debt — uncovered by the LHCI fix above.** The
-      remaining 0.94 a11y score has two failing audits that only
-      surface with CSS loaded:
-  - `color-contrast` — at least one foreground/background pair below
-    WCAG AA. Find the offender(s) via the LHCI report and adjust
-    color tokens.
-  - `target-size` — still failing; the CSS rules added in commit
-    `97954fc` should now actually apply, but a re-measurement is
-    needed to confirm which targets (if any) still fail with the
-    styled page. Likely an off-screen mobile-drawer chip that
-    measures wrong while the drawer is closed.
+- [x] **`/intro/` a11y debt** — both sub-items closed by Phase 7:
+  - `color-contrast` — fixed in PR #274 (legacy CSS variable
+    aliases + `--color-text-muted` token swap, score 0 → 1.0 on
+    `/intro/`).
+  - `target-size` — fixed in Phase 7 (the `.assistant-send` bump
+    to 44×44 in `src/css/assistant.css`) and validated by PR #283's
+    visible-state e2e. The Lighthouse `target-size` audit can
+    still report a false-positive when axe inspects the `hidden`
+    panel; the e2e is the real proof for real users. Captured in
+    the LHCI threshold tuning narrative in `[Unreleased]`.
 
 ---
 
 ## Phase 6 — Documentation freshness
 
-- [ ] Pass each doc in `docs/*.md` (except `archive/`) for stale
+- [x] Pass each doc in `docs/*.md` (except `archive/`) for stale
       references; one doc per agent session is plenty. Look for: file
       paths that no longer exist, `.cjs`/`.mjs` mismatches, npm scripts
-      that were renamed.
+      that were renamed. Both sub-items below complete, so the parent
+      is closed; future drift gets logged as a fresh entry.
   - [x] `docs/javascript-architecture.md` — removed `tracing.js`
         listing (deleted in PR #261), replaced the hardcoded
         "Total: 238 tests, 90.5% coverage" sentence with a "run
@@ -514,7 +515,6 @@ first-class page, no RSS, no email capture.
       lists today (the plan wording was aspirational); only the
       homepage list was real and is now migrated.
 
-- [ ] **RSS feed at `/feed.xml`.** Emit from module pages + errata.
 - [x] **RSS feed at `/feed.xml`.** Hand-rolled
       `src/feed.11ty.cjs` — rejected `@11ty/eleventy-plugin-rss`
       to avoid a new runtime dep for what is ~20 lines of XML.
