@@ -14,6 +14,7 @@
     "smoke:a11y": "node scripts/run-pa11y.mjs",
     "smoke:perf": "node scripts/perf-budget.mjs",
     "smoke": "npm run smoke:core && npm run smoke:a11y && npm run smoke:perf",
+    "preserve": "npm run build:css",
     "serve": "eleventy --config=eleventy.config.mjs --serve",
     "dev": "npm run serve",
     "a11y": "pa11y-ci",
