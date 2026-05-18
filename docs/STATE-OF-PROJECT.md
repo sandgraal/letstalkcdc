@@ -14,8 +14,8 @@ dashboard, not its replacement.
 ## TL;DR
 
 - **Site shape**: Eleventy 3.1 + Vite 7 + PostCSS static site, deployed
-  to GitHub Pages at <https://sandgraal.github.io/letstalkcdc/>. 21
-  modules carry a `seriesKey`; 42 top-level `src/` directories total.
+  to GitHub Pages at <https://sandgraal.github.io/letstalkcdc/>. Dozens
+  of pages carry a `seriesKey`; 42 top-level `src/` directories total.
 - **Just landed (last 48 hours, PRs #281–#288)**: RSS 2.0 feed at
   `/feed.xml`, BreadcrumbList JSON-LD fixes, three GitHub status
   badges, deprecated auth + cloud-progress cleanup, inline errata
