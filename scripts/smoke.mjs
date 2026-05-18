@@ -340,11 +340,33 @@ for (const { file, expectedPath } of editLinkChecks) {
   }
 }
 
+// /glossary/ is data-driven from src/_data/glossary.mjs. Assert the
+// page exists, includes a known anchor, and has at least a handful
+// of terms — guards against the data file being accidentally
+// emptied or the page template losing its for-loop.
+const glossaryFile = "glossary/index.html";
+if (existsSync(join(outputDir, glossaryFile))) {
+  const html = read(glossaryFile);
+  const termCount = (html.match(/class="glossary__term"/g) ?? []).length;
+  if (termCount < 10) {
+    failures.push(
+      `${glossaryFile}: expected at least 10 glossary terms, found ${termCount}`,
+    );
+  }
+  if (!html.includes('id="tombstone"')) {
+    failures.push(
+      `${glossaryFile}: expected anchor id="tombstone" missing — slug renamed?`,
+    );
+  }
+} else {
+  failures.push(`${glossaryFile}: page missing — /glossary/ build broken`);
+}
+
 if (failures.length) {
   console.error("Smoke test failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
 console.log(
-  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed.",
+  "Smoke test passed: critical canvases present, CSP hardened, no external fonts, edit-on-GitHub links well-formed, glossary populated.",
 );
