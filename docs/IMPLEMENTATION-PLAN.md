@@ -248,10 +248,35 @@ remove the matching regex from `.lycheeignore`.
       0.86 score is held back by:
   - `cumulative-layout-shift: 0.58` — large layout shifts during load
   - `layout-shifts: 0` (CLS culprits) — investigate `cls-culprits-insight`
-  - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS
+  - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS [✓ closed by PR #275]
   - `mainthread-work-breakdown: 0.5` — minimize main-thread work
-  - `unsized-images: 0.5` — add explicit `width`/`height` to images
-  - `dom-size: 0.5` — DOM is excessively large
+  - `unsized-images: 0.5` — add explicit `width`/`height` to images [✓ closed by Phase 7 SVG dimensions]
+  - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 947
+    elements after the operational-checklist input-removal trim;
+    LHCI's count is slightly higher because it includes
+    JS-injected nodes). Heaviest sections by raw element count
+    (informational audit for future trim work; sums are
+    approximate because section boundaries overlap):
+    - **CDC platforms card grid** (15 hard-coded vendor cards × ~9
+      elements = ~135). The cleanest reduction here is to data-
+      drive from a shared `src/_data/*.mjs`, then show only the
+      first 6 with a "show all" expand affordance; the full
+      list belongs on `/tooling/` anyway.
+    - **Methods at a Glance table** (~135 elements). Each cell
+      uses `<span class="cell-indicator">` + `<span class="cell-text">`;
+      collapsing the indicator into a `::before` pseudo-element
+      would save ~36 spans across the table at the cost of a
+      small a11y trade-off (currently `aria-hidden="true"` is
+      explicit on the indicator span).
+    - **Operational gotchas checklist** (was ~144, now ~134
+      after this PR — five no-op `<input type="checkbox">` +
+      `<label>` wrappers removed; the badges had no JS
+      persistence, so the affordance was a UX false-positive
+      anyway).
+    - **Trailing footer / scripts area** (~199 elements). Mostly
+      the global footer (4 columns × ~10 links) plus JSON-LD
+      and module preload scripts. Trimming would affect every
+      page — not an `/intro/`-specific fix.
 
   Fix iteratively; raise the `/intro/` perf threshold to match.
 
@@ -444,16 +469,51 @@ narrative, edit affordances. Each item is sized to one PR.
       decision blocks step 1; the template work is
       straightforward once the asset lands.
 
-- [ ] **`/methodology/` page.** How content is researched, how
-      vendor claims are tested, who reviews. Single new directory
-      under `src/methodology/`; link from the base footer's
-      "Resources" column.
+- [x] **`/methodology/` page shipped.** New
+      `src/methodology/index.njk` covers: who writes the site
+      (pulls from `src/_data/author.mjs`), why it stays
+      vendor-neutral by default, the three verification
+      pipelines (lychee link-check via `linkcheck.yml`, LHCI
+      perf/a11y assertions via `ci.yml`, `verify-all` +
+      `smoke:core` as the local minimum bar), how freshness
+      signals work (`dateModified` + RSS feed sort order +
+      `toolVersions.mjs`), where corrections surface (errata
+      hub + inline errata callouts shipped earlier this phase),
+      what's intentionally NOT here (no vendor benchmarks, no
+      paraphrase-the-docs cargo cult, no consulting advice).
+      Footer "Resources" column now links to it. CSS
+      (`.methodology__pipeline` definition list) lives in
+      `04-components.css` next to glossary/errata blocks, uses
+      existing tokens. `scripts/smoke.mjs` asserts the page
+      exists and that four major section anchors (`who`,
+      `vendor-neutral`, `how-verified`, `corrections`) are
+      present so a content edit that accidentally drops a
+      section fails CI. The page is intentionally tone-flat and
+      derived from observable repo signals — no claim is made
+      about a review process that doesn't exist; everything
+      asserted is something a reader can verify by walking the
+      Git history themselves.
 
-- [ ] **Surface errata inline per module.** `src/errata/index.njk`
-      exists as a hub, but a tagged-errata callout doesn't render on
-      the affected module page. When an entry exists tagged to a
-      module, the module should show a "Known errata" disclosure
-      near the top.
+- [x] **Surface errata inline per module.** Plumbing shipped:
+      new data file `src/_data/errata.mjs` (URL-tagged entries with
+      `id`, `urls`, `title`, `dateModified`, `body` HTML),
+      `errataForUrl` Nunjucks filter in `eleventy.config.mjs`,
+      and `src/_includes/components/errata-callout.njk` rendered
+      from `base.njk` at the top of `<main>` (above the hero).
+      The partial renders a collapsed `<details>` "Known errata
+      for this page (N)" disclosure with a link to the hub at
+      `/errata/`; it emits nothing when no entry matches
+      `page.url`, so it's safe to include unconditionally.
+      Seeded with one real entry for the May 2026 video-embed
+      removal (PR #270), tagged to `/intro/` and
+      `/quickstarts/quickstart-postgres/`. CSS lives next to the
+      `page-meta` rules in `src/assets/css/04-components.css`.
+      `scripts/smoke.mjs` asserts presence on the two tagged
+      pages and absence on `/exactly-once/` so a regression in
+      the filter (or the partial accidentally rendering
+      everywhere) fails CI. The errata-hub page itself is
+      unchanged and keeps its hand-written prose; the data file
+      handles only the per-page surfacing.
 
 - [ ] **Author identity expansion.** `src/_data/author.mjs`
       `sameAs: ["https://github.com/sandgraal"]` is the only
@@ -475,10 +535,29 @@ first-class page, no RSS, no email capture.
       comparison-table component under
       `src/_includes/components/`.
 
-- [ ] **Glossary as a standalone page** at `/glossary/`. Rendered
-      from a single data file. Move the per-module inline glossary
-      snippets (currently inline in `src/index.njk`, `intro/`,
-      etc.) to references against it.
+- [x] **Glossary shipped at `/glossary/`.** New
+      `src/_data/glossary.mjs` holds 14 seed entries (log
+      internals, event shapes, delivery semantics, streaming
+      infrastructure), each with a kebab-case `slug` for stable
+      anchor IDs (`/glossary/#tombstone`, etc.), optional
+      `aliases` list, and optional `related` cross-link slugs.
+      `src/glossary/index.njk` renders an alpha-sorted semantic
+      `<dl>` with per-entry permalink anchors that fade in on
+      hover; the page template resolves `related` slugs back to
+      the canonical term display string at build time.
+      `src/index.njk` Glossary section was a 5-term inline list —
+      replaced with a one-paragraph teaser linking to the new
+      page so the homepage stays light and there's one source of
+      truth for definitions. Footer "Resources" column now has a
+      Glossary link as its first entry. CSS lives in
+      `04-components.css` next to the page-meta / errata blocks
+      and uses existing tokens (no new variables).
+      `scripts/smoke.mjs` asserts the page renders ≥ 10 terms
+      and the `id="tombstone"` anchor exists, so a regression in
+      the for-loop or a typo in the slug fails CI. The
+      `intro/` etc. pages don't actually have inline glossary
+      lists today (the plan wording was aspirational); only the
+      homepage list was real and is now migrated.
 
 - [ ] **RSS feed at `/feed.xml`.** Emit from module pages + errata.
 - [x] **RSS feed at `/feed.xml`.** Hand-rolled

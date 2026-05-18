@@ -1,0 +1,33 @@
+{#- Renders a "Known errata" disclosure if `errata` entries match
+    `page.url`. Renders nothing when there are no matches, so it's
+    safe to include unconditionally from base.njk. -#}
+{%- set matches = errata | errataForUrl(page.url) -%}
+{%- if matches and matches.length -%}
+<aside class="errata-callout" aria-labelledby="errata-callout-heading">
+  <details>
+    <summary id="errata-callout-heading">
+      <span class="errata-callout__badge" aria-hidden="true">!</span>
+      Known errata for this page ({{ matches.length }})
+    </summary>
+    <ul class="errata-callout__list">
+      {% for entry in matches %}
+        <li class="errata-callout__entry">
+          <p class="errata-callout__title">
+            <strong>{{ entry.title }}</strong>
+            {% if entry.dateModified %}
+              <span class="errata-callout__date">
+                — updated
+                <time datetime="{{ entry.dateModified }}">{{ entry.dateModified }}</time>
+              </span>
+            {% endif %}
+          </p>
+          <div class="errata-callout__body">{{ entry.body | safe }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="errata-callout__hub">
+      <a href="{{ '/errata/' | url }}">See all corrections and caveats →</a>
+    </p>
+  </details>
+</aside>
+{%- endif -%}

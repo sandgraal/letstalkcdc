@@ -1,0 +1,197 @@
+---
+layout: base.njk
+title: "Methodology — how Let's Talk CDC researches and tests its claims"
+description: "What gets published, how it gets verified, when corrections land. A look at the editorial and engineering pipeline behind the modules."
+canonicalPath: "/methodology/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: "Methodology",
+  description: "<p>How content gets researched, how claims are checked, and what happens when something turns out to be wrong. The short version: the site is open-source, the editorial workflow is in the public Git history, every module page tells you exactly when it was last reviewed, and every page links to its own source file.</p>",
+  align: "center",
+  skillLevel: "About"
+}) | safe }}
+
+<section class="prose" aria-labelledby="who">
+  <h2 id="who">Who writes this</h2>
+  <p>
+    Let's Talk CDC is written and maintained by
+    <a href="{{ author.url }}" rel="author">{{ author.name }}</a>.
+    {{ author.shortBio | safe }}
+  </p>
+  <p>
+    There is no marketing department, no vendor sponsorship, and
+    no SEO content farm behind the byline. If you find a claim
+    that smells like one of those, please
+    <a href="https://github.com/{{ site.repository }}/issues/new">open an issue</a>
+    — that's a bug.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="vendor-neutral">
+  <h2 id="vendor-neutral">Vendor-neutral by default</h2>
+  <p>
+    Modules introduce concepts first (snapshots, log retention,
+    exactly-once, schema evolution) and only then map them onto
+    specific tools (Postgres, MySQL, SQL Server, Oracle; Debezium,
+    Kafka Connect, Fivetran, Matillion). When a vendor-specific
+    quirk has to be called out — Postgres replication slots,
+    MySQL <code>binlog_row_image</code>, Oracle UNDO retention —
+    we name the vendor and link to the upstream docs.
+  </p>
+  <p>
+    The
+    <a href="{{ '/tooling/' | url }}">Tooling</a> module and
+    <a href="{{ '/versions/' | url }}">Changelog &amp; Version Matrix</a>
+    are the only places where vendor names lead. Everywhere else
+    the goal is to teach the underlying primitive so a reader
+    can map it to whatever stack lands in front of them next
+    year.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="how-verified">
+  <h2 id="how-verified">How claims get verified</h2>
+  <p>
+    Three pipelines guard against the most common ways an
+    educational page rots in public:
+  </p>
+  <dl class="methodology__pipeline">
+    <dt>External links</dt>
+    <dd>
+      <code>lychee</code> runs on every push via
+      <a href="https://github.com/{{ site.repository }}/actions/workflows/linkcheck.yml">linkcheck.yml</a>.
+      When a vendor moves a docs page, the build goes red and the
+      stale URL is updated in the citing module (recent examples:
+      Debezium's <code>signalling.html</code> rename, Fivetran's
+      changelog path drift, Matillion's docs-subdomain move).
+    </dd>
+
+    <dt>Page health</dt>
+    <dd>
+      Lighthouse CI runs on every push via
+      <a href="https://github.com/{{ site.repository }}/actions/workflows/ci.yml">ci.yml</a>
+      with error-level performance and accessibility thresholds on
+      <code>/intro/</code> (perf ≥ 0.82, a11y ≥ 0.93) and
+      warn-level thresholds across all sampled URLs. The
+      thresholds are honest baselines — when the LHCI test
+      harness was discovered to be serving an unstyled DOM, the
+      previous "1.0" scores were retracted publicly in the
+      changelog and replaced with what the styled page actually
+      measures.
+    </dd>
+
+    <dt>Build + smoke</dt>
+    <dd>
+      <code>npm run verify-all</code> is the minimum bar before
+      any change merges: format check, ESLint, 274+ unit tests
+      (<code>vitest</code>), full Eleventy + Vite production
+      build. <code>npm run smoke:core</code> asserts that critical
+      pages render, CSP headers stay hardened, the per-page
+      "Edit this page on GitHub" link is well-formed, and the
+      inline errata callouts only appear on the pages they were
+      tagged to.
+    </dd>
+  </dl>
+</section>
+
+<section class="prose" aria-labelledby="freshness">
+  <h2 id="freshness">Freshness signals</h2>
+  <p>
+    Every module page renders a "Last reviewed" stamp in its
+    footer aside, derived from the page's <code>dateModified</code>
+    front-matter. When the date and the page diverge enough that
+    a reader should know something changed, the stamp gets
+    bumped in the same commit. The
+    <a href="{{ '/feed.xml' | url }}">RSS feed</a> sorts by
+    <code>dateModified</code> so feed readers see substantive
+    revisions, not just first-publish dates.
+  </p>
+  <p>
+    Tool versions for the things we benchmark (Postgres, MySQL,
+    Debezium, Kafka Connect, Confluent Cloud, AWS DMS, Fivetran,
+    Matillion) live in <code>src/_data/toolVersions.mjs</code> and
+    surface inline on the
+    <a href="{{ '/versions/' | url }}">Version Matrix</a> page so
+    a reader can see at a glance how current we're claiming to be.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="corrections">
+  <h2 id="corrections">When we're wrong</h2>
+  <p>
+    Two places to look:
+  </p>
+  <ul>
+    <li>
+      <strong>The errata hub at
+      <a href="{{ '/errata/' | url }}">/errata/</a></strong> —
+      a living list of the precise clarifications, sharp edges,
+      and "this wasn't quite right" notes that come out of
+      reader feedback.
+    </li>
+    <li>
+      <strong>Inline errata callouts on individual module pages
+      </strong> — when a correction applies to a specific page,
+      a collapsed "Known errata for this page" disclosure appears
+      at the top of that page so a reader doesn't have to know
+      the errata hub exists to see it.
+    </li>
+  </ul>
+  <p>
+    Spotted something wrong? The fastest path is the "Edit this
+    page on GitHub" link in every page footer — it opens the
+    page source directly in the GitHub editor. Or
+    <a href="https://github.com/{{ site.repository }}/issues/new">open an issue</a>.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="open-source">
+  <h2 id="open-source">Open source, audit-friendly</h2>
+  <p>
+    Every page, every diagram, every dataset, every CI
+    configuration, every test, and this methodology page itself
+    are public at
+    <a href="https://github.com/{{ site.repository }}">github.com/{{ site.repository }}</a>.
+    Run the site locally with <code>npm ci &amp;&amp; npm run dev</code>;
+    walk the build pipeline in
+    <a href="https://github.com/{{ site.repository }}/blob/main/CLAUDE.md">CLAUDE.md</a>;
+    read the running roadmap in
+    <a href="https://github.com/{{ site.repository }}/blob/main/docs/IMPLEMENTATION-PLAN.md">docs/IMPLEMENTATION-PLAN.md</a>
+    to see what's planned and what's done.
+  </p>
+  <p>
+    The
+    <a href="https://github.com/{{ site.repository }}/blob/main/CHANGELOG.md">CHANGELOG</a>
+    is the running scratchpad for the current dev cycle — it
+    tracks what shipped, when, and why, in human-readable
+    sentences rather than commit-message shorthand.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="what-this-isnt">
+  <h2 id="what-this-isnt">What this isn't</h2>
+  <ul>
+    <li>
+      <strong>Not a vendor benchmark.</strong> We don't run head-to-head
+      throughput tests; numbers in the Tooling and Version Matrix
+      pages cite upstream documentation and clearly attribute
+      claims back to their source.
+    </li>
+    <li>
+      <strong>Not a replacement for the official docs.</strong> Where a
+      vendor's documentation is good (Debezium's connector
+      reference, Postgres's logical decoding chapter), we link to
+      it and resist the urge to paraphrase. Where it's confusing
+      or out of date, we say so and link anyway.
+    </li>
+    <li>
+      <strong>Not consulting advice.</strong> The modules are an
+      educational starting point. A real production CDC pipeline
+      has constraints (latency budgets, schema-change cadence,
+      regulatory holds, sink semantics) that no static page can
+      account for.
+    </li>
+  </ul>
+</section>

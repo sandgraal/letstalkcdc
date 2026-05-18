@@ -1,0 +1,68 @@
+---
+layout: base.njk
+title: "CDC Glossary — terms, aliases, and where they come up"
+description: "Vendor-agnostic definitions for the CDC vocabulary: WAL, LSN, tombstones, snapshots, exactly-once vs. effectively-once, and the rest. Anchor links per term."
+canonicalPath: "/glossary/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: "CDC Glossary",
+  description: "<p>The vocabulary you need to talk about Change Data Capture without hand-waving. Definitions stay vendor-agnostic where they can and call out the specific name each database/broker uses where they can't.</p>",
+  align: "center",
+  skillLevel: "Reference"
+}) | safe }}
+
+<section class="prose" aria-labelledby="glossary-intro">
+  <h2 id="glossary-intro" class="visually-hidden">About this glossary</h2>
+  <p class="lede">
+    Each entry has a stable anchor. Deep-link from a module page or a
+    Slack thread with <code>{{ '/glossary/' | url }}#tombstone</code>
+    and the reader lands on the definition directly. Aliases list
+    other names you'll see in the wild; "see also" cross-links the
+    related entries.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="glossary-terms">
+  <h2 id="glossary-terms" class="visually-hidden">Definitions</h2>
+  <dl class="glossary">
+    {% set sortedTerms = glossary | sort(false, true, "term") %}
+    {% for entry in sortedTerms %}
+      <dt id="{{ entry.slug }}" class="glossary__term">
+        <a class="glossary__anchor" href="#{{ entry.slug }}" aria-label="Permalink to {{ entry.term }}">#</a>
+        {{ entry.term }}
+        {% if entry.aliases and entry.aliases.length %}
+          <span class="glossary__aliases">
+            (also: {% for alias in entry.aliases %}<code>{{ alias }}</code>{% if not loop.last %}, {% endif %}{% endfor %})
+          </span>
+        {% endif %}
+      </dt>
+      <dd class="glossary__definition">
+        {{ entry.definition | safe }}
+        {% if entry.related and entry.related.length %}
+          <p class="glossary__related">
+            See also:
+            {% for slug in entry.related %}
+              {%- set ref = null -%}
+              {%- for candidate in glossary -%}
+                {%- if candidate.slug == slug -%}{% set ref = candidate %}{%- endif -%}
+              {%- endfor -%}
+              {% if ref %}<a href="#{{ ref.slug }}">{{ ref.term }}</a>{% if not loop.last %}, {% endif %}{% endif %}
+            {% endfor %}
+          </p>
+        {% endif %}
+      </dd>
+    {% endfor %}
+  </dl>
+</section>
+
+<section class="prose" aria-labelledby="glossary-howto">
+  <h2 id="glossary-howto">Missing a term?</h2>
+  <p>
+    The glossary is data-driven — add entries to
+    <code>src/_data/glossary.mjs</code> and the page picks them up at
+    build time. Anchor IDs are stable: don't rename a <code>slug</code>
+    after it's been linked to externally.
+  </p>
+</section>
