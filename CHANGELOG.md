@@ -28,6 +28,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signals — no claim is made about a review process that
   doesn't exist; everything asserted can be verified by walking
   the Git history.
+- **Standalone glossary at `/glossary/`.** Closes the Phase 9
+  "no first-class glossary" gap. 14 seed terms live in
+  `src/_data/glossary.mjs` — log internals (WAL, LSN, log
+  retention, checkpoint), event shapes (tombstone, compaction,
+  snapshot, schema evolution), delivery semantics (idempotent
+  write, exactly-once vs. effectively-once, lag), and streaming
+  infrastructure (partition key, DLQ). Each entry carries a
+  `slug` for a stable anchor (`/glossary/#tombstone`), optional
+  `aliases`, and optional `related` cross-link slugs the page
+  resolves to canonical term names at build time. The page
+  renders as a semantic `<dl>` sorted alphabetically by term,
+  with permalink anchors that fade in on hover. The 5-term
+  inline glossary list previously on `src/index.njk` is now a
+  one-paragraph teaser linking to the new page, so the homepage
+  stays light and there's one source of truth. Footer
+  "Resources" column gains a Glossary link as its first entry.
+  CSS lives in `04-components.css` next to the page-meta /
+  errata blocks and uses existing tokens. `scripts/smoke.mjs`
+  asserts the page renders ≥ 10 terms and the `id="tombstone"`
+  anchor exists.
+- **Inline errata callouts per module.** New data file
+  `src/_data/errata.mjs` lets a maintainer tag a correction or
+  caveat to one or more page URLs; `base.njk` then renders a
+  collapsed `<details>` "Known errata for this page (N)"
+  disclosure at the top of `<main>` on any matching page,
+  linking back to the `/errata/` hub. The partial emits nothing
+  when no entry matches `page.url`, so it's safe to include
+  unconditionally on every base-layout page. Seeded with one
+  real entry — the May 2026 video-embed removal (PR #270) —
+  tagged to `/intro/` and `/quickstarts/quickstart-postgres/`,
+  so readers landing on those pages can see what was changed
+  without diving into the errata hub. New `errataForUrl`
+  Nunjucks filter in `eleventy.config.mjs` does the array
+  filter; CSS lives next to the `page-meta` rules in
+  `src/assets/css/04-components.css`. `scripts/smoke.mjs`
+  asserts the callout is present on the two seeded pages and
+  absent on `/exactly-once/` so a regression in the filter or
+  the partial conditional fails CI. Closes the Phase 8 "surface
+  errata inline per module" item.
 - **e2e coverage of the assistant FAB panel** at
   `tests/e2e/assistant.spec.js`. Three tests: opens the panel via
   FAB click and asserts `.assistant-send` measures ≥44×44 CSS

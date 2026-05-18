@@ -450,6 +450,15 @@ export default function (eleventyConfig) {
     return value.startsWith(prefix);
   });
 
+  eleventyConfig.addNunjucksFilter("errataForUrl", (entries, url) => {
+    if (!Array.isArray(entries) || typeof url !== "string" || !url) {
+      return [];
+    }
+    return entries.filter(
+      (entry) => Array.isArray(entry?.urls) && entry.urls.includes(url),
+    );
+  });
+
   const publishedUrlCandidates = (href) => {
     if (!href) {
       return [];

@@ -200,6 +200,7 @@
     {% endif %}
 
     <main id="main">
+      {% include "components/errata-callout.njk" %}
       {{ content | safe }}
 
       {% if seriesKey and (datePublished or dateModified) %}
@@ -381,6 +382,7 @@
             <h3 class="footer-title">Resources</h3>
             <ul class="footer-links">
               <li><a href="{{ '/methodology/' | url }}">Methodology</a></li>
+              <li><a href="{{ '/glossary/' | url }}">Glossary</a></li>
               <li><a href="{{ '/use-cases/' | url }}">Use Cases</a></li>
               <li><a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a></li>
               <li><a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a></li>
