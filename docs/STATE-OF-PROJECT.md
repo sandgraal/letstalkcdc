@@ -30,7 +30,7 @@ dashboard, not its replacement.
 - **LHCI honest baseline** on `/intro/`: perf **0.86**, a11y **0.97
   local / 0.94 CI**, color-contrast **1.0**, render-blocking
   **1.0**, unsized-images **1.0**. Remaining perf headroom is in
-  CLS (0.58), main-thread work, and DOM size (957 raw HTML elements
+  CLS (0.58), main-thread work, and DOM size (947 raw HTML elements
   on `/intro/`).
 - **Plan checkbox totals on `origin/main`**: 36 `[x]` / 20 `[ ]`. Of
   those 20, eight require maintainer-only decisions (assets, vendor
