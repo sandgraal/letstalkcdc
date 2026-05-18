@@ -274,7 +274,7 @@ numbers in [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
 | 11    | 676  | README Lighthouse badge             | maintainer-only   |
 | 11    | 723  | CSS `@layer` migration              | deferred          |
 
-Eight items are blocked on maintainer-only decisions; four flip to
+Ten items are blocked on maintainer-only decisions; four flip to
 `[x]` when PR #291 merges; two are deferred by explicit Phase 11
 policy; the rest are partial or depend on a maintainer-only
 prerequisite.
