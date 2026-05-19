@@ -6,6 +6,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`docs/STATE-OF-PROJECT.md`** — a dated state-of-the-project
+  snapshot written through five expert lenses (engineering,
+  content & SEO, a11y & perf, trust & conversion, Claude /
+  agent-ops). Functions as a dashboard on top of the running
+  checklist in `docs/IMPLEMENTATION-PLAN.md` — fast read of
+  where the project is, what's in flight, what's blocked on
+  maintainer-only decisions, and three ranked next moves. The
+  running plan now cross-links to the snapshot at the top.
+  Includes an audit of the Claude Code agent workflow against
+  the latest hooks/sub-agents docs at code.claude.com —
+  `asyncRewake: true` schema and atomic state writes in
+  `.claude/scripts/check-merged-prs.sh` are confirmed correct;
+  three friction items are recorded for a future Phase 12
+  chapter (no `.claude/` edits in this PR per scope).
+
+### Fixed
+
+- **`npm run dev` no longer renders an unstyled site on a fresh
+  clone.** `src/assets/css/styles.min.css` is gitignored (it's a
+  PostCSS build artifact) but `npm run serve` / `npm run dev`
+  did not build it before starting the Eleventy dev server.
+  Result on a clean checkout: a fully-formed HTML site served
+  against a missing stylesheet, rendering as unstyled content
+  until the contributor figured out they needed to run
+  `npm run build:css` separately. Added a `preserve` script
+  (npm's implicit pre-hook for `serve`) that runs `build:css`
+  first. Single-file change to `package.json`. Mid-session
+  edits to `main.css` still require a manual rebuild — the
+  Eleventy `addWatchTarget("src/assets/css")` only watches for
+  passthrough-copy, not the PostCSS rebuild; a CSS watcher is a
+  follow-up.
+
 ### Changed
 
 - **`/intro/` CDC platforms — show first 6 with expand.** The
