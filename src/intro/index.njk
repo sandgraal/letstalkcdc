@@ -678,8 +678,10 @@ COMMIT;</code></pre>
         </div>
         <div id="cdc-chips" class="row" role="toolbar" aria-label="Tag filters"></div>
       </div>
+      {%- set cdcVendorsInitial = 6 -%}
       <div class="cdc-grid" id="cdc-grid">
         {%- for vendor in cdcVendors %}
+          {%- if loop.index <= cdcVendorsInitial %}
           <article class="cdc-card" data-tags="{{ vendor.tags | join(',') }}">
             <h3>{{ vendor.name }}</h3>
             <p>{{ vendor.blurb }}</p>
@@ -689,7 +691,45 @@ COMMIT;</code></pre>
               {%- endfor %}
             </div>
           </article>
+          {%- endif %}
         {%- endfor %}
+      </div>
+
+      {#- The remaining vendors live inside a <template>; the
+          element's content is parsed into a document fragment and
+          does NOT count toward Lighthouse's dom-size on initial
+          paint. Cloned into #cdc-grid by pages/intro.js when the
+          user clicks the Show-All button or interacts with the
+          filter. -#}
+      <template id="cdc-extra-cards">
+        {%- for vendor in cdcVendors %}
+          {%- if loop.index > cdcVendorsInitial %}
+          <article class="cdc-card" data-tags="{{ vendor.tags | join(',') }}">
+            <h3>{{ vendor.name }}</h3>
+            <p>{{ vendor.blurb }}</p>
+            <div class="meta">
+              {%- for tag in vendor.tags -%}
+                <span class="cdc-pill">{{ tag }}</span>
+              {%- endfor %}
+            </div>
+          </article>
+          {%- endif %}
+        {%- endfor %}
+      </template>
+
+      <div class="cdc-show-all-wrap">
+        <button id="cdc-show-all" class="cdc-show-all" type="button"
+                aria-controls="cdc-grid"
+                aria-expanded="false">
+          Show all {{ cdcVendors.length }} platforms ({{ cdcVendors.length - cdcVendorsInitial }} more)
+        </button>
+        <noscript>
+          <p class="cdc-noscript">
+            JavaScript is disabled — see the
+            <a href="{{ '/tooling/' | url }}">full Tooling page</a>
+            for the rest of the catalog.
+          </p>
+        </noscript>
       </div>
     </section>
 

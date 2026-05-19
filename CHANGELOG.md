@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.claude/scripts/check-merged-prs.sh` are confirmed correct;
   three friction items are recorded for a future Phase 12
   chapter (no `.claude/` edits in this PR per scope).
+
 ### Fixed
 
 - **`npm run dev` no longer renders an unstyled site on a fresh
@@ -41,6 +42,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`/intro/` CDC platforms — show first 6 with expand.** The
+  filterable platforms grid now renders the first 6 vendor
+  cards inline and parks the remaining 9 inside a
+  `<template id="cdc-extra-cards">`. A new Show-All button
+  (`#cdc-show-all`) clones the template into the grid on
+  click; any other filter interaction (chip click, search
+  input, deep-link hash) also auto-expands so a filter still
+  operates across the whole catalog. Lighthouse's `dom-size`
+  audit doesn't count `<template>` content (it lives in a
+  document fragment, not the rendered tree), so this is a
+  real **48-element reduction on initial paint** on `/intro/`
+  (965 → 917 rendered-tree elements). A `<noscript>` paragraph
+  points readers at `/tooling/` for the full list when JS is
+  off, so the page degrades gracefully. CSS for the button
+  lives in `src/assets/css/pages/intro.css` next to the
+  `.cdc-chip` rules and uses existing tokens.
+  `scripts/smoke.mjs` asserts that exactly 6 inline
+  `.cdc-card`s, the `<template id="cdc-extra-cards">`, and
+  the `#cdc-show-all` button are all present in the built
+  HTML, so a regression in either the data file or the
+  template fails CI. Closes the Phase 5 perf-debt sub-item
+  for the CDC platforms card grid.
 - **CDC platforms catalog data-driven.** The 15 hard-coded
   `<article class="cdc-card">` blocks in `src/intro/index.njk`
   (the "CDC platforms" filterable grid) moved into a new

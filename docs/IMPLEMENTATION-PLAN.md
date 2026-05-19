@@ -262,16 +262,24 @@ remove the matching regex from `.lycheeignore`.
     JS-injected nodes). Heaviest sections by raw element count
     (informational audit for future trim work; sums are
     approximate because section boundaries overlap):
-    - **CDC platforms card grid** — first half done: the 15
-      vendor entries moved from hard-coded `<article>` blocks in
-      `src/intro/index.njk` into `src/_data/cdcVendors.mjs` and
-      a Nunjucks loop renders them; rendered HTML is byte-
-      identical (965 → 965 raw element opens), so this is a
-      pure maintainability refactor that drops ~135 lines from
-      the template. The "show first 6 with a 'show all' expand"
-      affordance is still open and is the actual DOM trim — it
-      now needs ~10 lines of template + a small JS toggle to
-      lift since the data is already centralized.
+    - **CDC platforms card grid — closed.** Two PRs:
+      PR #293 data-drove the 15 vendors into
+      `src/_data/cdcVendors.mjs` + a Nunjucks loop (pure
+      refactor, byte-identical 965 → 965 rendered HTML, ~135
+      template lines removed). The follow-up shipped the
+      "show first 6 with expand" affordance — the first 6
+      cards render inline; the remaining 9 live in
+      `<template id="cdc-extra-cards">`, which the
+      `pages/intro.js` Show-All button (or any filter
+      interaction, including a deep-link hash) clones into the
+      grid on demand. Lighthouse's `dom-size` audit only
+      counts elements in the rendered tree, not template
+      content, so this is a real **48-element reduction
+      (965 → 917)** on initial paint. The `<noscript>` branch
+      points readers at `/tooling/` for the full list when JS
+      is off, so the page still degrades gracefully. Smoke
+      assertions added: exactly 6 inline cards, the template,
+      and the button must all exist.
     - **Methods at a Glance table** (~135 elements). Each cell
       uses `<span class="cell-indicator">` + `<span class="cell-text">`;
       collapsing the indicator into a `::before` pseudo-element

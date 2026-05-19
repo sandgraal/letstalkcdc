@@ -11,11 +11,12 @@
  *   - tags:    array of strings; rendered as `<span class="cdc-pill">`
  *              chips. Also flattened into the `data-tags=` attribute
  *              the client-side `pages/intro.js` filter reads.
- *   - blurb:   one-paragraph plain-prose description (HTML allowed
- *              if a future entry needs <em>, but kept link-free —
- *              root-relative internal links would bypass the
- *              path-prefix, same constraint as the errata data
- *              file).
+ *   - blurb:   one-paragraph plain-text description. The intro
+ *              template renders this without `| safe`, so any HTML
+ *              would be escaped and shown literally — keep entries
+ *              prose-only. (If a future use case needs inline
+ *              emphasis, add `| safe` at the call site and document
+ *              the trust expectations there.)
  *
  * Tag ordering inside an entry is preserved in the rendered output;
  * filter pills use the same order. Entry ordering in this file

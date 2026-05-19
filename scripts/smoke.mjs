@@ -66,6 +66,33 @@ try {
   if (!intro.includes("/assets/js/pages/intro.js")) {
     failures.push("Intro page is not loading the intro module script.");
   }
+  // CDC vendor catalog renders only the first 6 cards inline; the
+  // remaining 9 live in a <template id="cdc-extra-cards"> that the
+  // intro.js Show-All button clones in on demand. Assert both pieces
+  // exist so a regression in src/_data/cdcVendors.mjs (or a template
+  // rewrite that drops the placeholder) fails CI.
+  const inlineCardCount = (intro.match(/class="cdc-card"/g) || []).length;
+  // The match below counts cards in BOTH the rendered grid and
+  // inside the <template>; we want only the first 6 rendered inline.
+  const renderedGridMatch = intro.match(
+    /<div class="cdc-grid"[^>]*>([\s\S]*?)<\/div>\s*<template/,
+  );
+  const renderedInline = renderedGridMatch
+    ? (renderedGridMatch[1].match(/class="cdc-card"/g) || []).length
+    : 0;
+  if (renderedInline !== 6) {
+    failures.push(
+      `Intro CDC grid: expected 6 inline cdc-cards, found ${renderedInline} (template: ${inlineCardCount - renderedInline}).`,
+    );
+  }
+  if (!intro.includes('id="cdc-extra-cards"')) {
+    failures.push(
+      'Intro CDC grid: <template id="cdc-extra-cards"> missing — Show-All affordance would be broken.',
+    );
+  }
+  if (!intro.includes('id="cdc-show-all"')) {
+    failures.push("Intro CDC grid: Show-All button (#cdc-show-all) missing.");
+  }
 } catch (error) {
   failures.push(`Failed to read intro/index.html: ${error.message}`);
 }
