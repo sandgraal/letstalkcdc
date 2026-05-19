@@ -351,6 +351,61 @@
   display: none !important;
 }
 
+/* Show-all expand button — renders only the first 6 vendor cards
+   on initial paint; the remaining 9 live in a <template> and get
+   cloned in when this button (or any filter interaction) fires. */
+.cdc-show-all-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.cdc-show-all {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #2a3441);
+  background: var(--surface, #0b121d);
+  color: var(--text-primary, #f8fafc);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+:root[data-theme="light"] .cdc-show-all {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.cdc-show-all:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme="light"] .cdc-show-all:hover {
+  background: #e2e8f0;
+  border-color: rgba(0, 0, 0, 0.24);
+}
+
+.cdc-show-all:focus-visible {
+  outline: 2px solid var(--accent-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+.cdc-noscript {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
 /* Intro enhancements */
 .sticky-subnav {
   position: sticky;

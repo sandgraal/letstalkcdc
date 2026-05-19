@@ -21,19 +21,62 @@ onReady(() => {
   const searchInput = doc.getElementById("cdc-search");
   const resetBtn = doc.getElementById("cdc-reset");
   const countEl = doc.getElementById("cdc-count");
+  const extraTemplate = doc.getElementById("cdc-extra-cards");
+  const showAllBtn = doc.getElementById("cdc-show-all");
 
   if (!grid || !chipsRow || !searchInput || !resetBtn || !countEl) return;
 
-  const cards = Array.from(grid.querySelectorAll(".cdc-card"));
+  // Cards beyond the first 6 live inside a <template>; cloning into
+  // the grid is required before any filter / chip / search can act
+  // on them. Calling this is idempotent — guarded by `extraTemplate`
+  // staying live, which we null out on the first call.
+  let cards = Array.from(grid.querySelectorAll(".cdc-card"));
+  const expandIfCollapsed = () => {
+    if (!extraTemplate || !extraTemplate.content) return;
+    const frag = extraTemplate.content.cloneNode(true);
+    grid.appendChild(frag);
+    // Re-index the cards list after the clone.
+    cards = Array.from(grid.querySelectorAll(".cdc-card"));
+    // Tag-normalize the newly-cloned cards so they participate in
+    // the filter on the same terms as the originals.
+    cards.forEach((card) => {
+      if (card.dataset.tags) return; // already normalized
+      const tags = (card.getAttribute("data-tags") || "")
+        .split(",")
+        .map((text) => text.trim().toLowerCase())
+        .filter(Boolean);
+      card.dataset.tags = tags.join(",");
+    });
+    // Template can be removed from the DOM now — its content fragment
+    // has been consumed and no longer needs the element.
+    extraTemplate.remove();
+    if (showAllBtn) {
+      showAllBtn.setAttribute("aria-expanded", "true");
+      showAllBtn.hidden = true;
+    }
+  };
+
   const tagSet = new Set();
-  cards.forEach((card) => {
+  const normalizeCard = (card) => {
     const tags = (card.getAttribute("data-tags") || "")
       .split(",")
       .map((text) => text.trim().toLowerCase())
       .filter(Boolean);
     card.dataset.tags = tags.join(",");
     tags.forEach((tag) => tagSet.add(tag));
-  });
+  };
+  cards.forEach(normalizeCard);
+  // The template's cards also contribute tags to the chip row — we
+  // want every chip to appear even before the user expands the grid.
+  if (extraTemplate && extraTemplate.content) {
+    extraTemplate.content.querySelectorAll(".cdc-card").forEach((card) => {
+      (card.getAttribute("data-tags") || "")
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
+        .forEach((tag) => tagSet.add(tag));
+    });
+  }
 
   const state = { tags: new Set(), q: "" };
 
@@ -44,6 +87,15 @@ onReady(() => {
     const next = `#${params.toString()}`;
     if (location.hash !== next) history.replaceState(null, "", next);
   };
+
+  // Total universe of cards across the inline grid + the
+  // <template>. We count both so the "N shown / M total" label
+  // is honest even before the user expands.
+  const totalCardCount =
+    cards.length +
+    (extraTemplate && extraTemplate.content
+      ? extraTemplate.content.querySelectorAll(".cdc-card").length
+      : 0);
 
   const render = () => {
     const query = state.q.toLowerCase();
@@ -58,7 +110,7 @@ onReady(() => {
       card.classList.toggle("cdc-hide", !show);
       if (show) visible += 1;
     });
-    countEl.textContent = `${visible} shown / ${cards.length} total`;
+    countEl.textContent = `${visible} shown / ${totalCardCount} total`;
   };
 
   const makeChip = (tag) => {
@@ -68,6 +120,7 @@ onReady(() => {
     button.textContent = tag;
     button.setAttribute("aria-pressed", "false");
     button.addEventListener("click", () => {
+      expandIfCollapsed();
       const isActive = button.getAttribute("aria-pressed") === "true";
       button.setAttribute("aria-pressed", isActive ? "false" : "true");
       if (isActive) state.tags.delete(tag);
@@ -81,6 +134,7 @@ onReady(() => {
   [...tagSet].sort().forEach((tag) => chipsRow.appendChild(makeChip(tag)));
 
   searchInput.addEventListener("input", (event) => {
+    expandIfCollapsed();
     state.q = event.target.value.trim();
     syncHash();
     render();
@@ -97,6 +151,13 @@ onReady(() => {
     render();
   });
 
+  if (showAllBtn) {
+    showAllBtn.addEventListener("click", () => {
+      expandIfCollapsed();
+      render();
+    });
+  }
+
   const parseHash = () => {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
     const tags = (params.get("cdc") || "")
@@ -106,6 +167,10 @@ onReady(() => {
     const q = (params.get("q") || "").trim();
     state.tags = new Set(tags);
     state.q = q;
+    // Deep-link from a hash already implies the visitor expects the
+    // filter to operate on every card — expand before render so
+    // matches in the hidden 9 surface immediately.
+    if (state.tags.size || state.q) expandIfCollapsed();
     chipsRow.querySelectorAll(".cdc-chip").forEach((chip) => {
       chip.setAttribute(
         "aria-pressed",
