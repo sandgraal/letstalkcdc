@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`docs/STATE-OF-PROJECT.md` refreshed to 2026-05-19**. Queue
+  emptied (14 PRs landed in the 48-hour burst — methodology,
+  glossary, errata, three CDC-platforms perf PRs, state-of-
+  project, plan cleanups, dev-CSS fix); table of outstanding
+  `[ ]` items regenerated against current `origin/main`
+  (line numbers shifted after the recent merges); "What
+  tomorrow's agents should do first" section names the
+  Methods-at-a-Glance indicator-span collapse as the next
+  concrete autonomous move per PR #288's audit. Previous
+  2026-05-18 snapshot reachable via Git history; the file
+  itself stays at a stable path (`docs/STATE-OF-PROJECT.md`)
+  so the `IMPLEMENTATION-PLAN.md` cross-link doesn't break.
+
 ### Added
 
 - **`docs/STATE-OF-PROJECT.md`** — a dated state-of-the-project
