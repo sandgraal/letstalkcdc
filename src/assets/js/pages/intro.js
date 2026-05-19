@@ -26,36 +26,9 @@ onReady(() => {
 
   if (!grid || !chipsRow || !searchInput || !resetBtn || !countEl) return;
 
-  // Cards beyond the first 6 live inside a <template>; cloning into
-  // the grid is required before any filter / chip / search can act
-  // on them. Calling this is idempotent — guarded by `extraTemplate`
-  // staying live, which we null out on the first call.
-  let cards = Array.from(grid.querySelectorAll(".cdc-card"));
-  const expandIfCollapsed = () => {
-    if (!extraTemplate || !extraTemplate.content) return;
-    const frag = extraTemplate.content.cloneNode(true);
-    grid.appendChild(frag);
-    // Re-index the cards list after the clone.
-    cards = Array.from(grid.querySelectorAll(".cdc-card"));
-    // Tag-normalize the newly-cloned cards so they participate in
-    // the filter on the same terms as the originals.
-    cards.forEach((card) => {
-      if (card.dataset.tags) return; // already normalized
-      const tags = (card.getAttribute("data-tags") || "")
-        .split(",")
-        .map((text) => text.trim().toLowerCase())
-        .filter(Boolean);
-      card.dataset.tags = tags.join(",");
-    });
-    // Template can be removed from the DOM now — its content fragment
-    // has been consumed and no longer needs the element.
-    extraTemplate.remove();
-    if (showAllBtn) {
-      showAllBtn.setAttribute("aria-expanded", "true");
-      showAllBtn.hidden = true;
-    }
-  };
-
+  // Tag normalization is idempotent (lowercase + trim + comma-rejoin)
+  // so it's safe to call on already-normalized cards. Also feeds the
+  // chip-row tag set.
   const tagSet = new Set();
   const normalizeCard = (card) => {
     const tags = (card.getAttribute("data-tags") || "")
@@ -65,7 +38,10 @@ onReady(() => {
     card.dataset.tags = tags.join(",");
     tags.forEach((tag) => tagSet.add(tag));
   };
+
+  let cards = Array.from(grid.querySelectorAll(".cdc-card"));
   cards.forEach(normalizeCard);
+
   // The template's cards also contribute tags to the chip row — we
   // want every chip to appear even before the user expands the grid.
   if (extraTemplate && extraTemplate.content) {
@@ -77,6 +53,27 @@ onReady(() => {
         .forEach((tag) => tagSet.add(tag));
     });
   }
+
+  // Cards beyond the first 6 live inside a <template>; cloning into
+  // the grid is required before any filter / chip / search can act
+  // on them. The `isConnected` guard makes the call true-idempotent
+  // — after the first call removes the <template>, subsequent calls
+  // short-circuit instead of cloning duplicates.
+  const expandIfCollapsed = () => {
+    if (!extraTemplate || !extraTemplate.isConnected) return;
+    const frag = extraTemplate.content.cloneNode(true);
+    grid.appendChild(frag);
+    // Re-index the cards list and normalize the newly-cloned ones so
+    // their tag set matches the originals (split/trim/lowercase).
+    cards = Array.from(grid.querySelectorAll(".cdc-card"));
+    cards.forEach(normalizeCard);
+    // Template element no longer needed once its fragment is cloned.
+    extraTemplate.remove();
+    if (showAllBtn) {
+      showAllBtn.setAttribute("aria-expanded", "true");
+      showAllBtn.hidden = true;
+    }
+  };
 
   const state = { tags: new Set(), q: "" };
 

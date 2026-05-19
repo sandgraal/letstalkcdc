@@ -278,8 +278,8 @@ remove the matching regex from `.lycheeignore`.
       (965 → 917)** on initial paint. The `<noscript>` branch
       points readers at `/tooling/` for the full list when JS
       is off, so the page still degrades gracefully. Smoke
-      assertions added: exactly 6 inline cards + the template
-      - the button must exist.
+      assertions added: exactly 6 inline cards, the template,
+      and the button must all exist.
     - **Methods at a Glance table** (~135 elements). Each cell
       uses `<span class="cell-indicator">` + `<span class="cell-text">`;
       collapsing the indicator into a `::before` pseudo-element
