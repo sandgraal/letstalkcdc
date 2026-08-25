@@ -61,7 +61,12 @@ scripts:
     <h2 id="merge-title">Build idempotent merge logic</h2>
     <ol>
       <li>Stage events in a temporary table keyed by primary key and log position.</li>
-      <li>Deduplicate by picking the highest <code>ts_ms</code> (or change version) per key.</li>
+      <li>Deduplicate to one row per key by ordering on the <strong>source log position</strong>
+        (LSN/SCN, or Debezium <code>source.sequence</code>) — not <code>ts_ms</code> alone.
+        <code>ts_ms</code> is a millisecond commit time and is not unique per key, so
+        same-millisecond changes can tie and apply out of order; use the log position as
+        the <strong>primary</strong> sort, with <code>ts_ms</code> only as a secondary
+        tie-break.</li>
       <li>Merge updates and inserts using the latest event per key.</li>
       <li>Apply deletes as tombstones that remove or flag the row.</li>
       <li>Record the processed offset so restarts can resume safely.</li>
@@ -82,7 +87,9 @@ scripts:
     <h2 id="sql-title">SQL templates you can adapt</h2>
     <details open>
       <summary>Snowflake MERGE</summary>
-      <pre><code class="language-sql">MERGE INTO analytics.orders tgt
+      <pre><code class="language-sql">-- staging.orders_src must already be deduped to ONE row per order_id
+-- (latest by log position, e.g. LSN/SCN) before this MERGE runs.
+MERGE INTO analytics.orders tgt
 USING staging.orders_src src
   ON tgt.order_id = src.order_id
 WHEN MATCHED AND src.op = 'd' THEN DELETE
@@ -101,7 +108,8 @@ WHEN NOT MATCHED AND src.op IN ('c', 'u') THEN
 SELECT AS VALUE latest.*
 FROM (
   SELECT *,
-         ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ts_ms DESC) AS rnk
+         -- order by log position (authoritative commit order); ts_ms is only a tie-break
+         ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY lsn DESC, ts_ms DESC) AS rnk
   FROM staging.orders_src
 )
 WHERE rnk = 1 AND op != 'd';
@@ -121,7 +129,8 @@ with ranked as (
   select *,
          row_number() over (
            partition by order_id
-           order by ts_ms desc
+           -- order by log position (authoritative); ts_ms alone is not unique per key
+           order by lsn desc, ts_ms desc
          ) as rnk
   from {{ source('cdc', 'orders') }}
 )

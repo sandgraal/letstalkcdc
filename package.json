@@ -43,6 +43,7 @@
     "autoprefixer": "^10.4.20",
     "cssnano": "^7.1.2",
     "dotenv": "^17.2.3",
+    "esbuild": "^0.28.2",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.3.0",

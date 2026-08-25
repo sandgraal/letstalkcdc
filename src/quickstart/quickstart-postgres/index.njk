@@ -96,8 +96,9 @@ UPDATE app.customer SET email = email || '.x' WHERE id = (
   SELECT id FROM app.customer LIMIT 1
 );</code></pre>
       <pre><code># consume from the topic (adjust name)
+# topic = {topic.prefix}.{schema}.{table} = server1.app.customer
 kafka-console-consumer --bootstrap-server localhost:9092 \
-  --topic server1.public.app_customer --from-beginning --max-messages 5</code></pre>
+  --topic server1.app.customer --from-beginning --max-messages 5</code></pre>
     </div>
     <div class="box">
       <h2>Acceptance (target/sink)</h2>

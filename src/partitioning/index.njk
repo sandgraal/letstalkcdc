@@ -305,7 +305,10 @@ head_extra: |
         <div class="codebox">
           <h3>Production-Ready Idempotent Sink Pattern (Postgres)</h3>
           <pre><code>-- Assumes target table has a primary key `id` and a column `event_timestamp`
--- This MERGE statement is atomic and safe from race conditions.
+-- MERGE applies as a single atomic statement, but it is NOT immune to
+-- concurrency: under READ COMMITTED a racing INSERT of the same `id` can
+-- still raise a unique_violation. For high-contention upserts prefer
+-- INSERT ... ON CONFLICT (id) DO UPDATE, or retry the MERGE on conflict.
 
 MERGE INTO target_table T
 USING (

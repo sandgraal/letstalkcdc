@@ -88,10 +88,11 @@ head_extra: |
             <p><em>(Old schemas can read new data)</em></p>
             <p>
               This mode allows you to <strong>add new fields</strong> and
-              <strong>delete optional old fields</strong>. This is less common
-              and requires careful coordination, as you must upgrade all
-              consumers <em>before</em> producers start sending data with the
-              new schema.
+              <strong>delete optional old fields</strong>. Because old consumers
+              can still read data written with the new schema, you upgrade
+              <em>producers first</em> and let consumers catch up at their own
+              pace. (The opposite of backward compatibility, where consumers
+              upgrade first.)
             </p>
           </div>
           <div class="mode-card">
