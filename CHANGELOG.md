@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CDC content accuracy pass (revamp Phase 0b).** Corrected several
+  technical claims: Kafka Connect source offsets live in
+  `connect-offsets`, not `__consumer_offsets` (`/ops-offsets/`);
+  forward compatibility upgrades producers first, not consumers
+  (`/schema-evolution/`); the transactional outbox is atomic but its
+  publish step is still at-least-once, so it is not exactly-once
+  delivery on its own (`/exactly-once/`); Postgres `MERGE` is not
+  immune to concurrency (`/partitioning/`); materialization dedup must
+  tie-break on log position, not `ts_ms` alone (`/materialization/`);
+  and the "80% of escalations" figure no longer claims false precision
+  (`/snapshotting/`). The Connector Config Builder now emits
+  `plugin.name: pgoutput` for Postgres and the required
+  `schema.history.internal.kafka.*` settings for MySQL, so generated
+  configs run on stock databases. Fixed the Postgres quickstart's
+  consumer topic name (`server1.app.customer`), added an
+  illustrative/composite disclaimer to the ShopStream case study, and
+  clarified that HVR (not "Precisely") is the acquired CDC product.
+  Errata callouts added for the offset-topic and forward-compat
+  corrections.
+
 - **Search: a single, styled overlay (revamp Phase 0a).** Removed the
   duplicate legacy search (`src/assets/js/search.js`) that opened a
   second, unstyled overlay when pressing `/`. The Fuse.js overlay
@@ -27,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `run-pa11y.mjs`, `test_*.sh`, …) is no longer served publicly.
 
 ### Changed
+
+- **Tool-version catalog refreshed (revamp Phase 0b)** —
+  `src/_data/toolVersions.mjs` now tracks Debezium 3.6.1.Final, Kafka /
+  Kafka Connect 4.3.0 (KRaft-only), PostgreSQL 18.6, and AWS DMS 3.6.1,
+  verified against vendor release notes (was ~18 months stale, with
+  Debezium pinned at 2.7 and Kafka at 3.8).
 
 - **Mermaid unified to v11 (revamp Phase 0a)** — the interactive-diagrams
   module and the mermaid sandbox page were split across v11/v10; both now

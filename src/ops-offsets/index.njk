@@ -54,9 +54,9 @@ scripts:
       <tbody>
         <tr>
           <th scope="row">Kafka Connect</th>
-          <td><code>__consumer_offsets</code> (internal topic)</td>
+          <td><code>connect-offsets</code> (internal topic)</td>
           <td>MirrorMaker stream to DR cluster</td>
-          <td>Enable <code>offset.flush.interval.ms</code> &lt; 5000 for tighter RPO.</td>
+          <td>Source-connector progress lives in <code>connect-offsets</code> (set via <code>offset.storage.topic</code>), <em>not</em> <code>__consumer_offsets</code> (that holds consumer-group offsets). Enable <code>offset.flush.interval.ms</code> &lt; 5000 for tighter RPO.</td>
         </tr>
         <tr>
           <th scope="row">Debezium Server</th>
