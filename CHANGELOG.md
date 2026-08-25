@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Scorecard + progress toast now render styled (revamp Phase 2b).**
+  `components/scorecard.css` and `components/progress.css` were orphaned
+  — imported nowhere — so the readiness scorecard shipped unstyled on 7
+  module pages and the progress toast on every page. Both are now wired
+  into `04-components.css` and migrated onto the canonical `--color-*`
+  tokens (fixing invalid `--shadow-soft` / `--shadow-elevated` /
+  `--success-color` references and a hardcoded white checkbox that
+  didn't adapt to dark), so they render correctly on the dark-first
+  palette in both themes. `smoke:a11y` passes; CSS byte-check re-based
+  to `82e0aa65…`.
+
 ### Changed
 
 - **Design foundation: dark-first palette + self-hosted IBM Plex,
