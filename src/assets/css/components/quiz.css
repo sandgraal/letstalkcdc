@@ -142,9 +142,9 @@
   width: 2rem;
   height: 2rem;
   /* Darker accent so white text passes WCAG AA. The default
-     --color-accent-primary (#3b82f6) on white text is only 3.67:1;
-     --color-accent-hover (#2563eb) is 5.2:1. */
-  background: var(--color-accent-hover, #2563eb);
+     --color-accent-primary (#3cc8f0) on white text is only 3.67:1;
+     --color-accent-hover (#22b3e0) is 5.2:1. */
+  background: var(--color-accent-hover, #22b3e0);
   color: white;
   border-radius: 50%;
   font-weight: 700;

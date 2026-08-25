@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Chrome polish + site-wide accent harmonization + token-debt fixes
+  (revamp Phase 2c).** Fixed a batch of real CSS bugs the redesign
+  surfaced: the footer wasn't width-constrained (`--container-max-width`
+  doesn't exist → now `--container-max`); nav chips and a mobile nav
+  link had a broken `font-size: var(--type-sm)` (undefined → `--text-sm`);
+  the active nav chip used the light accent as its _background_
+  (cyan-on-cyan → now a readable subtle accent tint); and
+  `--color-bg-tertiary` was referenced in 6 places but never defined
+  (now a real token in both themes). Harmonized the accent site-wide:
+  ~44 lines of hardcoded old-blue (`#3b82f6`, `rgba(59,130,246,…)`, …)
+  that 2a's value-level token swap couldn't reach are now the new cyan,
+  so stray blue no longer clashes with the dark-first palette. Footer
+  column headings adopt the mono-uppercase treatment. `smoke:a11y`
+  passes; CSS byte-check re-based to `a772789e…`.
+
 - **Scorecard + progress toast now render styled (revamp Phase 2b).**
   `components/scorecard.css` and `components/progress.css` were orphaned
   — imported nowhere — so the readiness scorecard shipped unstyled on 7

@@ -22,7 +22,7 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   82e0aa6502387cdd7d2e8ce19e51154064b3cf8ac264f8a8de20e7a10263e722
+   a772789effbb3827fa98e7d04315025251517a3b001b9d15f93779f301f21ed0
    ```
 4. **Identical** → the refactor is visually safe; commit it.
 5. **Different** → either you intentionally changed a rule (note it in the
