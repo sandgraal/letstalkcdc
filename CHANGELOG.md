@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tokens (fixing invalid `--shadow-soft` / `--shadow-elevated` /
   `--success-color` references and a hardcoded white checkbox that
   didn't adapt to dark), so they render correctly on the dark-first
-  palette in both themes. `smoke:a11y` passes; CSS byte-check re-based
+  palette in both themes. `smoke:a11y` passes; CSS byte-check re-baselined
   to `82e0aa65…`.
 
 ### Changed
