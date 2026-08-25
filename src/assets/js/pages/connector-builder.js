@@ -124,6 +124,10 @@ onReady(() => {
         "database.user": user.value,
         "database.password": pass.value,
         "database.dbname": $("#dbname")?.value || "postgres",
+        // Default to pgoutput (built into Postgres 10+). Debezium's own
+        // default is decoderbufs, which needs a separately installed
+        // decoder plugin and fails on a stock Postgres.
+        "plugin.name": "pgoutput",
         "slot.name": $("#slot")?.value || "cdc_slot",
         "publication.autocreate.mode": $("#pubmode")?.value || "filtered",
         "decimal.handling.mode": $("#decimal")?.value || "string",
@@ -137,6 +141,17 @@ onReady(() => {
         "database.password": pass.value,
         "database.server.id": $("#serverid")?.value || "5400",
       });
+      // The MySQL connector requires a Kafka-backed schema history store,
+      // or it won't start. Keys moved to schema.history.internal.* in 2.x
+      // (were database.history.* in 1.x).
+      const historyTopic = "schemahistory." + (prefix.value || "server1");
+      if (v2) {
+        base["schema.history.internal.kafka.bootstrap.servers"] = "kafka:9092";
+        base["schema.history.internal.kafka.topic"] = historyTopic;
+      } else {
+        base["database.history.kafka.bootstrap.servers"] = "kafka:9092";
+        base["database.history.kafka.topic"] = historyTopic;
+      }
     } else if (src === "oracle") {
       Object.assign(base, {
         "connector.class": "io.debezium.connector.oracle.OracleConnector",

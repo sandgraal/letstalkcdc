@@ -286,9 +286,11 @@ WHEN MATCHED THEN
           </li>
         </ol>
         <p>
-          <strong>Important scope note:</strong> Outbox gives you EOS between the application DB and Kafka
-          (no lost/phantom messages). It does <em>not</em> make your downstream warehouses exactly-once by itself—
-          you still need idempotent consumers at the sinks.
+          <strong>Important scope note:</strong> Outbox makes the write <em>atomic</em> — an event is published
+          if and only if the business transaction committed, so no events are lost or invented. But the publish
+          step itself is still <em>at-least-once</em>: a relay that crashes after publishing but before recording
+          its own progress will re-emit the event. So outbox does <em>not</em> make delivery exactly-once — you
+          still need idempotent consumers at the sinks to absorb the duplicates.
         </p>
       </article>
 
