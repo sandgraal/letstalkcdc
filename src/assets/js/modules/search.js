@@ -232,7 +232,7 @@ const initSearch = (tracer) => {
             ? `<div class="result-tags">${item.tags.map((t) => `<span class="result-tag">${escapeHtml(t)}</span>`).join("")}</div>`
             : "";
 
-        return `<a class="result" id="search-result-${i}" href="${item.path}" role="option" aria-selected="false">
+        return `<a class="result" id="search-result-${i}" href="${withBasePath(item.path)}" role="option" aria-selected="false">
           <strong>${titleHtml}</strong>
           <div class="snippet">${snippetHtml}</div>
           ${tagsHtml}
