@@ -1,0 +1,275 @@
+---
+layout: null
+permalink: styleguide/index.html
+eleventyExcludeFromCollections: true
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design System &middot; Let's Talk CDC</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Internal style guide for the dark-first Let's Talk CDC design system.">
+  <link rel="icon" href="{{ '/favicon.svg' | url }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ '/assets/css/pages/styleguide.css' | url }}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="#" aria-label="Let's Talk CDC home">
+      <span class="dot" aria-hidden="true">&#9670;</span>
+      <span><b>Let's Talk</b> <span>CDC</span></span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="#modules" class="on">Series</a>
+      <a href="#lesson">Labs</a>
+      <a href="#library">Tools</a>
+      <a href="#">Cases</a>
+      <a href="#">Help</a>
+    </nav>
+    <span class="spacer"></span>
+    <button class="searchbtn" type="button" aria-label="Search"><span>Search the manual</span><kbd>/</kbd></button>
+    <button class="icon-btn" id="sg-theme" type="button" aria-label="Toggle light and dark theme" aria-pressed="false">&#9681;</button>
+  </div>
+</header>
+
+<div class="sg-note">
+  <b>DESIGN SYSTEM</b> <span>dark-first foundation (Phase 1) &middot; not linked in nav, not indexed &middot; toggle the &#9681; to preview both themes</span>
+</div>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">The missing manual for Change Data Capture</span>
+        <h1>Read your database's <span class="accent">change log</span> like a stream.</h1>
+        <p class="lede">Every insert, update, and delete &mdash; captured from the transaction log and turned into an event you can trust. Learn CDC from first principles to production, edge cases and all.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="#modules">Start with the intro <span class="arr">&rarr;</span></a>
+          <a class="btn ghost" href="#modules">Browse the series</a>
+        </div>
+        <div class="stat-row">
+          <span class="stat"><b>24</b><span>guided modules</span></span>
+          <span class="stat"><b>4</b><span>hands-on labs</span></span>
+          <span class="stat"><b>0</b><span>vendor pitches</span></span>
+        </div>
+      </div>
+      <div class="panel" aria-label="Example change event emitted from a row update">
+        <div class="bar"><i></i><i></i><i></i><span class="t">stream &middot; public.customer</span></div>
+        <div class="stream">
+          <div class="c">-- a row changes in Postgres&hellip;</div>
+          <div class="row"><span class="k">UPDATE</span> customer <span class="k">SET</span> tier=<span class="after">'pro'</span> <span class="k">WHERE</span> id=<span class="s">42</span>;</div>
+          <div class="emit"><span>emits</span><span class="track"><b></b></span><span>Debezium event</span></div>
+          <div class="row">{ <span class="k">"op"</span>: <span class="op-pill op-u">u&nbsp;update</span> </div>
+          <div class="row" style="padding-left:14px"><span class="k">"before"</span>: { "id": <span class="s">42</span>, "tier": <span class="before">"free"</span> },</div>
+          <div class="row" style="padding-left:14px"><span class="k">"after"</span>&nbsp;: { "id": <span class="s">42</span>, "tier": <span class="after">"pro"</span> },</div>
+          <div class="row" style="padding-left:14px"><span class="k">"ts_ms"</span>: <span class="s">1724130512034</span>,</div>
+          <div class="row" style="padding-left:14px"><span class="k">"lsn"</span>&nbsp;&nbsp;: <span class="s">"0/1A2B3C0"</span> }<span class="cursor" aria-hidden="true"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap" style="margin-top:34px">
+      <div class="pipe">
+        <div class="stage"><span class="badge" aria-hidden="true">&#128738;</span><span class="lbl"><b>Source DB</b><span>WAL &middot; binlog &middot; redo</span></span></div>
+        <span class="link"><b></b></span>
+        <div class="stage"><span class="badge" aria-hidden="true">&#10226;</span><span class="lbl"><b>Connector</b><span>Debezium</span></span></div>
+        <span class="link"><b></b></span>
+        <div class="stage"><span class="badge" aria-hidden="true">&#8779;</span><span class="lbl"><b>Stream</b><span>Kafka &middot; offsets</span></span></div>
+        <span class="link"><b></b></span>
+        <div class="stage"><span class="badge" aria-hidden="true">&#9636;</span><span class="lbl"><b>Sink</b><span>warehouse &middot; idempotent</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODULE CARDS -->
+  <section id="modules">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <span class="offset">LSN 0/01 &mdash; THE SERIES</span>
+          <h2>Follow the change from log to warehouse</h2>
+          <p>A sequenced path: capture, deliver, and materialize changes &mdash; each module builds on the offset before it.</p>
+        </div>
+        <a class="btn ghost sm" href="#">All 24 modules &rarr;</a>
+      </div>
+      <div class="cards">
+        <a class="card" href="#"><span class="num">0x01</span><h3>Introduction to CDC</h3><p>Log-based vs. trigger vs. query capture, and why real-time beats nightly batch.</p><div class="meta"><span class="tag concept"><i></i>concept</span><span class="level">Beginner</span></div></a>
+        <a class="card" href="#"><span class="num">0x04</span><h3>Snapshotting</h3><p>The consistent-read boundary, incremental snapshots, and the snapshot&rarr;stream handoff.</p><div class="meta"><span class="tag pattern"><i></i>pattern</span><span class="level">Core</span></div></a>
+        <a class="card" href="#"><span class="num">0x05</span><h3>Exactly-Once</h3><p>At-least-once truth, idempotent sinks, and why "effectively-once" is the honest goal.</p><div class="meta"><span class="tag concept"><i></i>concept</span><span class="level">Core</span></div></a>
+        <a class="card" href="#"><span class="num">0x08</span><h3>Schema Evolution</h3><p>Registry compatibility modes and the upgrade order that won't break consumers.</p><div class="meta"><span class="tag concept"><i></i>concept</span><span class="level">Core</span></div></a>
+        <a class="card" href="#"><span class="num">0x07</span><h3>Partitioning &amp; Ordering</h3><p>Key choice, per-key order, skew, and version-guarded idempotent writes.</p><div class="meta"><span class="tag ops"><i></i>ops</span><span class="level">Advanced</span></div></a>
+        <a class="card" href="#"><span class="num">0x03</span><h3>Materialization</h3><p>Upsert, delete, SCD2, and late arrivals &mdash; dedupe on log position, not <code class="inl">ts_ms</code>.</p><div class="meta"><span class="tag pattern"><i></i>pattern</span><span class="level">Core</span></div></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- LESSON PREVIEW -->
+  <section id="lesson" style="background:var(--surface-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line)">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <span class="offset">LSN 0/04 &mdash; INSIDE A LESSON</span>
+          <h2>Every module is a working surface</h2>
+          <p>Readiness trackers, runnable snippets, honest caveats, and a check for understanding &mdash; not a wall of prose.</p>
+        </div>
+      </div>
+      <div class="lesson">
+        <div class="stack">
+          <div class="tile">
+            <h3>Snapshotting readiness</h3>
+            <div class="sub">Track how close each checklist is to production-ready.</div>
+            <div class="score-row done"><span class="check done" aria-hidden="true">&#10003;</span><span>Pick a consistent-read boundary</span></div>
+            <div class="score-row done"><span class="check done" aria-hidden="true">&#10003;</span><span>Chunk large tables, bound lock time</span></div>
+            <div class="score-row"><span class="check" aria-hidden="true"></span><span>Verify the snapshot &rarr; stream watermark handoff</span></div>
+            <div class="meter" role="progressbar" aria-valuenow="66" aria-valuemin="0" aria-valuemax="100"><b></b></div>
+            <div class="meter-lbl"><span>readiness</span><span>2 / 3 &middot; 66%</span></div>
+          </div>
+          <details class="errata">
+            <summary><span class="badge" aria-hidden="true">!</span> Known errata for this page (1)</summary>
+            <p><b>Corrected:</b> dedup ordering uses the source log position (LSN/SCN) as the primary sort, with <code class="inl">ts_ms</code> only as a tie-break &mdash; it isn't unique per key.</p>
+          </details>
+          <table class="ops" aria-label="CDC operation codes">
+            <thead><tr><th>op</th><th>means</th><th>carries</th></tr></thead>
+            <tbody>
+              <tr><td><span class="opcode c">c</span></td><td>create / insert</td><td><code class="inl">after</code> only</td></tr>
+              <tr><td><span class="opcode u">u</span></td><td>update</td><td><code class="inl">before</code> + <code class="inl">after</code></td></tr>
+              <tr><td><span class="opcode d">d</span></td><td>delete</td><td><code class="inl">before</code> + tombstone</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="stack">
+          <div class="panel">
+            <div class="bar"><i></i><i></i><i></i><span class="t">bash &middot; verify the stream</span></div>
+            <div class="stream" style="font-size:.79rem">
+              <div class="c"># consume the change topic</div>
+              <div class="row"><span class="k">kafka-console-consumer</span> \</div>
+              <div class="row" style="padding-left:14px">--bootstrap-server <span class="s">kafka:29092</span> \</div>
+              <div class="row" style="padding-left:14px">--topic <span class="s">server1.public.customer</span> \</div>
+              <div class="row" style="padding-left:14px">--from-beginning --max-messages <span class="s">1</span></div>
+              <div class="c" style="margin-top:8px">&rarr; { "op":"c", "after":{ "id":88, "tier":"free" } }</div>
+            </div>
+          </div>
+          <div class="callout info"><span class="ic">i</span><span><b>Offsets are crown jewels.</b> Source-connector progress lives in <code class="inl">connect-offsets</code> &mdash; not <code class="inl">__consumer_offsets</code>. Back it up before any replay.</span></div>
+          <div class="callout warn"><span class="ic">!</span><span><b>Snapshots race the stream.</b> Without a watermark, the initial load and live changes can interleave and lose an update. Fence the handoff.</span></div>
+          <div class="quiz">
+            <div class="q">A relay crashes after publishing an outbox event but before committing its offset. What does the sink see?</div>
+            <div class="opt correct"><span class="mk" aria-hidden="true">&#10003;</span>A duplicate &mdash; delivery is at-least-once, so dedupe downstream</div>
+            <div class="opt"><span class="mk" aria-hidden="true"></span>Nothing &mdash; the event is lost</div>
+            <div class="opt"><span class="mk" aria-hidden="true"></span>Exactly one &mdash; the outbox guarantees it</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPONENT LIBRARY + TOKENS + TYPE -->
+  <section id="library">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <span class="offset">LSN 0/0F &mdash; THE SYSTEM</span>
+          <h2>Tokens, type, and every primitive</h2>
+          <p>The building blocks every page is composed from &mdash; so the whole site reads as one thing.</p>
+        </div>
+      </div>
+      <div class="lib">
+        <div class="tile">
+          <h3>Surfaces &amp; ink</h3>
+          <div class="swatches">
+            <div class="sw"><div class="chip" style="background:var(--ground)"></div><div class="cap">ground</div></div>
+            <div class="sw"><div class="chip" style="background:var(--surface)"></div><div class="cap">surface</div></div>
+            <div class="sw"><div class="chip" style="background:var(--surface-2)"></div><div class="cap">surface-2</div></div>
+            <div class="sw"><div class="chip" style="background:var(--ink)"></div><div class="cap">ink</div></div>
+            <div class="sw"><div class="chip" style="background:var(--ink-2)"></div><div class="cap">ink-2</div></div>
+            <div class="sw"><div class="chip" style="background:var(--line-2)"></div><div class="cap">line-2</div></div>
+          </div>
+        </div>
+        <div class="tile">
+          <h3>Accent &amp; op semantics</h3>
+          <div class="swatches">
+            <div class="sw"><div class="chip" style="background:var(--accent)"></div><div class="cap">accent</div></div>
+            <div class="sw"><div class="chip" style="background:var(--accent-2)"></div><div class="cap">accent-2</div></div>
+            <div class="sw"><div class="chip" style="background:var(--create)"></div><div class="cap">create</div></div>
+            <div class="sw"><div class="chip" style="background:var(--update)"></div><div class="cap">update</div></div>
+            <div class="sw"><div class="chip" style="background:var(--delete)"></div><div class="cap">delete</div></div>
+          </div>
+        </div>
+        <div class="tile" style="grid-column:1/-1">
+          <h3>Type scale &mdash; IBM Plex Sans / Mono</h3>
+          <div class="type-row"><span class="lab">hero</span><span style="font-size:2.4rem; font-weight:600; letter-spacing:-.02em">Change data capture</span></div>
+          <div class="type-row"><span class="lab">h2</span><span style="font-size:1.6rem; font-weight:600">Follow the change</span></div>
+          <div class="type-row"><span class="lab">body</span><span style="font-size:1rem; color:var(--ink-2)">Captured from the transaction log and turned into an event you can trust.</span></div>
+          <div class="type-row"><span class="lab">mono</span><span class="mono" style="font-size:.9rem; color:var(--accent)">lsn 0/1A2B3C0 &middot; op=u</span></div>
+        </div>
+        <div class="tile">
+          <h3>Buttons</h3>
+          <div class="chips">
+            <button class="btn primary sm">Run connector</button>
+            <button class="btn ghost sm">Copy config</button>
+            <button class="btn danger sm">Drop slot</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h3>Badges &amp; tags</h3>
+          <div class="chips">
+            <span class="badge-op c">c create</span>
+            <span class="badge-op u">u update</span>
+            <span class="badge-op d">d delete</span>
+            <span class="badge-lv">Beginner</span>
+            <span class="tag concept"><i></i>concept</span>
+            <span class="tag ops"><i></i>ops</span>
+          </div>
+        </div>
+        <div class="tile">
+          <h3>Callouts</h3>
+          <div class="stack">
+            <div class="callout info"><span class="ic">i</span><span>Log-based CDC reads the WAL &mdash; no polling, no query load.</span></div>
+            <div class="callout success"><span class="ic">+</span><span>Sink is idempotent: replays converge to the same state.</span></div>
+            <div class="callout warn"><span class="ic">!</span><span><code class="inl">ts_ms</code> is millisecond-coarse; tie-break on log position.</span></div>
+            <div class="callout error"><span class="ic">&times;</span><span>Dropped the replication slot on a live stream &mdash; WAL recycled.</span></div>
+          </div>
+        </div>
+        <div class="tile">
+          <h3>Progress toast</h3>
+          <div class="chips" style="margin-bottom:16px"><span class="toast"><span class="tk">&#10003;</span>Module complete &mdash; offset saved</span></div>
+          <div class="meter" style="max-width:260px"><b style="width:40%"></b></div>
+          <div class="meter-lbl" style="max-width:260px"><span>series progress</span><span>10 / 24</span></div>
+        </div>
+        <div class="tile" style="grid-column:1/-1">
+          <h3>Search overlay</h3>
+          <div class="search-mock">
+            <div class="sfield"><span class="mono" style="color:var(--ink-3)">&#8981;</span><input value="tombstone" aria-label="Search demo" readonly><kbd class="mono" style="font-size:.7rem; color:var(--ink-3); border:1px solid var(--line-2); border-radius:4px; padding:1px 6px">esc</kbd></div>
+            <div class="res">
+              <div class="r on"><b>CDC Glossary &mdash; <mark>tombstone</mark></b><span>A delete marker with a null value that lets log compaction drop a key.</span></div>
+              <div class="r"><b>Materialization</b><span>Apply deletes as <mark>tombstone</mark>s that remove or flag the row.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="#" style="margin-bottom:6px"><span class="dot" aria-hidden="true">&#9670;</span><span><b>Let's Talk</b> <span>CDC</span></span></a>
+        <p>An independent, vendor-neutral manual for Change Data Capture. Static, open-source, no tracking.</p>
+      </div>
+      <div><h4>Learn</h4><a href="#">Intro</a><a href="#">Snapshotting</a><a href="#">Exactly-Once</a><a href="#">Schema Evolution</a></div>
+      <div><h4>Build</h4><a href="#">Quick starts</a><a href="#">Kafka + Debezium lab</a><a href="#">Connector builder</a><a href="#">Event decoder</a></div>
+      <div><h4>Reference</h4><a href="#">Glossary</a><a href="#">Methodology</a><a href="#">Errata</a><a href="#">Changelog</a></div>
+    </div>
+    <div class="foot-base"><span>&copy; 2026 Let's Talk CDC</span><span>built with eleventy &middot; vite &middot; postcss</span></div>
+  </div>
+</footer>
+
+<script type="module" src="{{ '/assets/js/pages/styleguide.js' | url }}" defer></script>
+</body>
+</html>
