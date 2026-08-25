@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Responsive polish + button-variant fix (revamp Phase 2d).** Fixed
+  the mobile header overflowing the viewport (the injected search button
+  plus the progress pill pushed content past 375px and clipped it): the
+  progress pill is hidden on phones — it lives on `/dashboard/` — and
+  the search button is compact. Wide content tables now scroll
+  horizontally on mobile instead of being clipped by
+  `body { overflow-x: hidden }`. And a pre-existing button bug: the
+  secondary/ghost/danger variants set only `background-color`, so the
+  base `.button` gradient _image_ showed through — the secondary button
+  rendered cyan-on-cyan (unreadable). They now use `background`
+  (shorthand) to clear it, so outline/ghost/danger buttons are legible
+  in both themes. `smoke:a11y` passes; CSS byte-check re-based to
+  `4f653676…`.
+
 - **Chrome polish + site-wide accent harmonization + token-debt fixes
   (revamp Phase 2c).** Fixed a batch of real CSS bugs the redesign
   surfaced: the footer wasn't width-constrained (`--container-max-width`

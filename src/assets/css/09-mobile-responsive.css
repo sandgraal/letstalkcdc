@@ -26,6 +26,20 @@
     gap: var(--space-2xs);
   }
 
+  /* Free header room on phones: the progress pill is available on
+     /dashboard/, and the injected search button (`.search-btn`, not
+     `.search-trigger`) collapses to a magnifier icon so the row stops
+     overflowing past the viewport. The accessible name stays "Search". */
+  .header-progress {
+    display: none;
+  }
+
+  .nav-utilities .search-btn {
+    min-width: 0;
+    padding: var(--space-2xs) var(--space-sm);
+    font-size: var(--text-sm);
+  }
+
   /* Hide "Log In" button text on very small screens, show icon only */
   .nav-right > button[aria-label*="Log in"] {
     padding: var(--space-xs);
@@ -212,6 +226,18 @@ figcaption {
     margin-left: calc(var(--space-md) * -1);
     margin-right: calc(var(--space-md) * -1);
     border-radius: 0;
+  }
+
+  /* Plain content tables aren't wrapped in .table-container, so give
+     each its own horizontal scroll — otherwise a wide table overflows
+     the viewport and gets clipped by body { overflow-x: hidden },
+     hiding columns. The scorecard has its own responsive layout, so
+     leave it alone. */
+  main table:not(.scorecard-table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Adjust table cell padding for mobile */
