@@ -278,7 +278,10 @@ export default function (eleventyConfig) {
     "src/js": "js",
     "src/data": "data",
     "src/scripts": "scripts",
-    scripts: "scripts",
+    // Publish only the client-side progress script from the root scripts/ dir.
+    // The rest of scripts/ is CI/dev tooling (smoke.mjs, run-pa11y.mjs,
+    // deployment-verify.mjs, test_*.sh, …) and must not be served publicly.
+    "scripts/progress.js": "scripts/progress.js",
   });
 
   // Markdown files under src/resources/ are downloadable assets, not pages.

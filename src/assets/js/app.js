@@ -2,7 +2,7 @@
  * Let's Talk CDC — Application Entry Point
  *
  * Orchestrates all UI modules: theme, navigation, search, code blocks,
- * quick nav, depth toggle, scorecards, and toast notifications.
+ * depth toggle, scorecards, and toast notifications.
  *
  * Previously a monolithic 1821-line file, now modularized into
  * focused, independently testable modules under ./modules/.
@@ -14,7 +14,6 @@ import { initTheme } from "./modules/theme.js";
 import { initNavigation } from "./modules/navigation.js";
 import { initSearch } from "./modules/search.js";
 import { initCodeBlocks } from "./modules/code-blocks.js";
-import { initQuickNav } from "./modules/quick-nav.js";
 import { initDepthToggle } from "./modules/depth-toggle.js";
 import { initScorecards } from "./modules/scorecard.js";
 import { showToast } from "./modules/toast.js";
@@ -71,7 +70,6 @@ onReady(() => {
   initDepthToggle();
   initCodeBlocks(educationTracer);
   initSearch(educationTracer);
-  initQuickNav();
   initScorecards(educationTracer);
   initTimelines(educationTracer);
   initInteractiveDiagrams(educationTracer);

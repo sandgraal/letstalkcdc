@@ -26,12 +26,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         app: resolve("src/assets/js/app.js"),
-        search: resolve("src/assets/js/search.js"),
         "progress-ui": resolve("src/assets/js/progress-ui.js"),
         "video-embed": resolve("src/assets/js/video-embed.js"),
-        "web-vitals-dashboard": resolve(
-          "src/assets/js/web-vitals-dashboard.js",
-        ),
       },
       output: {
         entryFileNames: "js/[name].[hash].js",
