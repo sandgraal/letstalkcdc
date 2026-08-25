@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Design foundation: dark-first palette + self-hosted IBM Plex,
+  site-wide (revamp Phase 2a).** `01-variables.css` now carries the new
+  token values — a cyan-azure accent, blue-ink neutrals, and the CDC
+  create/update/delete op-colors mapped onto the semantic tokens — so
+  every page adopts the refined dark-first look with no template
+  changes. Typography moves to the self-hosted **IBM Plex** superfamily
+  (Sans + Mono, latin-subset woff2 at `/fonts/` from `src/static/fonts/`,
+  preloaded in `base.njk`; Inter was named but never actually loaded, so
+  the site had been on system fonts). The odd yellow primary-button text
+  (`#fde047`) is now dark ink on the cyan gradient. Both themes stay AA
+  (light links use a darker cyan than the accent so text clears 4.5:1);
+  `smoke:a11y` passes. CSS byte-check baseline re-based to `ec323872…`.
+  Component _structure_ is unchanged — the chrome + component rebuild
+  lands in Phase 2b.
+
 ### Added
 
 - **Dark-first design system foundation + `/styleguide/` (revamp
