@@ -89,7 +89,7 @@
        this pattern should clear it. #}
     <link rel="preload" href="{{ '/assets/css/styles.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}"></noscript>
-    {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js, src/assets/js/search.js' | vitePreloads | safe }}
+    {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js' | vitePreloads | safe }}
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -430,7 +430,5 @@
     <button id="askBtn" type="button" aria-label="Ask the CDC Assistant" aria-expanded="false" aria-controls="askPanel">💬</button>
     <div id="askPanel" hidden role="complementary" aria-label="CDC Assistant chat"></div>
     <script type="module" src="{{ '/js/assistant.js' | url }}" defer></script>
-    <script type="module" src="{{ 'src/assets/js/search.js' | viteAsset | url }}" defer></script>
-    <script type="module" src="{{ 'src/assets/js/web-vitals-dashboard.js' | viteAsset | url }}" defer></script>
   </body>
 </html>

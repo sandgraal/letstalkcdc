@@ -29,7 +29,7 @@ if (hasRequiredConfig) {
     console.error("Failed to load Appwrite SDK:", error);
   }
 } else {
-  console.log(
+  console.debug(
     "Appwrite configuration missing; assistant feedback will stay local.",
   );
 }
