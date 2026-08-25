@@ -43,7 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Search: a single, styled overlay (revamp Phase 0a).** Removed the
   duplicate legacy search (`src/assets/js/search.js`) that opened a
-  duplicate legacy search (`src/assets/js/search.js`) that opened a
   second, unstyled overlay when pressing `/`. The Fuse.js overlay
   (`src/assets/js/modules/search.js`, bundled via `app.js`) is now the
   only search implementation, and `06-search.css` is repointed from the

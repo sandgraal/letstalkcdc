@@ -8,11 +8,20 @@ if (btn) {
   const sysDark = () =>
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;
-  btn.addEventListener("click", () => {
+  // aria-pressed reflects whether the LIGHT theme is currently active.
+  const isLight = () => {
     const cur = root.getAttribute("data-theme");
-    const isDark = cur ? cur === "dark" : sysDark();
-    const next = isDark ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    btn.setAttribute("aria-pressed", next === "light" ? "true" : "false");
+    return cur ? cur === "light" : !sysDark();
+  };
+  const syncPressed = () =>
+    btn.setAttribute("aria-pressed", isLight() ? "true" : "false");
+
+  // Sync on load so the control's state is correct before any click
+  // (e.g. OS prefers light with no data-theme set).
+  syncPressed();
+
+  btn.addEventListener("click", () => {
+    root.setAttribute("data-theme", isLight() ? "dark" : "light");
+    syncPressed();
   });
 }
