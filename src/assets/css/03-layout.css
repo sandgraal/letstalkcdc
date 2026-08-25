@@ -649,7 +649,7 @@ section {
 }
 
 .breadcrumb-container {
-  max-width: var(--container-max-width);
+  max-width: var(--container-max);
   margin-inline: auto;
   padding-inline: var(--space-lg);
 }
