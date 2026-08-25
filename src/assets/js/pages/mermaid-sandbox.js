@@ -32,7 +32,7 @@ const loadScript = (src) =>
 const initMermaid = async () => {
   if (!window.mermaid) {
     await loadScript(
-      "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js",
+      "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
     );
   }
   const mermaid = window.mermaid;

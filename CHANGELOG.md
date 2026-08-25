@@ -6,8 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Search: a single, styled overlay (revamp Phase 0a).** Removed the
+  duplicate legacy search (`src/assets/js/search.js`) that opened a
+  second, unstyled overlay when pressing `/`. The Fuse.js overlay
+  (`src/assets/js/modules/search.js`, bundled via `app.js`) is now the
+  only search implementation, and `06-search.css` is repointed from the
+  old `.search-modal` to its `.search-overlay` markup so it renders
+  styled.
+
+### Removed
+
+- **Dead client code purged (revamp Phase 0a):**
+  `web-vitals-dashboard.js` (never initialized as a deferred module and
+  hooked a since-removed tracer), the unused `quick-nav` component
+  (module, macro, orphan stylesheet, and unit test), and the legacy
+  `search.js`. The root `scripts/` passthrough was narrowed so only
+  `scripts/progress.js` ships — CI/dev tooling (`smoke.mjs`,
+  `run-pa11y.mjs`, `test_*.sh`, …) is no longer served publicly.
+
 ### Changed
 
+- **Mermaid unified to v11 (revamp Phase 0a)** — the interactive-diagrams
+  module and the mermaid sandbox page were split across v11/v10; both now
+  load v11. `appwrite-config` no longer prints a "configuration missing"
+  `console.log` on every page load (now `console.debug`).
 - **`docs/STATE-OF-PROJECT.md` refreshed to 2026-05-19**. Queue
   emptied (14 PRs landed in the 48-hour burst — methodology,
   glossary, errata, three CDC-platforms perf PRs, state-of-
