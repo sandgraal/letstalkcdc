@@ -12,13 +12,16 @@ export default {
       "Ask questions, share your CDC stack, and discuss best practices",
     // Specific discussion threads by category
     threads: {
+      // Threads #3 and #4 were deleted upstream (link rot). Point these
+      // entries at the Discussions home until real threads are (re)created
+      // and their canonical URLs can be pinned here again.
       lab: {
-        url: "https://github.com/sandgraal/letstalkcdc/discussions/4",
+        url: "https://github.com/sandgraal/letstalkcdc/discussions",
         title: "Got stuck in a lab? Ask for help here!",
         description: "Get help with labs and quickstarts",
       },
       general: {
-        url: "https://github.com/sandgraal/letstalkcdc/discussions/3",
+        url: "https://github.com/sandgraal/letstalkcdc/discussions",
         title: "Tool Requests / Future Labs - What would you like to see?",
         description: "Share ideas and discuss CDC topics",
       },
