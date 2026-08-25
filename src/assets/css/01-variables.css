@@ -153,10 +153,10 @@
   --color-text-secondary: #b8c6d4;
   --color-text-tertiary: #94a3b8;
   --color-text-inverse: #06131a;
-  /* `muted` is the lowest-emphasis on-background text. In dark mode it
-     must be LIGHTER than `tertiary` to stay legible on a near-black
-     background; previously this was #64748b (slate-500), which fell
-     to 4.0:1 against #0a0e1a — below WCAG AA. */
+  /* `muted` is the lowest-emphasis on-background text. In dark mode it must not
+     be darker than `tertiary` to stay legible on a near-black background;
+     previously this was #64748b (slate-500), which fell to 4.0:1 against
+     #0a0e1a — below WCAG AA. */
   --color-text-muted: #94a3b8;
 
   /* Brand/Accent Colors - cyan-azure (the real-time stream) */
