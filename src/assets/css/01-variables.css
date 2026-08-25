@@ -1,17 +1,70 @@
 /* =============================================================
    CSS Custom Properties (Design Tokens)
-   World-Class Design System
+   Dark-first design system (revamp Phase 2a)
    ============================================================= */
 
+/* Self-hosted IBM Plex (latin subset). Files ship at /fonts/ from
+   src/static/fonts/; url() is relative to the compiled styles.css at
+   /assets/css/, so it resolves under the GitHub Pages path prefix. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-sans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-sans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-sans-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-sans-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../fonts/ibm-plex-mono-600.woff2") format("woff2");
+}
+
 :root {
-  /* Typography - Professional font stack */
+  /* Typography - IBM Plex superfamily (self-hosted, latin subset) */
   --font-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Cal Sans", "Inter", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono:
-    "JetBrains Mono", "Roboto Mono", "Fira Code", ui-monospace, SFMono-Regular,
-    Menlo, Monaco, Consolas, monospace;
+    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
 
   /* Font Sizes - Refined typographic scale */
   --text-xs: clamp(0.75rem, 0.7rem + 0.2vw, 0.813rem);
@@ -83,60 +136,61 @@
 /* Dark Theme (Default) - Sophisticated color palette */
 :root,
 :root[data-theme="dark"] {
-  /* Surface Colors - Rich, layered depths */
-  --color-bg-primary: #0a0e1a;
-  --color-bg-secondary: #0f1420;
-  --color-bg-elevated: #151b2d;
-  --color-bg-overlay: rgba(10, 14, 26, 0.95);
+  /* Surface Colors - blue-ink layered depths */
+  --color-bg-primary: #0a0e14;
+  --color-bg-secondary: #0f141c;
+  --color-bg-elevated: #141b25;
+  --color-bg-overlay: rgba(10, 14, 20, 0.95);
   --color-bg-subtle: rgba(255, 255, 255, 0.03);
 
-  /* Border Colors - Refined contrast */
-  --color-border-subtle: rgba(148, 163, 184, 0.1);
-  --color-border-default: rgba(148, 163, 184, 0.2);
-  --color-border-strong: rgba(148, 163, 184, 0.3);
+  /* Border Colors - hairline */
+  --color-border-subtle: rgba(148, 170, 194, 0.09);
+  --color-border-default: rgba(148, 170, 194, 0.16);
+  --color-border-strong: rgba(148, 170, 194, 0.28);
 
-  /* Text Colors - Excellent readability */
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
+  /* Text Colors - Excellent readability (AA-tuned on the dark ground) */
+  --color-text-primary: #e9eef5;
+  --color-text-secondary: #b8c6d4;
   --color-text-tertiary: #94a3b8;
-  --color-text-inverse: #0f172a;
-  /* `muted` is the lowest-emphasis on-background text. In dark mode it
-     must be LIGHTER than `tertiary` to stay legible on a near-black
-     background; previously this was #64748b (slate-500), which fell
-     to 4.0:1 against #0a0e1a — below WCAG AA. */
+  --color-text-inverse: #06131a;
+  /* `muted` is the lowest-emphasis on-background text. In dark mode it must not
+     be darker than `tertiary` to stay legible on a near-black background;
+     previously this was #64748b (slate-500), which fell to 4.0:1 against
+     #0a0e1a — below WCAG AA. */
   --color-text-muted: #94a3b8;
 
-  /* Brand/Accent Colors - Modern, vibrant */
-  --color-accent-primary: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-accent-active: #1d4ed8;
-  --color-accent-subtle: rgba(59, 130, 246, 0.12);
-  --color-accent-light: #60a5fa;
+  /* Brand/Accent Colors - cyan-azure (the real-time stream) */
+  --color-accent-primary: #3cc8f0;
+  --color-accent-hover: #22b3e0;
+  --color-accent-active: #109ac8;
+  --color-accent-subtle: rgba(60, 200, 240, 0.12);
+  --color-accent-light: #6fd6f5;
 
-  /* Secondary Accent - Teal for variety */
-  --color-secondary: #14b8a6;
-  --color-secondary-hover: #0d9488;
-  --color-secondary-subtle: rgba(20, 184, 166, 0.12);
+  /* Secondary Accent - indigo for depth */
+  --color-secondary: #8091ff;
+  --color-secondary-hover: #6a7bf0;
+  --color-secondary-subtle: rgba(128, 145, 255, 0.12);
 
   /* Semantic Colors - Professional palette */
-  --color-success: #10b981;
-  --color-success-subtle: rgba(16, 185, 129, 0.12);
-  --color-success-hover: #059669;
+  /* Semantic = the CDC op-colors (create / update / delete) */
+  --color-success: #3fb950;
+  --color-success-subtle: rgba(63, 185, 80, 0.14);
+  --color-success-hover: #33a043;
 
-  --color-warning: #f59e0b;
-  --color-warning-subtle: rgba(245, 158, 11, 0.12);
-  --color-warning-hover: #d97706;
+  --color-warning: #e0a63a;
+  --color-warning-subtle: rgba(224, 166, 58, 0.14);
+  --color-warning-hover: #c88f2a;
 
-  --color-error: #ef4444;
-  --color-error-subtle: rgba(239, 68, 68, 0.12);
-  --color-error-hover: #dc2626;
+  --color-error: #f0616d;
+  --color-error-subtle: rgba(240, 97, 109, 0.15);
+  --color-error-hover: #e04b58;
 
-  --color-info: #3b82f6;
-  --color-info-subtle: rgba(59, 130, 246, 0.12);
-  --color-info-hover: #2563eb;
+  --color-info: #3cc8f0;
+  --color-info-subtle: rgba(60, 200, 240, 0.12);
+  --color-info-hover: #22b3e0;
 
   /* Interactive States */
-  --color-focus: #60a5fa;
+  --color-focus: #6fd6f5;
   --color-link: var(--color-accent-light);
   --color-link-hover: var(--color-accent-primary);
 
@@ -151,19 +205,19 @@
     0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   --shadow-glow-sm:
-    0 0 10px rgba(59, 130, 246, 0.2), 0 0 20px rgba(59, 130, 246, 0.1);
+    0 0 10px rgba(60, 200, 240, 0.2), 0 0 20px rgba(60, 200, 240, 0.1);
   --shadow-glow:
-    0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
+    0 0 20px rgba(60, 200, 240, 0.3), 0 0 40px rgba(60, 200, 240, 0.1);
   --shadow-glow-lg:
-    0 0 30px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.2);
+    0 0 30px rgba(60, 200, 240, 0.4), 0 0 60px rgba(60, 200, 240, 0.2);
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  --gradient-secondary: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  --gradient-primary: linear-gradient(135deg, #3cc8f0 0%, #22b3e0 100%);
+  --gradient-secondary: linear-gradient(135deg, #8091ff 0%, #6a7bf0 100%);
+  --gradient-accent: linear-gradient(135deg, #3cc8f0 0%, #8091ff 100%);
   --gradient-hero: linear-gradient(
     180deg,
-    rgba(59, 130, 246, 0.05) 0%,
+    rgba(60, 200, 240, 0.05) 0%,
     transparent 100%
   );
   --gradient-subtle: linear-gradient(
@@ -172,8 +226,8 @@
     transparent 100%
   );
 
-  /* Button Colors - Ensures readability on gradient backgrounds */
-  --button-primary-text: #fde047;
+  /* Button text - dark ink on the light-cyan primary gradient */
+  --button-primary-text: #06131a;
 
   /* ──────────────────────────────────────────────────────────────────────
      Legacy token aliases. Page-specific and component-specific
@@ -250,21 +304,21 @@
 /* Light Theme - Clean, professional */
 :root[data-theme="light"] {
   /* Surface Colors */
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f8fafc;
-  --color-bg-elevated: #f1f5f9;
+  --color-bg-primary: #f4f7fb;
+  --color-bg-secondary: #ffffff;
+  --color-bg-elevated: #eef2f7;
   --color-bg-overlay: rgba(255, 255, 255, 0.95);
   --color-bg-subtle: rgba(15, 23, 42, 0.02);
 
   /* Border Colors */
-  --color-border-subtle: #f1f5f9;
-  --color-border-default: #e2e8f0;
-  --color-border-strong: #cbd5e1;
+  --color-border-subtle: #e8eef4;
+  --color-border-default: #dde5ee;
+  --color-border-strong: #c6d3e0;
 
   /* Text Colors */
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #64748b;
+  --color-text-primary: #0c1620;
+  --color-text-secondary: #425263;
+  --color-text-tertiary: #5c6b7a;
   --color-text-inverse: #ffffff;
   /* See dark-theme note: mirrored swap. In light mode `muted` must be
      DARKER than `tertiary` for legibility on a white background;
@@ -277,38 +331,41 @@
   --color-text-muted: #52606d;
 
   /* Brand/Accent Colors */
-  --color-accent-primary: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-accent-active: #1d4ed8;
-  --color-accent-subtle: rgba(59, 130, 246, 0.08);
-  --color-accent-light: #60a5fa;
+  --color-accent-primary: #0c8dbd;
+  --color-accent-hover: #0a7ba5;
+  --color-accent-active: #086a90;
+  --color-accent-subtle: rgba(12, 141, 189, 0.1);
+  --color-accent-light: #3aa9d0;
 
   /* Secondary Accent */
-  --color-secondary: #14b8a6;
-  --color-secondary-hover: #0d9488;
-  --color-secondary-subtle: rgba(20, 184, 166, 0.08);
+  --color-secondary: #5566e6;
+  --color-secondary-hover: #4453d0;
+  --color-secondary-subtle: rgba(85, 102, 230, 0.1);
 
-  /* Semantic Colors */
-  --color-success: #10b981;
-  --color-success-subtle: rgba(16, 185, 129, 0.08);
-  --color-success-hover: #059669;
+  /* Semantic Colors = op-colors (create / update / delete) */
+  --color-success: #1f9d3a;
+  --color-success-subtle: rgba(31, 157, 58, 0.1);
+  --color-success-hover: #178030;
 
-  --color-warning: #f59e0b;
-  --color-warning-subtle: rgba(245, 158, 11, 0.08);
-  --color-warning-hover: #d97706;
+  --color-warning: #b07714;
+  --color-warning-subtle: rgba(176, 119, 20, 0.12);
+  --color-warning-hover: #946010;
 
-  --color-error: #ef4444;
-  --color-error-subtle: rgba(239, 68, 68, 0.08);
-  --color-error-hover: #dc2626;
+  --color-error: #d23b48;
+  --color-error-subtle: rgba(210, 59, 72, 0.1);
+  --color-error-hover: #b8303c;
 
-  --color-info: #3b82f6;
-  --color-info-subtle: rgba(59, 130, 246, 0.08);
-  --color-info-hover: #2563eb;
+  --color-info: #0c8dbd;
+  --color-info-subtle: rgba(12, 141, 189, 0.1);
+  --color-info-hover: #0a7ba5;
 
   /* Interactive States */
-  --color-focus: #3b82f6;
-  --color-link: var(--color-accent-primary);
-  --color-link-hover: var(--color-accent-hover);
+  --color-focus: #0c8dbd;
+  /* Links use a darker cyan than the accent so normal-size link text
+     clears WCAG AA (4.5:1) on the light ground; the accent itself is
+     reserved for large text, icons, and fills. */
+  --color-link: #0a6d8f;
+  --color-link-hover: #086a90;
 
   /* Shadows */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -321,16 +378,16 @@
     0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   --shadow-glow:
-    0 0 20px rgba(59, 130, 246, 0.2), 0 0 40px rgba(59, 130, 246, 0.05);
+    0 0 20px rgba(12, 141, 189, 0.2), 0 0 40px rgba(12, 141, 189, 0.05);
   --shadow-glow-lg:
-    0 0 30px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1);
+    0 0 30px rgba(12, 141, 189, 0.3), 0 0 60px rgba(12, 141, 189, 0.1);
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  --gradient-secondary: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --gradient-primary: linear-gradient(135deg, #17b0e0 0%, #0c8dbd 100%);
+  --gradient-secondary: linear-gradient(135deg, #5566e6 0%, #4453d0 100%);
   --gradient-hero: linear-gradient(
     180deg,
-    rgba(59, 130, 246, 0.03) 0%,
+    rgba(12, 141, 189, 0.04) 0%,
     transparent 100%
   );
   --gradient-subtle: linear-gradient(
@@ -339,6 +396,6 @@
     transparent 100%
   );
 
-  /* Button Colors - Ensures readability on gradient backgrounds */
-  --button-primary-text: #fde047;
+  /* Button text - dark ink on the cyan primary gradient */
+  --button-primary-text: #06131a;
 }
