@@ -145,11 +145,13 @@ onReady(() => {
       // or it won't start. Keys moved to schema.history.internal.* in 2.x
       // (were database.history.* in 1.x).
       const historyTopic = "schemahistory." + (prefix.value || "server1");
+      // kafka:29092 is the in-network (advertised INTERNAL) listener used by
+      // this repo's compose.yaml and lab; kafka:9092 is host-only.
       if (v2) {
-        base["schema.history.internal.kafka.bootstrap.servers"] = "kafka:9092";
+        base["schema.history.internal.kafka.bootstrap.servers"] = "kafka:29092";
         base["schema.history.internal.kafka.topic"] = historyTopic;
       } else {
-        base["database.history.kafka.bootstrap.servers"] = "kafka:9092";
+        base["database.history.kafka.bootstrap.servers"] = "kafka:29092";
         base["database.history.kafka.topic"] = historyTopic;
       }
     } else if (src === "oracle") {

@@ -29,7 +29,7 @@ export default {
     },
     postgres: {
       version: "18.6",
-      releaseDate: "2026-08-11",
+      releaseDate: "2026-08-13",
       releaseNotesUrl: "https://www.postgresql.org/docs/release/18.6/",
       status: "stable",
     },
