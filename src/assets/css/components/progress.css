@@ -63,7 +63,7 @@
   background: var(--bg-elevated);
   border-radius: 0.85rem;
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-lg);
   padding: 1.1rem 1.25rem;
   opacity: 0;
   pointer-events: none;

@@ -7,6 +7,12 @@
 @import "components/quiz.css";
 @import "components/interactive-diagrams.css";
 @import "components/timeline.css";
+/* Phase 2b: wire in the scorecard + progress stylesheets that were
+   orphaned (imported nowhere) — the scorecard rendered unstyled on 7
+   pages and the progress toast on every page. Now on the --color-*
+   tokens so they adapt to the dark-first palette and both themes. */
+@import "components/scorecard.css";
+@import "components/progress.css";
 
 /* Buttons - Modern, sophisticated */
 .button {

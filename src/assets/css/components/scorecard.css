@@ -4,7 +4,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .scorecard-meta {
@@ -31,7 +31,7 @@
 }
 
 .scorecard[data-scorecard-complete="1"] .scorecard-progress {
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .scorecard-action {
@@ -137,7 +137,7 @@
   appearance: none;
   display: inline-grid;
   place-content: center;
-  background: #fff;
+  background: var(--color-bg-secondary);
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
@@ -207,7 +207,7 @@ html[data-theme="dark"] .scorecard-progress {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   background: var(--bg-primary);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
   transition:
     box-shadow 200ms ease,
     border-color 200ms ease;
@@ -221,7 +221,7 @@ html[data-theme="dark"] .scorecard-progress {
 
 html[data-theme="dark"] .scorecard-summary {
   background: var(--bg-secondary);
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-lg);
 }
 
 .scorecard-summary-header {
@@ -273,7 +273,7 @@ html[data-theme="dark"] .scorecard-summary {
 
 .scorecard-summary[data-scorecard-summary-state="complete"]
   .scorecard-summary-progress {
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .scorecard-summary-meter {
@@ -391,7 +391,7 @@ html[data-theme="dark"] .scorecard-summary-item[data-state="complete"] {
 
 .scorecard-summary[data-scorecard-summary-state="complete"]
   .scorecard-summary-item-status {
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .scorecard-summary-empty {
