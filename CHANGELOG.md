@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dark-first design system foundation + `/styleguide/` (revamp
+  Phase 1).** A new, self-contained visual language for the CDC
+  audience: blue-ink neutrals, a cyan-azure accent, and semantic
+  create/update/delete op-colors, set in the self-hosted IBM Plex
+  superfamily (Sans + Mono, latin subset — no Google Fonts, which the
+  smoke test bans). Lives in `src/assets/css/pages/styleguide.css` and
+  renders on a standalone, `noindex` `/styleguide/` page (kept out of
+  nav, sitemap, and search) that showcases the tokens, the type scale,
+  and every component. Additive and non-breaking: production pages stay
+  on the current bundle until Phase 2 wires the system in site-wide.
+
 ### Fixed
 
 - **CDC content accuracy pass (revamp Phase 0b).** Corrected several
