@@ -57,6 +57,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **IA cleanup: title-doubling, front-matter gaps, orphan pages (revamp
+  Phase 3).** Fixed doubled `<title>` tags on 13 pages whose front-matter
+  title already included " | CDC: The Missing Manual" (which `base.njk`
+  appends again) — tooling, strategy, use-cases, schema-evolution,
+  case-study, multi-tenancy, lab-kafka-debezium, tests, oracle-notes, and
+  the four quickstarts. Filled the required front-matter that was
+  missing: a `description` field plus dates on `/merge-cookbook/` and
+  `/troubleshooting/`, and `datePublished`/`dateModified` on
+  `/oracle-notes/`, `/tests/`, and `/troubleshooting/failure-drills/`.
+  Retired the orphaned "From Change Capture to CI" talk teaser (a 23-line
+  stub, not in the series, no inbound links) — it now redirects to
+  `/strategy/` and is out of the sitemap and RSS. Made the orphaned
+  `/oracle-notes/` page discoverable by linking it from the Oracle
+  quickstart. (Header-nav single-sourcing is deferred as a maintainability
+  refactor, not a user-facing bug.)
+
 - **Responsive polish + button-variant fix (revamp Phase 2d).** Fixed
   the mobile header overflowing the viewport (the injected search button
   plus the progress pill pushed content past 375px and clipped it): the
