@@ -1,10 +1,9 @@
 ---
 layout: base.njk
-title: "Fivetran CDC Pipeline Lab | CDC: The Missing Manual"
+title: "Fivetran CDC Pipeline Lab"
 description: "Learn to build fully managed CDC pipelines using Fivetran to replicate data from MySQL or PostgreSQL to Snowflake or BigQuery with zero infrastructure."
 canonicalPath: "/cloud-labs/fivetran/"
 ai-generated: true
-draft: true
 ---
 {% import "components/ui.njk" as ui %}
 
@@ -31,7 +30,7 @@ draft: true
       <strong>CDC Approaches in Fivetran:</strong>
     </p>
     <ol>
-      <li><strong>Log-based CDC:</strong> Reads MySQL binlog or Postgres WAL for real-time capture (sub-minute latency)</li>
+      <li><strong>Log-based CDC:</strong> Reads MySQL binlog or Postgres WAL for low-latency capture (~1&ndash;5 minutes depending on plan)</li>
       <li><strong>Incremental updates:</strong> Polls source using updated_at or similar column (minutes latency)</li>
       <li><strong>Full table refresh:</strong> Re-imports entire table (for sources without CDC or incremental columns)</li>
     </ol>
@@ -220,7 +219,7 @@ ALTER USER fivetran_user SET DEFAULT_ROLE = FIVETRAN_ROLE;</code></pre>
     <ul>
       <li><code>_fivetran_synced</code>: Timestamp when row was last synced to destination</li>
       <li><code>_fivetran_deleted</code>: Boolean flag for soft-deleted rows (true = deleted)</li>
-      <li><code>_fivetran_id</code>: Internal unique identifier (for deduplication)</li>
+      <li><code>_fivetran_id</code>: Internal unique identifier added only to tables that lack a primary key (used for deduplication)</li>
     </ul>
 
     <h3>Step 7: Trigger Initial Sync</h3>
@@ -228,7 +227,7 @@ ALTER USER fivetran_user SET DEFAULT_ROLE = FIVETRAN_ROLE;</code></pre>
       <li>Click <strong>Start Initial Sync</strong> button</li>
       <li>Fivetran performs full table load for all selected tables</li>
       <li>Monitor progress in the connector's <strong>Status</strong> tab</li>
-      <li>Initial sync time depends on table size (estimate: 1M rows ≈ 2-5 minutes)</li>
+      <li>Initial sync time depends on table size and varies widely with row width, network, and destination</li>
     </ol>
 
     <h4>What Happens During Initial Sync?</h4>
@@ -271,11 +270,11 @@ ALTER TABLE customers ADD COLUMN loyalty_tier VARCHAR(20);
 ALTER TABLE customers ALTER COLUMN age TYPE BIGINT;
 
 -- Fivetran behavior:
--- 1. Detects incompatible type change
--- 2. Creates NEW column: age__v2 BIGINT
--- 3. Retains old column: age INTEGER (for historical data)
--- 4. New syncs populate age__v2</code></pre>
-    <p><strong>Note:</strong> Non-destructive approach preserves historical data. You'll need to handle column migration in downstream queries.</p>
+-- 1. Detects the type change during the next sync
+-- 2. Alters the destination column to a wider, compatible type
+--    (e.g. age INTEGER -> age BIGINT) so existing and new values
+--    continue to land in the same column</code></pre>
+    <p><strong>Note:</strong> For a compatible widening (such as INTEGER &rarr; BIGINT), Fivetran adjusts the destination column type in place, so no downstream column migration is needed. For a change Fivetran cannot apply safely, review its <strong>Schema Changes</strong> log to see how the column was handled.</p>
 
     <h3>Column Rename</h3>
     <pre><code>-- In source PostgreSQL
@@ -493,9 +492,9 @@ SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
         Fivetran auto-converts types but may not preserve precision:
       </p>
       <ul>
-        <li><strong>PostgreSQL NUMERIC(38,10) → Snowflake NUMBER(38,6)</strong> (precision loss)</li>
+        <li><strong>PostgreSQL NUMERIC → Snowflake NUMBER</strong> (very high scale may be reduced)</li>
         <li><strong>PostgreSQL JSON → Snowflake VARIANT</strong> (requires parsing in queries)</li>
-        <li><strong>PostgreSQL TIMESTAMP → Snowflake TIMESTAMP_NTZ</strong> (loses timezone info)</li>
+        <li><strong>PostgreSQL TIMESTAMPTZ → Snowflake TIMESTAMP type</strong> (verify the destination type preserves the time-zone offset; plain <code>TIMESTAMP</code> without time zone carries no zone, so nothing is lost there)</li>
       </ul>
       <p><strong>Mitigation:</strong> Review data types in destination after initial sync. Add transformations if needed.</p>
     </div>
@@ -587,7 +586,13 @@ WHEN NOT MATCHED THEN INSERT *;</code></pre>
       <li>Dashboard → Usage → Review per-connector MAR</li>
       <li>Optimize by excluding high-churn log tables (e.g., audit_logs)</li>
     </ul>
-    <p><strong>Cost Example:</strong> 10M MAR/month ≈ $1.20-$2.00/MAR depending on plan.</p>
+    <p>
+      MAR is billed on a tiered, per-million-row basis, and the effective price
+      per row falls as monthly volume grows. Fivetran does not publish a single
+      flat per-row rate that applies to every account, so model your own usage
+      against current published rates: see
+      <a href="https://www.fivetran.com/pricing" target="_blank">Fivetran pricing</a>.
+    </p>
 
     <h3>6. Use dbt with Fivetran</h3>
     <p>Fivetran integrates natively with dbt Cloud for transformations:</p>
@@ -600,55 +605,33 @@ WHEN NOT MATCHED THEN INSERT *;</code></pre>
 
   <section class="box" id="cost">
     <h2>Cost Considerations</h2>
-    <p>Fivetran uses usage-based pricing (Monthly Active Rows - MAR):</p>
-    
-    <h3>Pricing Tiers</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Plan</th>
-          <th>MAR Included</th>
-          <th>Price/MAR (additional)</th>
-          <th>Annual Cost Estimate</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Starter</strong></td>
-          <td>500K</td>
-          <td>$1.00-1.50</td>
-          <td>$6,000-12,000</td>
-        </tr>
-        <tr>
-          <td><strong>Standard</strong></td>
-          <td>Custom</td>
-          <td>$1.50-2.00</td>
-          <td>$24,000-60,000</td>
-        </tr>
-        <tr>
-          <td><strong>Enterprise</strong></td>
-          <td>Custom</td>
-          <td>$1.00-1.50</td>
-          <td>$60,000-200,000+</td>
-        </tr>
-      </tbody>
-    </table>
+    <p>Fivetran uses usage-based pricing built on Monthly Active Rows (MAR):</p>
+
+    <h3>How MAR Pricing Works</h3>
+    <ul>
+      <li><strong>What counts:</strong> a MAR is any distinct row that is inserted, updated, or deleted at least once in a calendar month. A row is counted once per month no matter how many times it changes.</li>
+      <li><strong>Tiered and per-million:</strong> MAR is billed in tiers, priced per million rows rather than as a single flat per-row rate.</li>
+      <li><strong>Volume discounts:</strong> the effective price per row falls as monthly volume grows, so higher-volume accounts pay less per row.</li>
+      <li><strong>Plan-dependent:</strong> Fivetran's plans bundle different features and rate structures, and rates are often quote-based. Model your own usage against current published numbers rather than any figure hard-coded here.</li>
+    </ul>
+    <p>See <a href="https://www.fivetran.com/pricing" target="_blank">Fivetran pricing</a> for current tiers and rates.</p>
 
     <h3>MAR Calculation Example</h3>
     <pre><code>Scenario: E-commerce database
-- Customers table: 1M rows, 10K updates/day → 1.3M MAR/month
-- Orders table: 5M rows, 50K new/day → 6.5M MAR/month
-- Products table: 100K rows, 100 updates/day → 130K MAR/month
+- Customers table: 1M rows, 10K updates/day → ~1.3M MAR/month
+- Orders table: 5M rows, 50K new/day → ~6.5M MAR/month
+- Products table: 100K rows, 100 updates/day → ~130K MAR/month
 --------------------------------------------------------------------
-Total MAR/month: 7.93M
-Estimated cost: $11,895-15,860/month (Standard plan)</code></pre>
+Total MAR/month: ~7.93M
+Estimate cost by applying this MAR total to Fivetran's current
+published pricing tiers.</code></pre>
 
     <h3>Cost Optimization Tips</h3>
     <ul>
       <li>Exclude high-churn, low-value tables (e.g., session logs, click streams)</li>
       <li>Use longer sync intervals for slowly changing data (hourly vs. 5-min)</li>
       <li>Archive old data in source before initial sync (e.g., > 2 years old)</li>
-      <li>Negotiate volume discounts for > 50M MAR/month</li>
+      <li>Negotiate volume discounts for high-volume (tens-of-millions of MAR) workloads</li>
     </ul>
   </section>
 
@@ -690,7 +673,7 @@ Estimated cost: $11,895-15,860/month (Standard plan)</code></pre>
         </tr>
         <tr>
           <td><strong>Latency</strong></td>
-          <td>1-5 minutes (log-based)</td>
+          <td>~1&ndash;5 minutes (log-based, depending on plan)</td>
           <td>Seconds</td>
           <td>Sub-second</td>
         </tr>

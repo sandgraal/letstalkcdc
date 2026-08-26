@@ -1,10 +1,9 @@
 ---
 layout: base.njk
-title: "Snowflake CDC with Kafka Connect Lab | CDC: The Missing Manual"
+title: "Snowflake CDC with Kafka Connect Lab"
 description: "Learn to stream CDC data into Snowflake using Kafka Connect and Snowpipe for real-time data warehousing."
 canonicalPath: "/cloud-labs/snowflake-cdc/"
 ai-generated: true
-draft: true
 ---
 {% import "components/ui.njk" as ui %}
 
@@ -136,16 +135,41 @@ cat rsa_key.pub | grep -v "BEGIN PUBLIC" | grep -v "END PUBLIC" | tr -d '\n'
 ALTER USER kafka_connector_user SET RSA_PUBLIC_KEY='MIIBIjANBg...';</code></pre>
 
     <h3>Step 3: Install Snowflake Kafka Connector</h3>
-    <pre><code># Download latest connector from Snowflake
-wget https://repo1.maven.org/maven2/com/snowflake/snowflake-kafka-connector/1.9.3/snowflake-kafka-connector-1.9.3.jar
+    <p>
+      Use the <strong>2.x</strong> line. The 1.9.x releases (circa 2022) are
+      superseded and predate Snowpipe Streaming.
+    </p>
+    <pre><code># Download the current 2.x connector from Snowflake
+wget https://repo1.maven.org/maven2/com/snowflake/snowflake-kafka-connector/2.5.0/snowflake-kafka-connector-2.5.0.jar
 
 # Copy to Kafka Connect plugins directory
 mkdir -p /opt/kafka/plugins/snowflake-connector
-cp snowflake-kafka-connector-1.9.3.jar /opt/kafka/plugins/snowflake-connector/
+cp snowflake-kafka-connector-2.5.0.jar /opt/kafka/plugins/snowflake-connector/
 
 # Restart Kafka Connect to load plugin
 docker-compose restart connect
 # Or: systemctl restart kafka-connect</code></pre>
+    <div class="callout callout-info">
+      <h4>Snowpipe Streaming (2.x)</h4>
+      <p>
+        The 2.x connector supports <strong>Snowpipe Streaming</strong> via
+        <code>snowflake.ingestion.method=SNOWPIPE_STREAMING</code>. Instead of
+        buffering records into internal-stage files and landing them as a
+        two-column VARIANT batch (<code>RECORD_CONTENT</code> /
+        <code>RECORD_METADATA</code>), it streams rows into the table in
+        near-real-time — lower latency and no per-file COPY overhead.
+      </p>
+      <p>
+        Combined with <strong>schematization</strong>
+        (<code>snowflake.enable.schematization=true</code>), rows land as
+        <em>typed columns</em> parsed from the record schema rather than the
+        legacy VARIANT model shown in the steps below. If you enable either,
+        the <code>RECORD_CONTENT</code>/<code>RECORD_METADATA</code> queries
+        that follow no longer apply — query the typed columns directly, and
+        dedup on the streamed offset/partition metadata instead of
+        <code>ts_ms</code>.
+      </p>
+    </div>
 
     <h3>Step 4: Configure Snowflake Sink Connector</h3>
     <p>Create <code>snowflake-sink-config.json</code>:</p>
@@ -204,10 +228,16 @@ SHOW TABLES;
 -- Query data from customers table
 SELECT * FROM CUSTOMERS LIMIT 10;
 
--- Check metadata columns
-SELECT 
-  RECORD_METADATA$FILENAME as source_file,
-  RECORD_METADATA$FILE_ROW_NUMBER as row_number,
+-- Check metadata columns.
+-- The Kafka connector lands RECORD_METADATA as a VARIANT — access sub-fields
+-- with the ':' path operator, NOT the '$' pseudo-columns (RECORD_METADATA$...).
+-- ($FILENAME / $FILE_ROW_NUMBER are Snowpipe COPY file metadata and do not
+--  exist on the Kafka-connector path.)
+SELECT
+  RECORD_METADATA:topic::STRING      as topic,
+  RECORD_METADATA:partition::INT     as kafka_partition,
+  RECORD_METADATA:offset::BIGINT     as kafka_offset,
+  RECORD_METADATA:CreateTime::BIGINT as create_time_ms,
   RECORD_CONTENT
 FROM CUSTOMERS;
 
@@ -286,13 +316,20 @@ LIST @s3_cdc_stage;</code></pre>
 );</code></pre>
 
     <h3>Step 4: Create Snowpipe</h3>
+    <p>
+      Single-pipe path: leave <code>AUTO_INGEST = TRUE</code> and let Snowflake
+      provision its own SQS queue for the pipe. You wire S3 directly to that
+      queue in Step 5 (no SNS topic in between). Do <strong>not</strong> also
+      set <code>AWS_SNS_TOPIC</code> — that is the SNS fan-out pattern (one
+      topic notifying many pipes) and it will not fire if S3 is pointed at the
+      pipe's SQS queue instead.
+    </p>
     <pre><code>CREATE PIPE customers_cdc_pipe
   AUTO_INGEST = TRUE
-  AWS_SNS_TOPIC = 'arn:aws:sns:us-east-1:123456789012:s3-cdc-notifications'
 AS
 COPY INTO customers_cdc (id, name, email, created_at, cdc_operation, cdc_timestamp, source_file)
 FROM (
-  SELECT 
+  SELECT
     $1:id::INTEGER,
     $1:name::STRING,
     $1:email::STRING,
@@ -305,18 +342,53 @@ FROM (
 FILE_FORMAT = (TYPE = 'PARQUET')
 ON_ERROR = 'CONTINUE';
 
--- Get notification channel ARN for S3 event configuration
+-- Get the pipe's own SQS notification channel for the S3 event config (Step 5).
+-- Copy the notification_channel ARN from this output into s3-notification.json.
 SHOW PIPES;
 SELECT SYSTEM$PIPE_STATUS('customers_cdc_pipe');</code></pre>
+    <div class="callout callout-warning">
+      <h4>Caveat: <code>ON_ERROR = 'CONTINUE'</code> silently drops bad rows</h4>
+      <p>
+        <strong>Issue:</strong> <code>CONTINUE</code> skips malformed records
+        and keeps loading — the pipe never fails, so rejected rows vanish with
+        no error surfaced. That is silent <strong>data loss</strong>. The Kafka
+        path routes rejects to a dead-letter queue
+        (<code>errors.deadletterqueue.topic.name</code>); Snowpipe has no
+        built-in DLQ, so you must actively check for skipped rows.
+      </p>
+      <p>
+        <strong>Solution:</strong> audit every load and alert when any row is
+        skipped:
+      </p>
+      <pre><code>-- Rows Snowpipe skipped under ON_ERROR = 'CONTINUE'
+SELECT FILE_NAME, ROW_COUNT, ERROR_COUNT, FIRST_ERROR_MESSAGE, LAST_LOAD_TIME
+FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(
+  TABLE_NAME  => 'CUSTOMERS_CDC',
+  START_TIME  => DATEADD(hour, -24, CURRENT_TIMESTAMP())
+))
+WHERE ERROR_COUNT > 0
+ORDER BY LAST_LOAD_TIME DESC;</code></pre>
+      <p>
+        For stricter delivery use <code>ON_ERROR = 'SKIP_FILE'</code>
+        (quarantine the whole file for reprocessing) or validate upstream so a
+        rejected row is never discarded unnoticed.
+      </p>
+    </div>
 
     <h3>Step 5: Configure S3 Event Notifications</h3>
-    <p>Set up S3 to notify Snowpipe when new files arrive:</p>
+    <p>
+      Point S3 straight at the pipe's own SQS queue. The
+      <code>QueueArn</code> below is the <code>notification_channel</code> value
+      from <code>SHOW PIPES</code> in Step 4 — S3 → SQS → Snowpipe, one hop, no
+      SNS topic.
+    </p>
     <pre><code># AWS CLI: Configure S3 bucket notification
 aws s3api put-bucket-notification-configuration \
   --bucket my-cdc-bucket \
   --notification-configuration file://s3-notification.json
 
 # s3-notification.json
+# QueueArn = the pipe's notification_channel (from SHOW PIPES, Step 4)
 {
   "QueueConfigurations": [
     {
@@ -362,6 +434,28 @@ SELECT * FROM customers_cdc ORDER BY load_timestamp DESC LIMIT 10;</code></pre>
     <p>
       Raw CDC events contain operations (INSERT, UPDATE, DELETE). To build a current state table, apply MERGE logic:
     </p>
+    <div class="callout callout-warning">
+      <h4>At-least-once delivery → dedup by log position, never <code>ts_ms</code></h4>
+      <p>
+        The Kafka → Snowflake sink is <strong>at-least-once</strong>: after a
+        retry, connector restart, or offset rewind, the same change event can
+        land in the VARIANT table more than once, so the raw table can hold
+        <strong>duplicate offsets</strong> for a key. The MERGE below is what
+        makes ingestion <em>effectively-once</em> — but only if it collapses
+        duplicates by <strong>log position</strong>
+        (the Kafka <code>partition</code>/<code>offset</code>, or the Debezium
+        <code>source</code> LSN/SCN/file+pos), <strong>not</strong> by
+        <code>ts_ms</code>.
+      </p>
+      <p>
+        Ordering "latest wins" by <code>ts_ms</code> is the anti-pattern: two
+        events for one key can share a millisecond, and a snapshot event's
+        <code>ts_ms</code> does not reflect commit order — so a time-based
+        <code>ORDER BY</code> picks the wrong winner and can resurrect stale or
+        already-deleted rows. Log position is the physical, monotonic order the
+        events actually committed in.
+      </p>
+    </div>
     <pre><code>-- Create current state table
 CREATE TABLE customers_current (
   id INTEGER PRIMARY KEY,
@@ -371,18 +465,32 @@ CREATE TABLE customers_current (
   updated_at TIMESTAMP
 );
 
--- Merge CDC events (run periodically or via task)
+-- Merge CDC events (run periodically or via task).
+-- Dedup ("latest wins") MUST order by log position, never by ts_ms.
 MERGE INTO customers_current AS target
 USING (
-  SELECT 
+  SELECT
     RECORD_CONTENT:payload:after:id::INT as id,
     RECORD_CONTENT:payload:after:name::STRING as name,
     RECORD_CONTENT:payload:after:email::STRING as email,
     RECORD_CONTENT:payload:after:created_at::TIMESTAMP as created_at,
-    RECORD_CONTENT:payload:ts_ms::TIMESTAMP as updated_at,
+    RECORD_CONTENT:payload:ts_ms::TIMESTAMP as updated_at, -- kept as a metric, NOT for ordering
     RECORD_CONTENT:payload:op::STRING as op
   FROM CUSTOMERS
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1
+  -- Last write wins by Kafka (partition, offset) — the physical log order.
+  -- For a key routed to one partition, offset alone is monotonic; include
+  -- partition so the order is well-defined regardless of partitioning.
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY id
+    ORDER BY RECORD_METADATA:partition::INT DESC,
+             RECORD_METADATA:offset::BIGINT   DESC
+  ) = 1
+  -- Debezium alternative — order by the source commit position instead of the
+  -- Kafka offset (equivalent, and survives a topic re-key/replay):
+  --   Postgres: RECORD_CONTENT:payload:source:lsn::BIGINT
+  --   MySQL:    RECORD_CONTENT:payload:source:file::STRING,
+  --             RECORD_CONTENT:payload:source:pos::BIGINT
+  --   Oracle:   RECORD_CONTENT:payload:source:scn::BIGINT
 ) AS source
 ON target.id = source.id
 WHEN MATCHED AND source.op = 'd' THEN DELETE
@@ -404,10 +512,32 @@ CREATE TASK materialize_customers_cdc
 AS
 MERGE INTO customers_current AS target
 USING (
-  -- Same MERGE logic as above
+  -- Same MERGE logic as above — dedup by LOG POSITION, never ts_ms.
+  SELECT
+    RECORD_CONTENT:payload:after:id::INT as id,
+    RECORD_CONTENT:payload:after:name::STRING as name,
+    RECORD_CONTENT:payload:after:email::STRING as email,
+    RECORD_CONTENT:payload:after:created_at::TIMESTAMP as created_at,
+    RECORD_CONTENT:payload:ts_ms::TIMESTAMP as updated_at, -- metric only
+    RECORD_CONTENT:payload:op::STRING as op
+  FROM CUSTOMERS
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY id
+    ORDER BY RECORD_METADATA:partition::INT DESC,
+             RECORD_METADATA:offset::BIGINT   DESC
+  ) = 1
 ) AS source
 ON target.id = source.id
-...;
+WHEN MATCHED AND source.op = 'd' THEN DELETE
+WHEN MATCHED THEN UPDATE SET
+  target.name = source.name,
+  target.email = source.email,
+  target.updated_at = source.updated_at
+WHEN NOT MATCHED AND source.op != 'd' THEN INSERT (
+  id, name, email, created_at, updated_at
+) VALUES (
+  source.id, source.name, source.email, source.created_at, source.updated_at
+);
 
 -- Enable task
 ALTER TASK materialize_customers_cdc RESUME;

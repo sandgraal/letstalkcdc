@@ -1,10 +1,9 @@
 ---
 layout: base.njk
-title: "Oracle GoldenGate CDC Lab | CDC: The Missing Manual"
+title: "Oracle GoldenGate CDC Lab"
 description: "Step-by-step guide to implementing enterprise CDC with Oracle GoldenGate. Learn extract, replicat, trail files, conflict resolution, and bidirectional replication."
 canonicalPath: "/cloud-labs/goldengate/"
 ai-generated: true
-draft: true
 ---
 {% import "components/ui.njk" as ui %}
 
@@ -14,13 +13,13 @@ draft: true
   <section class="box" id="overview">
     <h2>Overview</h2>
     <p>
-      Oracle GoldenGate (OGG) is an enterprise-grade, real-time data integration and replication platform that has been the gold standard for mission-critical CDC workloads for over two decades. Unlike open-source solutions, GoldenGate provides guaranteed delivery, active-active replication, and sophisticated conflict detection and resolution.
+      Oracle GoldenGate (OGG) is an enterprise-grade, real-time data integration and replication platform that has been the gold standard for mission-critical CDC workloads for over two decades. Unlike open-source solutions, GoldenGate provides durable, checkpoint-based delivery with effectively-once apply, active-active replication, and sophisticated conflict detection and resolution. (As with all CDC tooling, the wire delivery is fundamentally <em>at-least-once</em>; correctness comes from idempotent apply on the target, not from any end-to-end exactly-once guarantee across systems.)
     </p>
     <p>
       <strong>Key differences from Debezium and AWS DMS:</strong>
     </p>
     <ul>
-      <li><strong>Guaranteed Delivery:</strong> Transaction integrity with exactly-once semantics across complex topologies</li>
+      <li><strong>Effectively-Once Apply:</strong> At-least-once delivery with checkpoint-based, effectively-once apply (idempotent upsert on the primary key, ordered by log position) — not end-to-end exactly-once across systems</li>
       <li><strong>Bidirectional Replication:</strong> Active-active configurations with automatic conflict detection and resolution</li>
       <li><strong>Heterogeneous Support:</strong> Replicate between different database platforms (Oracle to PostgreSQL, MySQL to SQL Server, etc.)</li>
       <li><strong>Trail File Architecture:</strong> Persistent, replayable change logs for disaster recovery and data auditing</li>
@@ -29,7 +28,7 @@ draft: true
       <li><strong>Commercial Support:</strong> 24/7 Oracle support with SLAs and consulting services</li>
     </ul>
     <p>
-      <strong>Trade-offs:</strong> GoldenGate requires commercial licensing (starting at $17,500 per processor), has a steeper learning curve with proprietary configuration syntax, and typically requires dedicated infrastructure and DBA expertise.
+      <strong>Trade-offs:</strong> GoldenGate requires commercial licensing (five-figures-per-processor list pricing; verify against the current Oracle price list), has a steeper learning curve with proprietary configuration syntax, and typically requires dedicated infrastructure and DBA expertise.
     </p>
   </section>
 
@@ -47,7 +46,7 @@ draft: true
     <div class="callout callout-info">
       <h4>💡 Free Testing Options</h4>
       <p>
-        <strong>Option 1:</strong> Oracle GoldenGate Free edition (limited to Oracle Database XE, max 4GB database size)<br>
+        <strong>Option 1:</strong> Oracle GoldenGate Free: up to 5 GB per database, non-production (not restricted to XE)<br>
         <strong>Option 2:</strong> Oracle Cloud Free Tier includes GoldenGate service for 30 days<br>
         <strong>Option 3:</strong> Download GoldenGate trial from Oracle Technology Network (OTN) - 30 days evaluation
       </p>
@@ -120,6 +119,12 @@ draft: true
     <p>
       Download GoldenGate from Oracle Technology Network or Oracle Cloud. This example uses Oracle GoldenGate 21c for Oracle Database.
     </p>
+    <div class="callout callout-warning">
+      <h4>⚠️ Legacy path: Classic Architecture (GGSCI)</h4>
+      <p>
+        The <code>fbo_ggs</code> shiphome + <code>GGSCI</code> + <code>CREATE SUBDIRS</code> + <code>ADD EXTRACT</code> flow below is the <strong>Classic Architecture</strong>, which is deprecated in 21c and <strong>removed in GoldenGate 23ai</strong> — the current release. 23ai ships <strong>Microservices Architecture (MA)</strong> only, configured through the web-based Admin Client / REST services rather than GGSCI. Follow the steps below only if you are targeting a legacy 21c Classic deployment; <strong>new deployments should use Microservices Architecture on 23ai</strong>.
+      </p>
+    </div>
     <pre><code># Extract GoldenGate binaries
 unzip 211000_fbo_ggs_Linux_x64_Oracle_shiphome.zip
 cd fbo_ggs_Linux_x64_Oracle_shiphome/Disk1
@@ -131,7 +136,7 @@ cd fbo_ggs_Linux_x64_Oracle_shiphome/Disk1
 ./runInstaller -silent \
   -responseFile /path/to/oggcore.rsp \
   ORACLE_HOME=/u01/app/oracle/product/21.0.0/oggcore \
-  INSTALL_OPTION=ORA19c
+  INSTALL_OPTION=ORA21c
 
 # Set environment variables
 export OGG_HOME=/u01/app/oracle/product/21.0.0/oggcore
@@ -207,6 +212,9 @@ GRANT ALTER ANY TABLE TO ggadmin;
 GRANT LOCK ANY TABLE TO ggadmin;
 
 -- For Oracle 12c+ with PDBs, grant across CDB
+-- NOTE: GRANT DBA is heavy-handed. The documented approach is to grant the
+-- least-privilege GoldenGate admin role via DBMS_GOLDENGATE_AUTH, e.g.:
+--   EXEC DBMS_GOLDENGATE_AUTH.GRANT_ADMIN_PRIVILEGE('ggadmin', container => 'ALL');
 GRANT DBA TO ggadmin CONTAINER=ALL;
 
 -- Enable supplemental logging for specific schemas/tables
@@ -339,6 +347,13 @@ MAP hr.employees, TARGET hr.employees, &
 
 MAP hr.departments, TARGET hr.departments;
 MAP hr.job_history, TARGET hr.job_history;</code></pre>
+
+    <div class="callout callout-warning">
+      <h4>⚠️ <code>REPERROR (DEFAULT, DISCARD)</code> silently drops errored rows</h4>
+      <p>
+        <code>REPERROR (DEFAULT, DISCARD)</code> sends any row that errors on apply to the discard file and keeps going. That is convenient in a lab, but it means failed changes are silently skipped — the target is no longer a faithful copy of the source, which is incompatible with any "guaranteed delivery" claim. In production, route errors to an exception table (<code>EXCEPTIONSONLY</code> / an exceptions <code>MAP</code>) and monitor the discard file, so nothing is dropped without a record and a path to reconcile it.
+      </p>
+    </div>
 
     <pre><code>./ggsci
 
@@ -552,6 +567,9 @@ RESOLVECONFLICT (UPDATEROWEXISTS, (DEFAULT, USEMAX(updated_at)))
 RESOLVECONFLICT (INSERTROWEXISTS, (DEFAULT, OVERWRITE))
 RESOLVECONFLICT (DELETEROWMISSING, (DEFAULT, IGNORE))
 MAP hr.employees, TARGET hr.employees;</code></pre>
+      <p>
+        <strong>Caveat:</strong> <code>USEMAX(updated_at)</code> is wall-clock last-writer-wins — it keeps whichever row carries the higher timestamp. That is subject to clock skew between nodes, so a laggy or misaligned clock can let a stale write win. This site's guidance is to order changes by <strong>log position / SCN</strong>, not by a wall-clock timestamp; treat timestamp-based resolution as a pragmatic tie-break for active-active only, and keep clocks tightly synchronized (e.g. NTP) if you rely on it.
+      </p>
     </div>
 
     <div class="callout callout-info">
@@ -675,12 +693,12 @@ https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/<deployment-id><
 
   <section class="box" id="cost">
     <h2>Cost Considerations</h2>
-    <p>Oracle GoldenGate pricing:</p>
+    <p>Oracle GoldenGate pricing (indicative only — verify against the current <a href="https://www.oracle.com/corporate/pricing/technology-price-list.pdf">Oracle Technology Global Price List</a>, which changes over time):</p>
     <ul>
-      <li><strong>On-Premises License:</strong> $17,500 per processor (perpetual) + 22% annual support (~$3,850/year per processor)</li>
-      <li><strong>Named User Plus:</strong> $350 per named user (minimum 25 users per processor)</li>
-      <li><strong>Oracle Cloud (OCI):</strong> $0.50-1.00 per OCPU-hour (~$365-730/month for 1 OCPU)</li>
-      <li><strong>GoldenGate Free Edition:</strong> Free (limited to Oracle XE, non-production use)</li>
+      <li><strong>On-Premises License:</strong> perpetual, roughly five-figures-per-processor list price plus ~22% annual support; confirm current figures against the Oracle price list</li>
+      <li><strong>Named User Plus:</strong> per-named-user list price with a per-processor minimum user count; confirm current figures against the Oracle price list</li>
+      <li><strong>Oracle Cloud (OCI):</strong> consumption-based per-OCPU-hour billing; confirm the current OCI GoldenGate rate</li>
+      <li><strong>GoldenGate Free:</strong> free, up to 5 GB per database, non-production use (not restricted to Oracle XE)</li>
     </ul>
     <p>
       <strong>Infrastructure Costs:</strong>
@@ -751,15 +769,15 @@ https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/<deployment-id><
           <td>Medium (SMTs in Kafka Connect)</td>
         </tr>
         <tr>
-          <td><strong>Guaranteed Delivery</strong></td>
-          <td>Yes (exactly-once with trail files)</td>
+          <td><strong>Delivery Semantics</strong></td>
+          <td>At-least-once delivery; effectively-once apply via checkpoints + PK</td>
           <td>At-least-once</td>
           <td>At-least-once (Kafka guarantees)</td>
         </tr>
         <tr>
           <td><strong>Licensing</strong></td>
-          <td>Commercial ($17,500+ per processor)</td>
-          <td>Pay-per-use (~$26-500+/mo)</td>
+          <td>Commercial (five-figures-per-processor list pricing; verify current list)</td>
+          <td>Pay-per-use (verify current AWS DMS pricing)</td>
           <td>Open source (Apache 2.0)</td>
         </tr>
         <tr>
@@ -775,7 +793,7 @@ https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/<deployment-id><
     <ul>
       <li>✅ You have existing Oracle licenses or Oracle Cloud subscription</li>
       <li>✅ Need active-active (bidirectional) replication with conflict resolution</li>
-      <li>✅ Require guaranteed exactly-once delivery across complex multi-tier topologies</li>
+      <li>✅ Require durable delivery with effectively-once apply across complex multi-tier topologies</li>
       <li>✅ Zero-downtime database migrations or version upgrades are critical</li>
       <li>✅ Heterogeneous replication between different database vendors</li>
       <li>✅ Enterprise support with SLAs is required</li>

@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "Cloud CDC Labs | CDC: The Missing Manual"
+title: "Cloud CDC Labs"
 description: "Hands-on labs for implementing CDC with cloud-native and commercial CDC platforms."
 canonicalPath: "/cloud-labs/"
 ai-generated: true
@@ -13,6 +13,14 @@ ai-generated: true
   <section class="intro-section">
     <p class="text-xl">
       Learn how to implement CDC pipelines using cloud-native and commercial platforms. These labs complement the open-source Debezium-focused labs with managed service alternatives.
+    </p>
+    <p class="muted">
+      These managed-platform labs were AI-drafted and then reviewed for CDC
+      accuracy against this site's standards — delivery is <strong>at-least-once</strong>
+      and correctness comes from <strong>idempotent sinks</strong> (upsert on the
+      primary key, ordered by log position, not <code>ts_ms</code>). Vendor
+      commands, versions, and pricing change often; verify against current
+      vendor docs before any production use.
     </p>
   </section>
 
@@ -106,11 +114,11 @@ ai-generated: true
       <div>
         <h2>Oracle GoldenGate</h2>
         <p>
-          Enterprise-grade CDC with bidirectional replication, guaranteed delivery, and conflict resolution. Supports heterogeneous replication across Oracle, MySQL, PostgreSQL, and SQL Server.
+          Enterprise-grade CDC with bidirectional replication, durable checkpoint-based delivery, and conflict resolution. Supports heterogeneous replication across Oracle, MySQL, PostgreSQL, and SQL Server.
         </p>
         <ul class="card-features">
           <li>✓ Active-active replication</li>
-          <li>✓ Guaranteed delivery</li>
+          <li>✓ Durable, checkpointed delivery</li>
           <li>✓ Heterogeneous databases</li>
         </ul>
       </div>
@@ -118,6 +126,7 @@ ai-generated: true
         <path d="M12 2v20M2 12h20"/>
         <circle cx="12" cy="12" r="9"/>
         <path d="M12 6v12M6 12h12"/>
+      </svg>
     </a>
     {% endif %}
 
@@ -158,6 +167,12 @@ ai-generated: true
 
   <section class="comparison-section">
     <h2>Choosing the Right Platform</h2>
+    <p class="muted">
+      Rough order-of-magnitude guidance, not benchmarks — latency, cost, and
+      setup time vary widely with data volume, region, and configuration.
+      Treat these as starting points and confirm against current vendor
+      pricing and docs.
+    </p>
     <table class="comparison-table">
       <thead>
         <tr>
@@ -289,9 +304,13 @@ ai-generated: true
         <ul>
           <li>Have Oracle Database licenses or OCI subscription</li>
           <li>Need bidirectional (active-active) replication</li>
-          <li>Require guaranteed delivery and conflict resolution</li>
+          <li>Require durable delivery and conflict resolution</li>
           <li>Zero-downtime migrations are critical</li>
           <li>Heterogeneous replication (Oracle↔MySQL↔PostgreSQL)</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
         <h3>Choose Fivetran if you:</h3>
         <ul>
           <li>Want zero infrastructure management</li>
