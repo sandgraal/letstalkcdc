@@ -18,6 +18,10 @@
 # canonical loopback would otherwise 404. Remove after the next deploy.
 ^https://sandgraal\.github\.io/letstalkcdc/cloud-labs/
 
+# New (Phase 4b): /compare/ vendor hub. Same canonical-loopback — the page's
+# own production URL doesn't exist until this PR deploys. Remove after deploy.
+^https://sandgraal\.github\.io/letstalkcdc/compare/$
+
 # Placeholder Snowflake account URL used in the Snowflake/Matillion lab
 # examples — readers substitute their own account locator.
 ^https://myaccount\.snowflakecomputing\.com

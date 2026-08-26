@@ -1,7 +1,3 @@
-const { getPathPrefix } = require("../../lib/path-prefix.mjs");
-
-const pathPrefix = getPathPrefix().replace(/\/$/, ""); // Remove trailing slash
-
 module.exports = {
   datePublished: "2026-08-25",
   dateModified: "2026-08-25",
@@ -16,5 +12,7 @@ module.exports = {
       { href: "#decide", label: "Decision guide", variant: "ghost" },
     ],
   },
-  head_extra: `<link rel="stylesheet" href="${pathPrefix}/assets/css/pages/compare.css">`,
+  // `renderHeadExtra` expands `{{ '/…' | url }}` with the path prefix — the
+  // established pattern (see src/intro/index.njk); no custom prefix code here.
+  head_extra: `<link rel="stylesheet" href="{{ '/assets/css/pages/compare.css' | url }}">`,
 };
