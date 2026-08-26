@@ -99,6 +99,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Revamp wrap-up: durable record synced (revamp Phase 5).**
+  `docs/IMPLEMENTATION-PLAN.md` gains a "Design revamp — August 2026"
+  index of the arc (Phases 0–4, PRs #303–#311) and ticks the items the
+  revamp closed in place: Phase 9's `/compare/` hub and all three Phase
+  10 interactive-demo items. The newsletter (revamp Phase 4d) is the one
+  deferred item, marked blocked on a provider choice. Also corrected the
+  stale `src/assets/css/` file-tree in `CLAUDE.md` — `auth.css` was
+  removed in the deprecated-auth cleanup (`5ed92fb`) and no longer
+  exists. Docs-only; no build or CSS impact.
 - **Design foundation: dark-first palette + self-hosted IBM Plex,
   site-wide (revamp Phase 2a).** `01-variables.css` now carries the new
   token values — a cyan-azure accent, blue-ink neutrals, and the CDC

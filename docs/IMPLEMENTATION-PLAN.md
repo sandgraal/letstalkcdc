@@ -8,6 +8,40 @@ For a dated snapshot of where the project is overall — five expert-lens
 sections, a PR queue, and an outstanding-items table — see
 [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md).
 
+## Design revamp — August 2026 (shipped)
+
+A ground-up, dark-first design revitalization landed as a reviewable PR
+sequence in August 2026. It rebuilt the visual layer on top of the
+existing Eleventy + Vite + PostCSS stack (content and working JS
+preserved) and closed the net-new-feature backlog. Where its work maps
+onto the numbered phases below, those items are ticked in place; this is
+the index of the arc:
+
+- **Phase 0 — Stabilize & correct.** JS/build hygiene (dual-search
+  resolved, dead `web-vitals-dashboard.js` + stray `console.log`s
+  removed, Mermaid unified/self-hosted, `scripts/` passthrough
+  narrowed) and a sweep of CDC-accuracy fixes (`connect-offsets`,
+  compat-direction, outbox/MERGE wording, LSN tie-break on ordering,
+  connector-builder `plugin.name: pgoutput` + MySQL history topics,
+  tool-version refresh).
+- **Phase 1 — New design system** (PR #303): fresh dark-first token
+  layer + self-hosted IBM Plex + a noindex `/styleguide/` living
+  component reference.
+- **Phase 2 — Rollout** (PRs #304–#307): palette/fonts site-wide,
+  scorecard + progress-toast rendered natively, chrome polish +
+  cyan harmonization + legacy-token retirement, responsive polish +
+  button-variant legibility. CSS byte-check re-baselined (hash in
+  [`../CLAUDE.md`](../CLAUDE.md)).
+- **Phase 3 — Information architecture** (PR #311): title-doubling
+  stripped, missing front-matter filled, orphan pages resolved.
+- **Phase 4 — Net-new content:** 5 cloud labs published with SME
+  corrections (PR #308, closes the `/cloud-labs/` placeholder),
+  `/compare/` hub (PR #309, Phase 9 below), interactive change-event
+  visualizer on `/intro/` (PR #310, Phase 10 below). **4d newsletter
+  is the one deferred item** — see Phase 9, pending a provider choice.
+
+---
+
 ## How to use this doc
 
 - **Agents:** when you complete an item, change `- [ ]` to `- [x]` **in
@@ -547,11 +581,19 @@ Tier-1 competitor gap: no head-to-head comparison content (Estuary,
 Airbyte, Fivetran rank for these queries), no glossary as a
 first-class page, no RSS, no email capture.
 
-- [ ] **`/compare/` hub.** Initial pages: Debezium vs AWS DMS,
-      Debezium vs Fivetran, Fivetran vs Airbyte for CDC,
-      self-host vs managed decision tree. Add a shared
-      comparison-table component under
-      `src/_includes/components/`.
+- [x] **`/compare/` hub shipped** (PR #309, revamp phase 4b).
+      Delivered as **one comprehensive comparison page** rather than
+      the pairwise pages originally sketched (maintainer call: a
+      single decision surface beats N thin vs-pages for SEO and for
+      the reader). `src/_data/cdcCompare.mjs` drives a 6-platform ×
+      9-dimension capability matrix (Debezium, AWS DMS, Fivetran,
+      Airbyte, GoldenGate, Snowflake) rendered by
+      `src/compare/index.njk` with `src/assets/css/pages/compare.css`;
+      the **delivery-semantics row is highlighted** so the site's
+      at-least-once + idempotent-sink thesis reads straight off the
+      grid. The reusable table lives inline in the page template; a
+      shared `components/` extraction was not needed for a single
+      caller.
 
 - [x] **Glossary shipped at `/glossary/`.** New
       `src/_data/glossary.mjs` holds 14 seed entries (log
@@ -597,6 +639,12 @@ first-class page, no RSS, no email capture.
       ConvertKit embed in the base layout footer + a dedicated
       `/newsletter/` page. Pick provider before building.
 
+  ⚠️ **Deferred (revamp phase 4d):** the only open item from the
+  August 2026 design revamp. Blocked on a maintainer decision —
+  which provider. Build is a ~1 PR job once chosen (accessible
+  email-capture component, footer + end-of-module, static-first,
+  no secrets in the repo). Everything else in the revamp shipped.
+
 - [x] **"Suggested next module" component — already shipped.**
       `src/_includes/components/series-nav.njk` (rendered by
       `base.njk:248-250` on every page where `seriesKey` is set)
@@ -615,27 +663,27 @@ Tier-1 gap: zero working interactive demos across the site. Confluent
 Developer, Debezium, Estuary, Materialize all have one — we have one
 inline `<svg>` across all module pages.
 
-- [ ] **Pick one and ship it.** Two candidates:
-  - Animated WAL → broker → sink simulator on `/intro/` (most
-    leverage; the `src/assets/css/pages/cdc-simulation.css`
-    scaffold suggests prior intent).
-  - Live Debezium-event-envelope decoder on `/debezium-decoder/`
-    (lowest scope).
-- [ ] Ship as a single ESM module under
-      `src/assets/js/pages/cdc-simulation.js` (or `…/event-decoder.js`),
-      no framework, canvas-based, respects
-      `prefers-reduced-motion`, lazy-loaded (no main-thread cost
-      on initial paint of `/intro/`).
-- [ ] **Fill the slots that previously held the two 404'd
-      YouTube embeds.** PR #270 already removed the broken embeds
-      (Gunnar Morling intro talk on `src/intro/index.njk`; Postgres
-      CDC tutorial on `src/quickstart/quickstart-postgres/index.njk`) —
-      so this isn't "replace existing embeds" anymore; it's
-      "decide what should be at those positions now that the pages
-      ship clean." Options: the demo above, curated working
-      third-party videos, an interactive snippet, or just leave
-      the prose denser. The currently-shipping `tooling`-page
-      YouTube embed (`QYbXDp4Vu-8`) is fine and unaffected.
+- [x] **Shipped: interactive change-event visualizer on `/intro/`**
+      (PR #310, revamp phase 4c). Chose the `/intro/`-page direction
+      (highest leverage). Rather than the WAL→broker→sink canvas
+      animation, it ships a **live insert / update / delete → change-
+      event visualizer**: the reader fires a row mutation and watches
+      the resulting Debezium-style JSON envelope build, with the
+      `op`, key, and `before`/`after` fields highlighted — teaching
+      the event _shape_ (the thing every later module builds on)
+      rather than just the plumbing.
+- [x] Shipped as a single framework-free ESM module,
+      `src/assets/js/pages/cdc-event-demo.js`, styled by
+      `src/assets/css/pages/intro.css`. Progressive-enhancement
+      (the page is complete without JS) and reduced-motion aware.
+      A11y hardened after review: the event-body `<pre>` carries
+      `tabindex="0"` so the scrollable region is keyboard-reachable
+      (caught by the axe e2e pass, which is stricter than pa11y).
+- [x] **Slots refilled.** The `/intro/` position that previously held
+      the 404'd Gunnar Morling embed now hosts the visualizer above.
+      The `quickstart-postgres` slot ships as denser prose (no demo
+      needed there). The `tooling`-page YouTube embed (`QYbXDp4Vu-8`)
+      remains fine and unaffected, as noted.
 
 ---
 
