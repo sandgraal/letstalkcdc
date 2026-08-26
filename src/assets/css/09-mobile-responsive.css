@@ -28,8 +28,8 @@
 
   /* Free header room on phones: the progress pill is available on
      /dashboard/, and the injected search button (`.search-btn`, not
-     `.search-trigger`) collapses to a magnifier icon so the row stops
-     overflowing past the viewport. The accessible name stays "Search". */
+     `.search-trigger`) is compacted (smaller padding/font, its "Search"
+     label kept) so the row stops overflowing past the viewport. */
   .header-progress {
     display: none;
   }

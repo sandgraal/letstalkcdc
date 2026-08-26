@@ -141,11 +141,11 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  /* Darker accent so white text passes WCAG AA. The default
-     --color-accent-primary (#3cc8f0) on white text is only 3.67:1;
-     --color-accent-hover (#22b3e0) is 5.2:1. */
-  background: var(--color-accent-hover, #22b3e0);
-  color: white;
+  /* Dark ink on the cyan accent: the accent is a light cyan, so white
+     text fails AA (~2.2:1). Dark-on-cyan matches the primary button and
+     clears AA in both themes. */
+  background: var(--color-accent-primary);
+  color: var(--color-text-inverse);
   border-radius: 50%;
   font-weight: 700;
   font-size: 0.875rem;
