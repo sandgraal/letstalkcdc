@@ -90,16 +90,19 @@ onReady(() => {
       before: before || null,
       after: after || null,
     };
-    // Pretty-print with op-coloured before/after so the diff reads at a glance.
+    // Pretty-print, then colourise. esc() escapes & < > but leaves quotes
+    // literal (safe inside text), so the regexes match real quotes. Colour the
+    // op value first, then the keys — every injected span both opens AND
+    // closes, so the HTML stays valid.
     const json = JSON.stringify(envelope, null, 2);
     eventEl.innerHTML = esc(json)
       .replace(
-        /(&quot;op&quot;: &quot;)(\w)/,
-        `$1<span class="ced-j-op ced-j-op--${op}">$2`,
+        /("op":\s*)"(\w)"/,
+        `$1<span class="ced-j-op ced-j-op--${op}">"$2"</span>`,
       )
       .replace(
-        /(&quot;(?:before|after|source|ts_ms|op|lsn|db|table)&quot;)/g,
-        '<span class="ced-j-key">$1</span>',
+        /"(op|ts_ms|source|before|after|db|table|lsn)"(\s*:)/g,
+        '<span class="ced-j-key">"$1"</span>$2',
       );
   };
 
