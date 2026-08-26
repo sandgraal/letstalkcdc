@@ -1,0 +1,210 @@
+/* =============================================================
+   /compare/ — CDC platform comparison hub (Phase 4b)
+   Page-scoped (linked via head_extra); uses the global --color-*
+   design tokens, so it adapts to the dark-first palette + both themes.
+   ============================================================= */
+
+/* Honesty note / callout */
+.compare-note {
+  border: 1px solid var(--color-border-default);
+  border-left: 3px solid var(--color-accent-primary);
+  background: var(--color-accent-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  margin: var(--space-xl) 0;
+}
+.compare-note p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.compare-note strong {
+  color: var(--color-text-primary);
+}
+.compare-note code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--color-accent-primary);
+}
+.compare-note--tight {
+  margin: var(--space-lg) 0 0;
+}
+
+/* Comparison matrix */
+.compare-matrix-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  margin: var(--space-lg) 0;
+}
+.compare-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  min-width: 720px;
+}
+.compare-matrix th,
+.compare-matrix td {
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: top;
+}
+.compare-matrix thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border-strong);
+  z-index: 1;
+}
+.compare-matrix thead th a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+.compare-matrix thead th a:hover {
+  text-decoration: underline;
+}
+.compare-matrix tbody th[scope="row"] {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--color-bg-secondary);
+}
+.compare-matrix tbody td {
+  color: var(--color-text-secondary);
+}
+.compare-matrix tr:last-child th,
+.compare-matrix tr:last-child td {
+  border-bottom: 0;
+}
+/* The delivery-semantics row is the whole point — call it out */
+.compare-matrix tr.is-highlight th[scope="row"] {
+  color: var(--color-accent-primary);
+}
+.compare-matrix tr.is-highlight td {
+  background: var(--color-accent-subtle);
+  color: var(--color-text-primary);
+}
+
+/* Platform cards */
+.compare-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0;
+}
+.compare-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  scroll-margin-top: calc(var(--header-height) + var(--space-lg));
+}
+.compare-card h3 {
+  margin: 0 0 var(--space-sm);
+  color: var(--color-text-primary);
+}
+.compare-card__best {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-md);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.compare-card__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+@media (max-width: 520px) {
+  .compare-card__cols {
+    grid-template-columns: 1fr;
+  }
+}
+.compare-card__col h4 {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--space-sm);
+  font-weight: 500;
+}
+.compare-card__col ul {
+  margin: 0;
+  padding-left: var(--space-md);
+}
+.compare-card__col li {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2xs);
+  line-height: 1.5;
+}
+
+/* Decision guide */
+.compare-decide {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-md) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.compare-decide li {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+.compare-decide strong {
+  color: var(--color-text-primary);
+}
+.compare-decide a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.compare-decide a:hover {
+  text-decoration: underline;
+}
+
+/* Related / go-deeper */
+.compare-related__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+.compare-related__card {
+  display: block;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  text-decoration: none;
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+.compare-related__card:hover {
+  border-color: var(--color-accent-primary);
+  transform: translateY(-2px);
+}
+.compare-related__card h3 {
+  margin: 0 0 var(--space-2xs);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+.compare-related__card p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
