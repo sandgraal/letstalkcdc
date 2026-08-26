@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rendered cyan-on-cyan (unreadable). They now use `background`
   (shorthand) to clear it, so outline/ghost/danger buttons are legible
   in both themes. `smoke:a11y` passes; CSS byte-check re-based to
-  `4f653676…`.
+  `4f53eb6c…`.
 
 - **Chrome polish + site-wide accent harmonization + token-debt fixes
   (revamp Phase 2c).** Fixed a batch of real CSS bugs the redesign
