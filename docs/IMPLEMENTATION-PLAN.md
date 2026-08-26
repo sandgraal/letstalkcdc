@@ -587,7 +587,7 @@ first-class page, no RSS, no email capture.
       single decision surface beats N thin vs-pages for SEO and for
       the reader). `src/_data/cdcCompare.mjs` drives a 6-platform ×
       9-dimension capability matrix (Debezium, AWS DMS, Fivetran,
-      Airbyte, GoldenGate, Snowflake) rendered by
+      Airbyte, GoldenGate, Qlik Replicate) rendered by
       `src/compare/index.njk` with `src/assets/css/pages/compare.css`;
       the **delivery-semantics row is highlighted** so the site's
       at-least-once + idempotent-sink thesis reads straight off the
