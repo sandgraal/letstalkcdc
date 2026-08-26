@@ -1,10 +1,9 @@
 ---
 layout: base.njk
-title: "AWS DMS CDC Pipeline Lab | CDC: The Missing Manual"
+title: "AWS DMS CDC Pipeline Lab"
 description: "Step-by-step guide to building a CDC pipeline using AWS DMS to replicate changes from RDS to S3 and Redshift with Terraform templates."
 canonicalPath: "/cloud-labs/aws-dms/"
 ai-generated: true
-draft: true
 ---
 {% import "components/ui.njk" as ui %}
 
@@ -67,6 +66,9 @@ draft: true
     <h3>Step 1: Prepare Source Database (RDS MySQL)</h3>
     <p>
       First, ensure your RDS MySQL instance has binary logging enabled. This is required for DMS to capture changes.
+    </p>
+    <p>
+      <strong>Setting <code>binlog_format=ROW</code> is not sufficient on its own.</strong> On RDS MySQL the binary log only exists when <strong>automated backups are enabled</strong> (backup retention period &gt; 0). With a retention of 0 there is no binlog for DMS to read, regardless of the <code>binlog_format</code> parameter — so enable automated backups on the instance before configuring the CDC task.
     </p>
     <pre><code># Check binlog status in MySQL
 SHOW VARIABLES LIKE 'log_bin';
@@ -232,17 +234,17 @@ resource "aws_s3_bucket_public_access_block" "cdc_target" {
 
     <h3>Step 4: Create DMS Replication Instance</h3>
     <p>
-      The replication instance is the compute resource that performs the actual data replication.
+      The replication instance is the compute resource that performs the actual data replication. Use the latest available DMS engine version — the <code>3.5.x</code> value shown below is illustrative and will age — and note that <strong>DMS Serverless</strong> is also an option if you'd rather not size and manage a provisioned instance.
     </p>
     <pre><code># AWS CLI: Create replication instance (t3.micro for testing)
 aws dms create-replication-instance \
   --replication-instance-identifier dms-cdc-instance \
   --replication-instance-class dms.t3.micro \
-  --engine-version 3.5.2 \
+  --engine-version 3.5.3 \
   --allocated-storage 20 \
   --vpc-security-group-ids sg-xxxxxxxxx \
   --replication-subnet-group-identifier default \
-  --publicly-accessible \
+  --no-publicly-accessible \
   --tags Key=Purpose,Value=CDC-Lab
 
 # Check status (takes 5-10 minutes to become available)
@@ -265,7 +267,7 @@ resource "aws_dms_replication_subnet_group" "main" {
 resource "aws_dms_replication_instance" "main" {
   replication_instance_id   = "dms-cdc-instance"
   replication_instance_class = "dms.t3.micro"
-  engine_version            = "3.5.2"
+  engine_version            = "3.5.3"
   allocated_storage         = 20
   
   vpc_security_group_ids = [aws_security_group.dms.id]
@@ -372,7 +374,7 @@ aws dms describe-connections \
 
     <h3>Step 7: Create DMS Replication Task</h3>
     <p>
-      The replication task defines what data to replicate and how. We'll use <strong>CDC mode</strong> to capture ongoing changes.
+      The replication task defines what data to replicate and how. We'll use <strong>full-load-and-cdc</strong> mode: DMS first records the current source log position (a start LSN/SCN), takes a full snapshot of the selected tables, then resumes streaming changes from that recorded position — so no committed change is missed in the handoff between the snapshot and ongoing CDC.
     </p>
     
     <p>Create a table mappings file (<code>table-mappings.json</code>):</p>
@@ -414,7 +416,7 @@ aws dms describe-connections \
   --source-endpoint-arn arn:aws:dms:region:account:endpoint:source-id \
   --target-endpoint-arn arn:aws:dms:region:account:endpoint:target-id \
   --replication-instance-arn arn:aws:dms:region:account:rep:instance-id \
-  --migration-type cdc \
+  --migration-type full-load-and-cdc \
   --table-mappings file://table-mappings.json \
   --replication-task-settings '{
     "Logging": {
@@ -438,7 +440,7 @@ aws dms describe-connections \
       <pre><code># dms-task.tf
 resource "aws_dms_replication_task" "main" {
   replication_task_id       = "cdc-task-mysql-to-s3"
-  migration_type            = "cdc"
+  migration_type            = "full-load-and-cdc"
   replication_instance_arn  = aws_dms_replication_instance.main.replication_instance_arn
   source_endpoint_arn       = aws_dms_endpoint.source.endpoint_arn
   target_endpoint_arn       = aws_dms_endpoint.target.endpoint_arn
@@ -497,7 +499,17 @@ aws logs tail /aws/dms/tasks/cdc-task-mysql-to-s3 --follow</code></pre>
 
   <section class="box" id="verify">
     <h2>Verification</h2>
-    
+
+    <div class="callout callout-warning">
+      <h4>⚠️ DMS delivery is at-least-once — dedupe downstream</h4>
+      <p>
+        DMS CDC delivery to S3 (and onward to Redshift) is <strong>at-least-once</strong>, not exactly-once. On a task restart or resume, DMS re-reads from the last checkpointed log position and can <strong>re-emit changes it already wrote</strong>, producing duplicate rows in S3/Redshift. This is expected behavior, not a bug.
+      </p>
+      <p>
+        Make the consumer idempotent: <strong>upsert on the primary key, ordered by the change's log position (the source binlog coordinate / LSN / SCN), not by <code>cdc_timestamp</code></strong>. The timestamp is coarse and can tie or move backwards across restarts; the log position is the only monotonic ordering of committed changes. End-to-end exactly-once across DMS and your warehouse is not achievable — correctness comes from an idempotent sink, not from the pipe.
+      </p>
+    </div>
+
     <h3>1. Insert Test Data</h3>
     <pre><code>-- Connect to source RDS MySQL
 mysql -h my-rds-instance.xxxx.rds.amazonaws.com -u admin -p
@@ -630,7 +642,9 @@ aws cloudwatch get-metric-statistics \
 
   <section class="box" id="cost">
     <h2>Cost Considerations</h2>
-    <p>AWS DMS pricing includes:</p>
+    <p>
+      AWS DMS pricing includes the components below. <strong>These figures are approximate and vary by region and over time — check the current <a href="https://aws.amazon.com/dms/pricing/">DMS pricing page</a> before estimating costs.</strong>
+    </p>
     <ul>
       <li><strong>Replication Instance:</strong> ~$0.036/hour for dms.t3.micro (~$26/month)</li>
       <li><strong>S3 Storage:</strong> $0.023/GB per month (Standard tier)</li>

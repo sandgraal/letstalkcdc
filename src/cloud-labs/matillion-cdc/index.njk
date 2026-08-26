@@ -1,10 +1,9 @@
 ---
 layout: base.njk
-title: "Matillion CDC Pipeline Lab | CDC: The Missing Manual"
+title: "Matillion CDC Pipeline Lab"
 description: "Learn to build CDC pipelines using Matillion's visual ETL platform with drag-and-drop components and automated change tracking."
 canonicalPath: "/cloud-labs/matillion-cdc/"
 ai-generated: true
-draft: true
 ---
 {% import "components/ui.njk" as ui %}
 
@@ -32,8 +31,26 @@ draft: true
     <ol>
       <li><strong>Timestamp-based CDC:</strong> Track changes via <code>updated_at</code> column</li>
       <li><strong>Hash-based CDC:</strong> Compare row hashes to detect changes</li>
-      <li><strong>Log-based CDC:</strong> Use database transaction logs (requires external CDC tool like Debezium)</li>
+      <li><strong>Log-based CDC:</strong> Read the database transaction log. Matillion's <strong>Data Productivity Cloud</strong> now ships a <strong>native CDC pipeline</strong> (a Debezium-based CDC agent) for this; you no longer have to bolt on a separate tool. Older instance-based Matillion ETL relied on an external tool such as Debezium.</li>
     </ol>
+
+    <div class="callout callout-warning">
+      <h4>Scope of this lab &mdash; and what polling CDC cannot see</h4>
+      <p>
+        This lab builds the <strong>timestamp/polling</strong> approach (options 1&ndash;2 above), because it is the quickest way to stand up CDC with only a warehouse and a source table. Understand its limits before you rely on it:
+      </p>
+      <ul>
+        <li>
+          <strong>Hard <code>DELETE</code>s are invisible.</strong> A deleted row has no <code>updated_at</code> to poll and simply stops appearing in the source query, so the row lingers forever in the target. Polling can only ever <em>add or update</em> the rows it still sees.
+        </li>
+        <li>
+          <strong>Only the latest state per interval survives.</strong> If a row is updated three times between two polls, you capture the final value and miss the two intermediate versions. Polling is not an event stream &mdash; it is a periodic snapshot diff.
+        </li>
+      </ul>
+      <p>
+        If you need deletes and every intermediate change, use <strong>log-based CDC</strong> &mdash; Matillion's native CDC pipeline (Debezium-based) or a dedicated tool &mdash; which reads committed row events (including deletes) straight from the transaction log. The <a href="#handling-deletes">Handling Deletes</a> section below shows a soft-delete workaround for the polling approach.
+      </p>
+    </div>
   </section>
 
   <section class="box" id="prereqs">
@@ -62,16 +79,23 @@ draft: true
                         │   Loads     │
                         │  (5 min)    │
                         └─────────────┘</code></pre>
-    <p>Matillion runs as an EC2 instance (AWS) or equivalent in GCP/Azure, orchestrating data movement between source and target.</p>
+    <p>
+      Matillion orchestrates data movement between source and target. The current product, the <strong>Data Productivity Cloud</strong>, is a fully managed SaaS &mdash; you sign in to a hosted control plane and (optionally) run a lightweight agent inside your own network for private connectivity. The older, instance-based <strong>Matillion ETL</strong> ran as a self-hosted VM you provisioned yourself (an EC2 instance on AWS, or the equivalent on GCP/Azure); several steps below still reflect that legacy deployment and are flagged where they differ.
+    </p>
   </section>
 
   <section class="box" id="setup">
     <h2>Lab Setup</h2>
     
-    <h3>Step 1: Launch Matillion Instance</h3>
-    <p>Deploy Matillion from AWS Marketplace (Snowflake example):</p>
+    <h3>Step 1: Get access to Matillion</h3>
+    <div class="callout callout-info">
+      <p>
+        <strong>Which product are you on?</strong> For new work, use the SaaS <strong>Data Productivity Cloud</strong>: create an account at <a href="https://www.matillion.com/">matillion.com</a>, create a project, and (if your source database is private) install the Matillion agent inside your VPC for connectivity. There is nothing to size or patch yourself. The instance-based steps below are for the <strong>legacy self-hosted Matillion ETL</strong> product; skip them on the Data Productivity Cloud.
+      </p>
+    </div>
+    <p><em>Legacy self-hosted Matillion ETL &mdash; deploy from a cloud marketplace (Snowflake example):</em></p>
     <ol>
-      <li>Go to <strong>AWS Marketplace → Matillion ETL for Snowflake</strong></li>
+      <li>Go to your cloud provider's marketplace (e.g. <strong>AWS Marketplace → Matillion ETL for Snowflake</strong>)</li>
       <li>Select instance type (t3.medium minimum for testing, m5.large for production)</li>
       <li>Configure VPC, subnets, and security groups (allow 443 for web UI)</li>
       <li>Launch instance and note public IP/DNS</li>
@@ -181,8 +205,21 @@ SELECT MAX(updated_at) FROM customers;</code></pre>
       <li>Connection: Snowflake-Target</li>
       <li>SQL:</li>
     </ul>
-    <pre><code>SELECT COALESCE(MAX(updated_at), '1970-01-01') 
+    <pre><code>SELECT COALESCE(MAX(updated_at), '1970-01-01')
 FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING;</code></pre>
+
+    <div class="callout callout-warning">
+      <h4>Watermark boundary bug: don't trust <code>&gt;</code> on a wall-clock column</h4>
+      <p>
+        <code>updated_at</code> is a <em>wall-clock timestamp</em>, not a monotonic log position. A row can be assigned a timestamp when a transaction <em>starts</em> but only become visible to your poll when it <em>commits</em> &mdash; possibly seconds or minutes later. Combined with clock skew between source and warehouse, a strict <code>WHERE updated_at &gt; last_run_time</code> can step right over rows that committed late but were stamped at or just below the watermark. They are then never picked up again.
+      </p>
+      <p>
+        The fix is an <strong>overlap window</strong>: subtract a safety margin from the watermark and use <code>&gt;=</code>, re-reading a small band of rows on every run. Because the downstream <code>MERGE</code> is idempotent (matching on the primary key), re-reading a row that already landed is harmless &mdash; it just re-applies the same values. Trading a little redundant work for not silently losing rows is the right bargain.
+      </p>
+      <pre><code>-- Re-read the last 5 minutes on every run; MERGE de-duplicates.
+SELECT COALESCE(DATEADD(minute, -5, MAX(updated_at)), '1970-01-01')
+FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING;</code></pre>
+    </div>
 
     <p><strong>2. Transformation: Extract_Incremental</strong></p>
     <ul>
@@ -195,9 +232,14 @@ FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING;</code></pre>
           <li>Connection: MySQL-Source</li>
           <li>SQL Query:</li>
         </ul>
-        <pre><code>SELECT * FROM customers 
-WHERE updated_at > '${last_run_time}'
+        <pre><code>-- Use >= against the overlap watermark (already backed off by a
+-- safety margin). The idempotent MERGE absorbs the re-read rows.
+SELECT * FROM customers
+WHERE updated_at >= '${last_run_time}'
 ORDER BY updated_at;</code></pre>
+        <p>
+          <strong>Order note:</strong> <code>ORDER BY updated_at</code> here only bounds the batch for readability &mdash; it is <em>not</em> a reliable event order. Wall-clock timestamps can tie or arrive out of commit order, so never treat the polled order as the true sequence of changes. Correctness comes from the primary-key <code>MERGE</code> applying the latest state, not from row order.
+        </p>
       </li>
       <li>
         <strong>Table Output:</strong>
@@ -224,6 +266,12 @@ VALUES (source.id, source.name, source.email, source.updated_at);
 
 -- Clean up incremental table
 TRUNCATE TABLE CDC_DB.RAW_DATA.CUSTOMERS_INCREMENTAL;</code></pre>
+    <div class="callout callout-warning">
+      <h4>This MERGE never deletes</h4>
+      <p>
+        Notice there is no <code>WHEN MATCHED ... THEN DELETE</code> clause &mdash; and there cannot be a useful one, because a hard-deleted source row never reaches <code>CUSTOMERS_INCREMENTAL</code> in the first place. A row deleted at the source will remain in <code>CUSTOMERS_STAGING</code> indefinitely. If deletes matter for this table, add the soft-delete reconciliation in <a href="#handling-deletes">Handling Deletes</a> or move to log-based CDC.
+      </p>
+    </div>
 
     <h3>Step 6: Schedule the Orchestration Job</h3>
     <ol>
@@ -247,6 +295,56 @@ Body:
 Job Name: ${job_name}
 Error: ${error_message}
 Timestamp: ${timestamp}</code></pre>
+  </section>
+
+  <section class="box" id="handling-deletes">
+    <h2>Handling Deletes</h2>
+    <div class="callout callout-warning">
+      <p>
+        <strong>Polling CDC does not capture hard deletes.</strong> The incremental extract only ever sees rows that still exist and were touched since the watermark. When a row is <code>DELETE</code>d at the source it produces no <code>updated_at</code>, so it is never extracted and never removed downstream. Left alone, your target drifts: it accumulates &ldquo;ghost&rdquo; rows that no longer exist in the source.
+      </p>
+    </div>
+
+    <h3>Option A (preferred): move deletes out of CDC's blind spot</h3>
+    <p>
+      The cleanest fix is to stop hard-deleting at the source. Replace deletes with a soft-delete flag (<code>is_deleted</code> / <code>deleted_at</code>) that also bumps <code>updated_at</code>, so a deletion becomes an ordinary update your existing pipeline already captures:
+    </p>
+    <pre><code>-- Source: soft-delete instead of DELETE
+UPDATE customers
+SET is_deleted = TRUE, updated_at = CURRENT_TIMESTAMP
+WHERE id = 42;</code></pre>
+    <p>Then extend the target <code>MERGE</code> to honor the flag (mark, or physically remove, matched rows):</p>
+    <pre><code>WHEN MATCHED AND source.is_deleted THEN DELETE
+WHEN MATCHED THEN UPDATE SET ...
+WHEN NOT MATCHED AND NOT source.is_deleted THEN INSERT ...;</code></pre>
+
+    <h3>Option B: detect deletes with a periodic anti-join snapshot</h3>
+    <p>
+      When you cannot change how the source deletes, reconcile against a <strong>full snapshot of the current source keys</strong> on a slower schedule (say nightly). Any target key that is absent from the source snapshot has been deleted. This is a full key scan, so run it far less often than the incremental poll:
+    </p>
+    <pre><code>-- 1. Land ALL current source primary keys into a snapshot table
+--    (a full Table Input of `SELECT id FROM customers`).
+-- 2. Anti-join: target keys not present in the source = deletions.
+MERGE INTO CDC_DB.RAW_DATA.CUSTOMERS_STAGING AS target
+USING (
+  SELECT t.id
+  FROM CDC_DB.RAW_DATA.CUSTOMERS_STAGING AS t
+  LEFT JOIN CDC_DB.RAW_DATA.CUSTOMERS_KEY_SNAPSHOT AS s
+    ON t.id = s.id
+  WHERE s.id IS NULL          -- present in target, gone from source
+) AS gone
+ON target.id = gone.id
+WHEN MATCHED THEN DELETE;      -- or: UPDATE SET is_deleted = TRUE</code></pre>
+    <p>
+      Prefer a soft delete (<code>UPDATE SET is_deleted = TRUE</code>) over a physical <code>DELETE</code> in the warehouse if downstream consumers need to see that a record was removed rather than have it silently vanish.
+    </p>
+
+    <div class="callout callout-info">
+      <h4>When deletes must be exact, use log-based CDC</h4>
+      <p>
+        Both options above are approximations bolted onto polling. If you need every delete captured promptly and reliably &mdash; and every intermediate change, not just the latest state per interval &mdash; use <strong>log-based CDC</strong>: Matillion's native CDC pipeline (Debezium-based) in the Data Productivity Cloud, or a dedicated log-based tool. It reads committed <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> events directly from the transaction log, so deletes are first-class events rather than something you infer after the fact.
+      </p>
+    </div>
   </section>
 
   <section class="box" id="hash-cdc">
@@ -282,6 +380,9 @@ WHERE target.row_hash IS NULL
    OR source.row_hash != target.row_hash;</code></pre>
 
     <p><strong>Note:</strong> Hash-based CDC requires full table scan each run, which can be expensive for large tables. Use timestamp-based CDC when possible.</p>
+    <p>
+      <strong>Deletes:</strong> this filter compares source rows against stored hashes, so it detects inserts and updates but <em>not</em> deletes &mdash; a row removed from the source simply stops appearing in the scan and lingers in the target, exactly as with timestamp CDC. Because hash CDC already reads the full source each run, you get delete detection almost for free: anti-join the stored keys against the freshly scanned keys (the <a href="#handling-deletes">Handling Deletes</a> pattern) and remove or flag the target keys that no longer appear.
+    </p>
   </section>
 
   <section class="box" id="verify">
@@ -368,12 +469,15 @@ ORDER BY hour DESC;</code></pre>
       <pre><code>-- Convert to UTC in source query
 SELECT *, CONVERT_TZ(updated_at, 'America/New_York', 'UTC') as updated_at_utc
 FROM customers;</code></pre>
+      <p>
+        <strong>Prerequisite:</strong> named-zone <code>CONVERT_TZ()</code> on MySQL returns <code>NULL</code> unless the timezone tables are populated. Load them once with <code>mysql_tzinfo_to_sql</code> (e.g. <code>mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql</code>), or sidestep it by storing/comparing in UTC and using fixed <code>+00:00</code> offsets instead of zone names.
+      </p>
     </div>
 
     <div class="callout callout-info">
       <h4>4. Network Latency</h4>
       <p>
-        Matillion runs on EC2 in your VPC. For best performance, ensure source database is in same region/VPC or use VPN peering. Cross-region queries can add 50-500ms latency per query.
+        Whatever executes your queries &mdash; the Data Productivity Cloud agent in your VPC, or a legacy self-hosted VM &mdash; keep it close to the data. For best performance, ensure the source database is in the same region/VPC or reachable over VPN peering. Cross-region queries can add 50-500ms latency per query.
       </p>
     </div>
 
@@ -467,8 +571,8 @@ GROUP BY WAREHOUSE_NAME;</code></pre>
         </tr>
         <tr>
           <td><strong>Cost</strong></td>
-          <td>License + EC2 (~$500-2000/mo)</td>
-          <td>Infrastructure only (~$100-500/mo)</td>
+          <td>Platform subscription (credit/usage-based on the Data Productivity Cloud) plus any self-hosted agent or legacy VM cost</td>
+          <td>Mostly infrastructure and engineering time (Kafka Connect, compute, ops)</td>
         </tr>
         <tr>
           <td><strong>Monitoring</strong></td>
