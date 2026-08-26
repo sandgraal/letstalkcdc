@@ -63,7 +63,7 @@
   border: none;
   box-shadow:
     var(--shadow-sm),
-    0 0 0 1px rgba(59, 130, 246, 0.2);
+    0 0 0 1px rgba(60, 200, 240, 0.2);
 }
 
 .button:hover,
@@ -249,7 +249,7 @@
     var(--gradient-subtle),
     linear-gradient(
       135deg,
-      rgba(59, 130, 246, 0.05) 0%,
+      rgba(60, 200, 240, 0.05) 0%,
       var(--color-bg-secondary) 50%
     );
 }
@@ -331,7 +331,7 @@
   background: var(--gradient-accent);
   color: white;
   box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.3),
+    0 0 0 1px rgba(60, 200, 240, 0.3),
     var(--shadow-glow-sm);
 }
 
@@ -367,9 +367,9 @@
 
 /* Tag variants for series cards */
 .tag.tag-concept {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(60, 200, 240, 0.1);
   color: var(--color-accent-primary);
-  border-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(60, 200, 240, 0.2);
 }
 
 .tag.tag-pattern {
@@ -673,7 +673,7 @@
 
 .page-meta__author a:hover,
 .page-meta__author a:focus-visible {
-  color: var(--accent-primary, #3b82f6);
+  color: var(--accent-primary, #3cc8f0);
   text-decoration-color: currentColor;
 }
 
@@ -691,7 +691,7 @@
 }
 
 .page-meta__cta a {
-  color: var(--accent-primary, #3b82f6);
+  color: var(--accent-primary, #3cc8f0);
   font-weight: 600;
   text-decoration: none;
 }
@@ -801,7 +801,7 @@
 }
 
 .errata-callout__hub a {
-  color: var(--color-accent-primary, #3b82f6);
+  color: var(--color-accent-primary, #3cc8f0);
   font-weight: 600;
   text-decoration: none;
 }
@@ -848,7 +848,7 @@
 }
 
 .glossary__anchor:focus-visible {
-  outline: 2px solid var(--color-focus, #3b82f6);
+  outline: 2px solid var(--color-focus, #3cc8f0);
   outline-offset: 2px;
   border-radius: var(--radius-sm, 0.25rem);
 }

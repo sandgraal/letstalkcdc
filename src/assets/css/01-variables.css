@@ -140,6 +140,7 @@
   --color-bg-primary: #0a0e14;
   --color-bg-secondary: #0f141c;
   --color-bg-elevated: #141b25;
+  --color-bg-tertiary: #1a2230;
   --color-bg-overlay: rgba(10, 14, 20, 0.95);
   --color-bg-subtle: rgba(255, 255, 255, 0.03);
 
@@ -307,6 +308,7 @@
   --color-bg-primary: #f4f7fb;
   --color-bg-secondary: #ffffff;
   --color-bg-elevated: #eef2f7;
+  --color-bg-tertiary: #e6ecf3;
   --color-bg-overlay: rgba(255, 255, 255, 0.95);
   --color-bg-subtle: rgba(15, 23, 42, 0.02);
 

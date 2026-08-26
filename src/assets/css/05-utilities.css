@@ -27,7 +27,7 @@
     transparent 100%
   );
   height: 2px;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 8px rgba(60, 200, 240, 0.3);
 }
 
 .section-divider--dashed {

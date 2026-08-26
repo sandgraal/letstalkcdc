@@ -136,7 +136,7 @@ blockquote cite::before {
 
 .callout--info {
   border-left-color: var(--color-accent-primary);
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(60, 200, 240, 0.1);
 }
 
 .callout--warning {
