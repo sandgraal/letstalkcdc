@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`/compare/` — CDC platform comparison hub (revamp Phase 4b).** A
+  single, accurate head-to-head of the six platforms teams actually
+  evaluate — Debezium, AWS DMS, Fivetran, Airbyte, Oracle GoldenGate, and
+  Qlik Replicate — across deployment, method, delivery semantics,
+  latency, targets, schema handling, ops burden, and cost. The
+  delivery-semantics row is highlighted and honest: every platform is
+  **at-least-once** at the wire (GoldenGate is effectively-once apply), so
+  correctness comes from idempotent sinks — no "exactly-once" marketing.
+  Per-platform cards (strengths / trade-offs / best-for) and a decision
+  guide follow. Data lives in a new `src/_data/cdcCompare.mjs` (separate
+  from the `/intro/` catalog); styling is `pages/compare.css`
+  (page-scoped, so the CSS byte-check is unaffected). Linked from the
+  footer's Learn column. No fabricated pricing or benchmarks — cost and
+  latency are qualitative, order-of-magnitude only.
+
 ### Fixed
 
 - **Responsive polish + button-variant fix (revamp Phase 2d).** Fixed

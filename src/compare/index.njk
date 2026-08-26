@@ -1,0 +1,123 @@
+---
+layout: base.njk
+title: "Compare CDC Platforms"
+description: "Head-to-head comparison of six CDC platforms — Debezium, AWS DMS, Fivetran, Airbyte, Oracle GoldenGate, and Qlik Replicate — on deployment, method, delivery semantics, latency, and cost."
+canonicalPath: "/compare/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <aside class="compare-note" role="note">
+    <p>
+      <strong>Read the "delivery semantics" row first.</strong> Every platform
+      here delivers <strong>at-least-once</strong> at the wire — none give
+      end-to-end exactly-once across systems, whatever the marketing says.
+      Correctness comes from an <strong>idempotent sink</strong>: upsert on the
+      primary key, ordered by the source log position (LSN/SCN), not
+      <code>ts_ms</code>. Where a vendor markets "exactly-once", the table
+      states the honest version.
+    </p>
+  </aside>
+
+  <section id="matrix" aria-labelledby="matrix-title">
+    <h2 id="matrix-title">The comparison matrix</h2>
+    <p class="muted">
+      Order-of-magnitude guidance, not benchmarks — latency, cost, and feature
+      support vary with data volume, region, and configuration. Verify against
+      current vendor docs.
+    </p>
+    <div class="compare-matrix-wrap">
+      <table class="compare-matrix">
+        <caption class="sr-only">CDC platforms compared across {{ cdcCompare.dimensions | length }} dimensions</caption>
+        <thead>
+          <tr>
+            <th scope="col">Dimension</th>
+            {% for p in cdcCompare.platforms %}
+              <th scope="col"><a href="#{{ p.slug }}">{{ p.name }}</a></th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in cdcCompare.dimensions %}
+            <tr{% if d.key == 'delivery' %} class="is-highlight"{% endif %}>
+              <th scope="row">{{ d.label }}</th>
+              {% for p in cdcCompare.platforms %}
+                <td>{{ p[d.key] }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="platforms" aria-labelledby="platforms-title">
+    <h2 id="platforms-title">Platform by platform</h2>
+    <div class="compare-cards">
+      {% for p in cdcCompare.platforms %}
+        <article class="compare-card" id="{{ p.slug }}">
+          <h3>{{ p.name }}</h3>
+          <p class="compare-card__best"><strong>Best for:</strong> {{ p.bestFor }}</p>
+          <div class="compare-card__cols">
+            <div class="compare-card__col">
+              <h4>Strengths</h4>
+              <ul>
+                {% for s in p.strengths %}<li>{{ s }}</li>{% endfor %}
+              </ul>
+            </div>
+            <div class="compare-card__col">
+              <h4>Trade-offs</h4>
+              <ul>
+                {% for t in p.tradeoffs %}<li>{{ t }}</li>{% endfor %}
+              </ul>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section id="decide" aria-labelledby="decide-title">
+    <h2 id="decide-title">Decision guide</h2>
+    <p>Start from the constraint that actually binds you:</p>
+    <ul class="compare-decide">
+      <li><strong>Zero ops, warehouse target</strong> → <a href="#fivetran">Fivetran</a> (or <a href="#airbyte">Airbyte Cloud</a>) — hand it off, dedupe in the destination MERGE.</li>
+      <li><strong>All-in on AWS</strong> → <a href="#aws-dms">AWS DMS</a> — managed, IaC-friendly, into S3/Redshift/Kinesis.</li>
+      <li><strong>Sub-second, full control, event-driven</strong> → <a href="#debezium">Debezium + Kafka Connect</a> — you run it, you own it.</li>
+      <li><strong>Open source + broad connectors, minutes are fine</strong> → <a href="#airbyte">Airbyte</a>.</li>
+      <li><strong>Enterprise Oracle, heterogeneous or active-active</strong> → <a href="#goldengate">Oracle GoldenGate</a> — with the honest delivery caveat.</li>
+      <li><strong>Broad connectivity, low-code / GUI-first</strong> → <a href="#qlik-replicate">Qlik Replicate</a>.</li>
+    </ul>
+    <div class="compare-note compare-note--tight" role="note">
+      <p>
+        Whatever you pick, design the sink to be idempotent. The platform choice
+        changes ops, cost, and latency — it does not remove the need to dedupe
+        on the primary key by log position.
+      </p>
+    </div>
+  </section>
+
+  <section class="compare-related" aria-labelledby="related-title">
+    <h2 id="related-title">Go deeper</h2>
+    <div class="compare-related__grid">
+      <a class="compare-related__card" href="{{ '/cloud-labs/' | url }}">
+        <h3>Cloud labs</h3>
+        <p>Hands-on walkthroughs for AWS DMS, Fivetran, GoldenGate, Matillion, and Snowflake.</p>
+      </a>
+      <a class="compare-related__card" href="{{ '/lab-kafka-debezium/' | url }}">
+        <h3>Kafka + Debezium lab</h3>
+        <p>Stand up open-source, log-based CDC end to end.</p>
+      </a>
+      <a class="compare-related__card" href="{{ '/tooling/' | url }}">
+        <h3>Tooling &amp; versions</h3>
+        <p>The full platform catalog and current version matrix.</p>
+      </a>
+      <a class="compare-related__card" href="{{ '/exactly-once/' | url }}">
+        <h3>Exactly-once, honestly</h3>
+        <p>Why delivery is at-least-once and idempotent sinks carry correctness.</p>
+      </a>
+    </div>
+  </section>
+</div>
