@@ -72,9 +72,9 @@ Top-level files under `src/assets/css/` after the Month-0 purge:
 ```
 00-reset.css            05-utilities.css        08-video-embed.css
 01-variables.css        06-search.css           09-mobile-responsive.css
-02-base.css             07-version-status.css   auth.css       (loaded separately)
-03-layout.css                                   dashboard-page.css
-04-components.css ──> imports components/*.css  main.css       (entry, not a passthrough)
+02-base.css             07-version-status.css   dashboard-page.css
+03-layout.css                                   main.css       (entry, not a passthrough)
+04-components.css ──> imports components/*.css
 ```
 
 Page-specific CSS lives in `src/assets/css/pages/` and is loaded only on its
