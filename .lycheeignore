@@ -12,3 +12,21 @@
 # New page: /methodology/. Same canonical-loopback chicken-and-egg as
 # above. Remove after the next deploy publishes the page.
 ^https://sandgraal\.github\.io/letstalkcdc/methodology/$
+
+# New (Phase 4a): the /cloud-labs/ hub + 5 managed-platform labs. Their own
+# canonical URLs don't exist in production until this PR deploys — the
+# canonical loopback would otherwise 404. Remove after the next deploy.
+^https://sandgraal\.github\.io/letstalkcdc/cloud-labs/
+
+# Placeholder Snowflake account URL used in the Snowflake/Matillion lab
+# examples — readers substitute their own account locator.
+^https://myaccount\.snowflakecomputing\.com
+
+# Oracle sites (GoldenGate blog + LiveLabs/OTN forum) return 403 to
+# automated link-checkers via bot protection; the links are valid in a
+# browser. Referenced from the GoldenGate lab's resources.
+^https://blogs\.oracle\.com/
+^https://apexapps\.oracle\.com/
+
+# Fivetran community forum intermittently refuses automated requests.
+^https://community\.fivetran\.com/

@@ -474,23 +474,25 @@ USING (
     RECORD_CONTENT:payload:after:name::STRING as name,
     RECORD_CONTENT:payload:after:email::STRING as email,
     RECORD_CONTENT:payload:after:created_at::TIMESTAMP as created_at,
-    RECORD_CONTENT:payload:ts_ms::TIMESTAMP as updated_at, -- kept as a metric, NOT for ordering
+    -- ts_ms is epoch-MILLISECONDS; TO_TIMESTAMP_NTZ(..., 3) reads scale-3.
+    -- A bare ::TIMESTAMP cast treats it as seconds and lands in the year ~55000.
+    TO_TIMESTAMP_NTZ(RECORD_CONTENT:payload:ts_ms::NUMBER, 3) as updated_at, -- metric only, NOT for ordering
     RECORD_CONTENT:payload:op::STRING as op
   FROM CUSTOMERS
-  -- Last write wins by Kafka (partition, offset) — the physical log order.
-  -- For a key routed to one partition, offset alone is monotonic; include
-  -- partition so the order is well-defined regardless of partitioning.
+  -- Last write wins by LOG POSITION. The authoritative, globally-monotonic
+  -- order is the source DB commit position from the Debezium envelope
+  -- (Postgres LSN below; MySQL source:file+pos; Oracle source:scn) — correct
+  -- across partitions, and the ordering this site recommends.
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY id
-    ORDER BY RECORD_METADATA:partition::INT DESC,
-             RECORD_METADATA:offset::BIGINT   DESC
+    ORDER BY RECORD_CONTENT:payload:source:lsn::BIGINT DESC
+    --   MySQL:  RECORD_CONTENT:payload:source:file::STRING DESC,
+    --           RECORD_CONTENT:payload:source:pos::BIGINT  DESC
+    --   Oracle: RECORD_CONTENT:payload:source:scn::BIGINT  DESC
   ) = 1
-  -- Debezium alternative — order by the source commit position instead of the
-  -- Kafka offset (equivalent, and survives a topic re-key/replay):
-  --   Postgres: RECORD_CONTENT:payload:source:lsn::BIGINT
-  --   MySQL:    RECORD_CONTENT:payload:source:file::STRING,
-  --             RECORD_CONTENT:payload:source:pos::BIGINT
-  --   Oracle:   RECORD_CONTENT:payload:source:scn::BIGINT
+  -- A Kafka offset (RECORD_METADATA:offset DESC) is valid ONLY if the topic is
+  -- keyed on the PK so each id stays in one partition — offsets are not
+  -- comparable across partitions. Prefer the source position above.
 ) AS source
 ON target.id = source.id
 WHEN MATCHED AND source.op = 'd' THEN DELETE
@@ -518,13 +520,14 @@ USING (
     RECORD_CONTENT:payload:after:name::STRING as name,
     RECORD_CONTENT:payload:after:email::STRING as email,
     RECORD_CONTENT:payload:after:created_at::TIMESTAMP as created_at,
-    RECORD_CONTENT:payload:ts_ms::TIMESTAMP as updated_at, -- metric only
+    TO_TIMESTAMP_NTZ(RECORD_CONTENT:payload:ts_ms::NUMBER, 3) as updated_at, -- epoch-ms; metric only
     RECORD_CONTENT:payload:op::STRING as op
   FROM CUSTOMERS
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY id
-    ORDER BY RECORD_METADATA:partition::INT DESC,
-             RECORD_METADATA:offset::BIGINT   DESC
+    -- dedup by source commit position (LSN / file+pos / SCN), never ts_ms or a
+    -- cross-partition Kafka offset — see the detailed MERGE above.
+    ORDER BY RECORD_CONTENT:payload:source:lsn::BIGINT DESC
   ) = 1
 ) AS source
 ON target.id = source.id
