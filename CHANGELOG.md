@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Interactive change-event visualizer on `/intro/` (revamp Phase 4c).**
+  A live demo that refills the removed intro video slot: edit a mock
+  `customer` table — insert, update (cycles the tier), or delete a row —
+  and watch a Debezium-style change event emit in real time, with the
+  `op` badge, `before`/`after` images, and a monotonic `lsn` updating per
+  change (op-coloured c/u/d). It teaches the CDC artifact itself, distinct
+  from the existing pipeline-flow simulation lower on the page.
+  Client-side only (no backend); progressive enhancement
+  (`pages/cdc-event-demo.js` no-ops if the markup is absent). Styling is
+  appended to the page-scoped `pages/intro.css`, so the CSS byte-check is
+  unaffected. A footnote keeps the honest framing: delivery is
+  at-least-once; sinks dedupe on the primary key by `lsn`, not `ts_ms`.
+
 - **`/compare/` — CDC platform comparison hub (revamp Phase 4b).** A
   single, accurate head-to-head of the six platforms teams actually
   evaluate — Debezium, AWS DMS, Fivetran, Airbyte, Oracle GoldenGate, and

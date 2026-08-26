@@ -56,6 +56,7 @@ eleventyComputed:
     </script>
 scripts:
   - "/assets/js/pages/intro.js"
+  - "/assets/js/pages/cdc-event-demo.js"
   - "/assets/js/lib/quiz.js"
   - "/assets/js/pages/cdc-simulation.js"
 ---
@@ -124,6 +125,55 @@ scripts:
         <li><a href="{{ '/lab-kafka-debezium/' | url }}">Hands-on lab: Kafka + Debezium</a> — practice capturing and replaying change events.</li>
       </ul>
     </nav>
+
+    <section class="cdc-event-demo" id="cdc-event-demo" aria-labelledby="ced-title">
+      <div class="ced-head">
+        <span class="ced-eyebrow">Interactive</span>
+        <h2 id="ced-title">See a change become an event</h2>
+        <p>
+          Edit the <code>customer</code> table below. Every insert, update, and
+          delete emits a Debezium-style change event — the exact artifact CDC
+          produces. Watch the <code>op</code>, the <code>before</code>/<code>after</code>
+          images, and the log position (<code>lsn</code>) update with each change.
+        </p>
+      </div>
+      <div class="ced-grid">
+        <div class="ced-table-panel">
+          <div class="ced-toolbar">
+            <button type="button" class="ced-btn ced-btn--primary" data-ced-insert>+ Insert row</button>
+            <button type="button" class="ced-btn" data-ced-reset>Reset</button>
+            <span class="ced-lsn">committed LSN <b data-ced-lsn>0/0</b></span>
+          </div>
+          <div class="ced-table-wrap">
+            <table class="ced-table">
+              <caption class="sr-only">Editable customer table; each edit emits a change event</caption>
+              <thead>
+                <tr>
+                  <th scope="col">id</th>
+                  <th scope="col">name</th>
+                  <th scope="col">tier</th>
+                  <th scope="col"><span class="sr-only">actions</span></th>
+                </tr>
+              </thead>
+              <tbody data-ced-tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ced-event-panel">
+          <div class="ced-event-bar">
+            <span class="ced-dot" aria-hidden="true"></span>
+            <span class="ced-event-title">change event</span>
+            <span class="ced-op-badge" data-ced-op-badge>waiting…</span>
+          </div>
+          <pre class="ced-event-body" data-ced-event aria-live="polite" aria-label="Emitted change event" tabindex="0"></pre>
+        </div>
+      </div>
+      <p class="ced-foot">
+        Delivery is <strong>at-least-once</strong>: a real sink dedupes on the
+        primary key ordered by <code>lsn</code>, not <code>ts_ms</code>. This is a
+        client-side illustration — no database is involved.
+      </p>
+    </section>
 
     <section class="series-roadmap" id="series-roadmap" aria-labelledby="series-roadmap-title">
       <h2 id="series-roadmap-title">How to use this series</h2>
