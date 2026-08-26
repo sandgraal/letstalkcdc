@@ -79,14 +79,16 @@
 
 /* Secondary Button - Refined outline */
 .button.secondary {
-  background-color: transparent;
+  /* `background` (not background-color) so the base .button gradient
+     IMAGE is cleared — otherwise secondary/ghost show cyan-on-cyan. */
+  background: transparent;
   color: var(--color-accent-primary);
   border: 2px solid var(--color-accent-primary);
   box-shadow: var(--shadow-xs);
 }
 
 .button.secondary:hover {
-  background-color: var(--color-accent-subtle);
+  background: var(--color-accent-subtle);
   transform: translateY(-2px);
   box-shadow:
     var(--shadow-md),
@@ -95,14 +97,14 @@
 
 /* Ghost Button - Subtle, elegant */
 .button.ghost {
-  background-color: var(--color-bg-subtle);
+  background: var(--color-bg-subtle);
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border-subtle);
   box-shadow: none;
 }
 
 .button.ghost:hover {
-  background-color: var(--color-bg-elevated);
+  background: var(--color-bg-elevated);
   color: var(--color-text-primary);
   border-color: var(--color-border-default);
   transform: translateY(-1px);
@@ -111,7 +113,7 @@
 
 /* Danger Button */
 .button.danger {
-  background-color: var(--color-error);
+  background: var(--color-error);
   color: var(--color-text-inverse);
   border: 2px solid var(--color-error);
 }
