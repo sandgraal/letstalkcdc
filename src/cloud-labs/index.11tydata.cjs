@@ -4,7 +4,7 @@ const pathPrefix = getPathPrefix().replace(/\/$/, ""); // Remove trailing slash
 
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-08-25",
   heroConfig: {
     title: "Cloud CDC Labs",
     description:

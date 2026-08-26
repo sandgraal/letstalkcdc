@@ -22,6 +22,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (page-scoped, so the CSS byte-check is unaffected). Linked from the
   footer's Learn column. No fabricated pricing or benchmarks — cost and
   latency are qualitative, order-of-magnitude only.
+- **Cloud CDC labs published — 5 managed-platform walkthroughs (revamp
+  Phase 4a).** The AWS DMS, Fivetran, Oracle GoldenGate, Matillion, and
+  Snowflake labs (written earlier but gated behind `draft: true`) now
+  ship, after a CDC subject-matter review corrected them against the
+  site's delivery-semantics standards. Key fixes: GoldenGate's
+  "exactly-once / guaranteed delivery" claims reframed to at-least-once
+  with **effectively-once apply**; Snowflake's dedup reordered from
+  `ts_ms` to the Kafka **log position** (partition/offset), and its
+  connector bumped 1.9.3 to 2.x (Snowpipe Streaming); Matillion's
+  polling gaps (silent hard-delete loss, watermark boundary bug)
+  documented with a new "Handling Deletes" section; AWS DMS's
+  full-load-to-CDC handoff and an at-least-once dedup caveat; and
+  fabricated pricing removed across all five. The `/cloud-labs/` hub
+  drops its "coming soon" placeholder, renders the five cards, and
+  carries an AI-drafted, expert-reviewed disclosure. Also fixed on the
+  hub: two malformed-HTML bugs (an unclosed `<svg>`, a merged
+  GoldenGate/Fivetran decision card), a "guaranteed delivery"
+  contradiction, a benchmarks caveat on the comparison table, and
+  doubled `<title>` tags across all six pages.
 
 ### Fixed
 

@@ -3,8 +3,8 @@ const { getPathPrefix } = require("../../../lib/path-prefix.mjs");
 const pathPrefix = getPathPrefix().replace(/\/$/, ""); // Remove trailing slash
 
 module.exports = {
-  datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  datePublished: "2026-08-25",
+  dateModified: "2026-08-25",
   seriesKey: "lab-goldengate",
   heroConfig: {
     title: "Cloud Lab: Oracle GoldenGate CDC",
