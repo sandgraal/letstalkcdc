@@ -45,7 +45,10 @@ const pagePaths = (() => {
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) walk(full);
       else if (entry.name.endsWith(".html")) {
-        const rel = path.relative(SITE_DIR, full);
+        // Normalise to POSIX separators before building a URL: path.relative
+        // yields backslashes on Windows, which would both produce invalid URLs
+        // and defeat the /index.html$/ rewrite below.
+        const rel = path.relative(SITE_DIR, full).split(path.sep).join("/");
         out.push("/" + rel.replace(/(^|\/)index\.html$/, "$1"));
       }
     }

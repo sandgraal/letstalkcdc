@@ -76,6 +76,16 @@ export async function expectHittable(locator, label = "element") {
  */
 export async function expectNotClipped(locator, label = "element") {
   const result = await locator.evaluate((el) => {
+    const describeNode = (node) => {
+      const cls = (node.className || "")
+        .toString()
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      return (
+        node.tagName.toLowerCase() + (cls.length ? `.${cls.join(".")}` : "")
+      );
+    };
     let node = el.parentElement;
     while (node && node !== document.documentElement) {
       const s = getComputedStyle(node);
@@ -90,7 +100,7 @@ export async function expectNotClipped(locator, label = "element") {
         if (overflows) {
           return {
             ok: false,
-            reason: `clipped by <${node.tagName.toLowerCase()}.${(node.className || "").toString().trim().split(/\s+/).join(".")}> (overflow ${s.overflowX}/${s.overflowY})`,
+            reason: `clipped by <${describeNode(node)}> (overflow ${s.overflowX}/${s.overflowY})`,
           };
         }
       }
@@ -119,6 +129,16 @@ export async function expectFixedNotTrapped(locator, label = "element") {
     if (getComputedStyle(el).position !== "fixed") {
       return { ok: true, skipped: true };
     }
+    const describeNode = (node) => {
+      const cls = (node.className || "")
+        .toString()
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      return (
+        node.tagName.toLowerCase() + (cls.length ? `.${cls.join(".")}` : "")
+      );
+    };
     let node = el.parentElement;
     while (node && node !== document.documentElement) {
       const s = getComputedStyle(node);
@@ -134,7 +154,7 @@ export async function expectFixedNotTrapped(locator, label = "element") {
       if (causes.length) {
         return {
           ok: false,
-          reason: `<${node.tagName.toLowerCase()}.${(node.className || "").toString().trim().split(/\s+/).join(".")}> sets ${causes.join(", ")}`,
+          reason: `<${describeNode(node)}> sets ${causes.join(", ")}`,
         };
       }
       node = node.parentElement;

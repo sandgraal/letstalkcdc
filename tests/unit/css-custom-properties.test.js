@@ -49,19 +49,21 @@ describe("CSS custom properties", () => {
 
     for (const file of cssFiles) {
       const text = stripComments(fs.readFileSync(file, "utf8"));
-      text.split("\n").forEach((line, index) => {
-        for (const m of line.matchAll(/(--[A-Za-z0-9_-]+)\s*:/g))
-          defined.add(m[1]);
-        // Capture whether a comma (i.e. a fallback) follows the token name.
-        for (const m of line.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)\s*(,?)/g)) {
-          if (m[2] === ",") continue; // has a fallback — safe
-          used.push({
-            token: m[1],
-            file: path.relative(process.cwd(), file),
-            line: index + 1,
-          });
-        }
-      });
+      const rel = path.relative(process.cwd(), file).split(path.sep).join("/");
+      const lineOf = (index) => text.slice(0, index).split("\n").length;
+
+      for (const m of text.matchAll(/(--[A-Za-z0-9_-]+)\s*:/g))
+        defined.add(m[1]);
+
+      // Scanned over the whole file rather than line by line: `var()` is
+      // routinely wrapped across lines in this codebase (see the
+      // `--dropdown-max-height` call in 03-layout.css), and a line-based regex
+      // silently matches none of those — a false pass, the worst kind of gate.
+      // `\s*` spans newlines, so this catches both formattings.
+      for (const m of text.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)\s*(,?)/g)) {
+        if (m[2] === ",") continue; // has a fallback — safe
+        used.push({ token: m[1], file: rel, line: lineOf(m.index) });
+      }
     }
 
     const dangling = used.filter((u) => !defined.has(u.token));
