@@ -62,6 +62,8 @@ onReady(() => {
   if (!configEl || !curlEl) return;
 
   let src = "postgres";
+  // Once the user edits the database name we stop syncing it on tab switch.
+  let dbnameDirty = false;
 
   const val = (el, fallback = "") =>
     el && el.value ? el.value.trim() : fallback;
@@ -192,8 +194,21 @@ onReady(() => {
       button.classList.add("active");
       button.setAttribute("aria-selected", "true");
       src = button.dataset.src || "postgres";
+      // Each engine wants a different database name (Oracle's ORCLCDB is not
+      // interchangeable with Postgres' inventory). Carry the per-source
+      // default across tab switches so the generated config stays runnable,
+      // but never clobber a value the user typed themselves.
+      if (dbname && !dbnameDirty) {
+        dbname.value = (
+          SOURCE_DEFAULTS[src] || SOURCE_DEFAULTS.postgres
+        ).dbname;
+      }
       renderAll();
     });
+  });
+
+  dbname?.addEventListener("input", () => {
+    dbnameDirty = true;
   });
 
   ["input", "change"].forEach((eventName) => {
@@ -217,11 +232,21 @@ onReady(() => {
   });
 
   $("#copyConfig")?.addEventListener("click", (event) =>
-    copy(configEl.textContent, event.currentTarget),
+    copy(configEl.textContent ?? "", event.currentTarget),
   );
   $("#copyCurl")?.addEventListener("click", (event) =>
-    copy(curlEl.textContent, event.currentTarget),
+    copy(curlEl.textContent ?? "", event.currentTarget),
   );
+
+  // The markup ships `class="active"` on the first tab but no aria-selected,
+  // leaving the tablist without a selected state for assistive tech until the
+  // first click. Sync both up front.
+  $$(".tabs button[data-src]").forEach((button) => {
+    button.setAttribute(
+      "aria-selected",
+      button.dataset.src === src ? "true" : "false",
+    );
+  });
 
   renderAll();
 });

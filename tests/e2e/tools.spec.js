@@ -62,10 +62,37 @@ test.describe("connector builder", () => {
     await expect(config).toContainText("kafka:29092");
   });
 
-  test("oracle config includes the PDB name", async ({ page }) => {
+  test("oracle config includes the PDB name and an Oracle database name", async ({
+    page,
+  }) => {
     await page.click('.tabs button[data-src="oracle"]');
-    await expect(page.locator("#config")).toContainText("OracleConnector");
-    await expect(page.locator("#config")).toContainText("database.pdb.name");
+    const config = page.locator("#config");
+    await expect(config).toContainText("OracleConnector");
+    await expect(config).toContainText("database.pdb.name");
+    // Regression: the form's Postgres default ("inventory") used to carry over
+    // to the Oracle tab, producing a config that could not run as generated.
+    const parsed = JSON.parse((await config.textContent()) ?? "");
+    expect(parsed.config["database.dbname"]).toBe("ORCLCDB");
+  });
+
+  test("keeps a database name the user typed when switching tabs", async ({
+    page,
+  }) => {
+    await page.fill("#dbname", "my_custom_db");
+    await page.click('.tabs button[data-src="oracle"]');
+    await expect(page.locator("#dbname")).toHaveValue("my_custom_db");
+    await expect(page.locator("#config")).toContainText("my_custom_db");
+  });
+
+  test("tabs expose a selected state before any interaction", async ({
+    page,
+  }) => {
+    await expect(
+      page.locator('.tabs button[data-src="postgres"]'),
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(
+      page.locator('.tabs button[data-src="mysql"]'),
+    ).toHaveAttribute("aria-selected", "false");
   });
 
   test("switching to Debezium 1.x renames the topic prefix key", async ({

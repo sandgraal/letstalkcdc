@@ -36,8 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Covered by a new `tests/e2e/tools.spec.js` that asserts on generated output —
   all 7 cases fail against the previous build.
 
-### Fixed
-
 - **Runtime bug sweep: 35 of 46 pages were throwing console errors; now 0.**
   Found by rendering every built page at three viewports and inspecting the
   result, rather than by reading source — the same method that surfaced the
