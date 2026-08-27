@@ -51,7 +51,7 @@ canonicalPath: "/security/"
   "column.exclude.list": "public.customers.ssn,public.customers.card_number",
 
   // Or capture it hashed, so joins still work downstream
-  "column.mask.hash.SHA-256.with.salt.<salt-name>": "public.customers.email"
+  "column.mask.hash.SHA-256.with.salt.&lt;salt-name&gt;": "public.customers.email"
 }</code></pre>
     <p>
       Hashing is the useful middle ground: a salted hash keeps a column
