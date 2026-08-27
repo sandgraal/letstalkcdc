@@ -176,14 +176,18 @@
     animation: fade-in 0.3s ease-in;
   }
 
+  /* Opacity only — deliberately NO `transform` here. A transform on <body>
+     (even an identity one, and even mid-animation) makes body the
+     containing block for every `position: fixed` descendant, which
+     re-anchored the mobile nav drawer to the full document height instead
+     of the viewport and left its links unreachable. Animating opacity
+     alone keeps the page fade without that side effect. */
   @keyframes fade-in {
     from {
       opacity: 0;
-      transform: translateY(10px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
     }
   }
 

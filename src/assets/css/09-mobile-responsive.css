@@ -7,6 +7,16 @@
    Mobile Header Improvements
    ========================================================================== */
 
+/* The progress pill is hidden for the whole hamburger-drawer range
+   (< 1024px, matching the nav breakpoint in 03-layout.css). Beside the
+   drawer toggle it wraps to two lines and squeezes the header row; the
+   same progress is available on /dashboard/. */
+@media (max-width: 1023px) {
+  .header-progress {
+    display: none;
+  }
+}
+
 /* Ensure header elements don't overflow on small screens */
 @media (max-width: 639px) {
   .nav-container {
@@ -26,14 +36,10 @@
     gap: var(--space-2xs);
   }
 
-  /* Free header room on phones: the progress pill is available on
-     /dashboard/, and the injected search button (`.search-btn`, not
-     `.search-trigger`) is compacted (smaller padding/font, its "Search"
-     label kept) so the row stops overflowing past the viewport. */
-  .header-progress {
-    display: none;
-  }
-
+  /* Free header room on phones: the injected search button (`.search-btn`,
+     not `.search-trigger`) is compacted (smaller padding/font, its "Search"
+     label kept) so the row stops overflowing past the viewport. The progress
+     pill is hidden for the whole drawer range — see below. */
   .nav-utilities .search-btn {
     min-width: 0;
     padding: var(--space-2xs) var(--space-sm);

@@ -47,11 +47,26 @@
   z-index: var(--z-sticky);
   width: 100%;
   height: var(--header-height);
-  background-color: var(--color-bg-overlay);
   border-bottom: 1px solid var(--color-border-subtle);
-  backdrop-filter: blur(16px) saturate(180%);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
+}
+
+/* The glass background lives on a pseudo-element, NOT on .global-header
+   itself. `backdrop-filter` (like `transform` and `filter`) makes an
+   element the containing block for its `position: fixed` descendants —
+   which collapsed the mobile nav drawer to the header's own height and
+   made the drawer links unreachable on phones. Keeping the filter on
+   ::before preserves the blur while leaving the drawer anchored to the
+   viewport. */
+.global-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--color-bg-overlay);
+  backdrop-filter: blur(16px) saturate(180%);
+  pointer-events: none;
 }
 
 .global-header::after {
@@ -179,7 +194,7 @@
   z-index: 1001;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .mobile-menu-toggle {
     display: none;
   }
@@ -231,14 +246,14 @@
   gap: var(--space-2xs);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .nav-links {
     display: flex;
   }
 }
 
 /* Mobile Navigation Drawer */
-@media (max-width: 639px) {
+@media (max-width: 1023px) {
   .nav-links {
     position: fixed;
     top: 0;
@@ -258,8 +273,17 @@
     overflow-y: auto;
     box-shadow: var(--shadow-2xl);
     flex: none;
-    padding-top: 0;
     min-width: auto;
+  }
+
+  /* Clear the header bar: the drawer spans the full viewport height, so
+     without this its first link sits underneath the logo / close-button row
+     and can't be tapped. The attribute selector is load-bearing — a second,
+     later `.nav-links` block (outside any media query) sets
+     `padding-top: .35rem`, and media queries add no specificity, so a plain
+     `.nav-links` here would lose to it. */
+  .nav-links[data-mobile-nav] {
+    padding-top: var(--header-height);
   }
 
   .nav-links[data-mobile-nav-open] {
@@ -297,7 +321,10 @@
     cursor: pointer;
   }
 
-  /* Mobile overlay */
+  /* Mobile overlay. Sits just BELOW .global-header (--z-sticky), because the
+     drawer is a descendant of the header: an overlay above the header would
+     cover the drawer too and swallow every click on its links, while still
+     dimming the page content underneath. */
   body::after {
     content: "";
     position: fixed;
@@ -306,7 +333,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
-    z-index: 999;
+    z-index: calc(var(--z-sticky) - 1);
   }
 
   body[data-mobile-nav-open]::after {
@@ -326,15 +353,14 @@
   min-width: 0;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .nav-links {
     display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .nav-links::-webkit-scrollbar {
-    display: none;
+    /* Must stay `visible` on both axes. Any non-visible value here makes
+       .nav-links a scroll container, which clips the .nav-dropdown-menu
+       flyouts that extend below the bar (setting overflow-x alone
+       computes overflow-y to auto). The drawer handles narrow widths. */
+    overflow: visible;
   }
 }
 
@@ -366,7 +392,7 @@
   border-left: 1px solid rgba(148, 163, 233, 0.18);
 }
 
-@media (max-width: 639px) {
+@media (max-width: 1023px) {
   .nav-utilities {
     margin-left: 0;
     padding-left: 0;
@@ -463,7 +489,7 @@
     opacity var(--transition-fast),
     transform var(--transition-fast),
     visibility var(--transition-fast);
-  z-index: var(--z-dropdown-menu);
+  z-index: var(--z-dropdown);
   max-height: var(
     --dropdown-max-height,
     min(24rem, calc(100vh - var(--space-3xl)))
@@ -542,7 +568,7 @@
 }
 
 /* Mobile Navigation Adjustments for Dropdowns */
-@media (max-width: 639px) {
+@media (max-width: 1023px) {
   .nav-dropdown {
     width: 100%;
   }
