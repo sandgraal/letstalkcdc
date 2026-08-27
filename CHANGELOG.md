@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The connector config builder was completely inert.** `/connector-builder/`
+  is linked from the Tools menu, the homepage and `/tooling/`, and it produced
+  nothing at all: the config box was empty on load and stayed empty no matter
+  what you typed or which source tab you picked. Found by driving the page
+  rather than loading it — the page returned 200, the script returned 200 and
+  nothing threw, so every existing gate passed.
+
+  The module had drifted from its template. It looked up `#host`, `#port`,
+  `#prefix`, `#db-specific` and `#advanced` — none of which the markup renders
+  — and a defensive `if (!host || !port || ...) return;` at the top bailed out
+  before doing any work. It also wrote to `#json`/`#post`/`#put`, while the
+  template's output elements are `#config` and `#curlCmd`. Only 7 of its ~30
+  element lookups matched the page. As a side effect, the CDC-accuracy fix
+  that added `plugin.name: pgoutput` had been applied to code that never ran.
+
+  The module is now driven by the IDs the template actually exposes, and
+  generates into `#config` / `#curlCmd`. All the reviewed CDC semantics are
+  preserved: `plugin.name: pgoutput` for Postgres (Debezium's own default,
+  `decoderbufs`, needs a separately installed plugin and fails on a stock
+  Postgres), the mandatory `schema.history.internal.kafka.*` store for MySQL
+  on the in-network `kafka:29092` listener, `database.pdb.name` for Oracle,
+  and the 2.x `topic.prefix` / 1.x `database.server.name` split. Fields the
+  form doesn't expose fall back to the same defaults as this repo's labs, so
+  the output is runnable against the compose stack as-is.
+
+  Covered by a new `tests/e2e/tools.spec.js` that asserts on generated output —
+  all 7 cases fail against the previous build.
+
 - **Runtime bug sweep: 35 of 46 pages were throwing console errors; now 0.**
   Found by rendering every built page at three viewports and inspecting the
   result, rather than by reading source — the same method that surfaced the

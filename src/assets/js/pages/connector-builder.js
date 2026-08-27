@@ -1,3 +1,22 @@
+/**
+ * Connector Config Builder (/connector-builder/).
+ *
+ * Generates a Debezium connector config plus the curl command to register it.
+ *
+ * History: this module used to target an older version of the template and
+ * looked up `#host`, `#port`, `#prefix`, `#db-specific`, `#advanced` and wrote
+ * its output to `#json`/`#post`/`#put`. None of those exist in the shipped
+ * markup, so the guard at the top returned early and the whole tool rendered a
+ * permanently empty config box -- silently, with no console error. It is now
+ * driven by the IDs the template actually exposes and writes to `#config` and
+ * `#curlCmd`.
+ *
+ * Fields the form does not expose (hostname, port, topic prefix, slot name,
+ * server id, PDB, ...) fall back to the same defaults the site's labs and
+ * quickstarts use, so the generated config is runnable as-is against this
+ * repo's compose stack.
+ */
+
 const doc = document;
 
 const onReady = (cb) => {
@@ -8,46 +27,46 @@ const onReady = (cb) => {
   }
 };
 
+/** Per-source connection defaults matching this repo's compose.yaml + labs. */
+const SOURCE_DEFAULTS = {
+  postgres: { host: "postgres", port: "5432", dbname: "inventory" },
+  mysql: { host: "mysql", port: "3306", dbname: "inventory" },
+  oracle: { host: "oracle", port: "1521", dbname: "ORCLCDB" },
+};
+
+const TOPIC_PREFIX = "server1";
+
 onReady(() => {
   const $ = (selector) => doc.querySelector(selector);
   const $$ = (selector) => Array.from(doc.querySelectorAll(selector));
 
-  let src = "postgres";
-
-  $$(".tabs button").forEach((button) => {
-    button.addEventListener("click", () => {
-      $$(".tabs button").forEach((b) => b.classList.remove("active"));
-      button.classList.add("active");
-      src = button.dataset.src;
-      renderSpecific();
-      renderAll();
-    });
-  });
-
   const cname = $("#cname");
   const curl = $("#curl");
-  const host = $("#host");
-  const port = $("#port");
+  const dbname = $("#dbname");
   const user = $("#user");
   const pass = $("#pass");
-  const schemainc = $("#schemainc");
-  const tableinc = $("#tableinc");
-  const prefix = $("#prefix");
-  const snap = $("#snap");
-  const tomb = $("#tomb");
-  const schchg = $("#schchg");
   const dlq = $("#dlq");
-  const hb = $("#hb");
+  const include = $("#include");
+  const exclude = $("#exclude");
+  const snapshot = $("#snapshot");
+  const fetchSize = $("#fetch");
+  const taskMax = $("#taskMax");
+  const heartbeat = $("#heartbeat");
   const debz = $("#debz");
-  const jsonEl = $("#json");
-  const postEl = $("#post");
-  const putEl = $("#put");
-  const sp = $("#db-specific");
-  const adv = $("#advanced");
+  const configEl = $("#config");
+  const curlEl = $("#curlCmd");
 
-  if (!cname || !curl || !host || !port || !user || !pass || !sp || !adv) {
-    return;
-  }
+  // Only the elements this module actually writes to are required. Anything
+  // else is read defensively so a template tweak degrades a single field
+  // rather than silently disabling the entire tool (the previous failure).
+  if (!configEl || !curlEl) return;
+
+  let src = "postgres";
+  // Once the user edits the database name we stop syncing it on tab switch.
+  let dbnameDirty = false;
+
+  const val = (el, fallback = "") =>
+    el && el.value ? el.value.trim() : fallback;
 
   const csv = (value) =>
     value
@@ -56,97 +75,62 @@ onReady(() => {
       .filter(Boolean)
       .join(",");
 
-  const renderSpecific = () => {
-    if (src === "postgres") {
-      sp.innerHTML = `
-        <div class="row"><label>database:</label><input id="dbname" type="text" value="postgres"></div>
-        <div class="row"><label>slot name:</label><input id="slot" type="text" value="cdc_slot"></div>
-        <div class="row"><label>publication mode:</label>
-          <select id="pubmode">
-            <option value="filtered" selected>filtered (auto)</option>
-            <option value="all_tables">all_tables (auto)</option>
-            <option value="disabled">disabled (manual)</option>
-          </select>
-        </div>`;
-      adv.innerHTML = `
-        <div class="row"><label>decimal handling:</label>
-          <select id="decimal"><option>string</option><option>precise</option><option>double</option></select>
-        </div>`;
-    } else if (src === "mysql") {
-      sp.innerHTML = `
-        <div class="row"><label>server id:</label><input id="serverid" type="text" value="5400"></div>`;
-      adv.innerHTML = `
-        <div class="row"><label>time.precision.mode:</label>
-          <select id="timeprec"><option>connect</option><option>adaptive</option></select>
-        </div>`;
-      if (port.value === "5432") port.value = "3306";
-      if (host.value === "pg") host.value = "mysql";
-    } else if (src === "oracle") {
-      sp.innerHTML = `
-        <div class="row"><label>service (CDB):</label><input id="dbname" type="text" value="ORCLCDB"></div>
-        <div class="row"><label>PDB name:</label><input id="pdb" type="text" value="ORCLPDB1"></div>`;
-      adv.innerHTML = `
-        <div class="row"><label>log mining:</label>
-          <select id="logmin"><option value="online_catalog">online_catalog</option><option value="redo_log_catalog">redo_log_catalog</option></select>
-        </div>`;
-      if (port.value === "5432") port.value = "1521";
-      if (host.value === "pg") host.value = "oracle";
-    }
-  };
-
   const buildConfig = () => {
-    const v2 = debz.value === "2";
+    const v2 = val(debz, "2") === "2";
+    const defaults = SOURCE_DEFAULTS[src] || SOURCE_DEFAULTS.postgres;
+
     const base = {
-      "tombstones.on.delete": tomb.checked ? "false" : "true",
-      "include.schema.changes": schchg.checked ? "false" : "true",
-      "heartbeat.interval.ms": hb.value || "5000",
-      "snapshot.mode": snap.value || "initial",
+      "tasks.max": val(taskMax, "1"),
+      "tombstones.on.delete": "false",
+      "include.schema.changes": "false",
+      "heartbeat.interval.ms": val(heartbeat, "30000"),
+      "snapshot.mode": val(snapshot, "initial"),
+      "max.batch.size": val(fetchSize, "2000"),
     };
 
-    if (v2) {
-      base["topic.prefix"] = prefix.value || "server1";
-    } else {
-      base["database.server.name"] = prefix.value || "server1";
+    // Debezium 2.x renamed database.server.name -> topic.prefix.
+    if (v2) base["topic.prefix"] = TOPIC_PREFIX;
+    else base["database.server.name"] = TOPIC_PREFIX;
+
+    if (val(include)) base["table.include.list"] = csv(val(include));
+    if (val(exclude)) base["table.exclude.list"] = csv(val(exclude));
+
+    if (val(dlq)) {
+      base["errors.tolerance"] = "all";
+      base["errors.deadletterqueue.topic.name"] = val(dlq);
     }
 
-    if (schemainc.value) base["schema.include.list"] = csv(schemainc.value);
-    if (tableinc.value) base["table.include.list"] = csv(tableinc.value);
-    if (dlq.value) {
-      base["errors.tolerance"] = "all";
-      base["errors.deadletterqueue.topic.name"] = dlq.value.trim();
-    }
+    const conn = {
+      "database.hostname": defaults.host,
+      "database.port": defaults.port,
+      "database.user": val(user, "inventory"),
+      "database.password": val(pass, "inventory"),
+    };
 
     if (src === "postgres") {
-      Object.assign(base, {
+      Object.assign(base, conn, {
         "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-        "database.hostname": host.value,
-        "database.port": port.value,
-        "database.user": user.value,
-        "database.password": pass.value,
-        "database.dbname": $("#dbname")?.value || "postgres",
+        "database.dbname": val(dbname, defaults.dbname),
         // Default to pgoutput (built into Postgres 10+). Debezium's own
-        // default is decoderbufs, which needs a separately installed
-        // decoder plugin and fails on a stock Postgres.
+        // default is decoderbufs, which needs a separately installed decoder
+        // plugin and fails on a stock Postgres.
         "plugin.name": "pgoutput",
-        "slot.name": $("#slot")?.value || "cdc_slot",
-        "publication.autocreate.mode": $("#pubmode")?.value || "filtered",
-        "decimal.handling.mode": $("#decimal")?.value || "string",
+        "slot.name": "cdc_slot",
+        "publication.autocreate.mode": "filtered",
+        "decimal.handling.mode": "string",
       });
     } else if (src === "mysql") {
-      Object.assign(base, {
+      Object.assign(base, conn, {
         "connector.class": "io.debezium.connector.mysql.MySqlConnector",
-        "database.hostname": host.value,
-        "database.port": port.value,
-        "database.user": user.value,
-        "database.password": pass.value,
-        "database.server.id": $("#serverid")?.value || "5400",
+        "database.server.id": "5400",
       });
-      // The MySQL connector requires a Kafka-backed schema history store,
-      // or it won't start. Keys moved to schema.history.internal.* in 2.x
-      // (were database.history.* in 1.x).
-      const historyTopic = "schemahistory." + (prefix.value || "server1");
-      // kafka:29092 is the in-network (advertised INTERNAL) listener used by
-      // this repo's compose.yaml and lab; kafka:9092 is host-only.
+      if (val(dbname)) base["database.include.list"] = csv(val(dbname));
+      // The MySQL connector requires a Kafka-backed schema history store or it
+      // will not start. Keys moved to schema.history.internal.* in 2.x (they
+      // were database.history.* in 1.x). kafka:29092 is the in-network
+      // (advertised INTERNAL) listener used by this repo's compose.yaml;
+      // kafka:9092 is host-only.
+      const historyTopic = `schemahistory.${TOPIC_PREFIX}`;
       if (v2) {
         base["schema.history.internal.kafka.bootstrap.servers"] = "kafka:29092";
         base["schema.history.internal.kafka.topic"] = historyTopic;
@@ -155,15 +139,11 @@ onReady(() => {
         base["database.history.kafka.topic"] = historyTopic;
       }
     } else if (src === "oracle") {
-      Object.assign(base, {
+      Object.assign(base, conn, {
         "connector.class": "io.debezium.connector.oracle.OracleConnector",
-        "database.hostname": host.value,
-        "database.port": port.value,
-        "database.user": user.value,
-        "database.password": pass.value,
-        "database.dbname": $("#dbname")?.value || "ORCLCDB",
-        "database.pdb.name": $("#pdb")?.value || "ORCLPDB1",
-        "log.mining.strategy": $("#logmin")?.value || "online_catalog",
+        "database.dbname": val(dbname, defaults.dbname),
+        "database.pdb.name": "ORCLPDB1",
+        "log.mining.strategy": "online_catalog",
       });
     }
 
@@ -172,89 +152,101 @@ onReady(() => {
 
   const renderAll = () => {
     const cfg = buildConfig();
-    const name = cname.value || "inventory-connector";
-    const endpoint = (curl.value || "").replace(/\/$/, "");
+    const name = val(cname, "inventory-connector");
+    const endpoint = val(curl, "http://localhost:8083").replace(/\/$/, "");
+    const payload = { name, config: cfg };
 
-    jsonEl.textContent = JSON.stringify({ name, config: cfg }, null, 2);
+    configEl.textContent = JSON.stringify(payload, null, 2);
 
-    const post = [
-      `curl -s -X POST ${endpoint}/connectors \\\\`,
-      `  -H 'content-type: application/json' \\\\`,
-      `  -d '${JSON.stringify({ name, config: cfg }).replace(/'/g, "'\\\\''")}' | jq .`,
+    curlEl.textContent = [
+      `curl -s -X POST ${endpoint}/connectors \\`,
+      `  -H 'content-type: application/json' \\`,
+      `  -d '${JSON.stringify(payload).replace(/'/g, `'\\''`)}' | jq .`,
     ].join("\n");
-    postEl.textContent = post;
-
-    const put = [
-      `curl -s -X PUT ${endpoint}/connectors/${name}/config \\\\`,
-      `  -H 'content-type: application/json' \\\\`,
-      `  -d '${JSON.stringify(cfg).replace(/'/g, "'\\\\''")}' | jq .`,
-    ].join("\n");
-    putEl.textContent = put;
   };
 
-  const copy = (text, selector) => {
+  const flash = (button, message) => {
+    if (!button) return;
+    const label = button.textContent;
+    button.textContent = message;
+    setTimeout(() => {
+      button.textContent = label;
+    }, 1200);
+  };
+
+  const copy = (text, button) => {
+    if (!navigator.clipboard) {
+      flash(button, "unsupported");
+      return;
+    }
     navigator.clipboard
       .writeText(text)
-      .then(() => {
-        const button = doc.querySelector(selector);
-        if (!button) return;
-        const label = button.textContent;
-        button.textContent = "copied!";
-        setTimeout(() => {
-          button.textContent = label;
-        }, 1200);
-      })
-      .catch(() => {
-        const button = doc.querySelector(selector);
-        if (!button) return;
-        const label = button.textContent;
-        button.textContent = "error";
-        setTimeout(() => {
-          button.textContent = label;
-        }, 1200);
-      });
+      .then(() => flash(button, "copied!"))
+      .catch(() => flash(button, "error"));
   };
 
-  $("#copyJson")?.addEventListener("click", () =>
-    copy(jsonEl.textContent, "#copyJson"),
-  );
-  $("#copyPost")?.addEventListener("click", () =>
-    copy(postEl.textContent, "#copyPost"),
-  );
-  $("#copyPut")?.addEventListener("click", () =>
-    copy(putEl.textContent, "#copyPut"),
-  );
-  $("#dlJson")?.addEventListener("click", () => {
-    const blob = new Blob([jsonEl.textContent], { type: "application/json" });
-    const link = doc.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${$("#cname")?.value || "connector"}.json`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+  $$(".tabs button[data-src]").forEach((button) => {
+    button.addEventListener("click", () => {
+      $$(".tabs button[data-src]").forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
+      button.classList.add("active");
+      button.setAttribute("aria-selected", "true");
+      src = button.dataset.src || "postgres";
+      // Each engine wants a different database name (Oracle's ORCLCDB is not
+      // interchangeable with Postgres' inventory). Carry the per-source
+      // default across tab switches so the generated config stays runnable,
+      // but never clobber a value the user typed themselves.
+      if (dbname && !dbnameDirty) {
+        dbname.value = (
+          SOURCE_DEFAULTS[src] || SOURCE_DEFAULTS.postgres
+        ).dbname;
+      }
+      renderAll();
+    });
+  });
+
+  dbname?.addEventListener("input", () => {
+    dbnameDirty = true;
   });
 
   ["input", "change"].forEach((eventName) => {
     [
       cname,
       curl,
-      host,
-      port,
+      dbname,
       user,
       pass,
-      schemainc,
-      tableinc,
-      prefix,
-      snap,
-      tomb,
-      schchg,
       dlq,
-      hb,
+      include,
+      exclude,
+      snapshot,
+      fetchSize,
+      taskMax,
+      heartbeat,
       debz,
     ]
       .filter(Boolean)
       .forEach((element) => element.addEventListener(eventName, renderAll));
   });
 
-  renderSpecific();
+  $("#copyConfig")?.addEventListener("click", (event) =>
+    copy(configEl.textContent ?? "", event.currentTarget),
+  );
+  $("#copyCurl")?.addEventListener("click", (event) =>
+    copy(curlEl.textContent ?? "", event.currentTarget),
+  );
+
+  // The markup ships `class="active"` on the first tab but no aria-selected,
+  // leaving the tablist without a selected state for assistive tech until the
+  // first click. Sync both up front.
+  $$(".tabs button[data-src]").forEach((button) => {
+    button.setAttribute(
+      "aria-selected",
+      button.dataset.src === src ? "true" : "false",
+    );
+  });
+
   renderAll();
 });
