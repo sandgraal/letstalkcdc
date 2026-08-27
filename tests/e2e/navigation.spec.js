@@ -1,9 +1,19 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
+import {
+  expectHittable,
+  expectNotClipped,
+  expectFixedNotTrapped,
+} from "./helpers/hit-test.js";
 
 /**
  * E2E tests for site navigation.
  * Covers desktop nav links, mobile menu, dropdown menus, and keyboard navigation.
+ *
+ * NOTE ON ASSERTIONS: prefer `expectHittable` over `toBeVisible()` for anything
+ * a user has to click, and never pass `{ force: true }` to `click()` in this
+ * file. Both shortcuts previously let real bugs through CI — see the comment
+ * block in ./helpers/hit-test.js for the specific failures.
  */
 
 test.describe("navigation", () => {
@@ -50,6 +60,21 @@ test.describe("navigation", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(menu).toBeVisible();
+
+    // Regression guard: the menu used to satisfy every assertion above while
+    // being clipped by `.nav-links` (overflow) and painted under the hero, so
+    // none of it could be clicked. Assert the user-facing property instead.
+    await expectNotClipped(menu, "the open dropdown menu");
+    const items = menu.locator("a[role='menuitem']");
+    const count = await items.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const item = items.nth(i);
+      await expectHittable(
+        item,
+        `dropdown item "${(await item.textContent())?.trim()}"`,
+      );
+    }
   });
 
   test("dropdown menu closes on Escape", async ({ page }) => {
@@ -118,9 +143,32 @@ test.describe("navigation (mobile)", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-    // Nav links should be accessible
-    const links = mobileNav.locator("a");
-    expect(await links.count()).toBeGreaterThan(0);
+    // The drawer is `position: fixed` inside the sticky header. When the header
+    // carried `backdrop-filter` it became the containing block for the drawer,
+    // which collapsed it to the header's 64px and hid all 12 links in
+    // production. `links.count() > 0` still passed, so assert geometry.
+    await expectFixedNotTrapped(mobileNav, "the mobile drawer");
+    const box = await mobileNav.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box, "drawer should have a layout box").not.toBeNull();
+    expect(
+      box.height,
+      `drawer should span the viewport height (${viewport?.height}px), got ${box.height}px`,
+    ).toBeGreaterThan((viewport?.height ?? 0) * 0.8);
+
+    // Every top-level drawer link must be genuinely clickable. Items inside a
+    // collapsed dropdown are excluded — they are legitimately hidden until the
+    // user expands their parent.
+    const links = mobileNav.locator("a:not(.nav-dropdown-menu a)");
+    const count = await links.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const link = links.nth(i);
+      await expectHittable(
+        link,
+        `drawer link "${(await link.textContent())?.trim()}"`,
+      );
+    }
   });
 
   test("mobile menu closes on Escape", async ({ page }) => {
@@ -146,8 +194,12 @@ test.describe("navigation (mobile)", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-    const link = mobileNav.locator("a[href]").first();
-    await link.click({ force: true });
+    // Deliberately NOT `{ force: true }`. Forcing skips Playwright's
+    // actionability checks — including "receives pointer events" — which is
+    // exactly the check that would have caught the collapsed drawer. A real
+    // click here is the regression guard.
+    const link = mobileNav.locator("a[href]:not(.nav-dropdown-menu a)").first();
+    await link.click();
 
     // After clicking a link, page navigates; verify navigation occurred
     await page.waitForLoadState("networkidle");
