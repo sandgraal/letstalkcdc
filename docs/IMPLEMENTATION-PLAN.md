@@ -47,14 +47,14 @@ the index of the arc:
 The revamp above was signed off while a phone visitor could not use the
 navigation at all. That is worth recording plainly, because the reason
 is structural rather than a one-off slip: **every gate in this repo
-verified that files build and parse, and none of them loaded a page and
-used it.** `verify-all`, `smoke:core` and pa11y cannot see a menu painted
+verified that files build and parse, and none of them tried to use the UI
+in a browser.** `verify-all`, `smoke:core` and pa11y cannot see a menu painted
 behind the hero, a drawer collapsed to the header's height, or a tool
 that quietly returns before doing any work.
 
-Seven production defects were found by rendering all 46 built pages at
-three viewports and driving each interactive component, then fixed
-(PRs #313, #314, #316):
+Seven production defects were found by rendering every built page at
+three viewports — 46 directory pages (`index.html`) at the time — and
+driving each interactive component, then fixed (PRs #313, #314, #316):
 
 - **Nav dropdowns were clipped and unclickable.** `.nav-links` had
   `overflow-x: auto` (which computes `overflow-y` to `auto` as well),
@@ -111,9 +111,15 @@ two holes in the guards themselves (a page walker that only matched
       disables Playwright's actionability checks — including "receives
       pointer events", the one check that would have failed on the
       collapsed drawer.
-- [x] **`tests/e2e/runtime-health.spec.js`** — renders every built page
-      (73, including standalone `.html` outputs) and fails on any
-      uncaught JS exception or same-origin 404. Third-party/CDN misses
+- [x] **`tests/e2e/runtime-health.spec.js`** — renders every built
+      `.html` output and fails on any uncaught JS exception or
+      same-origin 404. This casts a wider net than the sweep above: it
+      also covers standalone outputs such as `/404.html` and the
+      redirect stubs, not only directory `index.html` pages — 73 files
+      against those 46 at the time of writing, and both grow with the
+      site. That difference mattered: an earlier version of the walker
+      matched only `index.html`, skipped `/404.html`, and reported a
+      false pass on a page whose JS was throwing. Third-party/CDN misses
       are warned, not failed, so an outage cannot make CI flaky.
 - [x] **`tests/unit/css-custom-properties.test.js`** — statically
       catches dangling `var(--token)` references with no fallback.
