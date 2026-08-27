@@ -22,6 +22,12 @@
 # own production URL doesn't exist until this PR deploys. Remove after deploy.
 ^https://sandgraal\.github\.io/letstalkcdc/compare/$
 
+# New (Phase 12): the /non-relational/ and /security/ modules. Same
+# canonical-loopback as the entries above — each page's own production URL
+# does not exist until this PR deploys. Remove after the next deploy.
+^https://sandgraal\.github\.io/letstalkcdc/non-relational/$
+^https://sandgraal\.github\.io/letstalkcdc/security/$
+
 # Placeholder Snowflake account URL used in the Snowflake/Matillion lab
 # examples — readers substitute their own account locator.
 ^https://myaccount\.snowflakecomputing\.com

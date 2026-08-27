@@ -1,0 +1,185 @@
+---
+layout: base.njk
+title: "CDC Beyond Relational Databases"
+description: "How change data capture works for MongoDB change streams, DynamoDB Streams and Cassandra CDC — and where each breaks the WAL/binlog mental model."
+canonicalPath: "/non-relational/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<article class="prose">
+  <section id="what-transfers" aria-labelledby="what-transfers-title">
+    <h2 id="what-transfers-title">What transfers, and what does not</h2>
+    <p>
+      Every method on this site rests on one idea: the database already writes
+      an ordered, durable record of every change, so read <em>that</em> instead
+      of polling the table. That idea is not relational. MongoDB, DynamoDB and
+      Cassandra all keep an equivalent log, and all three expose it.
+    </p>
+    <p>
+      What does not transfer is the set of guarantees you stopped noticing.
+      Relational CDC hands you a single ordered log per database, a stable
+      primary key, and a before-image on request. Drop any one of those and a
+      pipeline that was correct becomes subtly wrong — usually without an error.
+    </p>
+    <table>
+      <caption class="sr-only">
+        CDC characteristics by non-relational source
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Source</th>
+          <th scope="col">Log</th>
+          <th scope="col">Ordering</th>
+          <th scope="col">Before-image</th>
+          <th scope="col">Retention</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">MongoDB</th>
+          <td>oplog, via change streams</td>
+          <td>Total, per stream, by resume token</td>
+          <td>Opt-in (<code>fullDocumentBeforeChange</code>)</td>
+          <td>Capped oplog — size, not time</td>
+        </tr>
+        <tr>
+          <th scope="row">DynamoDB</th>
+          <td>DynamoDB Streams</td>
+          <td>Per shard, and shards follow partition keys</td>
+          <td>Yes (<code>OLD_IMAGE</code> / <code>NEW_AND_OLD_IMAGES</code>)</td>
+          <td>Fixed 24 hours</td>
+        </tr>
+        <tr>
+          <th scope="row">Cassandra</th>
+          <td>commitlog CDC directory</td>
+          <td><strong>Per node only</strong></td>
+          <td>No — mutations, not row states</td>
+          <td>Until the CDC directory fills</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="mongodb" aria-labelledby="mongodb-title">
+    <h2 id="mongodb-title">MongoDB: change streams over the oplog</h2>
+    <p>
+      Change streams are the closest analogue to relational CDC, and the
+      easiest migration. They read the replica set&rsquo;s oplog and hand you an
+      ordered stream with a <strong>resume token</strong> on every event — the
+      same role an LSN plays elsewhere. Store the token with your sink offsets
+      and a restart continues exactly where it stopped.
+    </p>
+    <pre><code>// resume tokens are the offset; persist them with the sink write
+const stream = db.collection('customers').watch([], {
+  fullDocument: 'updateLookup',
+  fullDocumentBeforeChange: 'whenAvailable',
+  resumeAfter: savedToken
+});</code></pre>
+    <p>
+      Two details catch people. First, an <code>update</code> event carries only
+      the changed fields unless you ask for <code>fullDocument</code>, and
+      <code>updateLookup</code> re-reads the document <em>at lookup time</em> —
+      so it can return a newer state than the one the event described. If you
+      need the exact post-change state, that difference matters.
+    </p>
+    <p>
+      Second, the oplog is <strong>capped by size, not time</strong>. A write
+      burst can age out the token you were about to resume from, and there is no
+      warning before it happens — the resume simply fails and you are back to a
+      snapshot. Size the oplog against your worst-case downtime, not your
+      average.
+    </p>
+  </section>
+
+  <section id="dynamodb" aria-labelledby="dynamodb-title">
+    <h2 id="dynamodb-title">DynamoDB Streams: a hard 24-hour horizon</h2>
+    <p>
+      DynamoDB Streams gives you before and after images directly — set the view
+      type to <code>NEW_AND_OLD_IMAGES</code> and the envelope is essentially
+      complete. Ordering is guaranteed per shard, and because shards map to
+      partition keys, per-item ordering holds. That is the guarantee you
+      actually need.
+    </p>
+    <p>
+      The constraint is retention: <strong>24 hours, not configurable</strong>.
+      There is no equivalent of extending log retention while you fix a sink. A
+      consumer outage that outlasts a long weekend is not a backlog to work
+      through — it is a gap, and the only repair is a fresh full scan of the
+      table.
+    </p>
+    <aside aria-label="Plan for the horizon" class="callout">
+      <p>
+        <strong>Design implication:</strong> alert on consumer lag against the
+        24-hour horizon, not against a comfortable threshold. On a relational
+        source, lag costs you freshness. Here, lag past the horizon costs you
+        <em>data</em>, and the recovery path is a table scan.
+      </p>
+    </aside>
+  </section>
+
+  <section id="cassandra" aria-labelledby="cassandra-title">
+    <h2 id="cassandra-title">Cassandra: the one that breaks the model</h2>
+    <p>
+      Cassandra CDC is the case worth studying, because it violates the
+      assumption everything else on this site is built on:
+      <strong>there is no cluster-wide ordered log</strong>. CDC is enabled per
+      table and writes to a per-node commitlog directory. Each node records the
+      mutations it personally accepted.
+    </p>
+    <p>With replication factor 3, that has consequences:</p>
+    <ul>
+      <li>
+        <strong>The same write appears on multiple nodes.</strong> Duplicates
+        are structural, not the result of a retry.
+      </li>
+      <li>
+        <strong>No cross-node ordering exists.</strong> There is no sequence
+        number to sort by across the cluster, so &ldquo;order by log position&rdquo; has no
+        cluster-wide meaning.
+      </li>
+      <li>
+        <strong>Events are mutations, not row states.</strong> A write records
+        the columns it touched. There is no before-image, and no complete
+        after-image unless the write happened to set every column.
+      </li>
+    </ul>
+    <p>
+      So the usual sink recipe — upsert on the primary key, order by log
+      position — does not port. What ports instead is Cassandra&rsquo;s own conflict
+      rule: <strong>last write wins by cell timestamp</strong>. Every mutation
+      carries per-cell write times, and merging on those reproduces the source&rsquo;s
+      semantics, deduplicating the replicas as a side effect. It is the one
+      place on this site where a timestamp is the correct ordering key — because
+      here it is a logical clock the database assigns, not a wall-clock guess
+      like <code>ts_ms</code>.
+    </p>
+  </section>
+
+  <section id="checklist" aria-labelledby="checklist-title">
+    <h2 id="checklist-title">Before you port a pipeline</h2>
+    <ul class="checklist">
+      <li>
+        Identify what plays the role of the LSN — resume token, shard sequence
+        number, cell timestamp — and confirm your sink orders on it.
+      </li>
+      <li>
+        Find the retention limit and express it in <em>time you can be down</em>,
+        then alert well inside it.
+      </li>
+      <li>
+        Confirm whether you get a before-image, and whether your consumers
+        actually need one.
+      </li>
+      <li>
+        Check that the source has a stable key. Idempotent upserts need one just
+        as much here as they do on Postgres.
+      </li>
+      <li>
+        Assume at-least-once. None of these transports changes that, and none of
+        them removes the need for an idempotent sink.
+      </li>
+    </ul>
+  </section>
+</article>

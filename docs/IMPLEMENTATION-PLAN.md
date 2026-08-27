@@ -52,9 +52,9 @@ in a browser.** `verify-all`, `smoke:core` and pa11y cannot see a menu painted
 behind the hero, a drawer collapsed to the header's height, or a tool
 that quietly returns before doing any work.
 
-Seven production defects were found by rendering all 46 built pages at
-three viewports and driving each interactive component, then fixed
-(PRs #313, #314, #316):
+Seven production defects were found by rendering every built page at
+three viewports — 46 directory pages (`index.html`) at the time — and
+driving each interactive component, then fixed (PRs #313, #314, #316):
 
 - **Nav dropdowns were clipped and unclickable.** `.nav-links` had
   `overflow-x: auto` (which computes `overflow-y` to `auto` as well),
@@ -111,9 +111,15 @@ two holes in the guards themselves (a page walker that only matched
       disables Playwright's actionability checks — including "receives
       pointer events", the one check that would have failed on the
       collapsed drawer.
-- [x] **`tests/e2e/runtime-health.spec.js`** — renders every built page
-      (73, including standalone `.html` outputs) and fails on any
-      uncaught JS exception or same-origin 404. Third-party/CDN misses
+- [x] **`tests/e2e/runtime-health.spec.js`** — renders every built
+      `.html` output and fails on any uncaught JS exception or
+      same-origin 404. This casts a wider net than the sweep above: it
+      also covers standalone outputs such as `/404.html` and the
+      redirect stubs, not only directory `index.html` pages — 73 files
+      against those 46 at the time of writing, and both grow with the
+      site. That difference mattered: an earlier version of the walker
+      matched only `index.html`, skipped `/404.html`, and reported a
+      false pass on a page whose JS was throwing. Third-party/CDN misses
       are warned, not failed, so an outage cannot make CI flaky.
 - [x] **`tests/unit/css-custom-properties.test.js`** — statically
       catches dangling `var(--token)` references with no fallback.
@@ -914,7 +920,13 @@ Each item must hold the site's standing thesis: delivery is
 the primary key and ordered by **log position, not `ts_ms`**, and
 end-to-end exactly-once across systems is not achievable.
 
-- [ ] **Watermark-based incremental snapshots.** The site names
+- [x] **Watermark-based incremental snapshots.** Shipped as
+      `#watermarks` on `/snapshotting/`: the low-watermark → chunk read →
+      high-watermark → subtract-the-window sequence, why the subtraction
+      is what makes it correct (the only rows a concurrent write could
+      have staled are exactly the set removed), plus the real costs —
+      signal-table writes, PK-ordered chunking, read load, and the
+      unchanged need for an idempotent sink. Original scope: The site names
       incremental/signal-based snapshots but never explains the
       algorithm, which is the single most-asked "how does that actually
       work?" question in CDC. Cover the DBLog watermark method: open a
@@ -923,20 +935,40 @@ end-to-end exactly-once across systems is not achievable.
       the two — which is what lets a snapshot run **concurrently** with
       streaming and still converge, with no table lock and a resumable
       cursor. Belongs on `/snapshotting/`.
-- [ ] **Non-relational sources.** Log-based CDC is presented almost
+- [x] **Non-relational sources.** Shipped as a new module at
+      `/non-relational/`: MongoDB change streams (resume tokens as the
+      offset, `updateLookup` returning a newer state than the event
+      described, size-capped oplog), DynamoDB Streams (per-shard
+      ordering, hard 24h horizon where lag costs data rather than
+      freshness), and Cassandra (per-node commitlog, structural
+      duplicates at RF>1, no cross-node ordering, mutations rather than
+      row states — where last-write-wins on cell timestamps is the
+      correct merge rule). Original scope: Log-based CDC is presented almost
       entirely through relational WAL/binlog/redo. Add MongoDB change
       streams (oplog, resume tokens), DynamoDB Streams (24h retention,
       shard-per-partition ordering) and Cassandra CDC (commitlog,
       per-node not per-cluster, no cross-partition ordering) — including
       where each _breaks_ the relational mental model, which is the
       point of the section.
-- [ ] **Security depth.** PII handling is currently one-line bullets.
+- [x] **Security depth.** Shipped as a new module at `/security/`:
+      why a change log is riskier than its table (keeps history the row
+      does not, fans out, outlives deletion), `column.exclude.list` and
+      salted-hash masking at the connector rather than downstream, the
+      wider-than-expected replication privileges per engine, the DLQ as
+      an overlooked full-payload copy, and three erasure strategies
+      ending in crypto-shredding. Original scope: PII handling is currently one-line bullets.
       Cover column filtering/masking at the connector (before the event
       reaches the broker), encryption in transit and at rest, key
       handling for a log that outlives the row, and the RBAC/ACL surface
       a CDC user actually needs (replication privileges are broader than
       most read-only roles).
-- [ ] **Delivery beyond Kafka.** Ordering, retention and replay
+- [x] **Delivery beyond Kafka.** Shipped as `#transports` on
+      `/event-envelope/`: ordering unit, retention and sink impact for
+      Kafka, Pulsar (`Key_Shared` vs `Shared`), Kinesis (per-shard, and
+      what resharding does to per-key order) and Pub/Sub (no ordering
+      without an ordering key). Closes with the point that the thesis is
+      transport-independent — all four are at-least-once, none gives
+      exactly-once into an external sink. Original scope: Ordering, retention and replay
       semantics are taught Kafka-first throughout. Add Pulsar, Kinesis
       and Pub/Sub — in particular that Pub/Sub gives **no ordering
       without an ordering key**, Kinesis orders per shard with a fixed

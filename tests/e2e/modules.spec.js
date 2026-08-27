@@ -115,3 +115,40 @@ test.describe("scorecard", () => {
     }
   });
 });
+
+test.describe("series overview grid", () => {
+  /**
+   * The grid shipped empty in production: `index.11tydata.cjs` is CommonJS and
+   * `require()`d `series.mjs`, an ES module, so it received the module
+   * namespace ({ __esModule, default }) instead of the array. `seriesCards`
+   * was an object, the `{% for %}` iterated nothing, and /overview/ — the
+   * "Series" destination in the primary nav — rendered zero module cards.
+   * Nothing failed: the page built, returned 200 and threw no errors.
+   */
+  test("renders a card for every registered module", async ({ page }) => {
+    await page.goto("/overview/");
+    const cards = page.locator(".series-card");
+    // Guard the count, not just non-emptiness: a partially-populated grid is
+    // the same class of silent failure.
+    expect(await cards.count()).toBeGreaterThanOrEqual(20);
+  });
+
+  test("cards link to pages that exist", async ({ page }) => {
+    await page.goto("/overview/");
+    const links = page.locator(".series-card a[href]");
+    const count = await links.count();
+    expect(count).toBeGreaterThan(0);
+
+    const hrefs = [];
+    for (let i = 0; i < count; i++) {
+      const href = await links.nth(i).getAttribute("href");
+      if (href && !href.startsWith("http") && !href.startsWith("#")) {
+        hrefs.push(href);
+      }
+    }
+    for (const href of hrefs.slice(0, 8)) {
+      const response = await page.request.get(href);
+      expect(response.status(), `${href} should resolve`).toBeLessThan(400);
+    }
+  });
+});

@@ -1,0 +1,189 @@
+---
+layout: base.njk
+title: "Security, PII & Access Control"
+description: "Mask and filter columns before they reach the broker, size the database privileges CDC really needs, and plan for a change log that outlives the row it describes."
+canonicalPath: "/security/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<article class="prose">
+  <section id="threat-model" aria-labelledby="threat-model-title">
+    <h2 id="threat-model-title">What CDC actually changes about your risk</h2>
+    <p>
+      Turning on CDC does not create new data. It creates new <em>copies</em>,
+      in a system with different access control, different retention, and an
+      audit story that is usually weaker than the database&rsquo;s. Three properties
+      make a change log meaningfully riskier than the table it came from:
+    </p>
+    <ul>
+      <li>
+        <strong>It keeps history the table does not.</strong> An
+        <code>UPDATE</code> that scrubs a customer&rsquo;s address leaves one row
+        behind, but the log holds the before-image indefinitely.
+      </li>
+      <li>
+        <strong>It fans out.</strong> One connector becomes a topic, which
+        becomes a warehouse table, a search index and three dashboards. Every
+        hop inherits the sensitive columns unless something removes them.
+      </li>
+      <li>
+        <strong>It outlives deletion.</strong> Deleting the row emits a delete
+        event; it does not retract the events that carried the values.
+      </li>
+    </ul>
+  </section>
+
+  <section id="filter-early" aria-labelledby="filter-early-title">
+    <h2 id="filter-early-title">Filter at the connector, not downstream</h2>
+    <p>
+      The single highest-leverage decision is <em>where</em> a sensitive column
+      is removed. Filtering downstream means the value already crossed the
+      network, already sat in a broker, and is already in whatever retention
+      that broker was configured with. Filtering at the connector means it never
+      leaves the source host.
+    </p>
+    <pre><code>{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+
+  // Never capture it at all -- strongest option
+  "column.exclude.list": "public.customers.ssn,public.customers.card_number",
+
+  // Or capture it hashed, so joins still work downstream
+  "column.mask.hash.SHA-256.with.salt.&lt;salt-name&gt;": "public.customers.email"
+}</code></pre>
+    <p>
+      Hashing is the useful middle ground: a salted hash keeps a column
+      joinable and countable without carrying the plaintext. Choose the salt
+      deliberately — a per-column salt that never rotates makes the hash stable
+      and therefore joinable across time, which is exactly what analysts want
+      and exactly what makes it re-identifiable if the salt leaks.
+    </p>
+    <aside aria-label="Exclusion and schema change" class="callout">
+      <p>
+        <strong>Watch the interaction with snapshots.</strong> Adding a column
+        to <code>column.exclude.list</code> changes the event shape. Consumers
+        expecting that field need to tolerate its absence, and a re-snapshot
+        taken before the change will still contain it. Treat an exclusion list
+        edit as a schema change, with the same review as any other.
+      </p>
+    </aside>
+  </section>
+
+  <section id="privileges" aria-labelledby="privileges-title">
+    <h2 id="privileges-title">CDC privileges are broader than &ldquo;read-only&rdquo;</h2>
+    <p>
+      A common mistake is assuming a CDC user is just a reporting user. It is
+      not. Reading the log is a replication-level capability, and on most
+      engines it cannot be scoped per table the way a <code>SELECT</code> grant
+      can — the log carries every table, and the connector filters afterwards.
+    </p>
+    <table>
+      <caption class="sr-only">Privileges required for CDC by engine</caption>
+      <thead>
+        <tr>
+          <th scope="col">Engine</th>
+          <th scope="col">Needs</th>
+          <th scope="col">Why it is wider than it looks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Postgres</th>
+          <td><code>REPLICATION</code> attribute, plus a replication slot</td>
+          <td>
+            The slot reads the whole WAL. An abandoned slot also pins WAL
+            forever and can fill the disk — an availability risk, not just a
+            security one.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">MySQL</th>
+          <td><code>REPLICATION SLAVE</code>, <code>REPLICATION CLIENT</code></td>
+          <td>
+            Grants the whole binlog for every database on the server, not the
+            subset you configured.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Oracle</th>
+          <td>LogMiner access and dictionary views</td>
+          <td>
+            Redo access spans the instance; incremental snapshots additionally
+            want a writable signal table.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      Practical consequence: put the CDC user on a dedicated account with no
+      interactive login, rotate its credentials like a service account, and
+      audit slot and connector creation — the connector config is where column
+      filtering lives, so whoever can edit it can quietly turn masking off.
+    </p>
+  </section>
+
+  <section id="in-flight" aria-labelledby="in-flight-title">
+    <h2 id="in-flight-title">In transit and at rest</h2>
+    <ul>
+      <li>
+        <strong>TLS on every hop</strong> — source to connector, connector to
+        broker, broker to sink. The connector-to-source leg is the one most
+        often left plaintext because it &ldquo;stays inside the VPC&rdquo;.
+      </li>
+      <li>
+        <strong>Broker ACLs per topic.</strong> CDC topics usually deserve
+        tighter ACLs than application topics, because they contain complete row
+        images rather than curated events.
+      </li>
+      <li>
+        <strong>The DLQ is a copy too.</strong> A dead-letter topic holds full
+        failed payloads, is usually created with default permissions, and is
+        routinely forgotten in access reviews. It deserves the same ACLs and
+        retention scrutiny as the topic it protects.
+      </li>
+      <li>
+        <strong>Connector configs hold credentials.</strong> Use the
+        externalized-secrets mechanism rather than inline passwords; the REST
+        API will otherwise return them to anyone who can read connector state.
+      </li>
+    </ul>
+  </section>
+
+  <section id="erasure" aria-labelledby="erasure-title">
+    <h2 id="erasure-title">Deletion requests and an append-only log</h2>
+    <p>
+      A right-to-erasure request is where CDC&rsquo;s architecture and privacy law
+      meet awkwardly. Deleting the source row produces a delete event; it does
+      not remove the earlier events carrying that person&rsquo;s data, and a
+      compacted topic keeps the latest value per key rather than none.
+    </p>
+    <p>Three approaches, in descending order of robustness:</p>
+    <ol>
+      <li>
+        <strong>Never carry the identifier in the clear.</strong> If the log
+        only ever held a salted hash, erasure in the source is sufficient and
+        nothing downstream needs surgery. This is why the filtering decision
+        above is worth making early.
+      </li>
+      <li>
+        <strong>Compaction plus tombstones.</strong> Emit a genuine tombstone
+        (null value for the key) and let compaction retire prior versions.
+        Correct in the limit, but it is eventual — compaction runs on its own
+        schedule, not on your deadline.
+      </li>
+      <li>
+        <strong>Crypto-shredding.</strong> Encrypt per-subject with a key held
+        outside the log, and destroy the key on request. The ciphertext may
+        remain; without the key it is inert. This is the standard answer when a
+        hard deadline meets an append-only store.
+      </li>
+    </ol>
+    <p class="muted small">
+      Whichever you choose, decide it before the first production topic exists.
+      Retrofitting erasure onto a log that already contains two years of
+      plaintext is a migration, not a configuration change.
+    </p>
+  </section>
+</article>
