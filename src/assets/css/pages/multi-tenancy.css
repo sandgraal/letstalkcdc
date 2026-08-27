@@ -1,5 +1,3 @@
-@import url("../components/panels.css");
-
 .control-panel {
   display: grid;
   grid-template-columns: 1fr 1.25fr;
@@ -8,7 +6,7 @@
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   background: var(--bg-secondary);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 @media (max-width: 900px) {

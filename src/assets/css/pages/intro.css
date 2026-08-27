@@ -11,7 +11,7 @@
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
   transition:
     transform 0.2s,
     box-shadow 0.2s;
@@ -19,7 +19,7 @@
 
 .info-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-medium);
+  box-shadow: var(--shadow-md);
 }
 
 .info-card h3 {
@@ -86,7 +86,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
   padding: 0.75rem;
   overflow: auto;
   margin-top: 1rem;
@@ -416,7 +416,7 @@
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
   margin: 0 0 1.5rem;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .sticky-subnav ul {
@@ -496,7 +496,7 @@
   border-radius: 0.75rem;
   padding: 1rem;
   background: var(--bg-secondary);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
   text-align: left;
 }
 
@@ -535,7 +535,7 @@
   padding: 1rem 1.25rem;
   background: var(--bg-secondary);
   margin: 1.5rem 0;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
   text-align: center;
 }
 
@@ -657,7 +657,7 @@
   padding: 1.25rem;
   background: var(--bg-secondary);
   margin: 2rem 0;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
   display: grid;
   gap: 1rem;
 }
@@ -787,7 +787,7 @@
   padding: 1.25rem;
   margin: 2.5rem 0 1rem;
   background: var(--bg-secondary);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .next-grid {
@@ -846,7 +846,7 @@
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   padding: 0.9rem 1rem;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .figure-caption {

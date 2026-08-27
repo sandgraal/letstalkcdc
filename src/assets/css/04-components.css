@@ -13,6 +13,13 @@
    tokens so they adapt to the dark-first palette and both themes. */
 @import "components/scorecard.css";
 @import "components/progress.css";
+/* panels.css was reachable only via `@import url("../components/panels.css")`
+   from six page stylesheets. Those page files are passthrough-copied, not
+   bundled, so the browser resolved that URL at runtime against a path
+   Eleventy never publishes — a hard 404 in production, leaving the panels
+   unstyled on all eight pages that use them. Bundling it here is the
+   documented pattern for a shared component. */
+@import "components/panels.css";
 
 /* Buttons - Modern, sophisticated */
 .button {
@@ -69,7 +76,7 @@
 .button:hover,
 .button.primary:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg), var(--button-primary-hover-shadow);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-sm);
 }
 
 .button:active,

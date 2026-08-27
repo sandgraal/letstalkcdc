@@ -182,7 +182,7 @@ a {
   background-image: linear-gradient(
     90deg,
     var(--color-accent-primary) 0%,
-    var(--color-accent-secondary) 100%
+    var(--color-secondary) 100%
   );
   background-size: 0% 2px;
   background-position: 0 100%;

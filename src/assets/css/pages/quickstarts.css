@@ -23,7 +23,7 @@
 
 .qs-card:hover {
   transform: translateY(-5px);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .qs-card h2 {
@@ -75,7 +75,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .qs-detail-head {
@@ -137,7 +137,7 @@
   border-radius: 0.9rem;
   padding: 1.75rem;
   background: var(--bg-secondary);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
 .qs-verify__inner h2 {
