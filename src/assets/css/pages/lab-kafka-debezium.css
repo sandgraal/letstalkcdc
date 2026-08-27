@@ -23,6 +23,6 @@
   line-height: 2.25rem;
   text-align: center;
   border-radius: 50%;
-  background-color: var(--color-primary-soft);
+  background-color: var(--color-accent-subtle);
   color: var(--color-primary);
 }

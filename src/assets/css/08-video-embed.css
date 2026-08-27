@@ -13,14 +13,14 @@
 }
 
 .video-embed-title {
-  font-size: var(--font-size-lg);
+  font-size: var(--text-lg);
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   color: var(--color-text);
 }
 
 .video-embed-description {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin: 0;
   line-height: 1.6;
@@ -104,7 +104,7 @@
 /* Caption */
 .video-embed-caption {
   margin-top: 0.75rem;
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   font-style: italic;
   text-align: center;
@@ -169,7 +169,7 @@
   }
 
   .video-embed-title {
-    font-size: var(--font-size-base);
+    font-size: var(--text-base);
   }
 
   .video-embed-play-btn {

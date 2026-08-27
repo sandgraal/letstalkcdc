@@ -3,8 +3,6 @@
   --muted: #6b7280;
 }
 
-@import url("../components/panels.css");
-
 .grid {
   display: grid;
   grid-template-columns: 1fr;

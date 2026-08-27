@@ -196,7 +196,10 @@ const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
 const loadChartModule = async () => {
   if (chartModulePromise) return chartModulePromise;
   chartModulePromise =
-    import("https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.esm.js")
+    // NOTE: chart.js v4 ships no `dist/chart.esm.js` — that path 404s, which
+    // silently disabled every chart on the site. jsDelivr's `/+esm` endpoint
+    // serves a real ES module with the named exports used below.
+    import("https://cdn.jsdelivr.net/npm/chart.js@4.4.4/+esm")
       .then((mod) => {
         const { Chart, registerables } = mod;
         Chart.register(...registerables);

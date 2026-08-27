@@ -58,14 +58,14 @@
 
 .pain-point {
   background: var(--bg-secondary);
-  border-left: 4px solid var(--error-color);
+  border-left: 4px solid var(--color-error);
   padding: 1.5rem;
   border-radius: 4px;
 }
 
 .pain-point h4 {
   margin-top: 0;
-  color: var(--error-color);
+  color: var(--color-error);
   font-size: 1.1rem;
 }
 
@@ -136,12 +136,12 @@
 
 .pros {
   background: rgba(40, 167, 69, 0.1);
-  border-left: 3px solid var(--success-color);
+  border-left: 3px solid var(--color-success);
 }
 
 .cons {
   background: rgba(220, 53, 69, 0.1);
-  border-left: 3px solid var(--error-color);
+  border-left: 3px solid var(--color-error);
 }
 
 .pros strong,
@@ -263,14 +263,14 @@
 
 .challenge {
   background: var(--bg-secondary);
-  border-left: 4px solid var(--warning-color);
+  border-left: 4px solid var(--color-warning);
   padding: 1.5rem;
   border-radius: 4px;
 }
 
 .challenge h4 {
   margin-top: 0;
-  color: var(--warning-color);
+  color: var(--color-warning);
 }
 
 /* Metrics grid */
@@ -309,11 +309,11 @@
 }
 
 .metric-card.metric-success {
-  border-color: var(--success-color);
+  border-color: var(--color-success);
 }
 
 .metric-card.metric-neutral {
-  border-color: var(--info-color);
+  border-color: var(--color-info);
 }
 
 .metric-value {
@@ -324,11 +324,11 @@
 }
 
 .metric-card.metric-success .metric-value {
-  color: var(--success-color);
+  color: var(--color-success);
 }
 
 .metric-card.metric-neutral .metric-value {
-  color: var(--info-color);
+  color: var(--color-info);
 }
 
 .metric-label {

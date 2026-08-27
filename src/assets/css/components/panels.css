@@ -14,14 +14,14 @@
 }
 
 .callout {
-  border-left: 0.35rem solid var(--success-color);
+  border-left: 0.35rem solid var(--color-success);
   background: #f0fdf4;
   border-radius: 0.5rem;
   padding: 1rem;
 }
 
 .callout.warn {
-  border-left-color: var(--danger-color);
+  border-left-color: var(--color-error);
   background: #fef2f2;
 }
 

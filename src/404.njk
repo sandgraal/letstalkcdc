@@ -30,7 +30,10 @@ permalink: 404.html
         </div>
       </div>
     </main>
-    <script type="module" src="{{ '/assets/js/app.js' | url }}" defer></script>
+    {# Must go through `viteAsset`: the raw source at /assets/js/app.js is
+       passthrough-copied unbundled, so its bare `import Fuse from "fuse.js"`
+       specifier fails in the browser and kills the whole module. #}
+    <script type="module" src="{{ 'src/assets/js/app.js' | viteAsset | url }}" defer></script>
     <script type="module" src="{{ '/assets/js/pages/not-found.js' | url }}" defer></script>
 
   </body>

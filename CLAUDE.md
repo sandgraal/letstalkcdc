@@ -86,9 +86,9 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 36790543e165e9c8c88bbae18b1dabe0dd5dda2a4d41c567f04a4885e8031b34
-# (re-baselined 2026-08-26 for the nav/drawer fixes: dropdown clipping,
-#  header backdrop-filter -> ::before, body fade-in transform removal)
+# baseline at HEAD of main is: eebaa34ae60b1c3db550cca28c0485977cf06401f3952c57c825048e3b31886c
+# (re-baselined 2026-08-26: nav/drawer fixes, then the undefined-token
+#  sweep + panels.css bundling)
 ```
 
 If the hash matches, your change is a pure source refactor and visually safe.
@@ -285,7 +285,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`36790543e165…`).
+3. **`/css-byte-check` baseline is in this file** (`eebaa34ae60b…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.

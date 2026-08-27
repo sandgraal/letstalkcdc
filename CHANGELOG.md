@@ -6,6 +6,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Runtime bug sweep: 35 of 46 pages were throwing console errors; now 0.**
+  Found by rendering every built page at three viewports and inspecting the
+  result, rather than by reading source — the same method that surfaced the
+  navigation bugs. Four distinct defects, all live in production:
+  - **`app.js` failed outright on `/404.html` and `/mermaid-sandbox/`.** Both
+    are standalone `layout: null` pages that loaded the raw, passthrough-copied
+    `/assets/js/app.js` instead of the Vite-built bundle, so the browser hit
+    its bare `import Fuse from "fuse.js"` specifier and refused the module.
+    Everything `app.js` powers — search, theme toggle, nav behaviour, progress
+    — was dead on those pages. Both now use the `viteAsset` filter, as
+    `base.njk` already did.
+  - **Every chart on the site was disabled.** `dashboard.js` (loaded on all 43
+    pages via `base.njk`) imported
+    `cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.esm.js` — a path chart.js
+    v4 does not ship, so it 404'd on every page load and the `.catch()`
+    silently swallowed it. Repointed at jsDelivr's `/+esm` endpoint, which
+    serves a real ES module with the named exports the code expects.
+  - **`components/panels.css` 404'd in production.** Six page stylesheets
+    reached it via `@import url("../components/panels.css")`, but page CSS is
+    passthrough-copied rather than bundled, so the browser resolved that URL
+    against a path Eleventy never publishes. The panels were unstyled on all
+    eight pages that use them. It is now imported from `04-components.css`
+    (the documented pattern for a shared component) and the six broken
+    `@import`s are gone.
+  - **14 undefined CSS custom properties with no fallback**, left dangling by
+    the Phase 2c token retirement. An invalid `var()` poisons the whole
+    declaration, so each one silently killed a real style: the site-wide link
+    underline gradient (`--color-accent-secondary`), every button hover shadow
+    (`--button-primary-hover-shadow`), the case-study callout colours
+    (`--error-color` and friends), card shadows on `/intro/`, `/partitioning/`,
+    `/multi-tenancy/` and `/quickstarts/` (`--shadow-soft`/`--shadow-medium`),
+    video-embed type sizes (`--font-size-*`), and more. All repointed at their
+    current equivalents — no legacy alias block reintroduced.
+
+  CSS byte-check re-baselined to `eebaa34a…` (intentional).
+
 ### Added
 
 - **Interactive change-event visualizer on `/intro/` (revamp Phase 4c).**
