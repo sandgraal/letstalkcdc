@@ -47,8 +47,8 @@ the index of the arc:
 The revamp above was signed off while a phone visitor could not use the
 navigation at all. That is worth recording plainly, because the reason
 is structural rather than a one-off slip: **every gate in this repo
-verified that files build and parse, and none of them loaded a page and
-used it.** `verify-all`, `smoke:core` and pa11y cannot see a menu painted
+verified that files build and parse, and none of them tried to use the UI
+in a browser.** `verify-all`, `smoke:core` and pa11y cannot see a menu painted
 behind the hero, a drawer collapsed to the header's height, or a tool
 that quietly returns before doing any work.
 
