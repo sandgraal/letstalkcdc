@@ -10,8 +10,13 @@
 
 const doc = document;
 
-/** Mobile navigation breakpoint in pixels */
-const MOBILE_NAV_BREAKPOINT = 639;
+/**
+ * Mobile navigation breakpoint in pixels.
+ * Must stay in sync with the nav drawer media queries in 03-layout.css
+ * (`max-width: 1023px` / `min-width: 1024px`). The horizontal nav needs
+ * ~890px of header room, so the drawer covers everything below 1024.
+ */
+const MOBILE_NAV_BREAKPOINT = 1023;
 
 /**
  * Initialize mobile navigation menu toggle, overlay close, and resize handling.

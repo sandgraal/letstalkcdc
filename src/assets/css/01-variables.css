@@ -121,6 +121,11 @@
   /* Z-index Scale */
   --z-base: 1;
   --z-dropdown: 100;
+  /* Dimming overlay behind the mobile nav drawer. Must stay just under
+     --z-sticky: the drawer is a descendant of the sticky header, so an
+     overlay at or above the header would cover the drawer too and swallow
+     every tap on its links. */
+  --z-nav-overlay: 199;
   --z-sticky: 200;
   --z-fixed: 300;
   --z-modal-backdrop: 400;
