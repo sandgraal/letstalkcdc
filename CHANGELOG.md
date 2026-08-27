@@ -97,6 +97,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   palette in both themes. `smoke:a11y` passes; CSS byte-check re-baselined
   to `82e0aa65…`.
 
+### Fixed
+
+- **Navigation: dropdowns rendered behind the page, and the mobile drawer
+  was unusable.** Four separate defects, all confirmed in a browser against
+  the live build:
+  1. **Desktop dropdown flyouts were invisible.** `.nav-dropdown-menu` set
+     `z-index: var(--z-dropdown-menu)` — a token that does not exist (the
+     real one is `--z-dropdown`), so the z-index computed to `auto`. On top
+     of that, `.nav-links` set `overflow-x: auto`, which per spec computes
+     `overflow-y` to `auto` as well, making the nav a scroll container that
+     **clipped** every flyout hanging below the bar. The menus opened
+     correctly (`aria-expanded` flipped) but painted behind the hero and
+     could not be clicked. Fixed the token and made the nav `overflow:
+visible`.
+  2. **The horizontal nav did not fit between 640–1023px.** It needs ~890px
+     of header room, so it silently became a hidden-scrollbar strip — the
+     same scroll container that clipped the dropdowns. The hamburger drawer
+     now covers the whole range below **1024px** (nav-scoped breakpoint
+     change; `MOBILE_NAV_BREAKPOINT` in `navigation.js` kept in sync). The
+     progress pill is hidden across that range too — beside the drawer
+     toggle it wrapped to two lines.
+  3. **The mobile drawer collapsed to the header's height (78px, hiding all
+     12 links) — a live production bug on phones.** `.global-header` carried
+     `backdrop-filter`, which makes an element the containing block for its
+     `position: fixed` descendants, so the drawer's `top: 0; bottom: 0`
+     resolved against the 64px header instead of the viewport. The glass
+     effect moved to a `::before` pseudo-element, which preserves the blur
+     without trapping the drawer. The same trap applied to `body`, which
+     animated `transform` via the `fade-in` page transition — those
+     keyframes are now opacity-only.
+  4. **The dimming overlay swallowed every tap on the drawer.** `body::after`
+     sat at `z-index: 999` while the drawer lives _inside_ the header's
+     stacking context, so the overlay covered the drawer as well as the
+     page. It now sits just below `--z-sticky`. The drawer also gained
+     `padding-top: var(--header-height)` so its first link clears the
+     close-button row.
+
+  CSS byte-check re-baselined to `bee7fa3c…` (intentional change).
+
 ### Changed
 
 - **Revamp wrap-up: durable record synced (revamp Phase 5).**
