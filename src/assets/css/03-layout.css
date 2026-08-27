@@ -333,7 +333,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
-    z-index: calc(var(--z-sticky) - 1);
+    z-index: var(--z-nav-overlay);
   }
 
   body[data-mobile-nav-open]::after {
