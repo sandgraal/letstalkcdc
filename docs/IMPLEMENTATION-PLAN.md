@@ -42,6 +42,94 @@ the index of the arc:
 
 ---
 
+## Runtime defect sweep — August 2026 (shipped)
+
+The revamp above was signed off while a phone visitor could not use the
+navigation at all. That is worth recording plainly, because the reason
+is structural rather than a one-off slip: **every gate in this repo
+verified that files build and parse, and none of them tried to use the UI
+in a browser.** `verify-all`, `smoke:core` and pa11y cannot see a menu painted
+behind the hero, a drawer collapsed to the header's height, or a tool
+that quietly returns before doing any work.
+
+Seven production defects were found by rendering all 46 built pages at
+three viewports and driving each interactive component, then fixed
+(PRs #313, #314, #316):
+
+- **Nav dropdowns were clipped and unclickable.** `.nav-links` had
+  `overflow-x: auto` (which computes `overflow-y` to `auto` as well),
+  making the bar a scroll container that cut off every flyout; the menu
+  also referenced `--z-dropdown-menu`, **a token that does not exist**,
+  so its `z-index` computed to `auto`.
+- **The mobile drawer collapsed to 78px**, hiding all 12 links from
+  every phone visitor. `backdrop-filter` on `.global-header` made it the
+  containing block for its `position: fixed` descendants, so the
+  drawer's `top: 0; bottom: 0` resolved against the 64px header. The
+  page fade-in animation had the same trap via `transform`.
+- **Every chart on the site was dead.** `dashboard.js`, loaded on all 43
+  pages, imported `chart.js@4.4.4/dist/chart.esm.js` — a path v4 does
+  not ship. It 404'd on every page load and a `.catch()` swallowed it.
+- **`app.js` threw on `/404.html` and `/mermaid-sandbox/`**, taking
+  search, the theme toggle and nav behaviour with it. Both are
+  `layout: null` pages that loaded the raw passthrough-copied source
+  instead of the Vite bundle, so the browser hit its bare
+  `import Fuse from "fuse.js"` specifier.
+- **`components/panels.css` 404'd on eight pages.** Six page
+  stylesheets `@import`ed it by URL, but page CSS is passthrough-copied
+  rather than bundled, so the path was never published.
+- **14 undefined CSS custom properties with no fallback**, left by the
+  Phase 2c token retirement. An invalid `var()` voids its entire
+  declaration silently — between them they killed the site-wide link
+  underline gradient, every button hover shadow, the case-study callout
+  colours, card shadows on four pages and the video-embed type scale.
+- **`/connector-builder/` generated nothing at all.** Linked from the
+  Tools menu, the homepage and `/tooling/`. The module had drifted from
+  its template: it looked up `#host`, `#port`, `#db-specific` and
+  `#advanced` (none of which the markup renders) and a defensive
+  early-return bailed before doing any work; it also wrote to
+  `#json`/`#post`/`#put` while the template's outputs are `#config` and
+  `#curlCmd`. Only 7 of ~30 lookups matched. The page returned 200, the
+  script returned 200, nothing threw. As a side effect, the earlier
+  `plugin.name: pgoutput` accuracy fix had been applied to code that
+  never ran.
+
+### The gates that now exist (PR #315)
+
+Each was verified by reintroducing the original bug and confirming it
+fails — a guard that cannot fail is worthless, and that exercise caught
+two holes in the guards themselves (a page walker that only matched
+`index.html` and so skipped `/404.html`; a line-based CSS scan blind to
+`var()` wrapped across lines).
+
+- [x] **`tests/e2e/helpers/hit-test.js`** — `expectHittable`
+      (`elementFromPoint` at the element's own centre),
+      `expectNotClipped` and `expectFixedNotTrapped`. Playwright's
+      `toBeVisible()` only asks CSS questions and cannot see an element
+      that is covered or clipped; `links.count() > 0` is a DOM count.
+      Both passed throughout the outage.
+- [x] **No `{ force: true }` clicks in `navigation.spec.js`.** Forcing
+      disables Playwright's actionability checks — including "receives
+      pointer events", the one check that would have failed on the
+      collapsed drawer.
+- [x] **`tests/e2e/runtime-health.spec.js`** — renders every built page
+      (73, including standalone `.html` outputs) and fails on any
+      uncaught JS exception or same-origin 404. Third-party/CDN misses
+      are warned, not failed, so an outage cannot make CI flaky.
+- [x] **`tests/unit/css-custom-properties.test.js`** — statically
+      catches dangling `var(--token)` references with no fallback.
+      Nothing else in the toolchain sees these: the CSS still parses,
+      the build still succeeds, and the byte-check happily hashes the
+      broken output.
+- [x] **`tests/e2e/tools.spec.js`** — asserts on the connector
+      builder's _generated output_, the only thing that catches a silent
+      no-op.
+
+**Standing rule for future work in this repo:** a component is not
+"done" because its page builds, its module parses and CI is green. Drive
+it in a browser, or assume it is broken.
+
+---
+
 ## How to use this doc
 
 - **Agents:** when you complete an item, change `- [ ]` to `- [x]` **in
@@ -809,6 +897,50 @@ inline `<svg>` across all module pages.
       still in the pointer-event hit-test path and the keyboard
       tab order. Added an explicit
       `#askPanel[hidden] { display: none }` rule.
+
+---
+
+## Phase 12 — Content depth (correct → comprehensive)
+
+The August 2026 SME review found the CDC content unusually careful and
+accurate. These are the gaps between _correct_ and _comprehensive_ —
+subjects the site currently names in passing, or treats as Kafka-only,
+where a reader who followed the material would still be missing the
+mechanism. None of these are corrections; the existing text is right as
+far as it goes.
+
+Each item must hold the site's standing thesis: delivery is
+**at-least-once**, correctness comes from **idempotent sinks** keyed on
+the primary key and ordered by **log position, not `ts_ms`**, and
+end-to-end exactly-once across systems is not achievable.
+
+- [ ] **Watermark-based incremental snapshots.** The site names
+      incremental/signal-based snapshots but never explains the
+      algorithm, which is the single most-asked "how does that actually
+      work?" question in CDC. Cover the DBLog watermark method: open a
+      low watermark, read a chunk of the table, close with a high
+      watermark, then drop chunk rows that the log superseded between
+      the two — which is what lets a snapshot run **concurrently** with
+      streaming and still converge, with no table lock and a resumable
+      cursor. Belongs on `/snapshotting/`.
+- [ ] **Non-relational sources.** Log-based CDC is presented almost
+      entirely through relational WAL/binlog/redo. Add MongoDB change
+      streams (oplog, resume tokens), DynamoDB Streams (24h retention,
+      shard-per-partition ordering) and Cassandra CDC (commitlog,
+      per-node not per-cluster, no cross-partition ordering) — including
+      where each _breaks_ the relational mental model, which is the
+      point of the section.
+- [ ] **Security depth.** PII handling is currently one-line bullets.
+      Cover column filtering/masking at the connector (before the event
+      reaches the broker), encryption in transit and at rest, key
+      handling for a log that outlives the row, and the RBAC/ACL surface
+      a CDC user actually needs (replication privileges are broader than
+      most read-only roles).
+- [ ] **Delivery beyond Kafka.** Ordering, retention and replay
+      semantics are taught Kafka-first throughout. Add Pulsar, Kinesis
+      and Pub/Sub — in particular that Pub/Sub gives **no ordering
+      without an ordering key**, Kinesis orders per shard with a fixed
+      retention window, and how each changes the sink's dedup strategy.
 
 ---
 
