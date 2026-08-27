@@ -165,6 +165,99 @@ scripts:
     </ol>
   </section>
 
+  <section id="transports" aria-labelledby="transports-title">
+    <h2 id="transports-title">Transports other than Kafka</h2>
+    <p>
+      Everything above is taught Kafka-first, because that is what most CDC
+      pipelines land on. The envelope travels fine over other transports, but
+      <strong>the ordering and retention guarantees underneath it are not the
+      same</strong> — and those are exactly the properties your sink depends on
+      to dedupe correctly. Port the pipeline without re-reading the guarantees
+      and you inherit a silent correctness bug.
+    </p>
+      <table>
+        <caption class="sr-only">
+          Ordering and retention semantics by transport
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Transport</th>
+            <th scope="col">Ordering unit</th>
+            <th scope="col">Retention</th>
+            <th scope="col">What changes for the sink</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Kafka</th>
+            <td>Per partition; key hashing keeps a row&rsquo;s history together</td>
+            <td>Time/size based, or compacted by key</td>
+            <td>
+              The baseline this site assumes. Compaction plus tombstones gives
+              you a replayable latest-state view.
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Pulsar</th>
+            <td>
+              Per partition; <code>Key_Shared</code> keeps a key on one consumer
+              while still fanning out
+            </td>
+            <td>
+              Time/size, plus tiered offload; topic compaction available
+            </td>
+            <td>
+              Closest analogue to Kafka. Confirm the subscription type —
+              <code>Shared</code> will happily break per-key order.
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Kinesis Data Streams</th>
+            <td>Per shard, by partition key</td>
+            <td>
+              Fixed window (24h by default, extendable) — <strong>no
+              compaction</strong>
+            </td>
+            <td>
+              Resharding moves keys between shards, so ordering holds per shard,
+              not per key across a split. There is no compacted view to rebuild
+              state from; keep your own.
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Google Pub/Sub</th>
+            <td>
+              <strong>None by default</strong> — only with an ordering key, and
+              only within a region
+            </td>
+            <td>Ack-based, with a configurable retention window</td>
+            <td>
+              The riskiest port. Without an ordering key an update can land
+              before the insert it depends on, so ordering must come from the
+              event (log position), never from arrival.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    <aside aria-label="What does not change" class="callout">
+      <p>
+        <strong>The thesis is transport-independent.</strong> All four are
+        at-least-once. None of them gives you exactly-once into an external
+        sink. The fix is the same everywhere: upsert on the primary key and
+        break ties on <strong>log position (LSN/SCN/GTID), not
+        <code>ts_ms</code></strong>. What the transport changes is how much
+        re-ordering your sink must absorb — not whether it needs to be
+        idempotent.
+      </p>
+    </aside>
+    <p class="muted small">
+      Practical consequence: on Pub/Sub, and on Kinesis across a reshard, treat
+      arrival order as unordered and rely entirely on the envelope&rsquo;s source
+      metadata. That is a good habit on Kafka too — it just costs you nothing
+      there.
+    </p>
+  </section>
+
   <section id="schema" aria-labelledby="schema-title">
     <h2 id="schema-title">Schema contracts and validation</h2>
     <ul>

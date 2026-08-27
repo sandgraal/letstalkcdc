@@ -6,6 +6,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Content depth: the four gaps between correct and comprehensive
+  (Phase 12).** The SME review found the CDC material accurate but
+  Kafka-first and relational-first in places, with one mechanism named
+  and never explained. All four are now covered, each holding the site's
+  standing thesis (at-least-once delivery, idempotent sinks, ordering by
+  log position rather than `ts_ms`):
+  - **Watermark-based incremental snapshots** (`/snapshotting/#watermarks`).
+    The DBLog algorithm the site previously mentioned in a single line:
+    low watermark → chunk read → high watermark → drop the keys that
+    changed inside the window. The subtraction is the correctness
+    argument — the only rows a concurrent write could have staled are
+    exactly the ones removed — which is what lets a snapshot run
+    alongside streaming with no lock. Includes the real costs: a
+    writable signal table, PK-ordered chunking, read load on the primary.
+  - **`/non-relational/`** (new module). MongoDB change streams (resume
+    tokens as the offset; `updateLookup` can return a _newer_ state than
+    the event described; the oplog is capped by size, not time),
+    DynamoDB Streams (per-shard ordering, a hard 24-hour horizon where
+    lag costs data rather than freshness), and Cassandra — the case that
+    breaks the model, with a per-node commitlog, structural duplicates
+    at RF>1, no cross-node ordering, and mutations rather than row
+    states. Cassandra is also the one place on this site where a
+    timestamp is the correct ordering key, because cell write times are
+    a logical clock the database assigns.
+  - **`/security/`** (new module). Why a change log is riskier than the
+    table it came from; `column.exclude.list` and salted-hash masking at
+    the connector so values never reach the broker; the
+    wider-than-expected replication privileges CDC needs per engine; the
+    DLQ as a full-payload copy that routinely escapes access review; and
+    erasure against an append-only log, ending in crypto-shredding.
+  - **Transports other than Kafka** (`/event-envelope/#transports`).
+    Ordering unit, retention and sink impact for Kafka, Pulsar
+    (`Key_Shared` vs `Shared`), Kinesis (per-shard, and what resharding
+    does to per-key order) and Pub/Sub (no ordering at all without an
+    ordering key). All four are at-least-once; none gives exactly-once
+    into an external sink.
+
+### Fixed
+
+- **The `/overview/` series grid rendered zero module cards** — in
+  production, for every module. `src/overview/index.11tydata.cjs` is
+  CommonJS and `require()`d `src/_data/series.mjs`, which is an ES
+  module, so it received the module namespace
+  (`{ __esModule, default }`) rather than the array. `seriesCards` was
+  therefore an object, the `{% for card in seriesCards %}` in
+  `index.njk` iterated nothing, and the "Series" destination in the
+  primary nav showed an empty grid. Nothing failed along the way: the
+  page built, returned 200 and threw no errors. Unwrapping `.default`
+  restores all 26 cards. Found while checking that two newly added
+  modules appeared on the overview — they did not, and neither did any
+  of the existing 24. Covered by two new cases in
+  `tests/e2e/modules.spec.js`, both of which fail against the previous
+  build.
+
 ### Fixed
 
 - **The connector config builder was completely inert.** `/connector-builder/`

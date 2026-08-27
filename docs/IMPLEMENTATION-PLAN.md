@@ -914,7 +914,13 @@ Each item must hold the site's standing thesis: delivery is
 the primary key and ordered by **log position, not `ts_ms`**, and
 end-to-end exactly-once across systems is not achievable.
 
-- [ ] **Watermark-based incremental snapshots.** The site names
+- [x] **Watermark-based incremental snapshots.** Shipped as
+      `#watermarks` on `/snapshotting/`: the low-watermark → chunk read →
+      high-watermark → subtract-the-window sequence, why the subtraction
+      is what makes it correct (the only rows a concurrent write could
+      have staled are exactly the set removed), plus the real costs —
+      signal-table writes, PK-ordered chunking, read load, and the
+      unchanged need for an idempotent sink. Original scope: The site names
       incremental/signal-based snapshots but never explains the
       algorithm, which is the single most-asked "how does that actually
       work?" question in CDC. Cover the DBLog watermark method: open a
@@ -923,20 +929,40 @@ end-to-end exactly-once across systems is not achievable.
       the two — which is what lets a snapshot run **concurrently** with
       streaming and still converge, with no table lock and a resumable
       cursor. Belongs on `/snapshotting/`.
-- [ ] **Non-relational sources.** Log-based CDC is presented almost
+- [x] **Non-relational sources.** Shipped as a new module at
+      `/non-relational/`: MongoDB change streams (resume tokens as the
+      offset, `updateLookup` returning a newer state than the event
+      described, size-capped oplog), DynamoDB Streams (per-shard
+      ordering, hard 24h horizon where lag costs data rather than
+      freshness), and Cassandra (per-node commitlog, structural
+      duplicates at RF>1, no cross-node ordering, mutations rather than
+      row states — where last-write-wins on cell timestamps is the
+      correct merge rule). Original scope: Log-based CDC is presented almost
       entirely through relational WAL/binlog/redo. Add MongoDB change
       streams (oplog, resume tokens), DynamoDB Streams (24h retention,
       shard-per-partition ordering) and Cassandra CDC (commitlog,
       per-node not per-cluster, no cross-partition ordering) — including
       where each _breaks_ the relational mental model, which is the
       point of the section.
-- [ ] **Security depth.** PII handling is currently one-line bullets.
+- [x] **Security depth.** Shipped as a new module at `/security/`:
+      why a change log is riskier than its table (keeps history the row
+      does not, fans out, outlives deletion), `column.exclude.list` and
+      salted-hash masking at the connector rather than downstream, the
+      wider-than-expected replication privileges per engine, the DLQ as
+      an overlooked full-payload copy, and three erasure strategies
+      ending in crypto-shredding. Original scope: PII handling is currently one-line bullets.
       Cover column filtering/masking at the connector (before the event
       reaches the broker), encryption in transit and at rest, key
       handling for a log that outlives the row, and the RBAC/ACL surface
       a CDC user actually needs (replication privileges are broader than
       most read-only roles).
-- [ ] **Delivery beyond Kafka.** Ordering, retention and replay
+- [x] **Delivery beyond Kafka.** Shipped as `#transports` on
+      `/event-envelope/`: ordering unit, retention and sink impact for
+      Kafka, Pulsar (`Key_Shared` vs `Shared`), Kinesis (per-shard, and
+      what resharding does to per-key order) and Pub/Sub (no ordering
+      without an ordering key). Closes with the point that the thesis is
+      transport-independent — all four are at-least-once, none gives
+      exactly-once into an external sink. Original scope: Ordering, retention and replay
       semantics are taught Kafka-first throughout. Add Pulsar, Kinesis
       and Pub/Sub — in particular that Pub/Sub gives **no ordering
       without an ordering key**, Kinesis orders per shard with a fixed

@@ -1,4 +1,9 @@
-const series = require("../_data/series.mjs");
+// `series.mjs` is an ES module, so require() hands back the module namespace
+// ({ __esModule, default }) rather than the array itself. Without unwrapping
+// `.default`, `seriesCards` was an object, the `{% for %}` in index.njk
+// iterated nothing, and the series grid rendered zero cards in production.
+const seriesModule = require("../_data/series.mjs");
+const series = seriesModule.default ?? seriesModule;
 
 module.exports = {
   datePublished: "2026-02-06",

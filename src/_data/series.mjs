@@ -90,6 +90,30 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "non-relational",
+    title: "CDC Beyond Relational Databases",
+    description:
+      "MongoDB change streams, DynamoDB Streams, and Cassandra CDC — and where each one breaks the WAL/binlog mental model.",
+    href: "non-relational/",
+    tags: [
+      { label: "Core Concept", variant: "tag-concept" },
+      { label: "Strategy", variant: "tag-strategy" },
+    ],
+    skillLevel: "Intermediate",
+  },
+  {
+    key: "security",
+    title: "Security, PII & Access Control",
+    description:
+      "Mask columns before they reach the broker, size the privileges CDC actually needs, and plan for a log that outlives the row.",
+    href: "security/",
+    tags: [
+      { label: "Ops", variant: "tag-ops" },
+      { label: "Strategy", variant: "tag-strategy" },
+    ],
+    skillLevel: "Intermediate",
+  },
+  {
     key: "reconciliation-surgery",
     title: "Reconciliation & Offset Surgery",
     description:

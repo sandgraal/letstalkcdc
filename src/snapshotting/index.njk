@@ -348,6 +348,95 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
           </li>
         </ul>
 
+        <h2 id="watermarks">
+          How incremental snapshots actually work (watermarks)
+        </h2>
+        <p>
+          &ldquo;Chunk the table online, no global pause&rdquo; is the headline.
+          The interesting part is how a chunk read that <em>races the log</em>
+          still converges on the right answer. The method comes from Netflix&rsquo;s
+          DBLog paper and is what Debezium&rsquo;s incremental snapshots implement.
+        </p>
+        <p>
+          The move is to stop trying to make the read atomic, and let
+          <strong>the log arbitrate</strong> instead.
+        </p>
+        <ol>
+          <li>
+            <strong>Write a low watermark.</strong> Insert a marker row into a
+            dedicated signal table. Because it is an ordinary write, it appears
+            in the transaction log at a known position.
+          </li>
+          <li>
+            <strong>Select the chunk.</strong> Read the next N rows in
+            primary-key order. No table lock, no global pause, and the read is
+            explicitly <em>allowed</em> to go stale.
+          </li>
+          <li>
+            <strong>Write a high watermark.</strong> A second marker row. The
+            log now brackets the exact window during which the read happened.
+          </li>
+          <li>
+            <strong>Watch the window.</strong> Keep consuming the log as normal
+            and record every primary key that produced a change event between
+            the two watermarks.
+          </li>
+          <li>
+            <strong>Subtract, then emit.</strong> Drop from the chunk every row
+            whose key appeared in that window, and emit what survives as
+            snapshot reads (Debezium&rsquo;s <code>r</code> operation). Those keys
+            are not lost — the log already carries a newer value for them.
+          </li>
+        </ol>
+        <aside aria-label="Why this is correct" class="callout">
+          <p>
+            <strong>Why it converges:</strong> the only rows a concurrent write
+            could have made stale are the ones whose keys changed during the
+            window — and that is precisely the set step 5 removes. Everything
+            else was quiet for the duration of the read, so the chunk value is
+            still current. Correctness comes from the subtraction, not from
+            isolation.
+          </p>
+        </aside>
+        <p>
+          The chunk boundary doubles as the resume point: record the last
+          completed chunk&rsquo;s key range and a crash resumes mid-table instead of
+          restarting the snapshot. Chunk size is the tuning knob in both
+          directions — smaller chunks shorten each watermark window (less to
+          subtract, less memory) at the cost of more round trips.
+        </p>
+        <h3 id="watermarks-practical">What this costs you in practice</h3>
+        <ul>
+          <li>
+            <strong>Write access to the source.</strong> The signal table is a
+            real table the connector writes to. Where that is unacceptable,
+            newer Debezium versions accept signals over a Kafka topic instead.
+          </li>
+          <li>
+            <strong>A usable primary key.</strong> Chunking is PK-ordered.
+            Keyless tables have no stable chunk boundary and no resume point —
+            the same constraint that breaks idempotent sinks downstream.
+          </li>
+          <li>
+            <strong>Read load on the primary.</strong> Nothing here is free;
+            the chunk selects still compete with OLTP traffic. This buys you
+            the absence of a lock, not the absence of work.
+          </li>
+          <li>
+            <strong>Duplicate deliveries, as always.</strong> A retry can emit
+            a chunk twice. That is fine, and it is the same property the rest
+            of this site depends on: the sink upserts on the primary key and
+            orders by log position, so a replayed <code>r</code> event is
+            harmless.
+          </li>
+        </ul>
+        <p class="muted small">
+          Note that the subtraction happens <em>in the connector</em>, before
+          anything reaches the broker — it is not something your sink has to
+          reimplement. Your sink&rsquo;s job is unchanged: treat <code>r</code> like
+          an upsert and let log position break ties.
+        </p>
+
         <h2 id="chunking">Performance: chunking &amp; throughput</h2>
         <ul>
           <li>
