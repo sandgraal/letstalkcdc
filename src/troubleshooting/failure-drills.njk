@@ -441,7 +441,7 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
             <ul>
               <li><strong>Rollback:</strong> Revert schema change if caught early</li>
               <li><strong>Forward fix:</strong> Align sink schema, restart connector</li>
-              <li><strong>Transform:</strong> Add SMT (Single Message Transform) to handle migration</li>
+              <li><strong>Transform:</strong> Add <a href="{{ '/glossary/#smt' | url }}">SMT (Single Message Transform)</a> to handle migration</li>
             </ul>
           </li>
           <li><strong>Validate:</strong> Confirm historical data integrity after fix</li>

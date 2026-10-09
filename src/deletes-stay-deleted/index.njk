@@ -25,7 +25,8 @@ scripts:
     <p>
       The same mistake runs the other way too. A sink that handles a delete by
       removing the row can bring the row back later, because delivery is
-      at-least-once and an older change can arrive after a newer one.
+      <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a> and
+      an older change can arrive after a newer one.
       Both problems have one answer: a delete is an event with a position,
       applied by an idempotent sink, and every other copy has a known expiry.
     </p>
