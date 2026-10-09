@@ -22,9 +22,12 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   163231e666f0b6cd0659deda39d6362547e468577b775ca570217f9a1d613d74
+   c32d01ac29ef3f3ea5fe6448aa5414d559e980ce265c5e52ffb8f575bc42ce7e
    ```
-   (re-baselined 2026-10-09 for the visible-UI fixes: `.discussion-callout`
+   (re-baselined 2026-10-09 for the P15-21 contrast debt: new
+   `components/code-block.css`, light-theme `--color-success/-warning/-error`
+   darkened to 4.5:1 and the `.status-badge` variants moved onto them;
+   previously `163231e6…`, the visible-UI fixes: `.discussion-callout`
    rules in 02-base.css, the orphaned stats-chip / session-modal rules
    removed from 09-mobile-responsive.css along with their markup, the
    `.button-primary` text and hover colours in dashboard-page.css, and the

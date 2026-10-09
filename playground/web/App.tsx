@@ -83,6 +83,7 @@ import {
   scenarioFilterTagsEqual,
 } from "../src/features/scenarioFilters";
 import { getScenarioGuidance } from "../src/features/scenarioGuidance";
+import { isOrderedByLogPosition } from "../src/features/logPosition";
 
 const LIVE_SCENARIO_NAME = "workspace-live" as const;
 const PREFERENCES_KEY = "cdc_comparator_prefs_v1" as const;
@@ -958,11 +959,9 @@ function computeMetrics(
   const totalDeletes = scenarioDeletes + generatedDeletes;
   const deletesPct = totalDeletes === 0 ? 100 : (deleteCount / totalDeletes) * 100;
 
-  const orderingOk = events.every((evt, idx) => {
-    if (idx === 0) return true;
-    const prev = events[idx - 1];
-    return evt.ts_ms >= prev.ts_ms;
-  });
+  // Ordering is judged by log position (tx.lsn, the per-topic bus offset), never by
+  // ts_ms: timestamps tie and skew, positions do not. ts_ms only feeds lagMs above.
+  const orderingOk = isOrderedByLogPosition(events);
 
   const consistent = orderingOk && (method === "polling" ? deleteCount === totalDeletes : true);
 
@@ -1123,8 +1122,9 @@ const CHALLENGES: Challenge[] = [
 
 // At-a-glance trade-off scorecard: each method graded on the three live,
 // pedagogically-core criteria (delete capture, freshness, source overhead).
-// Ordering is omitted on purpose — the orderingOk metric flags ts_ms
-// interleaving on every lane in multi-table runs, so it can't be graded fairly.
+// Ordering is omitted on purpose — the log-position check is true by
+// construction for lanes whose position is stamped at publish time, so it
+// can't separate the methods.
 type ScorecardStatus = "good" | "warn" | "bad";
 type ScorecardCell = { value: string; status: ScorecardStatus };
 type ScorecardRow = {
@@ -2478,7 +2478,6 @@ export function App() {
     initializeGeneratorState(scenario);
 
     const runner = new ScenarioRunner();
-    const unsubscribes: Array<() => void> = [];
     const runtimes: Partial<Record<MethodOption, LaneRuntime>> = {};
     const enginesMap: Partial<Record<MethodOption, ControllerBackedEngine>> = {};
 
@@ -2512,15 +2511,8 @@ export function App() {
       };
       runtimes[method] = runtime;
 
-      const unsubscribe = engine.onEvent(event => {
-        setLaneEvents(prev => {
-          const next = { ...prev };
-          const existing = next[method] ?? [];
-          next[method] = [...existing, event];
-          return next;
-        });
-      });
-      unsubscribes.push(unsubscribe);
+      // Lane events are appended once, when drainQueues consumes them from the bus.
+      // Subscribing to engine.onEvent here as well appended every event twice.
       return engine;
     });
 
@@ -2538,7 +2530,6 @@ export function App() {
     return () => {
       runner.pause();
       stopLoop();
-      unsubscribes.forEach(unsub => unsub());
       enginesRef.current = {};
     };
   }, [activeMethods, scenario, stopLoop, methodConfig, updateLaneSnapshot, handleProduced, initializeGeneratorState]);

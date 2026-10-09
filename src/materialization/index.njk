@@ -72,7 +72,8 @@ scripts:
       <li>Merge updates and inserts using the latest event per key.</li>
       <li>Apply deletes as delete markers (a <code>deleted</code> flag plus the delete&rsquo;s log position)
         so a late, older update cannot bring the row back. Physically removing the row is safe only when
-        nothing can replay older events.</li>
+        nothing can replay older events; see
+        <a href="{{ '/deletes-stay-deleted/' | url }}#purge">purging markers safely</a>.</li>
       <li>Record the processed offset so restarts can resume safely.</li>
       <li>Publish metrics: rows inserted, updated, deleted, skipped duplicates.</li>
     </ol>
@@ -384,6 +385,7 @@ where t.order_id is null
       <li><a href="{{ '/event-envelope/' | url }}">Event envelope</a> for envelope field semantics feeding your merges.</li>
       <li><a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a> to keep staging tables consistent during rewinds.</li>
       <li><a href="{{ '/observability/' | url }}">Observability basics</a> to monitor merge throughput, freshness, and failure rates.</li>
+      <li><a href="{{ '/test-your-pipeline/' | url }}">Testing a CDC pipeline</a> to prove these merges survive duplicates, reordering and replays.</li>
     </ul>
   </section>
 </div>

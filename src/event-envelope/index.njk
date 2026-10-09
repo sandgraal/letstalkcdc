@@ -61,7 +61,7 @@ scripts:
         <tr>
           <th scope="row"><code>op</code> / action</th>
           <td>Signals whether the change was an insert, update, or delete.</td>
-          <td>Should I <a href="{{ '/glossary/#upsert' | url }}">upsert</a> or tombstone this record?</td>
+          <td>Should I <a href="{{ '/glossary/#upsert' | url }}">upsert</a> or delete this record?</td>
         </tr>
         <tr>
           <th scope="row"><code>source.lsn</code> / log position</th>
@@ -143,7 +143,7 @@ scripts:
       <article>
         <h3>Exactly-once processing patterns</h3>
         <ul>
-          <li>Persist offsets in the same transaction as your target writes.</li>
+          <li>Persist offsets in the same transaction as your target writes (see <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a> for an example).</li>
           <li>Use sink-side dedupe keys (primary-key + log position).</li>
           <li>Recover by rewinding to the last committed offset checkpoint.</li>
         </ul>
@@ -164,7 +164,12 @@ scripts:
         per-key version, not a timestamp.
       </li>
       <li>
-        Store soft deletes as explicit tombstones; compaction depends on it.
+        Keep the delete event, which carries a position, and let the connector
+        follow it with a tombstone if the topic is compacted. A tombstone is a
+        signal to Kafka&rsquo;s log cleaner and has no position, so the sink
+        keeps its own delete marker
+        (<a href="{{ '/deletes-stay-deleted/' | url }}#three-deletes">three
+        kinds of delete</a>).
       </li>
       <li>
         Make idempotent materialization the default so out-of-order updates

@@ -1,14 +1,15 @@
+/* The site theme tokens (01-variables.css) already define --bg, --surface,
+   --border, --muted, --ok, --warn and --err for both themes and win over any
+   palette redefined here, so only the one name the site does not define is
+   declared. It follows the theme: this app used to hard-code a dark palette
+   and light text, which is unreadable on the light theme. */
 :root {
-  --bg: #0b121d;
-  --surface: #0f1726;
-  --surface2: #0b1322;
-  --border: #2a3441;
-  --muted: #9aa7b7;
+  --surface2: var(--color-bg-secondary);
 }
 
 .dlq-app {
   background: var(--bg);
-  color: #e6eef7;
+  color: var(--color-text-primary);
   font:
     16px/1.6 system-ui,
     -apple-system,
@@ -92,7 +93,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--surface2);
-  color: #e6eef7;
+  color: var(--color-text-primary);
   padding: 0.45rem 0.55rem;
 }
 
@@ -109,7 +110,7 @@ h1 {
 
 .dlq-app .btn:hover,
 .dlq-app .btn:focus {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-accent-subtle);
   outline: none;
 }
 .dlq-textarea {
@@ -118,7 +119,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--surface2);
-  color: #e6eef7;
+  color: var(--color-text-primary);
   padding: 0.6rem;
   font:
     13px/1.45 ui-monospace,
@@ -188,15 +189,15 @@ h1 {
 }
 
 .ok {
-  color: #22c55e;
+  color: var(--color-success);
 }
 
 .warn {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .err {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .kvs {

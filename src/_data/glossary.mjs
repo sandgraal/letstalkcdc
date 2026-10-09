@@ -183,6 +183,30 @@ export default [
     related: ["exactly-once", "idempotent-write", "at-least-once"],
   },
   {
+    term: "Convergence test",
+    slug: "convergence-test",
+    aliases: ["idempotence test", "replay test"],
+    definition: `<p>A test that applies a change log to a sink twice, and
+        again in shuffled order with duplicates, and requires the final
+        table state to equal in-order application by source log
+        position. It checks the at-least-once contract (duplicated,
+        late and replayed changes still converge), not the absence of
+        duplicates. See the testing module for runnable examples.</p>`,
+    related: ["idempotent-write", "effectively-once", "resurrection"],
+  },
+  {
+    term: "Resurrection",
+    slug: "resurrection",
+    aliases: ["zombie row"],
+    definition: `<p>A deleted row that reappears in a sink because an older
+        change for the same key was applied after the delete. It
+        happens when a delete physically removes the row, leaving
+        nothing to compare a late or replayed update against. Keeping
+        the delete as a marker that carries its log position, and
+        guarding updates on position, prevents it.</p>`,
+    related: ["tombstone", "idempotent-write", "lsn-scn"],
+  },
+  {
     term: "Lag",
     slug: "lag",
     definition: `<p>The time between a source commit and the
@@ -245,6 +269,46 @@ export default [
         distributed mode (standalone mode stores offsets in a file),
         and a restart resumes from the last committed one.</p>`,
     related: ["smt", "dead-letter-queue", "checkpoint", "at-least-once"],
+  },
+  {
+    term: "Kafka transaction",
+    slug: "kafka-transaction",
+    aliases: ["transactional producer", "read_committed"],
+    definition: `<p>An atomic write that a Kafka producer with a
+        <code>transactional.id</code> makes across topic partitions,
+        optionally together with a consumer's offsets
+        (<code>sendOffsetsToTransaction</code>). A consumer sees only
+        committed records if it sets
+        <code>isolation.level=read_committed</code>; the default,
+        <code>read_uncommitted</code>, also returns records from aborted
+        transactions. The atomicity stops at Kafka: it does not include a
+        database, a warehouse load or an HTTP call.</p>`,
+    related: ["exactly-once", "fencing", "at-least-once"],
+  },
+  {
+    term: "Fencing",
+    slug: "fencing",
+    aliases: ["zombie fencing"],
+    definition: `<p>Disabling an older instance of a producer or task so
+        that it can no longer write, after a newer instance has taken
+        over. Kafka ties a transactional producer to its
+        <code>transactional.id</code> and an epoch; Kafka Connect's
+        exactly-once source mode gives each task its own transactional ID
+        so that a zombie task is fenced out.</p>`,
+    related: ["kafka-transaction", "kafka-connect", "exactly-once"],
+  },
+  {
+    term: "Offsets in the sink transaction",
+    slug: "offsets-in-sink-transaction",
+    aliases: ["offsets stored with the data"],
+    definition: `<p>A consumer pattern for a sink that has transactions: the
+        consumer saves its Kafka offset in the same database transaction
+        as the rows it writes, then seeks to that stored offset on
+        restart. A crash cannot leave data and offset out of step. It does
+        not remove a duplicate that already sits in the topic at another
+        offset, so the upsert still needs a guard on the source log
+        position.</p>`,
+    related: ["idempotent-write", "upsert", "effectively-once"],
   },
   {
     term: "Deduplication",
