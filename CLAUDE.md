@@ -88,11 +88,13 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: b1478af0fa083db3e64607f5ec39b76fcdab24e04eb47f00b448f32d8a70226e
-# (re-baselined 2026-10-08: in-range dependency update, cssnano 7.1.9 now
-#  keeps rgba(248,113,113,.22) in scorecard.css instead of a lossy hsla();
-#  the only CSS difference, +4 bytes. Previously eebaa34a… from 2026-08-26:
-#  nav/drawer fixes, then the undefined-token sweep + panels.css bundling)
+# baseline at HEAD of main is: e54f418279ea274845b0afc788042d3f7008a096c6212e43d64bac55d6baa5f4
+# (re-baselined 2026-10-08: author headshot rule `.page-meta__author >
+#  .author-photo` added to 04-components.css, the only CSS difference.
+#  Previously b1478af0… from the same day: in-range dependency update,
+#  cssnano 7.1.9 keeps rgba(248,113,113,.22) in scorecard.css instead of a
+#  lossy hsla(), +4 bytes. Before that eebaa34a… from 2026-08-26: nav/drawer
+#  fixes, then the undefined-token sweep + panels.css bundling)
 ```
 
 If the hash matches, your change is a pure source refactor and visually safe.
@@ -306,7 +308,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`b1478af0fa08…`).
+3. **`/css-byte-check` baseline is in this file** (`e54f418279ea…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.

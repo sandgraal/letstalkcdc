@@ -49,6 +49,29 @@ test.describe("content pages", () => {
     );
     expect(realErrors).toEqual([]);
   });
+
+  test("author headshot is a 48px circle on the same row as the byline", async ({
+    page,
+  }) => {
+    await page.goto("/snapshotting/");
+    const photo = page.locator(".page-meta__author .author-photo");
+    const link = page.locator(".page-meta__author a[rel='author']");
+    await photo.scrollIntoViewIfNeeded();
+
+    const style = await photo.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { width: cs.width, height: cs.height, radius: cs.borderRadius };
+    });
+    expect(style).toEqual({ width: "48px", height: "48px", radius: "50%" });
+
+    const p = await photo.boundingBox();
+    const a = await link.boundingBox();
+    expect(p).not.toBeNull();
+    expect(a).not.toBeNull();
+    // Vertical overlap means the image is beside the name, not stacked above it.
+    expect(p.y).toBeLessThan(a.y + a.height);
+    expect(a.y).toBeLessThan(p.y + p.height);
+  });
 });
 
 test.describe("scorecard", () => {

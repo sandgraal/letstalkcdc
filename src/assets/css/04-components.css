@@ -673,6 +673,21 @@
   font-weight: 500;
 }
 
+/* Headshot sits inline, before "By <name>". The global img reset makes
+   images display:block, which would stack it above the name. Inline (not
+   flex) keeps "By" and the link as ordinary text so wrapping stays sane.
+   48px matches the width/height attributes in base.njk: no layout shift. */
+.page-meta__author > .author-photo {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  margin-inline-end: var(--space-sm, 0.75rem);
+  vertical-align: middle;
+  object-fit: cover;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.15));
+  border-radius: 50%;
+}
+
 .page-meta__author a {
   color: inherit;
   text-decoration: underline;
