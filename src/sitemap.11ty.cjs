@@ -1,10 +1,45 @@
-const formatDate = (date) => {
-  try {
-    return new Date(date).toISOString().split("T")[0];
-  } catch (_) {
-    return new Date().toISOString().split("T")[0];
+/**
+ * sitemap.xml generator.
+ *
+ * `<lastmod>` is the page's own `dateModified` front matter, falling back to
+ * `datePublished`, and is omitted when neither is a valid date (P16-5). It
+ * is deliberately NOT the build date or the file's date: a lastmod that is
+ * identical on every URL tells a crawler nothing.
+ *
+ * A page leaves the sitemap by setting `eleventyExcludeFromSitemap: true`
+ * (use this together with a `noindex` robots meta) or by carrying a
+ * `draft` / `noindex` tag. Redirect stubs and the 404 page are always
+ * excluded.
+ */
+const pad = (n) => String(n).padStart(2, "0");
+
+/**
+ * Normalise a front-matter date to YYYY-MM-DD, or null when it is missing or
+ * not a real calendar date. Accepts a Date (what YAML gives for an unquoted
+ * `2026-08-25`) or a string beginning YYYY-MM-DD.
+ */
+const toLastmod = (value) => {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())}`;
   }
+  if (typeof value !== "string") return null;
+  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  const check = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  if (
+    check.getUTCFullYear() !== Number(y) ||
+    check.getUTCMonth() !== Number(mo) - 1 ||
+    check.getUTCDate() !== Number(d)
+  ) {
+    return null;
+  }
+  return `${y}-${mo}-${d}`;
 };
+
+const xmlEscape = (s) =>
+  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 module.exports = class {
   data() {
@@ -37,9 +72,14 @@ module.exports = class {
 
     const urls = unique
       .map((item) => {
-        const loc = `${base}${item.url}`;
-        const lastmod = formatDate(item.date);
-        return `    <url>\n      <loc>${loc}</loc>\n      <lastmod>${lastmod}</lastmod>\n    </url>`;
+        const loc = xmlEscape(`${base}${item.url}`);
+        const lastmod =
+          toLastmod(item.data?.dateModified) ??
+          toLastmod(item.data?.datePublished);
+        const lastmodXml = lastmod
+          ? `\n      <lastmod>${lastmod}</lastmod>`
+          : "";
+        return `    <url>\n      <loc>${loc}</loc>${lastmodXml}\n    </url>`;
       })
       .join("\n");
 

@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-08-27",
   seriesKey: "connector-builder",
   heroConfig: {
     title: "Connector Config Builder",

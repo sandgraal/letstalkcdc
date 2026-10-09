@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-05-18",
   heroConfig: {
     kicker: "Plan • Practice • Share",
     title: "Why Change Data Capture Still Breaks, and How To Get It Right.",
