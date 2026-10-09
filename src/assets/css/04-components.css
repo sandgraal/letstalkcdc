@@ -84,6 +84,20 @@
   transform: translateY(0);
 }
 
+/* The base `a:hover` rule (0,1,1) outranks `.button` (0,1,0), so on an anchor
+   the button label picked up the link-hover colour — cyan on the cyan
+   gradient in the dark theme (1.0:1), link blue in the light one (~1.6:1) —
+   in :hover and :active. Restate the button's own text colour for those
+   states. Specificity is (0,1,1): it ties with `a:hover` and wins on source
+   order, yet stays below every variant (`.button.secondary` and friends,
+   0,2,0), which set their own colour and must keep it. The variants are
+   excluded through `:where()` so the exclusion adds no specificity. */
+a.button:where(:hover, :active, :focus-visible):not(
+    :where(.secondary, .ghost, .danger, .button-primary, .button-secondary)
+  ) {
+  color: var(--button-primary-text);
+}
+
 /* Secondary Button - Refined outline */
 .button.secondary {
   /* `background` (not background-color) so the base .button gradient

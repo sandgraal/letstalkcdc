@@ -5,30 +5,6 @@ const LOG_STORAGE_KEY = "cdcAgentLogs";
 const DOC_STORAGE_KEY = "lastProgressDocs";
 const MAX_LOG_ENTRIES = 200;
 
-const FILTERS = [
-  {
-    id: "all",
-    label: "all",
-    predicate: () => true,
-  },
-  {
-    id: "errors",
-    label: "errors",
-    predicate: (entry) => entry.type === "error" || entry.type === "warn",
-  },
-  {
-    id: "sync",
-    label: "sync",
-    predicate: (entry) => entry.source === "SYNC",
-  },
-  {
-    id: "agent",
-    label: "agent",
-    predicate: (entry) => entry.source === "CDC_AGENT",
-  },
-];
-
-let currentFilterIndex = 0;
 let chartModulePromise = null;
 let chartInstances = [];
 
@@ -116,31 +92,6 @@ const writeLogs = (logs) => {
   safeStorage.set(LOG_STORAGE_KEY, JSON.stringify(logs));
 };
 
-const getFilter = (id) =>
-  FILTERS.find((filter) => filter.id === id) ?? FILTERS[0];
-
-const updateStatsCounter = (logs = readLogs()) => {
-  const counter = doc?.getElementById("statsCounter");
-  if (!counter) return;
-  const count = logs.length;
-  counter.textContent = String(count);
-  counter.classList.add("updated");
-  globalScope.setTimeout(() => counter.classList.remove("updated"), 300);
-};
-
-const applyLogFilter = (filterId) => {
-  const filter = getFilter(filterId);
-  const lines = doc?.querySelectorAll("#agentConsole .agent-line");
-  if (!lines) return;
-  lines.forEach((line) => {
-    const source = (line.dataset.source ?? "").toUpperCase();
-    const type = (line.dataset.type ?? "").toLowerCase();
-    const entry = { source, type };
-    const visible = filter.predicate(entry);
-    line.style.display = visible ? "" : "none";
-  });
-};
-
 const renderLogEntry = (entry) => {
   const container = doc?.querySelector("#agentConsole .agent-scroll");
   if (!container) return;
@@ -164,8 +115,6 @@ const restoreLogConsole = () => {
   container.innerHTML = "";
   const logs = readLogs();
   logs.forEach((entry) => renderLogEntry(entry));
-  applyLogFilter(FILTERS[currentFilterIndex].id);
-  updateStatsCounter(logs);
 };
 
 const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
@@ -184,13 +133,6 @@ const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
   writeLogs(logs);
 
   renderLogEntry(normalized);
-  applyLogFilter(FILTERS[currentFilterIndex].id);
-  updateStatsCounter(logs);
-
-  const modal = doc?.getElementById("sessionModal");
-  if (modal && !modal.classList.contains("hidden")) {
-    renderSessionDetails();
-  }
 };
 
 const loadChartModule = async () => {
@@ -449,114 +391,6 @@ const renderProgressDashboard = async (
   renderCharts(canvasPrefix, summary, colors, chartModule.Chart);
 };
 
-const renderSessionDetails = () => {
-  const container = doc?.getElementById("sessionDetails");
-  if (!container) return;
-
-  const logs = readLogs();
-  if (!logs.length) {
-    container.innerHTML = "<p>No activity yet.</p>";
-    return;
-  }
-
-  const countsBySource = new Map();
-  logs.forEach((log) => {
-    countsBySource.set(log.source, (countsBySource.get(log.source) ?? 0) + 1);
-  });
-
-  const summaryList = Array.from(countsBySource.entries())
-    .map(
-      ([source, count]) =>
-        `<li><strong>${escapeHtml(source)}</strong>: ${count} event${count === 1 ? "" : "s"}</li>`,
-    )
-    .join("");
-
-  const recent = logs
-    .slice(-5)
-    .reverse()
-    .map(
-      (log) => `
-        <div class="agent-line ${escapeHtml(log.type)}">
-          <span class="tag" aria-hidden="true">[${escapeHtml(log.source)}]</span>
-          ${escapeHtml(log.message)}
-        </div>
-      `,
-    )
-    .join("");
-
-  container.innerHTML = `
-    <p><strong>Total events:</strong> ${logs.length}</p>
-    <ul>${summaryList}</ul>
-    <hr />
-    <h3>Recent activity</h3>
-    ${recent || "<p>No recent events</p>"}
-  `;
-};
-
-const showSessionModal = () => {
-  const modal = doc?.getElementById("sessionModal");
-  if (!modal) return;
-  modal.classList.remove("hidden");
-  modal.setAttribute("aria-hidden", "false");
-  renderSessionDetails();
-  const trigger = doc?.getElementById("statsButton");
-  trigger?.setAttribute("aria-expanded", "true");
-};
-
-const hideSessionModal = () => {
-  const modal = doc?.getElementById("sessionModal");
-  if (!modal) return;
-  if (modal.classList.contains("hidden")) return;
-  modal.classList.add("hidden");
-  modal.setAttribute("aria-hidden", "true");
-  const trigger = doc?.getElementById("statsButton");
-  trigger?.setAttribute("aria-expanded", "false");
-};
-
-const exportLogs = (format) => {
-  const logs = readLogs();
-  if (!logs.length) {
-    globalScope.alert?.("No logs to export yet.");
-    return;
-  }
-
-  let content;
-  let mime = "text/plain";
-
-  if (format === "json") {
-    content = JSON.stringify(logs, null, 2);
-    mime = "application/json";
-  } else {
-    content = logs
-      .map(
-        (log) =>
-          `[${new Date(log.timestamp).toLocaleString()}] [${log.source}] (${log.type}) ${log.message}`,
-      )
-      .join("\n");
-  }
-
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const anchor = doc?.createElement("a");
-  if (!anchor) {
-    URL.revokeObjectURL(url);
-    return;
-  }
-  anchor.href = url;
-  const extension = format === "json" ? "json" : "txt";
-  anchor.download = `cdc-session-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
-  doc.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-};
-
-const cycleFilter = () => {
-  currentFilterIndex = (currentFilterIndex + 1) % FILTERS.length;
-  const filter = FILTERS[currentFilterIndex];
-  applyLogFilter(filter.id);
-};
-
 const initialize = () => {
   if (!doc) return;
 
@@ -572,36 +406,6 @@ const initialize = () => {
   }
 
   restoreLogConsole();
-  applyLogFilter(FILTERS[currentFilterIndex].id);
-
-  const counter = doc.getElementById("statsCounter");
-  counter?.addEventListener("click", cycleFilter);
-
-  const statsButton = doc.getElementById("statsButton");
-  statsButton?.addEventListener("click", showSessionModal);
-
-  const closeButton = doc.getElementById("closeModal");
-  closeButton?.addEventListener("click", hideSessionModal);
-
-  doc
-    .getElementById("exportTxt")
-    ?.addEventListener("click", () => exportLogs("txt"));
-  doc
-    .getElementById("exportJson")
-    ?.addEventListener("click", () => exportLogs("json"));
-
-  const modal = doc.getElementById("sessionModal");
-  modal?.addEventListener("click", (event) => {
-    if (event.target === modal) {
-      hideSessionModal();
-    }
-  });
-
-  doc.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      hideSessionModal();
-    }
-  });
 };
 
 if (doc) {
@@ -612,9 +416,4 @@ if (doc) {
   }
 }
 
-export {
-  appendAgentLog,
-  applyLogFilter,
-  renderProgressDashboard,
-  updateStatsCounter,
-};
+export { appendAgentLog, renderProgressDashboard };
