@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deep-linked to the section where one exists), driven by an optional
   `lessons` field in `src/_data/glossary.mjs`. A test checks each link
   against the built pages and their ids.
+- **Related lessons on the module pages (P16-8).** 34 of the 36 module pages
+  end with a "Related lessons" list driven by a `related` array per lesson
+  in `src/_data/series.mjs`, rendered by the existing series navigation and
+  styled as `.series-related`. A test checks that the keys exist, that no
+  lesson links to itself and that every lesson has an inbound link.
+- **Newsletter signup (P15-9).** A `/newsletter/` page and a compact footer
+  form post to Buttondown's embed endpoint, with no third-party script and
+  working without JavaScript. The form renders only when the
+  `BUTTONDOWN_USERNAME` build variable is set; `/privacy/` describes what
+  is sent. Live since 2026-10-09.
+- **Cookie-less visit counts (P15-10).** GoatCounter loads as one async
+  script when `GOATCOUNTER_CODE` is set, with no cookies and no consent
+  banner, and not when Do Not Track is on. The performance budget caps the
+  inline loader and `/privacy/` discloses it. Live since 2026-10-09.
 - **Conductor protocol for AI-assisted work.** The main Claude Code session
   now runs as a `conductor` agent that delegates to single-purpose roles
   (`scout`, `verifier`, `scribe`, `implementer`, `reviewer`, plus the
@@ -103,6 +117,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Heading levels are correct without changing how they look (P16-9).**
+  Headings that skipped a level were promoted to the right level and keep
+  their appearance through the `.h-as-3` / `.h-as-4` helpers; stat numbers
+  and eyebrow labels that were headings became plain elements;
+  `/merge-cookbook/` gained an `<h1>`. `npm run audit:seo` reports no
+  heading problems on any indexed page, and a unit test enforces it.
 - **Assistant panel polish (P15-15).** The close button is now a 44×44
   target (it was about 22×30), closing the panel by any route returns focus
   to the floating button, and on short landscape viewports (667×375,

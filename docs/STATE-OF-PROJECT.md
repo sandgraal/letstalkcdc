@@ -1,284 +1,243 @@
-# State of the project — 2026-05-19
+# State of the project — 2026-10-09
 
-A dated snapshot of where Let's Talk CDC is right now, written through
-five expert lenses (engineering, content & SEO, a11y & perf, trust &
-conversion, Claude / agent-ops).
+A dated snapshot of Let's Talk CDC, written for someone who has not seen it
+before. Every number below came from a command run on 2026-10-09 against
+`main` at **`bd5a2a4`** (`bd5a2a4b2068ca6214966d9e4ccb1df4dbc7bde9`, "feat(playground):
+destination-guard labs, redeliver op, ?try= links (P16-26)", #427). The
+command is next to each number so you can re-run it.
 
-Read this when you want a fast read of where things stand. The
-authoritative running checklist remains
-[`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md); this doc is its
-dashboard, not its replacement.
-
-> Previous snapshot: see Git history at
-> [`2026-05-18`](https://github.com/sandgraal/letstalkcdc/blob/b024c4d/docs/STATE-OF-PROJECT.md).
-> A new snapshot is written rather than editing this one in place
-> when the numbers drift materially.
-
----
+This supersedes the 2026-05-19 snapshot (274 tests, 21 modules), which stays
+reachable in Git history. The running checklist is
+[`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md); this is its dashboard.
+The deeper evidence kit (full measurements, content-accuracy guide, risk
+register, two-week schedule) is [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md): this
+page does not repeat it.
 
 ## TL;DR
 
-- **Site shape unchanged**: Eleventy 3.1 + Vite 7 + PostCSS static
-  site at <https://sandgraal.github.io/letstalkcdc/>. 21 modules with
-  `seriesKey`; 42 top-level `src/` directories.
-- **Last 48 hours delivered 14 PRs.** Tier-1 trust surfaces shipped
-  (errata callouts, glossary, methodology); `/intro/` perf work
-  (CDC platforms data-driven + expand-on-demand) cut a real **48
-  rendered-tree elements** off initial paint via `<template>`. Dev
-  ergonomics fixed (`npm run dev` builds CSS first). State-of-project
-  audit + Claude-Code best-practice pass landed.
-- **PR queue is empty** as of HEAD `4b2d132`. No conflicts to clear,
-  no reviews pending. Tomorrow's agents start with a clean slate.
-- **Tests are green**: 274 unit cases across 14 files, 6 Playwright
-  e2e specs, `verify-all` clean on `origin/main`.
-- **Lighthouse baseline on `/intro/`** unchanged thresholds: error-level
-  perf ≥ 0.82, a11y ≥ 0.93. Expand-on-demand drops rendered-tree
-  count by ~5% so the next `npm run lighthouse` should reflect a
-  small but real bump.
-- **Plan checkbox totals on `origin/main`**: 39 `[x]` / 16 `[ ]`.
-  Of those 16, **eight require maintainer-only decisions** (assets,
-  vendor stance, license, provider choice); two are deferred by
-  explicit policy; the remaining six are diagnostic / partial /
-  blocked.
-- **Agent ops unchanged**. Three friction notes from yesterday's
-  audit still open as future Phase 12 candidates.
+- 36 lessons ("modules"), 56 pages in the sitemap (57 live), a glossary of 32
+  terms, and a separate playground app at `/playground/`.
+- 108 PRs merged on 2026-10-09 alone. The PR queue is empty (`gh pr list`).
+- 1,727 unit tests in 58 files pass. CI passed on the commit before
+  `bd5a2a4`; the run for `bd5a2a4` had not finished when this was written
+  (`gh run list --workflow=ci.yml --branch main -L 3`).
+- 9 plan boxes are open. Two need Docker, four need the maintainer, one
+  waits for 28 days of data, one is a performance sub-item, one changes CI.
+- Newsletter (Buttondown) and visit counts (GoatCounter) went live today.
+  Search Console is verified and the sitemap is submitted (maintainer's report).
+- No audience data exists yet. Do not choose the next phase's content from
+  guesses; see "What is open".
 
----
+## What the site is
 
-## What landed since the 2026-05-18 snapshot
+An educational static site that teaches change data capture to engineers who
+run pipelines. Eleventy 3.1 + Vite 8 + PostCSS, deployed to GitHub Pages at
+<https://sandgraal.github.io/letstalkcdc/>. Every page is pre-rendered HTML;
+JavaScript is progressive enhancement. There is no backend in production
+except one optional Supabase project (assistant votes, and the playground).
 
-Chronological, freshest first. All on `main`:
+The thesis every page is held to: delivery is at-least-once; correctness
+lives in an idempotent sink ordered by source log position (LSN, SCN, GTID),
+not by `ts_ms`; end-to-end exactly-once across independent systems is not
+claimed. Code is MIT, written content CC BY 4.0 (`LICENSE-CONTENT.md`).
 
-| PR       | Title                                                                             | Notes                                                                                                                                                                                                             |
-| -------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **#294** | perf(intro): show first 6 vendor cards inline, rest in `<template>`               | Real 48-element rendered-tree reduction on `/intro/` (965 → 917). Expand-on-demand JS handles Show-All click + filter / hash interactions. `<noscript>` points to `/tooling/`. Closes Phase 5 perf-debt sub-item. |
-| **#293** | refactor(intro): data-drive CDC platforms catalog from `src/_data/cdcVendors.mjs` | Pure refactor: ~135 template lines → data file; byte-identical HTML. Sets up #294 and any future `/compare/` or `/tooling/` source-share.                                                                         |
-| **#292** | docs: add `STATE-OF-PROJECT.md` (five-lens snapshot + agent-ops audit)            | The original dashboard doc; this snapshot supersedes it.                                                                                                                                                          |
-| **#291** | docs(plan): close 4 stale `[ ]` items effectively done by later work              | Plan housekeeping; closed Phase 5 `target-size`, Phase 5 a11y debt, Phase 6 doc audit parent, Phase 9 RSS duplicate.                                                                                              |
-| **#290** | docs: refresh `/css-byte-check` baseline hash to current main                     | Stale hash had pointed at pre-color-tokens output for weeks; refreshed to current `f0da8ca8…`.                                                                                                                    |
-| **#289** | fix(dev): build CSS before `npm run serve` so dev doesn't render unstyled         | Fresh-clone friction fix. Added `preserve` npm pre-hook.                                                                                                                                                          |
-| **#288** | perf(intro): drop no-op checklist checkboxes; audit remaining dom-size            | First chip at `/intro/` `dom-size` debt. Removed 10 dead-affordance `<input>`s. Audit named the next two trim targets.                                                                                            |
-| **#287** | feat(methodology): `/methodology/` page                                           | New credibility-surface page describing the editorial pipeline. Footer link.                                                                                                                                      |
-| **#286** | feat(glossary): standalone `/glossary/` page                                      | 14 terms in `src/_data/glossary.mjs`; data-driven `<dl>` with stable anchors.                                                                                                                                     |
-| **#285** | feat(errata): inline per-page errata callouts                                     | URL-tagged callouts driven by `src/_data/errata.mjs`. `base.njk` partial renders nothing when no entry matches.                                                                                                   |
-| **#284** | chore(cleanup): remove deprecated auth + cloud-progress code                      | Deleted ~1,400 LOC of dead auth + cloud-sync that was still shipping (injecting a non-functional "Log In" button).                                                                                                |
-| **#283** | test(e2e): assistant FAB panel coverage + hidden-panel hit-testing fix            | Playwright spec for the 44×44 visible-state assertion the LHCI `target-size` audit can't measure.                                                                                                                 |
-| **#282** | fix(seo): BreadcrumbList JSON-LD audit + 2 page fixes                             | `/multi-tenancy/` and `/exactly-once/` were emitting literal Nunjucks expressions in `item` URLs; fixed via `eleventyComputed: head_extra:`.                                                                      |
-| **#281** | feat(feed): RSS 2.0 at `/feed.xml`                                                | Hand-rolled `src/feed.11ty.cjs`, `<link rel="alternate">` in `<head>`.                                                                                                                                            |
+| Count                         |       Value | Command                                                                             |
+| ----------------------------- | ----------: | ----------------------------------------------------------------------------------- |
+| Modules (`series.mjs`)        |          36 | `node -e 'import("./src/_data/series.mjs").then(m=>console.log(m.default.length))'` |
+| ...by level                   | 6 / 15 / 15 | same file, `skillLevel`: Beginner / Intermediate / Advanced                         |
+| HTML files in `_site/`        |          87 | `find _site -name '*.html' \| wc -l` after `npm run build`                          |
+| Sitemap entries (local build) |          56 | `grep -c '<loc>' _site/sitemap.xml`                                                 |
+| Sitemap entries (live)        |          57 | `curl -s .../letstalkcdc/sitemap.xml \| grep -c '<loc>'`; adds `/newsletter/`       |
+| Glossary entries              |          32 | `src/_data/glossary.mjs`                                                            |
+| Errata entries                |           5 | `src/_data/errata.mjs`                                                              |
+| Assistant intents             |          45 | `grep -c '^  - id:' src/data/assistant.yml`                                         |
+| Playground scenarios (shared) |          14 | `import("./playground/assets/shared-scenarios.js")` then `.default.length`          |
 
----
+The 87 HTML files are content pages, 26 legacy redirect stubs and the 404;
+the split is in `npm run audit:seo` (`inventory.*`).
 
-## Engineering & architecture
+## Tests
 
-Stack and pipeline unchanged. `npm run verify-all` is the local
-minimum bar (format + lint + 274 unit tests + build). Four CI
-workflows: `ci.yml` (verify-all + Lighthouse script), `deploy.yml` (Pages),
-`linkcheck.yml` (lychee), `fortify.yml` (SAST).
+| Suite                      | Result                                                               | Command                                            |
+| -------------------------- | -------------------------------------------------------------------- | -------------------------------------------------- |
+| Site unit tests (vitest 5) | 1,727 passed, 58 files, 12 s                                         | `npm test`                                         |
+| Site e2e (Playwright)      | 1,104 listed over 3 browsers; 368 on chromium, which is what CI runs | `npx playwright test --list`; `--project=chromium` |
+| Playground unit            | 229 passed, 28 files                                                 | `npm --prefix playground run test:unit`            |
+| Playground simulation      | property tests over 24 generated scenarios                           | `npm --prefix playground run test:sim`             |
+| Playground e2e             | 21 tests in 6 files                                                  | `npm --prefix playground run test:e2e -- --list`   |
 
-The CDC platforms work in PRs #293 and #294 closed the largest
-maintainability target on `/intro/`. Next structural DOM trim per
-PR #288's audit: the **Methods at a Glance table** (~135 elements,
-each cell uses `<span class="cell-indicator">` + `<span class="cell-text">`;
-collapsing the indicator into a `::before` pseudo-element would
-save ~36 spans across the table at the cost of a small a11y
-trade-off).
+Several unit tests read the docs and the plan (module counts in the README,
+plan structure, agent roster), so editing those files can fail `npm test`.
+The e2e count includes the layout-shift guard `tests/e2e/cls.spec.js`.
 
-**Next moves**:
+## CI and gates
 
-- Land the Methods-table indicator-span collapse when an agent
-  has bandwidth — it's a self-contained ~50-line CSS + template
-  change, similar shape to PR #288.
-- Phase 4 / Phase 11 `@layer` migration stays deferred per
-  explicit Phase 11 policy ("Defer unless a real specificity bug
-  forces it; no user value otherwise").
+Run on every push to and PR into `main` unless noted
+(`ls .github/workflows`).
 
----
+| Workflow                           | Jobs and what they gate                                                                                                                                                                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ci.yml`                           | `build`; `lint` (ESLint + Prettier); `unit-tests`; `security-audit` (`npm audit --production`); `smoke-tests` (`npm run smoke`); `a11y-tests` (pa11y-ci); `e2e-tests` (chromium); `lighthouse` (`build:lhci` + `npm run lighthouse`) |
+| `deploy.yml`                       | Push to `main` and manual. Builds with the repository variables, runs `scripts/publish-playground.sh`, deploys to Pages                                                                                                              |
+| `linkcheck.yml`                    | lychee over the built HTML, site URLs remapped to the checkout                                                                                                                                                                       |
+| `fortify.yml`                      | Fortify scan on push, PR and Fridays 20:34 UTC. Needs secrets that may not be set (unverified)                                                                                                                                       |
+| `playground-preflight.yml`         | Playground build, bundle check, scenario lint, simulation, e2e, harness. Only for `playground/**` changes                                                                                                                            |
+| `playground-generated-bundles.yml` | Committed playground bundles match a fresh build (same paths)                                                                                                                                                                        |
+| `playground-harness-nightly.yml`   | Harness smoke, daily 07:00 UTC                                                                                                                                                                                                       |
+| CodeQL                             | GitHub default setup (settings, no file)                                                                                                                                                                                             |
 
-## Content & SEO
+**A red check does not block a merge.** The `default` ruleset
+(`gh api repos/sandgraal/letstalkcdc/rulesets/16512225`) has the rules
+`deletion, non_fast_forward, code_scanning, code_quality, pull_request` and no
+required status checks. Merging after green CI is a working agreement, not a
+mechanism.
 
-Unchanged from yesterday — every credibility surface is now live.
-The 14-PR delivery this week filled in the entire Tier-1 trust
-surface from the May 2026 brutal-review roadmap (methodology,
-glossary, errata, edit-on-GitHub, dateModified, RSS, JSON-LD,
-BreadcrumbList, sitemap, three README badges).
+Local minimum bar: `npm run verify-all` (format, lint, tests, build); add
+`npm run smoke:core` for routing or templates. Size budgets: `npm run smoke:perf`.
 
-**Next moves** — each maintainer-blocked:
+## Performance floors and measured values
 
-- Author photo asset (Phase 8 L437) — drop a JPEG at
-  `src/static/author/` and flip `image: null` to its public path
-  in `src/_data/author.mjs`.
-- Author identity expansion (Phase 8 L493) — add LinkedIn /
-  talks / podcast URLs to `sameAs` when they exist.
-- `/compare/` vendor hub (Phase 9 L507) — needs maintainer
-  authority on Debezium vs. AWS DMS vs. Fivetran vs. Airbyte.
-- Newsletter provider choice (Phase 9 L554) — Buttondown / Kit /
-  ConvertKit.
+Floors live in `lighthouse-ci.config.json`: every category 0.9 at `warn` on
+five URLs (`/`, `/intro/`, `/overview/`, `/quickstarts/`, `/snapshotting/`);
+`/intro/` has **`error` floors of performance 0.84 and accessibility 0.93**
+(performance ratcheted from 0.82 on 2026-10-09, P15-44). The runner takes the
+best of 3 valid runs and retries `NO_LCP` / `NO_FCP` runs.
 
----
+| Measured                                        | Value                                                                                                                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/intro/` performance, 10 CI jobs after #413    | best-of-3 per job 0.86 to 0.92, median 0.88 (30 runs: min 0.78, median 0.88, max 0.92)                                                                        |
+| `/intro/` layout shift, Slow 4G + 4x CPU        | 0.33 before #413, 0 after; guard `tests/e2e/cls.spec.js` fails above 0.1                                                                                      |
+| `/intro/` DOM size                              | 1,040 elements (3 local runs). Lighthouse 13.5 `dom-size-insight` scores 1; the older 12.6 `dom-size` audit scored 0.5 on the same page                       |
+| Local run on this commit (median of valid runs) | performance `/` 0.96, `/intro/` 0.91, `/overview/` 0.95, `/quickstarts/` 0.95, `/snapshotting/` 0.93; accessibility 0.96 to 1.00; best-practices and SEO 1.00 |
+| Gate result of that run                         | 22 assertions over 5 URLs: 0 errors, 0 warnings; valid runs `/` 2 of 3, `/overview/` 1 of 3, `/quickstarts/` 2 of 3 (`NO_FCP` / `NO_LCP`)                     |
 
-## A11y & perf
+Lab numbers vary by machine. There is no field (real-user) data.
+Re-measure: `npm run build:lhci && npm run lighthouse`.
 
-Lighthouse thresholds in [`lighthouse-ci.config.json`](../lighthouse-ci.config.json)
-unchanged: warn-level 0.9 floor across all sampled URLs;
-`/intro/` error-level perf ≥ 0.82 and a11y ≥ 0.93.
+## Production CSS baseline
 
-`/intro/` `dom-size` audit was the only currently-tracked perf
-sub-item moving the needle this week. PR #288 trimmed 10
-no-op-checkbox elements; PR #294's expand-on-demand cut **48
-more**. Combined: roughly -58 rendered-tree elements on `/intro/`
-since the audit started, a ~6% reduction.
-
-Still open on `/intro/`:
-
-- `cumulative-layout-shift: 0.58` — culprits not yet localized
-  (Phase 7 line 343, blocked on a maintainer-run Lighthouse pass
-  for a shared baseline).
-- `mainthread-work-breakdown: 0.5` — never investigated.
-- Methods-table span collapse (named above) — the next concrete
-  trim per the PR #288 audit.
-
-**Next moves**:
-
-- Maintainer-only ask still standing: one local Lighthouse run
-  from a quiet machine + share the `cls-culprits-insight` audit
-  screenshot. On-machine variability (0.97 local / 0.94 CI on
-  a11y) means an agent-side investigation without a shared
-  reference run is speculation.
-
----
-
-## Trust & conversion
-
-The brutal-review Tier-1 list is fully shipped. Tier-2 items
-remain maintainer-blocked (asset / authority / provider choices).
-
-**Next moves** — single ranked list of Tier-2 maintainer-only
-items:
-
-1. **License file** (Phase 11 L644). Easiest decision. MIT for
-   code + CC-BY 4.0 for content is the conventional
-   educational-repo pattern. Unblocks the README license badge.
-2. **Author photo** (Phase 8 L437). Single asset + template
-   tweak.
-3. **Author identity expansion** (Phase 8 L493). LinkedIn at
-   minimum.
-4. **`/compare/` hub** (Phase 9 L507). Highest-leverage SEO win
-   in the roadmap, but highest editorial risk — needs
-   maintainer-authored takes.
-5. **Newsletter** (Phase 9 L554). Provider decision first.
-
----
-
-## Claude / agent-ops
-
-The workflow is healthy. `.claude/settings.json` hooks use the
-current docs schema (`asyncRewake: true`, exit code 2). The
-[`check-merged-prs.sh`](../.claude/scripts/check-merged-prs.sh)
-auto-continue mechanism worked reliably across the 14 merges
-this week — no missed triggers, no double-fires.
-
-The three friction items recorded yesterday are unchanged and
-remain candidates for a future **Phase 12** chapter:
-
-1. **Auto-continue preview points at Phase 1.** Every merge's
-   `additionalContext` ends with "First open item by file order:
-   30:- [ ] Confirm `vars.SITE_HOST` ..." even though the
-   directive in the same message tells the model to skip Phase
-   1. Costs each agent one plan re-read on resume.
-2. **`git push --force-with-lease` is denied.** Correct policy;
-   real friction on rebased branches — the workaround is
-   `git merge --no-ff origin/main` (used four times this week).
-3. **No `/plan` slash command.** Yesterday's state-of-project
-   audit was hand-driven; a packaged command would make it
-   reproducible.
-
-**Next moves**: a Phase 12 chapter in `IMPLEMENTATION-PLAN.md`
-gathering these + any new agent-ops papercuts. Land when the
-maintainer has appetite.
-
----
-
-## Outstanding `[ ]` items on `origin/main`
-
-16 open items as of HEAD `4b2d132`. Cross-referenced with line
-numbers in [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
-
-| Phase | Line | Item                                | Status                      |
-| ----- | ---- | ----------------------------------- | --------------------------- |
-| 1     | 34   | Confirm `vars.SITE_HOST`            | maintainer-only             |
-| 1     | 39   | Confirm `vars.ELEVENTY_PATH_PREFIX` | maintainer-only             |
-| 1     | 42   | Trigger `deploy.yml` + spot-check   | maintainer-only             |
-| 4     | 135  | CSS `@layer` migration              | deferred (Ph. 11)           |
-| 5     | 252  | `/intro/` perf debt parent          | partial; methods-table next |
-| 7     | 361  | CLS culprits investigation          | needs maintainer LHCI       |
-| 8     | 480  | Author photo                        | maintainer-only             |
-| 8     | 536  | Author identity expansion           | maintainer-only             |
-| 9     | 550  | `/compare/` vendor hub              | maintainer-only             |
-| 9     | 596  | Newsletter capture                  | maintainer-only             |
-| 10    | 618  | Pick one interactive demo           | maintainer-only             |
-| 10    | 624  | Ship demo as ESM module             | depends on 618              |
-| 10    | 629  | Fill old YouTube embed slots        | depends on 618              |
-| 11    | 686  | README license badge                | maintainer-only             |
-| 11    | 693  | README Lighthouse badge             | maintainer-only             |
-| 11    | 740  | CSS `@layer` migration              | deferred                    |
-
-Eight items are blocked on maintainer-only decisions; two are
-deferred by explicit Phase 11 policy; the remaining six are
-partial / diagnostic / dependent on a maintainer-only
-prerequisite.
-
----
-
-## What tomorrow's agents should do first
-
-If the auto-continue hook fires (a `claude/*` PR merged
-overnight), the directive points at the lowest-numbered open
-`[ ]` item by file order — that's Phase 1 L34, which they should
-skip per the directive. The next autonomously-actionable item is
-the **Methods-at-a-Glance indicator-span collapse** on
-`/intro/` (the second perf-debt sub-item PR #288 audited).
-Concrete shape:
-
-- Edit `src/intro/index.njk` around the Methods-at-a-Glance
-  table (line ~270): collapse each cell's
-  `<span class="cell-indicator">…</span>` + `<span class="cell-text">…</span>`
-  pair into a single span where the indicator emoji is rendered
-  via a CSS `::before { content: var(--cell-indicator) }`
-  pseudo-element keyed off a `data-status="ok|warn|star"`
-  attribute on the cell.
-- Adjust `src/assets/css/pages/intro.css` `#methods-table` rules
-  accordingly.
-- Verify rendered-tree element count drops by ~30; ensure
-  screen-reader behavior is preserved (the existing
-  `aria-hidden="true"` on the indicator span comes off; the
-  emoji rendered via `content:` is read by some screen readers
-  and silenced by others — keep it decorative via a
-  `speak: never;` equivalent or test with VoiceOver).
-
-If the maintainer has appetite for an agent-ops chapter, opening
-**Phase 12** in `IMPLEMENTATION-PLAN.md` with the three friction
-items above is a clean entry point.
-
----
-
-## Verification
-
-To confirm this snapshot is still accurate when you read it later:
+`c5806349294d3bc295a07c93054684a70545d291216916e45cef1c154017f944`, recorded
+in `CLAUDE.md` and `.claude/commands/css-byte-check.md`; reproduced on this
+commit:
 
 ```bash
-# PR queue should still be empty (or the count is whatever's
-# landed since this snapshot dated).
-gh pr list --author @me --state open
-
-# Plan checkbox totals should match (39 / 16 on origin/main today).
-grep -c '^- \[x\]' docs/IMPLEMENTATION-PLAN.md
-grep -c '^- \[ \]' docs/IMPLEMENTATION-PLAN.md
-
-# Local verification should be green.
-npm run verify-all
-npm run smoke:core
+NODE_ENV=production npm run build:css && shasum -a 256 src/assets/css/styles.min.css
 ```
 
-When the numbers drift materially, write a new dated snapshot
-rather than editing this one in place — historical snapshots
-are useful for tracking pace.
+## Dependencies
+
+| Check                                      | Result                                                                            |
+| ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `npm audit --omit=dev` (root)              | 0 vulnerabilities                                                                 |
+| `npm audit` (root, whole tree)             | 9 (4 moderate, 5 high): 2 distinct advisories, dev tooling only                   |
+| `npm --prefix playground audit --omit=dev` | 0 vulnerabilities                                                                 |
+| Open Dependabot alerts                     | 0 (`gh api "repos/sandgraal/letstalkcdc/dependabot/alerts?state=open" -q length`) |
+
+The 9 root findings are `braces` (via `chokidar` 3 in Eleventy's dev server
+and `nunjucks`) and `sprintf-js` (via `gray-matter`, `js-yaml`, `argparse`).
+Both come in through `@11ty/eleventy` 3.1.x, have no fixed release, and never
+reach the production build. Accepted in P15-19; revisit when Eleventy or
+`gray-matter` move. `engines.node` is `^22.22.3 || ^24.15.0 || >=26`; CI uses 24.
+
+## Deploy, hosting and services
+
+- **Hosting:** GitHub Pages, deployed by `deploy.yml` on every push to `main`.
+  Latest deploy of `bd5a2a4` succeeded. No custom domain; HTTPS enforced. The
+  maintainer plans to move to an own domain (name not chosen): see
+  [`DOMAIN-MIGRATION.md`](DOMAIN-MIGRATION.md) and P15-13.
+- **Repository variables** (`gh variable list`, names only): `SUPABASE_URL`,
+  `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME`, `GOATCOUNTER_CODE`.
+  `SITE_HOST` and `ELEVENTY_PATH_PREFIX` are not set; production uses the code
+  fallbacks, which equal today's host.
+- **GoatCounter:** live since 2026-10-09 (the home page loads one
+  `gc.zgo.at/count.js`). Cookie-less, honours Do Not Track, disclosed on
+  `/privacy/`. Counting started today.
+- **Newsletter:** live since 2026-10-09 through Buttondown (username
+  `letstalkcdc`). `/newsletter/` answers 200 and is in the sitemap. The
+  maintainer signed up through the live form successfully.
+- **Search Console:** the verification file answers 200 live; the maintainer
+  reports the property verified and the sitemap submitted. Google first showed
+  "Sitemap could not be read", which was transient: the live `sitemap.xml` is
+  valid. The first 28-day snapshot is due 2026-11-06 (P16-12).
+- **Headers:** GitHub Pages sends no CSP, `x-content-type-options` or
+  `x-frame-options`, and the host-root `robots.txt` is 404. An own domain with
+  a CDN is the fix, not a repository change.
+
+## Playground
+
+A separate React/Vite app in `playground/` (own `package.json`), merged on
+2026-10-09 and published under `/playground/` by `publish-playground.sh`. Its
+built bundles are committed. Features that matter for the thesis:
+
+- **Redeliver op:** re-sends a delivered change with its original log position.
+- **Destination guard modes:** none, `ts_ms`, log position, with optional
+  delete markers on the log lane.
+- **Three labs:** `replay-guard`, `ts-vs-position`, `delete-then-late-update`,
+  linked from `/which-row-wins/`, `/deletes-stay-deleted/` and
+  `/is-cdc-exactly-once/`.
+- **`?try=<scenario-id>` deep links** that load a scenario.
+
+Not done: the other lessons in the inventory are not linked, and the proposed
+`append` guard mode was not built
+([`playground-demos-inventory-2026-10.md`](playground-demos-inventory-2026-10.md)).
+
+## Supabase
+
+One project, shared by the site and the playground. Tables:
+`assistant_feedback` (site; insert-only for the browser key; 12-month
+retention; 2 rows on 2026-10-09 per the project notes, not re-queried here),
+`events` and `scenarios` (playground; 30-day retention via daily `pg_cron`
+jobs). The file `supabase/schema.sql` is desired state and CI never applies it,
+so compare it with the live database before relying on it. Queries to read the
+data are in [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md) section 5.
+
+## What is open
+
+9 unticked boxes (`grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`); 148
+ticked. All nine decisions in Phase 14 are answered.
+
+| ID                            | One line                                                                                                                                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/intro/` perf debt (Phase 5) | Every sub-item is met except the `dom-size` line, which no merged PR addressed (1,040 elements; scores 1 under Lighthouse 13.5). Trim, or the maintainer accepts and ticks                         |
+| P15-13                        | One place for the host: code and runbook done; README still has `sandgraal.github.io` 55 times; kept open for the own-domain move                                                                  |
+| P15-37                        | Playground Docker images are `node:20-alpine`; move to Node 24. Needs Docker                                                                                                                       |
+| P15-39                        | Debezium docs say `wal_keep_size` caps a slot; PostgreSQL says `max_slot_wal_keep_size` does. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md); the maintainer files it |
+| P15-46                        | Labs run Debezium 2.7 / Confluent 7.7 / PostgreSQL 15 while pages teach 3.x. Needs Docker                                                                                                          |
+| P15-52                        | Confirm in the Codacy dashboard that nothing runs `.codacy/cli.sh`, then delete it                                                                                                                 |
+| P16-12                        | SEO baseline: Lighthouse on the 10 key pages, and the 28-day snapshot due 2026-11-06                                                                                                               |
+| P16-25                        | Re-run the content-gap plan once `assistant_feedback` has 30 rows (2 now) and Search Console has data                                                                                              |
+| P16-30                        | Put `/playground/` under the contrast check in CI. Awaiting the maintainer's decision: it changes CI                                                                                               |
+
+**Maintainer-only:** P15-39 (file the issue), P15-52 (Codacy dashboard),
+P16-12 and P16-25 (accounts and the table), P16-30 (approve a CI change),
+P15-13 (the domain name).
+**Docker-only, left for the autopsy team:** P15-37 and P15-46; the
+maintainer has no Docker and neither can be proven without it.
+
+## Known flakes
+
+All from CI history and logs; details and run ids in
+[`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md) section 7.
+
+- Lighthouse `NO_LCP` on `/overview/` and `NO_FCP` anywhere: mitigated by
+  retries and best-of-3 (#396), not eliminated. Local macOS runs hit it
+  often.
+- `layout.spec.js` "`/intro/` accumulates no meaningful layout shift" failed
+  once in a loaded full run and passed alone; cause unverified.
+- lychee 5xx/403 from some external hosts: mitigated by remaps, concurrency
+  limits and `.lycheeignore`.
+- No CI failure in the last 40 runs across branches (`gh run list --workflow=ci.yml -L 40`).
+
+## Re-measure everything
+
+```bash
+git fetch origin && git log --oneline bd5a2a4..origin/main   # what changed since this page
+npm ci && npm run verify-all                                  # format, lint, tests, build
+npm run smoke:core                                            # routing and page smoke
+npm run audit:seo                                             # inventory, headings, links, JSON-LD
+gh pr list --state open                                       # queue
+grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md              # open boxes (9 here)
+```
+
+When the numbers drift, write a new dated snapshot instead of editing this
+one in place.
