@@ -4,7 +4,46 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="shortcut icon" href="./CDC_logo.png" type="image/x-icon" />
-    <title>Lets Talk CDC – Change Feed Playground</title>
+    <title>CDC Change Feed Playground | Let’s Talk CDC</title>
+    <!-- SEO head (P16-11). __SITE_URL__ is the site's host plus path prefix, with no
+         trailing slash. scripts/publish-playground.sh replaces it at publish time
+         (scripts/render-playground-html.mjs) from SITE_HOST and ELEVENTY_PATH_PREFIX,
+         the same variables the Eleventy build reads, so a domain move is a variable
+         change. In a source checkout the placeholder is left as is; it only appears
+         in URLs that crawlers and link previews read. -->
+    <meta
+      name="description"
+      content="Try Change Data Capture in your browser: run inserts, updates and deletes on a made-up table and watch the change events they produce. No real data."
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="__SITE_URL__/playground/" />
+    <meta property="og:site_name" content="CDC: The Missing Manual" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="__SITE_URL__/playground/" />
+    <meta property="og:title" content="CDC Change Feed Playground | Let’s Talk CDC" />
+    <meta
+      property="og:description"
+      content="Try Change Data Capture in your browser: run inserts, updates and deletes on a made-up table and watch the change events they produce. No real data."
+    />
+    <meta property="og:image" content="__SITE_URL__/images/cdc-cover.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="CDC: The Missing Manual. Change Data Capture for Production: database, log, stream, sink."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CDC Change Feed Playground | Let’s Talk CDC" />
+    <meta
+      name="twitter:description"
+      content="Try Change Data Capture in your browser: run inserts, updates and deletes on a made-up table and watch the change events they produce. No real data."
+    />
+    <meta name="twitter:image" content="__SITE_URL__/images/cdc-cover.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="CDC: The Missing Manual. Change Data Capture for Production: database, log, stream, sink."
+    />
     <link rel="stylesheet" href="assets/styles.css" />
     <!-- Generated React-widget styles (built from web/styles/*.css by `npm run build`).
          styles.css must come first so its theme tokens are defined before these use them. -->
