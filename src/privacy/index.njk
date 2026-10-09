@@ -1,0 +1,238 @@
+---
+layout: base.njk
+title: "Privacy — what Let's Talk CDC stores about you"
+description: "What the CDC Assistant stores when you vote on an answer, what stays on your device, who can see it, how long it is kept, and how to ask about it."
+canonicalPath: "/privacy/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: "Privacy",
+  description: "<p>Short version: reading the module pages stores nothing about you on a server. Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted, including where it is not deleted yet.</p>",
+  align: "center",
+  skillLevel: "About"
+}) | safe }}
+
+<section class="prose" aria-labelledby="stores">
+  <h2 id="stores">What the CDC Assistant stores</h2>
+  <p>
+    The CDC Assistant is optional. The whole site works without it, and
+    nothing below happens unless you open the assistant, ask it something,
+    and then click 👍 or 👎 on an answer. Typing a question alone sends
+    nothing: the assistant answers from a data file your browser has
+    already downloaded.
+  </p>
+  <p>
+    When you do click 👍 or 👎, your browser sends one record to the
+    project's database (a Supabase Postgres table named
+    <code>assistant_feedback</code>). It contains exactly these fields:
+  </p>
+  <ul>
+    <li>
+      <strong>The last question you typed</strong>
+      (<code>question</code>), cut to 2,000 characters. This is your own
+      text, so please do not type passwords, connection strings or
+      personal details into the assistant.
+    </li>
+    <li>
+      <strong>The topic the assistant matched</strong> to your question
+      (<code>intent_id</code>). It can be empty when nothing matched.
+    </li>
+    <li>
+      <strong>Your vote</strong> (<code>helpful</code>): yes for 👍, no for
+      👎.
+    </li>
+    <li>
+      <strong>The time</strong> of the vote (<code>ts</code>).
+    </li>
+    <li>
+      <strong>A random ID</strong> (<code>id</code>) generated in your
+      browser. It is not linked to you; it only lets a retried send be
+      recognised as a duplicate.
+    </li>
+  </ul>
+  <p>
+    The site's own code does not collect a name, an email address, an
+    account, a cookie value or an IP address. The purpose is narrow: to see
+    which questions the assistant answers badly so the answers can be
+    improved.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="playground">
+  <h2 id="playground">The Change Feed Playground</h2>
+  <p>
+    The <a href="{{ '/playground/' | url }}">Change Feed Playground</a> is a
+    separate, optional tool that works differently from the rest of the
+    site. It talks to the same Supabase project as the assistant, so please
+    read this section before you type anything real into it. Use made-up
+    data.
+  </p>
+  <ul>
+    <li>
+      <strong>When the page opens</strong>, it contacts the database to see
+      whether it is reachable and, if it is, opens a live connection. That
+      happens without you clicking anything, so the database host sees your
+      IP address as soon as the playground loads. The code that does this is
+      loaded from a CDN (see below).
+    </li>
+    <li>
+      <strong>Change events are public.</strong> When you insert, update or
+      delete a row, or emit a snapshot, the event is added to a database
+      table called <code>events</code>: a timestamp, the operation, and the
+      row values <em>as you typed them</em> (<code>after</code>, and
+      <code>before</code> too while the "include before" box is ticked,
+      which it is by default). Anyone can read that table and receives new
+      events live, and other visitors' events can appear in your workspace
+      too. Do not enter real names, emails or other personal data.
+    </li>
+    <li>
+      <strong>Saved scenarios are reachable by link.</strong> "Save
+      scenario" and "Copy Share Link" store a snapshot of your workspace
+      (table layout, rows, events and comparator settings, up to about 1 MB)
+      in a table called <code>scenarios</code> under a random ID. The table
+      cannot be listed, but anyone who has the share link can open the
+      snapshot.
+    </li>
+    <li>
+      <strong>No automatic deletion yet.</strong> The 12-month deletion job
+      described below covers only assistant feedback. Playground events and
+      saved scenarios are not deleted automatically today, and visitors
+      cannot delete them. You can still ask for removal (see "Asking about or
+      deleting your entry").
+    </li>
+    <li>
+      <strong>Stays on your device:</strong> your workspace, your onboarding
+      and template choices, feature toggles and a small buffer of usage
+      counters are kept in local storage. The usage counters are not sent
+      anywhere.
+    </li>
+  </ul>
+</section>
+
+<section class="prose" aria-labelledby="device">
+  <h2 id="device">What stays on your device</h2>
+  <p>
+    Your browser's local storage holds a few things that are never sent
+    anywhere:
+  </p>
+  <ul>
+    <li>the assistant's chat history (the last 20 messages);</li>
+    <li>
+      votes waiting to be sent, if a send failed. They are retried later and
+      given up on after 14 days or 8 failed attempts;
+    </li>
+    <li>your reading progress and scorecard answers;</li>
+    <li>
+      your theme and reading-depth choices, and what you type into a few
+      interactive tools.
+    </li>
+  </ul>
+  <p>
+    Clearing the site's data in your browser settings removes all of it.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="cookies">
+  <h2 id="cookies">Cookies and analytics</h2>
+  {# Update this paragraph when analytics ships (P15-10). #}
+  <p>
+    This site does not use cookies or analytics.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="third-parties">
+  <h2 id="third-parties">Third-party requests</h2>
+  <p>
+    The pages are hosted on GitHub Pages, so GitHub receives each page
+    request as any web host does. Fonts, styles and the site's own scripts
+    are served from the site itself. A few features load something from
+    another company, and any request to another host necessarily shows that
+    host your IP address and browser details:
+  </p>
+  <ul>
+    <li>
+      <strong>cdn.jsdelivr.net</strong> (the jsDelivr CDN): the Mermaid
+      library on pages that draw diagrams, the Chart.js library on pages
+      that show progress charts, and the Supabase browser library on the
+      <a href="{{ '/playground/' | url }}">Change Feed Playground</a>.
+    </li>
+    <li>
+      <strong>img.youtube.com</strong>: a video thumbnail on the
+      <a href="{{ '/tooling/' | url }}">Tooling</a> page.
+    </li>
+    <li>
+      <strong>www.youtube.com</strong>: only if you click play on that
+      video, which then loads YouTube's player.
+    </li>
+    <li>
+      <strong>Supabase</strong>, the database host: when you send an
+      assistant vote, and whenever you open the Change Feed Playground, as
+      described above.
+    </li>
+  </ul>
+  <p>
+    These companies handle those requests under their own privacy
+    policies, and Supabase may keep its own technical logs of the requests
+    it receives. Links on the site to other websites are ordinary links:
+    nothing is sent until you follow one.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="retention">
+  <h2 id="retention">How long we keep it</h2>
+  <p>
+    Assistant feedback records are kept for 12 months. A scheduled database
+    job runs every day and deletes records older than that, so no one has
+    to remember to do it. This policy took effect on 2026-10-09.
+  </p>
+  <p>
+    This applies only to assistant feedback. Change Feed Playground events
+    and saved scenarios currently have no automatic deletion.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="who-sees">
+  <h2 id="who-sees">Who can see it</h2>
+  <p>
+    Assistant feedback: the site's maintainer, {{ author.name }}, reads the
+    records in the Supabase dashboard. Your browser is only allowed to add
+    records: it cannot read any back, and visitors cannot see each other's
+    questions. Supabase, as the database host, also has technical access to
+    the service it runs.
+  </p>
+  <p>
+    Change Feed Playground: events are readable by anyone, and a saved
+    scenario by anyone who has its link (see above).
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="delete">
+  <h2 id="delete">Asking about or deleting your entry</h2>
+  <p>
+    You can ask what is stored or ask for an entry to be deleted. Contact
+    the maintainer on
+    <a href="{{ author.advisoryUrl }}" rel="noopener">LinkedIn</a>, or
+    <a href="https://github.com/{{ site.repository }}/issues/new">open a
+    GitHub issue</a> asking for contact. Please do not paste the private
+    text itself into a public issue.
+  </p>
+  <p>
+    Because nothing identifies you, an entry can only be found if you can
+    tell us the exact question you asked and roughly when you asked it.
+    Without that we cannot tell which record is yours, and it will be
+    deleted automatically within 12 months anyway. For a saved playground
+    scenario, the share link is enough; for playground events, tell us
+    roughly when you used it and what you entered.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="changes">
+  <h2 id="changes">Changes to this page</h2>
+  <p>
+    If what the site stores changes, this page is updated in the same
+    change and its "Last reviewed" date moves. The full history is in the
+    <a href="https://github.com/{{ site.repository }}/commits/main/src/privacy/index.njk">public
+    Git log</a>.
+  </p>
+</section>
