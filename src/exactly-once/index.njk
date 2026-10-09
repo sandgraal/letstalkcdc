@@ -21,7 +21,7 @@ eleventyComputed:
           Whether a CDC pipeline is "exactly-once" depends on <em>which hop</em> you ask about. Exactly-once
           <em>delivery</em> across <em>independent</em> systems (DB → Kafka → warehouse/search) is not
           achievable end to end, but individual hops can be, under conditions. What we actually ship is
-          <strong>Exactly-Once <em>Processing</em> (EOP)</strong>: combine <strong>At-Least-Once (ALO)</strong>
+          <strong>Exactly-Once <em>Processing</em> (EOP)</strong>: combine <strong><a href="{{ '/glossary/#at-least-once' | url }}">At-Least-Once</a> (ALO)</strong>
           transport with <strong>idempotent</strong> sinks so replays don’t create duplicates. ALO stays the
           default stance on this site, and EOP is still required even when one hop is exactly-once.
         </p>
@@ -211,7 +211,7 @@ eleventyComputed:
             and the transaction's log position.
           </li>
           <li>
-            <strong>Deduplication Logic at the Sink:</strong> The consumer uses
+            <strong><a href="{{ '/glossary/#deduplication' | url }}">Deduplication</a> Logic at the Sink:</strong> The consumer uses
             this ID to check if the event has already been processed before
             applying the change. Common patterns include:
             <ul>
@@ -293,7 +293,7 @@ WHEN MATCHED THEN
           writes to its database and *then*, in a separate network call, tries
           to publish a message. If the application crashes between these two
           steps, the systems become inconsistent. The
-          <strong>Transactional Outbox Pattern</strong> solves this.
+          <strong>Transactional <a href="{{ '/glossary/#outbox' | url }}">Outbox</a> Pattern</strong> solves this.
         </p>
 
         <figure class="diagram-section__figure">

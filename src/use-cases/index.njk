@@ -84,7 +84,7 @@ head_extra: |
           <p>
             <strong>The CDC Solution:</strong> CDC enables the
             <strong>Event-Carried State Transfer</strong> pattern via the
-            Transactional Outbox. When a service makes a change (an `orders`
+            Transactional <a href="{{ '/glossary/#outbox' | url }}">Outbox</a>. When a service makes a change (an `orders`
             service creates an order), it writes the business data and an event
             record to an "outbox" table in the same atomic transaction. The CDC
             agent streams only the committed outbox events to a Kafka topic.

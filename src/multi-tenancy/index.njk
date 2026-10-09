@@ -487,8 +487,8 @@ eleventyComputed:
             Should I use compaction or time retention for per-tenant topics?
           </summary>
           <p>
-            Compaction keeps latest value per key (great for upsert sinks); time
-            retention keeps history (needed for replays and backfills). Many
+            Compaction keeps latest value per key (great for <a href="{{ '/glossary/#upsert' | url }}">upsert</a> sinks); time
+            retention keeps history (needed for replays and <a href="{{ '/glossary/#backfill' | url }}">backfills</a>). Many
             teams use <em>compacted + short retention</em> together.
           </p>
         </details>
