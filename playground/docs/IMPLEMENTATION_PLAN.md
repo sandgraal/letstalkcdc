@@ -4,6 +4,8 @@ Status: `0.1.0` snapshot
 
 > **Versioning note:** earlier drafts of this plan labelled the work "v1.0.0 GA". The project is currently a `0.1.0` snapshot (see the root `README.md`); the items below describe the scope that has shipped into that snapshot, not a tagged 1.0 release.
 
+> **2026-10: superseded for persistence.** Any Appwrite references below are the original plan, kept as history. Persistence now runs on Supabase; see [`supabase-setup.md`](./supabase-setup.md).
+
 ## Version History
 | Release | Highlights | Notes |
 | --- | --- | --- |
@@ -58,11 +60,11 @@ pgsql
 ```
 
 ### Storage integration (Deferred)
-- **Status**: Deferred until external dependencies are ready.
-- **Remaining work**: implement the domain `storage.ts` helper to persist source/destination tables between refreshes and add the optional Appwrite-backed persistence layer/configuration hooks. Track via [docs/issues/appwrite-persistence.md](./issues/appwrite-persistence.md).
+- **Status**: Backend provisioning is done (shared Supabase project); the `storage.ts` helper itself is still deferred until the data model is confirmed.
+- **Remaining work**: implement the domain `storage.ts` helper to persist source/destination tables between refreshes. The persistence backend is Supabase, not Appwrite (see [supabase-setup.md](./supabase-setup.md)); the original Appwrite issue is closed as superseded in [docs/issues/appwrite-persistence.md](./issues/appwrite-persistence.md).
 - **Prerequisites/blockers**:
   - Confirm the data model and interface for the storage helper so it matches upcoming engine/state machine expectations.
-  - Provision an Appwrite project (API keys, self-hosted endpoint) and decide on authentication + data retention policies for demo data.
+  - Backend provisioning is done on the shared Supabase project (see [supabase-setup.md](./supabase-setup.md)). Still open: authentication and a data-retention policy for demo data. Anonymous inserts are open, a trade-off [supabase-setup.md](./supabase-setup.md) accepts for the public demo.
   - Document environment configuration (env vars, SDK initialization) so the integration can be toggled without breaking the pure in-memory demo mode.
 
 ### Core data types (TypeScript)
@@ -201,7 +203,7 @@ export type Metrics = {
 ## Telemetry (local-only by default)
 - Counters: produced, consumed, backlog, `missedDeletes`, `writeAmplification`, `snapshotRows`, errors.
 - Lag: produce time = `event.commitTs`; consume time = when applied; lag = now - commitTs; maintain rolling p50/p95 (simple reservoir).
-- Developer toggle to emit these to Appwrite/console in dev.
+- Developer toggle to emit these to the console in dev. No remote telemetry sink is wired; Appwrite was the original target and is no longer used.
 - Comparator CTA emits `comparator.overlay.inspect` when lane checks drill into diff details (mirrors `comparator.diff.opened`).
 
 ## Testing
@@ -223,7 +225,7 @@ export type Metrics = {
 
 ## Security/Privacy
 - No PII; generated sample data only.
-- If Appwrite used, isolate per session or wipe on reset.
+- If a remote persistence backend is enabled (currently Supabase; see [supabase-setup.md](./supabase-setup.md)), keep demo data free of anything sensitive. The `events` stream is public-readable by design, and a saved scenario is reachable by anyone holding its share-link UUID.
 - Note: "Demo only; not production CDC."
 
 ## Rollout Plan
