@@ -28,7 +28,7 @@ Please include:
 
 ## Assistant Feedback Data
 
-When a visitor clicks 👍 or 👎 in the assistant, their last typed question, the matched topic id, the vote and a timestamp are stored in the project's Supabase database. Rows are readable only by the maintainer in the Supabase dashboard; there is no retention policy and no automatic deletion yet. Visitors should not paste secrets or connection strings into the assistant.
+When a visitor clicks 👍 or 👎 in the assistant, their last typed question, the matched topic id, the vote and a timestamp are stored in the project's Supabase database. Rows are readable only by the maintainer in the Supabase dashboard; since 2026-10-09 a scheduled database job deletes rows older than 12 months (see the [privacy page](https://sandgraal.github.io/letstalkcdc/privacy/)). That job covers only this table; the Change Feed Playground tables (`events`, `scenarios`) have no automatic deletion. Visitors should not paste secrets or connection strings into the assistant.
 
 ## Key Rotation
 

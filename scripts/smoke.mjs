@@ -462,11 +462,38 @@ if (existsSync(join(outputDir, methodologyFile))) {
   );
 }
 
+// /privacy/ discloses what the assistant and playground store; assert the
+// page exists, has a single h1 and its section anchors, and that the footer
+// links to it.
+const privacyFile = "privacy/index.html";
+if (existsSync(join(outputDir, privacyFile))) {
+  const html = read(privacyFile);
+  if ((html.match(/<h1\b/g) || []).length !== 1) {
+    failures.push(`${privacyFile}: expected exactly one <h1>`);
+  }
+  for (const anchor of [
+    'id="stores"',
+    'id="playground"',
+    'id="third-parties"',
+    'id="retention"',
+    'id="delete"',
+  ]) {
+    if (!html.includes(anchor)) {
+      failures.push(`${privacyFile}: expected anchor ${anchor} missing`);
+    }
+  }
+  if (!/href="[^"]*\/privacy\/">Privacy<\/a>/.test(html)) {
+    failures.push(`${privacyFile}: footer Privacy link missing`);
+  }
+} else {
+  failures.push(`${privacyFile}: page missing — /privacy/ build broken`);
+}
+
 if (failures.length) {
   console.error("Smoke test failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
 console.log(
-  "Smoke test passed: critical canvases, CSP, fonts, edit links, errata callout, glossary, methodology.",
+  "Smoke test passed: critical canvases, CSP, fonts, edit links, errata callout, glossary, methodology, privacy.",
 );
