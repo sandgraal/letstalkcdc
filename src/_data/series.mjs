@@ -57,6 +57,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "transactional-outbox",
+    title: "Transactional Outbox and Relay",
+    description:
+      "The outbox pattern with Debezium's Outbox Event Router: why dual writes fail, what at-least-once means for the relay, and how consumers dedupe and order.",
+    href: "transactional-outbox/",
+    ctaLabel: "Publish It Right",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "multi-tenancy",
     title: "Multi-Tenancy",
     description: "Isolation patterns, topic math, and rough egress estimates.",
@@ -91,6 +101,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "cdc-data-contracts",
+    title: "Data Contracts for Database Events",
+    description:
+      "What a consumer may rely on when the producer is a database: the envelope, which DDL breaks it, registry modes, and a gate that catches it.",
+    href: "cdc-data-contracts/",
+    ctaLabel: "Read the Contract",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "ops-offsets",
     title: "Ops: Offsets & Replays",
     description:
@@ -116,6 +136,24 @@ export default [
     href: "postgres-replication-slots/",
     tags: [{ label: "Ops", variant: "tag-ops" }],
     skillLevel: "Intermediate",
+  },
+  {
+    key: "sql-server-mysql-cdc",
+    title: "SQL Server & MySQL CDC Specifics",
+    description:
+      "Positions, retention and what breaks for Debezium on MySQL and SQL Server: binlog purge, GTIDs, CDC cleanup jobs, LSNs, triage queries and runbooks.",
+    href: "sql-server-mysql-cdc/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Intermediate",
+  },
+  {
+    key: "backfill-resnapshot",
+    title: "Backfill and Re-Snapshot Safely",
+    description:
+      "Reload history into a sink without overwriting newer changes: snapshot modes, incremental snapshots, Kafka replay, the position guard and a runbook.",
+    href: "backfill-resnapshot/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Advanced",
   },
   {
     key: "non-relational",
