@@ -13,7 +13,8 @@ head_extra: |
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="note">
-  Tested with: Kafka {{ pkg.kafka }}, Kafka Connect {{ pkg.connect }}, Debezium {{ pkg.debezium }}, PostgreSQL {{ pkg.pg }}
+  Versions this lab's compose file pins: Confluent Platform {{ pkg.confluentPlatform }} (Apache Kafka {{ pkg.kafka }}), the <code>debezium/connect:{{ pkg.debeziumConnect }}</code> image (Debezium {{ pkg.debeziumConnect }} with its Kafka Connect worker), PostgreSQL {{ pkg.pgMajor }}.
+  These are not the newest releases; see the <a href="{{ '/versions/' | url }}#version-matrix">version matrix</a> for those.
 </div>
 
         <p class="text-xl text-slate-600">
