@@ -40,6 +40,7 @@ export default [
       "*.js",
       "lib/**/*.mjs",
       "scripts/**/*.{js,mjs}",
+      ".claude/hooks/**/*.mjs",
       "src/_data/**/*.mjs",
       "src/**/*.cjs",
     ],

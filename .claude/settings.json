@@ -1,7 +1,21 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "agent": "conductor",
+  "model": "claude-sonnet-5-5",
+  "availableModels": ["claude-sonnet-5-5", "claude-haiku-5-5"],
+  "env": {
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-sonnet-5-5",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-sonnet-5-5"
+  },
   "permissions": {
     "allow": [
+      "Bash(git switch:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git pull --ff-only:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -89,6 +103,18 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-agent-model.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "*",
