@@ -1,0 +1,84 @@
+{
+  "id": "burst-updates",
+  "name": "Burst Updates",
+  "description": "Stressing lag/ordering behaviour under rapid updates.",
+  "tags": [
+    "lag",
+    "polling"
+  ],
+  "schema": [
+    {
+      "name": "id",
+      "type": "string",
+      "pk": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "pk": false
+    }
+  ],
+  "rows": [
+    {
+      "id": "W-1",
+      "status": "ready"
+    }
+  ],
+  "ops": [
+    {
+      "t": 100,
+      "op": "insert",
+      "table": "widgets",
+      "pk": {
+        "id": "W-1"
+      },
+      "after": {
+        "status": "new"
+      }
+    },
+    {
+      "t": 150,
+      "op": "update",
+      "table": "widgets",
+      "pk": {
+        "id": "W-1"
+      },
+      "after": {
+        "status": "processing"
+      }
+    },
+    {
+      "t": 200,
+      "op": "update",
+      "table": "widgets",
+      "pk": {
+        "id": "W-1"
+      },
+      "after": {
+        "status": "picking"
+      }
+    },
+    {
+      "t": 260,
+      "op": "update",
+      "table": "widgets",
+      "pk": {
+        "id": "W-1"
+      },
+      "after": {
+        "status": "packing"
+      }
+    },
+    {
+      "t": 320,
+      "op": "update",
+      "table": "widgets",
+      "pk": {
+        "id": "W-1"
+      },
+      "after": {
+        "status": "ready"
+      }
+    }
+  ]
+}

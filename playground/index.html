@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="shortcut icon" href="./CDC_logo.png" type="image/x-icon" />
+    <title>Lets Talk CDC – Change Feed Playground</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+    <!-- Generated React-widget styles (built from web/styles/*.css by `npm run build`).
+         styles.css must come first so its theme tokens are defined before these use them. -->
+    <link rel="stylesheet" href="./assets/generated/ui-shell.css" />
+    <link rel="stylesheet" href="./assets/generated/ui-changefeed-playground.css" />
+  </head>
+
+  <body data-theme="dark">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-pill">Lets Talk CDC</span>
+        <span class="brand-title">Change Feed Playground</span>
+      </div>
+      <div class="topbar-actions">
+        <button
+          id="themeToggle"
+          class="theme-toggle"
+          type="button"
+          aria-pressed="false"
+          aria-label="Switch to light theme"
+          data-mode="dark"
+        >
+          <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+              <circle cx="12" cy="12" r="5" />
+              <g class="theme-toggle__rays">
+                <line x1="12" y1="1.5" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22.5" />
+                <line x1="4.2" y1="4.2" x2="5.9" y2="5.9" />
+                <line x1="18.1" y1="18.1" x2="19.8" y2="19.8" />
+                <line x1="1.5" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="22.5" y2="12" />
+                <line x1="4.2" y1="19.8" x2="5.9" y2="18.1" />
+                <line x1="18.1" y1="5.9" x2="19.8" y2="4.2" />
+              </g>
+            </svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+              <path
+                d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8 7 7 0 1 0 20.2 14.6Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+        </button>
+        <button id="btnExport" type="button">Export Scenario</button>
+        <label class="file">
+          <input type="file" id="importFile" accept="application/json" />
+          <span>Import Scenario</span>
+        </label>
+        <div class="topbar-buttons">
+          <button id="btnShareLink" type="button" disabled>
+            Copy Share Link
+          </button>
+          <button id="btnReset" class="danger" type="button">Reset</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="hero" id="overview">
+        <div class="hero-ambient" aria-hidden="true">
+          <span class="orb orb-one"></span>
+          <span class="orb orb-two"></span>
+          <span class="orb orb-three"></span>
+        </div>
+        <div class="hero-copy">
+          <span class="eyebrow">Plan · Practice · Share</span>
+          <h1>Prototype change data capture without leaving the browser.</h1>
+          <p class="hero-lead">
+            Create a lightweight schema, act on rows, and watch the resulting
+            change feed update in real time.
+          </p>
+          <p class="hero-lead hero-lead--secondary">
+            This is the hands-on simulator. New to CDC, or want the concepts,
+            labs, and vendor guides? Visit
+            <a
+              href="https://sandgraal.github.io/letstalkcdc/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Let’s Talk CDC</a
+            >, the companion learning site.
+          </p>
+        </div>
+        <div class="hero-templates" aria-labelledby="pathwaysTitle">
+          <div class="hero-pathways">
+            <div class="hero-pathways-copy">
+              <span class="hero-pathways-eyebrow">Choose your path</span>
+              <h3 id="pathwaysTitle">Guided walkthrough or real-world scenarios</h3>
+              <p class="hero-pathways-sub">
+                Start with the guided walkthrough to experience the full flow, or
+                jump straight into curated CDC blueprints.
+              </p>
+              <div class="hero-pathways-actions">
+                <button type="button" class="btn-primary" id="btnGuidedTour">
+                  Start guided walkthrough
+                </button>
+                <button type="button" class="btn-ghost" id="btnOnboarding">
+                  How the playground works
+                </button>
+                <!-- These point at the companion learning site (rendered
+                     pages) rather than raw docs/*.md, which the static deploy
+                     serves as text/markdown (a download, not a readable page).
+                     Concepts live on letstalkcdc per the scope boundary. -->
+                <a
+                  class="btn-ghost"
+                  href="https://sandgraal.github.io/letstalkcdc/intro/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Learn CDC methods on Let’s Talk CDC (opens in a new tab)"
+                >
+                  Learn CDC methods <span aria-hidden="true">↗</span>
+                </a>
+                <a
+                  class="btn-ghost"
+                  href="https://sandgraal.github.io/letstalkcdc/tooling/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Compare CDC tooling on Let’s Talk CDC (opens in a new tab)"
+                >
+                  Compare CDC tooling <span aria-hidden="true">↗</span>
+                </a>
+              </div>
+              <p class="hero-pathways-tip">
+                Want presets instead? Pick any scenario below to load schema,
+                rows, and starting operations instantly.
+              </p>
+            </div>
+            <div class="hero-pathways-card" aria-label="Overview of guided walkthrough steps">
+              <span class="hero-pathways-chip">Guided walkthrough</span>
+              <p class="hero-pathways-card-lead">We’ll help you:</p>
+              <ul class="hero-pathways-list">
+                <li>Model a table with clear primary keys.</li>
+                <li>Seed realistic rows to operate on.</li>
+                <li>
+                  Trigger inserts, updates, and deletes to watch the change feed
+                  react in real time.
+                </li>
+              </ul>
+              <div class="hero-pathways-note">Takes about a minute end-to-end.</div>
+            </div>
+          </div>
+          <header class="hero-templates-header">
+            <div>
+              <h3 id="templateTitle">Explore real-world scenarios</h3>
+              <p class="hero-templates-sub">
+                Load curated CDC blueprints to jumpstart your experiments.
+              </p>
+            </div>
+            <div class="template-filter">
+              <input
+                type="search"
+                id="scenarioFilter"
+                placeholder="Filter scenarios"
+                aria-label="Filter scenarios"
+              />
+            </div>
+          </header>
+          <div
+            class="template-tag-bar"
+            id="templateTagBar"
+            role="group"
+            aria-label="Filter scenarios by difficulty and tag"
+          ></div>
+          <div class="template-grid" id="templateGallery"></div>
+        </div>
+      </section>
+
+      <section class="workspace" id="playground">
+        <div class="workspace-panels">
+          <!-- Schema + Row editor -->
+          <section class="card step-card" data-step="schema" id="schema">
+            <header class="step-card-header">
+              <span class="step-badge">Step 1</span>
+              <div>
+                <h2>Model your schema</h2>
+                <p class="card-intro">
+                  Add columns, choose types, and mark primary keys so downstream
+                  operations know how to locate rows.
+                </p>
+              </div>
+            </header>
+            <div class="schema">
+              <input id="colName" placeholder="column name (e.g., id)" />
+              <select id="colType">
+                <option value="string">string</option>
+                <option value="number">number</option>
+                <option value="boolean">boolean</option>
+              </select>
+              <label class="checkbox"
+                ><input type="checkbox" id="colPK" /> PK</label
+              >
+              <button id="addCol" type="button">Add Column</button>
+            </div>
+
+            <p class="schema-status" id="schemaStatus" aria-live="polite"></p>
+
+            <div class="pill-row" id="schemaPills"></div>
+
+            <div class="step-card-divider"></div>
+
+            <header class="step-card-header">
+              <span class="step-badge step-badge-sub">Operate</span>
+              <div>
+                <h3>Edit row values</h3>
+                <p class="card-intro">
+                  Provide values for your columns, then choose an operation to
+                  emit events.
+                </p>
+              </div>
+            </header>
+            <div class="row-editor" id="rowEditor"></div>
+            <div class="ops">
+              <button id="btnAutofillRow" type="button">
+                Autofill sample row
+              </button>
+              <button id="opInsert" type="button">Insert</button>
+              <button id="opUpdate" type="button">Update by PK</button>
+              <button id="opDelete" type="button">Delete by PK</button>
+            </div>
+            <div class="schema-demo-actions" aria-label="Schema walkthrough">
+              <h4>Schema walkthrough</h4>
+              <p>
+                Add and drop a column to see how capture methods react during
+                the stream.
+              </p>
+              <div class="schema-demo-buttons">
+                <button id="btnSchemaAdd" type="button">
+                  Add priority_flag column
+                </button>
+                <button id="btnSchemaDrop" type="button">
+                  Drop priority_flag column
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Table state -->
+          <section class="card step-card" data-step="rows" id="table-state">
+            <header class="step-card-header">
+              <span class="step-badge">Step 2</span>
+              <div>
+                <h2>Populate the table</h2>
+                <p class="card-intro">
+                  Review current rows, seed realistic data, or clear the table
+                  to reset.
+                </p>
+              </div>
+            </header>
+            <div class="table-shell">
+              <div
+                class="table-scroll"
+                role="region"
+                aria-label="Current rows"
+                tabindex="0"
+              >
+                <table id="tbl" class="data-table">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="table-actions">
+              <button id="seedRows" type="button">Seed sample rows</button>
+              <button id="clearRows" type="button">Clear rows</button>
+            </div>
+          </section>
+
+          <!-- Change feed -->
+          <section class="card step-card" data-step="events" id="change-feed">
+            <header class="step-card-header">
+              <span class="step-badge">Step 3</span>
+              <div>
+                <h2>Inspect change events</h2>
+                <p class="card-intro">
+                  Filter operations, include before-images, and export NDJSON to
+                  share scenarios.
+                </p>
+              </div>
+            </header>
+            <div class="change-feed-layout">
+              <div class="control-stack">
+                <article class="control-card control-card--primary">
+                  <div class="control-card__header">
+                    <p class="eyebrow">Envelope</p>
+                    <h3>Stream controls</h3>
+                    <p class="control-card__lead">
+                      Kick off snapshots, clear logs, and decide how much
+                      context to ship with each event.
+                    </p>
+                  </div>
+                  <div class="control-card__body">
+                    <div class="stream-actions" role="group" aria-label="Emit and wrap options">
+                      <div class="stream-actions__row">
+                        <button id="emitSnapshot" type="button">Emit Snapshot</button>
+                        <button id="clearEvents" type="button">Clear events</button>
+                      </div>
+                      <div class="stream-actions__row stream-actions__row--toggles">
+                        <label class="checkbox checkbox-pill">
+                          <input type="checkbox" id="debzWrap" checked />
+                          <span>Debezium-style envelope</span>
+                        </label>
+                        <label class="checkbox checkbox-pill">
+                          <input type="checkbox" id="includeBefore" checked />
+                          <span>include <code>before</code> on updates/deletes</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="control-card control-card--filters">
+                  <div class="control-card__header">
+                    <p class="eyebrow">Visibility</p>
+                    <h3>Filter &amp; export</h3>
+                    <p class="control-card__lead">
+                      Toggle operations and save NDJSON when you are ready to
+                      share.
+                    </p>
+                  </div>
+                  <div class="control-card__body">
+                    <div class="filter-actions" role="group" aria-label="Change feed filters">
+                      <label class="checkbox checkbox-chip">
+                        <input type="checkbox" id="filterC" checked />
+                        <span>Inserts</span>
+                      </label>
+                      <label class="checkbox checkbox-chip">
+                        <input type="checkbox" id="filterU" checked />
+                        <span>Updates</span>
+                      </label>
+                      <label class="checkbox checkbox-chip">
+                        <input type="checkbox" id="filterD" checked />
+                        <span>Deletes</span>
+                      </label>
+                      <label class="checkbox checkbox-chip">
+                        <input type="checkbox" id="filterR" checked />
+                        <span>Snapshots</span>
+                      </label>
+                      <label class="checkbox checkbox-chip">
+                        <input type="checkbox" id="filterS" checked />
+                        <span>Schema changes</span>
+                      </label>
+                    </div>
+                    <div class="export-actions" role="group" aria-label="Export change feed">
+                      <button id="btnCopyNdjson" type="button">Copy NDJSON</button>
+                      <button id="btnDownloadNdjson" type="button">
+                        Download NDJSON
+                      </button>
+                    </div>
+                  </div>
+                </article>
+
+                <div
+                  id="comparatorFeedback"
+                  class="comparator-feedback"
+                  hidden
+                  aria-live="polite"
+                ></div>
+                <pre id="eventLog" class="log"></pre>
+                <section
+                  class="inspector"
+                  id="eventInspector"
+                  aria-labelledby="inspectorTitle"
+                >
+                  <div class="inspector-header">
+                    <div>
+                      <h3 id="inspectorTitle">Event inspector</h3>
+                      <p class="inspector-lead">
+                        Peek at before/after payloads, diff fields, and replay to
+                        the table.
+                      </p>
+                    </div>
+                    <div
+                      class="inspector-controls"
+                      role="group"
+                      aria-label="Event navigation"
+                    >
+                      <button type="button" id="eventPrev" class="btn-ghost">
+                        Previous
+                      </button>
+                      <button type="button" id="eventNext" class="btn-ghost">
+                        Next
+                      </button>
+                      <button type="button" id="eventReplay">
+                        Replay to table
+                      </button>
+                    </div>
+                  </div>
+                  <div class="inspector-body">
+                    <ul
+                      class="inspector-list"
+                      id="eventList"
+                      role="listbox"
+                      aria-label="Filtered change events"
+                    ></ul>
+                    <div
+                      class="inspector-detail"
+                      id="eventDetail"
+                      aria-live="polite"
+                    ></div>
+                  </div>
+                </section>
+              </div>
+              <aside class="change-feed-stats" id="eventStatsPanel" aria-live="polite">
+                <div class="stats-header">
+                  <div>
+                    <p class="eyebrow">Live signal</p>
+                    <h3>Stream health</h3>
+                    <p class="stats-lead">
+                      Auto-refreshes with every operation you run.
+                    </p>
+                  </div>
+                  <span class="stats-pill" id="eventStatsPulse">Idle</span>
+                </div>
+                <p class="stats-empty" id="eventStatsEmpty">
+                  No change events yet. Start emitting to light up the dashboard.
+                </p>
+                <dl class="stats-grid" id="eventStatsGrid">
+                  <div class="stat" data-op="c">
+                    <dt>Inserts</dt>
+                    <dd id="statInsertCount">0</dd>
+                  </div>
+                  <div class="stat" data-op="u">
+                    <dt>Updates</dt>
+                    <dd id="statUpdateCount">0</dd>
+                  </div>
+                  <div class="stat" data-op="d">
+                    <dt>Deletes</dt>
+                    <dd id="statDeleteCount">0</dd>
+                  </div>
+                  <div class="stat" data-op="r">
+                    <dt>Snapshots</dt>
+                    <dd id="statSnapshotCount">0</dd>
+                  </div>
+                  <div class="stat" data-op="s">
+                    <dt>Schema</dt>
+                    <dd id="statSchemaCount">0</dd>
+                  </div>
+                </dl>
+                <div class="stats-footer">
+                  <div>
+                    <p class="stats-label">Total events</p>
+                    <p class="stats-total" id="eventStatsTotal">0</p>
+                  </div>
+                  <div>
+                    <p class="stats-label">Last activity</p>
+                    <p class="stats-last" id="eventStatsLastOp">Waiting for activity</p>
+                    <p class="stats-ts" id="eventStatsLastTs">—</p>
+                  </div>
+                  <button type="button" class="btn-ghost stats-jump" id="btnJumpInspector">
+                    Focus inspector
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section
+        class="workspace-panel simulator"
+        id="simulator"
+        aria-labelledby="simulatorTitle"
+      >
+        <div class="section-title-row">
+          <div>
+            <p class="section-eyebrow">Interactive simulator</p>
+            <h2 id="simulatorTitle" class="section-title">
+              See change data capture in motion
+            </h2>
+            <p class="section-lead">
+              Two ways to explore the same idea. Start by driving a single change feed end to end,
+              then switch tabs to run polling, trigger, and log capture side by side.
+            </p>
+          </div>
+        </div>
+
+        <div class="simulator__tabs" role="tablist" aria-label="Simulator mode">
+          <button
+            type="button"
+            class="simulator__tab"
+            id="simTabFeed"
+            role="tab"
+            aria-selected="true"
+            aria-controls="simPanelFeed"
+          >
+            <span class="simulator__tab-label">Drive one feed</span>
+            <span class="simulator__tab-hint">Start here</span>
+          </button>
+          <button
+            type="button"
+            class="simulator__tab"
+            id="simTabCompare"
+            role="tab"
+            aria-selected="false"
+            tabindex="-1"
+            aria-controls="simPanelCompare"
+          >
+            <span class="simulator__tab-label">Compare methods</span>
+            <span class="simulator__tab-hint">Go deeper</span>
+          </button>
+        </div>
+
+        <div
+          class="simulator__panel"
+          id="simPanelFeed"
+          role="tabpanel"
+          aria-labelledby="simTabFeed"
+          tabindex="0"
+        >
+          <p class="simulator__panel-lead">
+            Drive one change feed end to end — switch the apply policy (apply on commit vs as polled),
+            introduce schema drift, and drop events to watch how transactions hold up.
+          </p>
+          <div id="changefeedPlaygroundRoot" class="playground-react-root">
+            <div class="sim-loading" role="status" aria-live="polite">
+              <span class="sim-loading__spinner" aria-hidden="true"></span>
+              <span class="sim-loading__text">Loading the change feed playground…</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="simulator__panel"
+          id="simPanelCompare"
+          role="tabpanel"
+          aria-labelledby="simTabCompare"
+          tabindex="0"
+          hidden
+        >
+          <p class="simulator__panel-lead">
+            Press <strong>Start</strong> to run the same operations through polling, trigger, and log
+            capture at once, and watch lag, ordering, and delete capture diverge live.
+          </p>
+          <div id="simShellRoot">
+            <div class="sim-loading" role="status" aria-live="polite">
+              <span class="sim-loading__spinner" aria-hidden="true"></span>
+              <span class="sim-loading__text">Loading the CDC method comparator…</span>
+            </div>
+          </div>
+          <div
+            id="methodGuidance"
+            class="method-guidance"
+            aria-live="polite"
+          ></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span
+        >Built for Appwrite Hacktoberfest · Deployed on
+        <strong>Sites</strong></span
+      >
+    </footer>
+
+    <div
+      id="onboardingOverlay"
+      class="onboarding"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboardingTitle"
+      hidden
+    >
+      <div class="onboarding-dialog" tabindex="-1">
+        <button
+          type="button"
+          class="onboarding-close"
+          id="onboardingClose"
+          aria-label="Close onboarding"
+        >
+          x
+        </button>
+        <h2 id="onboardingTitle">Welcome to the CDC Change Feed Playground</h2>
+        <p class="onboarding-lead">
+          Prototype change stream scenarios from your browser and share them
+          with collaborators.
+        </p>
+        <ol class="onboarding-steps">
+          <li>
+            <strong>Model</strong> your table: define columns and choose primary
+            keys.
+          </li>
+          <li>
+            <strong>Populate</strong> rows: seed realistic data or insert your
+            own samples.
+          </li>
+          <li>
+            <strong>Stream</strong> events: fire operations, inspect the
+            envelopes, and export NDJSON.
+          </li>
+        </ol>
+        <div class="onboarding-actions">
+          <button type="button" id="onboardingStart" class="btn-primary">
+            Load the orders template
+          </button>
+          <div class="onboarding-start">
+            <button type="button" id="onboardingDismiss" class="btn-ghost">
+              Start from scratch
+            </button>
+          </div>
+        </div>
+        <p class="onboarding-tour-hint">
+          New to change data capture?
+          <button type="button" id="onboardingTour" class="onboarding-tour-link">
+            Take the 60-second guided tour
+          </button>
+        </p>
+      </div>
+    </div>
+
+    <div
+      id="scenarioPreviewModal"
+      class="preview-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scenarioPreviewTitle"
+      hidden
+    >
+      <div class="preview-modal__dialog">
+        <button
+          type="button"
+          class="preview-modal__close"
+          id="scenarioPreviewClose"
+          aria-label="Close scenario preview"
+        >
+          ×
+        </button>
+        <h3 id="scenarioPreviewTitle"></h3>
+        <p
+          id="scenarioPreviewDescription"
+          class="preview-modal__description"
+        ></p>
+        <div
+          id="scenarioPreviewTags"
+          class="preview-modal__tags"
+          aria-label="Scenario tags"
+        ></div>
+        <section>
+          <h4>Seed rows</h4>
+          <table class="preview-table" id="scenarioPreviewRows"></table>
+        </section>
+        <section>
+          <h4>Change operations</h4>
+          <ol class="preview-ops" id="scenarioPreviewOps"></ol>
+        </section>
+        <div class="preview-modal__actions">
+          <button type="button" id="scenarioPreviewLoad" class="btn-primary">
+            Load in workspace
+          </button>
+          <button type="button" id="scenarioPreviewDownload" class="btn-ghost">
+            Download JSON
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Appwrite SDK + config -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+    <script>
+      window.APPWRITE_CFG = {
+        // Regional endpoint: this project lives in Appwrite Cloud's `nyc`
+        // region. The generic https://cloud.appwrite.io/v1 returns
+        // "Project is not accessible in this region", which broke realtime +
+        // scenario persistence + share links.
+        endpoint: "https://nyc.cloud.appwrite.io/v1",
+        projectId: "68e009780030a983a57d",
+        databaseId: "68e028d90039fa4588f5",
+        collectionId: "events",
+        scenarioCollectionId: "scenarios",
+        shareBaseUrl:
+          "https://girhun.github.io/Lets-Talk-CDC-Change-Feed-Playground/",
+        channel: (db, col) => `databases.${db}.collections.${col}.documents`,
+        // No assetHeaders: Appwrite Sites serves the generated bundles as
+        // public static assets (verified: they return 200 + text/javascript
+        // with and without X-Appwrite-Project). Omitting this keeps every
+        // bundle loader on the native dynamic import() path; the header-fetch
+        // + blob: fallback can't resolve code-split chunks and was the root
+        // cause of the comparator/playground failing to load on the deploy.
+        featureFlags: [
+          "comparator_v2",
+          "ff_event_bus",
+          "ff_pause_resume",
+          "ff_query_slider",
+          "ff_crud_fix",
+          "ff_event_log",
+          "ff_metrics",
+          "ff_schema_demo",
+          "ff_multitable",
+          "ff_trigger_mode",
+          "ff_walkthrough",
+        ],
+      };
+    </script>
+    <script>
+      window.CDC_FEATURE_FLAGS = Array.isArray(window.CDC_FEATURE_FLAGS)
+        ? window.CDC_FEATURE_FLAGS.slice()
+        : [
+            "comparator_v2",
+            "ff_crud_fix",
+            "ff_event_log",
+            "ff_event_bus",
+            "ff_pause_resume",
+            "ff_query_slider",
+            "ff_schema_demo",
+            "ff_multitable",
+            "ff_metrics",
+            "ff_trigger_mode",
+            "ff_walkthrough",
+          ];
+    </script>
+    <script src="./assets/feature-flags.js"></script>
+    <script src="./assets/changefeed-playground-loader.js"></script>
+    <script src="./assets/ui-shell-loader.js"></script>
+    <script>
+      // Boot the Change Feed Playground. Its bundle self-mounts on import, but
+      // the loader only exposes a `.load()` handle — without this trigger the
+      // section sits on its "Preparing…" placeholder forever. Defer to idle so
+      // the base playground paints first, then mount unconditionally.
+      (() => {
+        let booted = false;
+        const boot = () => {
+          if (booted) return;
+          booted = true;
+          const handle = window.__LetstalkCdcChangefeedPlayground;
+          if (!handle || typeof handle.load !== "function") {
+            console.warn(
+              "Change feed playground loader handle missing — assets/changefeed-playground-loader.js did not load. The section will stay on its placeholder."
+            );
+            return;
+          }
+          handle.load().catch((error) => {
+            console.warn("Change feed playground unavailable", error);
+            const root = document.getElementById("changefeedPlaygroundRoot");
+            if (!root) return;
+            root.innerHTML =
+              '<div class="sim-shell__placeholder sim-shell__placeholder--error" role="alert">' +
+              "<p>The change feed playground couldn't load — this is usually a temporary network hiccup.</p>" +
+              '<p class="sim-shell__placeholder-actions">' +
+              '<button type="button" class="sim-shell__btn" id="changefeedRetry">Retry</button>' +
+              "</p></div>";
+            const retry = document.getElementById("changefeedRetry");
+            if (retry) {
+              retry.addEventListener("click", () => window.location.reload(), { once: true });
+            }
+          });
+        };
+        if (typeof window.requestIdleCallback === "function") {
+          window.requestIdleCallback(boot, { timeout: 2000 });
+        } else {
+          window.setTimeout(boot, 600);
+        }
+      })();
+    </script>
+    <!-- Onboarding is handled in assets/app.js (bindUiHandlers /
+         startFromScratch). A previous inline script also bound #onboardingStart
+         to seed a blank workspace, which conflicted with app.js's handler — it
+         has been removed so app.js is the single source of truth. -->
+    <script type="module" src="assets/method-copy.js"></script>
+    <script type="module" src="assets/shared-scenarios.js"></script>
+    <script src="assets/sim-loader.js"></script>
+    <script src="assets/event-log-loader.js"></script>
+    <script src="assets/telemetry.js"></script>
+    <script type="module" src="assets/app.js"></script>
+    <script src="assets/tooltips.js"></script>
+  </body>
+</html>
