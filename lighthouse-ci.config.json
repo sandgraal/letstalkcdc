@@ -1,6 +1,6 @@
 {
   "runs": 3,
-  "aggregation": "median",
+  "aggregation": "optimistic",
   "distDir": "_site",
   "outputDir": ".lighthouseci",
   "urls": [

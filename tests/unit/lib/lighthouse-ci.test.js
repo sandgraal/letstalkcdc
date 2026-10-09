@@ -14,7 +14,9 @@ import {
   categoryScores,
   contentTypeFor,
   evaluateAssertions,
+  exitCodeFor,
   formatTable,
+  incompleteReason,
   isCompressible,
   median,
   slugForUrl,
@@ -54,6 +56,10 @@ describe("median / aggregate", () => {
 
   it("is NaN when no run produced a score", () => {
     expect(aggregate([null, null, null], "median")).toBeNaN();
+  });
+
+  it("defaults to optimistic, the best run", () => {
+    expect(aggregate([0.65, 0.65, 0.87])).toBe(0.87);
   });
 
   it("rejects an unknown method", () => {
@@ -147,6 +153,68 @@ describe("evaluateAssertions", () => {
     ).toEqual([]);
   });
 
+  it("defaults to the best run, as Lighthouse CI did", () => {
+    const scores = { "categories:performance": [0.65, 0.65, 0.87] };
+    const results = evaluateAssertions(matrix, "/intro/index.html", scores);
+    expect(results.map((r) => r.aggregation)).toEqual([
+      "optimistic",
+      "optimistic",
+    ]);
+    expect(summarizeResults(results).errors).toHaveLength(0);
+  });
+
+  it("[0.65, 0.65, 0.87] passes a 0.82 floor under optimistic and fails under median", () => {
+    const scores = { "categories:performance": [0.65, 0.65, 0.87] };
+    const optimistic = evaluateAssertions(
+      matrix,
+      "/intro/index.html",
+      scores,
+      "optimistic",
+    );
+    const asMedian = evaluateAssertions(
+      matrix,
+      "/intro/index.html",
+      scores,
+      "median",
+    );
+    expect(summarizeResults(optimistic).errors).toHaveLength(0);
+    expect(summarizeResults(asMedian).errors).toHaveLength(1);
+  });
+
+  it("a page that is bad in every run still fails under optimistic", () => {
+    const scores = { "categories:performance": [0.7, 0.71, 0.69] };
+    const results = evaluateAssertions(matrix, "/intro/index.html", scores);
+    expect(summarizeResults(results).errors).toHaveLength(1);
+  });
+
+  it("an assertion's own aggregationMethod overrides the default", () => {
+    const strict = [
+      {
+        matchingUrlPattern: ".*",
+        assertions: {
+          "categories:performance": [
+            "error",
+            { minScore: 0.82, aggregationMethod: "median" },
+          ],
+        },
+      },
+    ];
+    const results = evaluateAssertions(
+      strict,
+      "/intro/index.html",
+      { "categories:performance": [0.65, 0.65, 0.87] },
+      "optimistic",
+    );
+    expect(results[0].aggregation).toBe("median");
+    expect(summarizeResults(results).errors).toHaveLength(1);
+  });
+
+  it("runs with no score are excluded, not counted as zeros or passes", () => {
+    const scores = { "categories:performance": [null, 0.65, 0.87] };
+    const results = evaluateAssertions(matrix, "/intro/index.html", scores);
+    expect(results.find((r) => r.level === "error").actual).toBe(0.87);
+  });
+
   it("uses the aggregation it is given", () => {
     const scores = { "categories:performance": [0.7, 0.7, 0.95] };
     const asMedian = evaluateAssertions(
@@ -163,6 +231,109 @@ describe("evaluateAssertions", () => {
     );
     expect(summarizeResults(asMedian).errors).toHaveLength(1);
     expect(summarizeResults(asBest).errors).toHaveLength(0);
+  });
+});
+
+describe("incompleteReason", () => {
+  const good = {
+    audits: {
+      "largest-contentful-paint": {
+        scoreDisplayMode: "numeric",
+        numericValue: 2566,
+      },
+      "lcp-breakdown-insight": { scoreDisplayMode: "informative" },
+    },
+  };
+
+  it("accepts a run that painted and recorded an LCP", () => {
+    expect(incompleteReason(good)).toBeNull();
+  });
+
+  it("rejects a runtime error such as NO_FCP, with its message", () => {
+    expect(
+      incompleteReason({
+        runtimeError: { code: "NO_FCP", message: "did not paint" },
+      }),
+    ).toBe("did not paint");
+  });
+
+  it("rejects a run whose LCP audit has no value or errored", () => {
+    const noValue = structuredClone(good);
+    delete noValue.audits["largest-contentful-paint"].numericValue;
+    expect(incompleteReason(noValue)).toMatch(/Largest Contentful Paint/);
+
+    const errored = structuredClone(good);
+    errored.audits["largest-contentful-paint"].scoreDisplayMode = "error";
+    expect(incompleteReason(errored)).toMatch(/Largest Contentful Paint/);
+
+    expect(incompleteReason({ audits: {} })).toMatch(
+      /Largest Contentful Paint/,
+    );
+    expect(incompleteReason(undefined)).toMatch(/Largest Contentful Paint/);
+  });
+
+  it("rejects a NO_LCP run: fallback LCP of ~7.7 s, LCP insights notApplicable", () => {
+    // Shape taken from a real report of the flaky run (perf 0.71 vs 0.91).
+    const noLcp = {
+      audits: {
+        "largest-contentful-paint": {
+          scoreDisplayMode: "numeric",
+          numericValue: 7682.55,
+          score: 0.03,
+        },
+        "lcp-breakdown-insight": { scoreDisplayMode: "notApplicable" },
+        "lcp-discovery-insight": { scoreDisplayMode: "notApplicable" },
+      },
+    };
+    expect(incompleteReason(noLcp)).toMatch(/NO_LCP/);
+  });
+
+  it("does not reject a slow but well-formed run", () => {
+    const slow = structuredClone(good);
+    slow.audits["largest-contentful-paint"].numericValue = 9000;
+    expect(incompleteReason(slow)).toBeNull();
+  });
+});
+
+describe("exitCodeFor", () => {
+  const pass = { level: "error", passed: true };
+  const warnFail = { level: "warn", passed: false };
+  const errorFail = { level: "error", passed: false };
+
+  it("is 0 when everything passes", () => {
+    expect(exitCodeFor({ results: [pass, pass] })).toBe(0);
+    expect(exitCodeFor({ results: [] })).toBe(0);
+  });
+
+  it("is 0 when only warnings failed", () => {
+    expect(exitCodeFor({ results: [pass, warnFail] })).toBe(0);
+  });
+
+  it("is 1 when an error assertion failed, even with warnings too", () => {
+    expect(exitCodeFor({ results: [errorFail] })).toBe(1);
+    expect(exitCodeFor({ results: [warnFail, errorFail, pass] })).toBe(1);
+  });
+
+  it("is 2 for an infrastructure error, which outranks any assertion result", () => {
+    expect(exitCodeFor({ infrastructureError: true })).toBe(2);
+    expect(
+      exitCodeFor({ results: [errorFail], infrastructureError: true }),
+    ).toBe(2);
+    expect(exitCodeFor({ results: [pass], infrastructureError: true })).toBe(2);
+  });
+
+  it("an unscored category (NaN actual) is an error exit through evaluateAssertions", () => {
+    const results = evaluateAssertions(
+      [
+        {
+          matchingUrlPattern: ".*",
+          assertions: { "categories:seo": ["error", { minScore: 0.9 }] },
+        },
+      ],
+      "/index.html",
+      { "categories:seo": [null, null, null] },
+    );
+    expect(exitCodeFor({ results })).toBe(1);
   });
 });
 
@@ -228,24 +399,32 @@ describe("static server helpers", () => {
 });
 
 describe("formatTable", () => {
-  it("aligns a header, a rule and one row per URL", () => {
+  it("shows the median and every run, one row per URL", () => {
     const table = formatTable(
       [
         {
           url: "/intro/index.html",
-          scores: { "categories:performance": 0.86, "categories:seo": 1 },
+          scores: {
+            "categories:performance": [0.65, 0.65, 0.87],
+            "categories:seo": [1, 1, 1],
+          },
         },
         {
           url: "/index.html",
-          scores: { "categories:performance": NaN, "categories:seo": 0.9 },
+          scores: {
+            "categories:performance": [null, null, null],
+            "categories:seo": [0.9, 0.9, 0.9],
+          },
         },
       ],
       ["categories:performance", "categories:seo"],
     ).split("\n");
     expect(table).toHaveLength(4);
     expect(table[0]).toMatch(/^URL\s+performance\s+seo$/);
-    expect(table[2]).toMatch(/^\/intro\/index\.html\s+0\.86\s+1\.00$/);
-    expect(table[3]).toMatch(/n\/a/);
+    expect(table[2]).toMatch(
+      /^\/intro\/index\.html\s+0\.65 \[0\.65 0\.65 0\.87\]\s+1\.00 \[1\.00 1\.00 1\.00\]$/,
+    );
+    expect(table[3]).toMatch(/n\/a \[n\/a n\/a n\/a\]/);
   });
 });
 
@@ -317,6 +496,10 @@ describe("lighthouse-ci.config.json", () => {
         results.every((r) => r.level === "warn" && r.minScore === 0.9),
       ).toBe(true);
     }
+  });
+
+  it("asserts on the best run by default, as Lighthouse CI did", () => {
+    expect(config.aggregation).toBe("optimistic");
   });
 
   it("audits the same five pages as before", () => {

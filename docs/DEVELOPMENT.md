@@ -6,7 +6,7 @@ rules (pull requests, voice, conventions) are in [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Prerequisites
 
-- **Node.js 22.13 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
+- **Node.js 22.19 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
   `24` (the LTS CI runs on), so `nvm use` picks a matching version.
 - npm, which ships with Node.
 - Optional: Chromium for the accessibility smoke test (`npm run smoke:a11y`),
@@ -134,14 +134,14 @@ Fuse.js. Press `/` (outside a text field) to open it, `Up` and `Down` to move,
 The site is progressive enhancement: everything below the first two rows is
 optional, and nothing in the repo loads a `.env` file.
 
-| Feature                            | Status   | Notes                                                                                              |
-| ---------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| Static site (all content)          | Always   | Nothing to configure                                                                               |
-| Local progress and theme           | Always   | Stored in the browser's `localStorage`; no account, no server                                      |
-| Assistant (pattern-matched help)   | Built in | Answers come from `src/data/assistant.yml` via `/data/assistant.json`; no model is called          |
-| Assistant feedback (Supabase)      | Optional | Needs `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` at build time; see [SETUP.md](SETUP.md)        |
-| Lighthouse score gate              | Optional | `npm run lighthouse` locally (Node 22.19+, Chrome); CI runs it against `lighthouse-ci.config.json` |
-| Playground saved scenarios/sharing | Optional | The playground loads the Supabase SDK for these; see `playground/README.md`                        |
+| Feature                            | Status   | Notes                                                                                       |
+| ---------------------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| Static site (all content)          | Always   | Nothing to configure                                                                        |
+| Local progress and theme           | Always   | Stored in the browser's `localStorage`; no account, no server                               |
+| Assistant (pattern-matched help)   | Built in | Answers come from `src/data/assistant.yml` via `/data/assistant.json`; no model is called   |
+| Assistant feedback (Supabase)      | Optional | Needs `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` at build time; see [SETUP.md](SETUP.md) |
+| Lighthouse score gate              | Optional | `npm run lighthouse` locally (needs Chrome); CI runs it against `lighthouse-ci.config.json` |
+| Playground saved scenarios/sharing | Optional | The playground loads the Supabase SDK for these; see `playground/README.md`                 |
 
 Unset, the Supabase variables leave the assistant working; votes just queue in
 `localStorage`. The earlier client-side tracing, user authentication and cloud
@@ -179,6 +179,11 @@ only, and this badge states them (a unit test fails if it drifts from
 `lighthouse-ci.config.json`):
 
 [![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](../lighthouse-ci.config.json)
+
+A floor passes if the best of the three runs reaches it (`aggregation` in
+`lighthouse-ci.config.json`, as Lighthouse CI did), because a run can be hurt by
+the machine instead of the page. The results table prints the median and every
+run. Runs that error or lose their LCP are retried, not counted.
 
 `linkcheck.yml` builds the site and crawls it with lychee.
 `deploy.yml` publishes to GitHub Pages. The playground has its own workflows

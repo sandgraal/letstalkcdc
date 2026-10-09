@@ -5,8 +5,11 @@
  * Serves the built site (`_site/` by default) at the root of a local HTTP
  * server, audits each URL in lighthouse-ci.config.json N times with the
  * `lighthouse` Node API (default settings: mobile emulation, simulated
- * throttling, all four categories), aggregates each category across runs,
- * and checks the result against the assertion matrix in the same file.
+ * throttling, all four categories), and checks the scores against the
+ * assertion matrix in the same file. Floors are checked against the best of
+ * the runs by default ("aggregation" in the config), as Lighthouse CI did;
+ * the table also prints the median and every run. A run that errored or lost
+ * its LCP is retried, never counted.
  *
  *   npm run build:lhci && npm run lighthouse
  *
@@ -31,11 +34,12 @@ import { parseArgs } from "node:util";
 import { Launcher, launch } from "chrome-launcher";
 import lighthouse from "lighthouse";
 import {
-  aggregate,
   categoryScores,
   contentTypeFor,
   evaluateAssertions,
+  exitCodeFor,
   formatTable,
+  incompleteReason,
   isCompressible,
   slugForUrl,
   summarizeResults,
@@ -198,15 +202,16 @@ async function auditOnce(url) {
 }
 
 // A run that ends in a Lighthouse runtime error (for example "the page did not
-// paint any content" when the machine is busy) has no scores. Retry it twice,
-// then fail the whole run rather than letting the other runs hide it.
+// paint any content") or that lost its LCP (see incompleteReason) is not a
+// measurement of the page. Retry it twice, then fail the whole run rather than
+// letting the other runs hide it.
 async function auditWithRetry(url) {
   for (let attempt = 1; ; attempt++) {
     let failure;
     try {
       const audit = await auditOnce(url);
-      if (!audit.lhr.runtimeError) return audit;
-      failure = audit.lhr.runtimeError.message;
+      failure = incompleteReason(audit.lhr);
+      if (!failure) return audit;
     } catch (error) {
       failure = error.message;
     }
@@ -218,7 +223,8 @@ async function auditWithRetry(url) {
 
 const aggregation = config.aggregation;
 const perUrl = [];
-let exitCode = 0;
+let results = [];
+let infrastructureError = false;
 
 try {
   await rm(outputDir, { recursive: true, force: true });
@@ -249,30 +255,28 @@ try {
     perUrl.push({ url: urlPath, scoresByAudit });
   }
 
-  const auditIds = Object.keys(perUrl[0].scoresByAudit);
+  const auditIds = [
+    ...new Set(config.assertMatrix.flatMap((e) => Object.keys(e.assertions))),
+  ];
   const rows = perUrl.map(({ url, scoresByAudit }) => ({
     url,
-    scores: Object.fromEntries(
-      auditIds.map((id) => [
-        id,
-        aggregate(scoresByAudit[id] ?? [], aggregation),
-      ]),
-    ),
+    scores: scoresByAudit,
   }));
   process.stdout.write(
-    `\nCategory scores (${aggregation} of ${config.runs} runs)\n${formatTable(rows, auditIds)}\n\n`,
+    `\nCategory scores: median of ${config.runs} runs [each run]\n${formatTable(rows, auditIds)}\n\n`,
   );
 
   const summary = [];
   for (const { url, scoresByAudit } of perUrl) {
-    const results = evaluateAssertions(
+    const found = evaluateAssertions(
       config.assertMatrix,
       url,
       scoresByAudit,
       aggregation,
     );
-    summary.push({ url, aggregation, scores: scoresByAudit, results });
-    const { errors, warnings } = summarizeResults(results);
+    results.push(...found);
+    summary.push({ url, aggregation, scores: scoresByAudit, results: found });
+    const { errors, warnings } = summarizeResults(found);
     for (const [level, list] of [
       ["error", errors],
       ["warning", warnings],
@@ -281,7 +285,7 @@ try {
         const actual = Number.isFinite(r.actual)
           ? r.actual.toFixed(2)
           : "no score";
-        const message = `${url} ${r.auditId}: ${actual} < ${r.minScore} (runs: ${r.values.map((v) => v?.toFixed(2) ?? "n/a").join(", ")})`;
+        const message = `${url} ${r.auditId}: ${r.aggregation} ${actual} < ${r.minScore} (runs: ${r.values.map((v) => v?.toFixed(2) ?? "n/a").join(", ")})`;
         process.stdout.write(
           process.env.GITHUB_ACTIONS
             ? `::${level}::${message}\n`
@@ -289,23 +293,21 @@ try {
         );
       }
     }
-    if (errors.length) exitCode = 1;
   }
   await writeFile(
     join(outputDir, "summary.json"),
     `${JSON.stringify(summary, null, 2)}\n`,
   );
 
-  const total = summary.flatMap((s) => s.results);
-  const counts = summarizeResults(total);
+  const counts = summarizeResults(results);
   process.stdout.write(
-    `Checked ${total.length} assertions over ${config.urls.length} URLs: ${counts.errors.length} error(s), ${counts.warnings.length} warning(s). Reports in ${config.outputDir}/\n`,
+    `Checked ${results.length} assertions over ${config.urls.length} URLs: ${counts.errors.length} error(s), ${counts.warnings.length} warning(s). Reports in ${config.outputDir}/\n`,
   );
 } catch (error) {
   process.stderr.write(`lighthouse-ci: ${error?.stack ?? error}\n`);
-  exitCode = 2;
+  infrastructureError = true;
 } finally {
   server.close();
 }
 
-process.exit(exitCode);
+process.exit(exitCodeFor({ results, infrastructureError }));
