@@ -13,6 +13,8 @@ canonicalPath: "/privacy/"
   skillLevel: "About"
 }) | safe }}
 
+<p class="prose">Last updated: <time datetime="{{ dateModified }}">{{ dateModified }}</time></p>
+
 <section class="prose" aria-labelledby="stores">
   <h2 id="stores">What the CDC Assistant stores</h2>
   <p>
@@ -57,6 +59,11 @@ canonicalPath: "/privacy/"
     which questions the assistant answers badly so the answers can be
     improved.
   </p>
+  <p>
+    If sending fails, the vote (including the question text) waits in your
+    browser and is retried on a later visit, for up to 14 days or 8 tries,
+    then dropped.
+  </p>
 </section>
 
 <section class="prose" aria-labelledby="playground">
@@ -79,7 +86,8 @@ canonicalPath: "/privacy/"
     <li>
       <strong>Change events are public.</strong> When you insert, update or
       delete a row, or emit a snapshot, the event is added to a database
-      table called <code>events</code>: a timestamp, the operation, and the
+      table called <code>events</code>: a random ID (<code>id</code>), a
+      timestamp (<code>ts_ms</code>), the operation (<code>op</code>), and the
       row values <em>as you typed them</em> (<code>after</code>, and
       <code>before</code> too while the "include before" box is ticked,
       which it is by default). Anyone can read that table and receives new
@@ -118,10 +126,6 @@ canonicalPath: "/privacy/"
   </p>
   <ul>
     <li>the assistant's chat history (the last 20 messages);</li>
-    <li>
-      votes waiting to be sent, if a send failed. They are retried later and
-      given up on after 14 days or 8 failed attempts;
-    </li>
     <li>your reading progress and scorecard answers;</li>
     <li>
       your theme and reading-depth choices, and what you type into a few
@@ -135,9 +139,17 @@ canonicalPath: "/privacy/"
 
 <section class="prose" aria-labelledby="cookies">
   <h2 id="cookies">Cookies and analytics</h2>
-  {# Update this paragraph when analytics ships (P15-10). #}
+  {# Update this section when analytics ships (P15-10). #}
   <p>
-    This site does not use cookies or analytics.
+    The site's own code does not set cookies or use analytics.
+  </p>
+  <p>
+    Some features load things from other companies, which can behave
+    differently. If you click play on an embedded YouTube video, YouTube's
+    player loads and may set its own cookies. Mermaid and Chart.js come
+    from jsDelivr, which can see your IP address. The Change Feed
+    Playground loads its Supabase library from jsDelivr and contacts
+    Supabase when it opens. Details are under "Third-party requests".
   </p>
 </section>
 
@@ -210,20 +222,27 @@ canonicalPath: "/privacy/"
 <section class="prose" aria-labelledby="delete">
   <h2 id="delete">Asking about or deleting your entry</h2>
   <p>
-    You can ask what is stored or ask for an entry to be deleted. Contact
-    the maintainer on
-    <a href="{{ author.advisoryUrl }}" rel="noopener">LinkedIn</a>, or
+    You can ask what is stored or ask for an entry to be deleted. The
+    private route is a message to the maintainer on
+    <a href="{{ author.advisoryUrl }}" rel="noopener">LinkedIn</a>. You can
+    also
     <a href="https://github.com/{{ site.repository }}/issues/new">open a
-    GitHub issue</a> asking for contact. Please do not paste the private
-    text itself into a public issue.
+    GitHub issue</a>, but issues are public: say only that you want to be
+    contacted about a deletion, and send the details privately.
+  </p>
+  <p>
+    <strong>Never paste your question, a playground share link or any other
+    private text into a public issue.</strong> A share link is a key: anyone
+    who holds it can open that saved scenario.
   </p>
   <p>
     Because nothing identifies you, an entry can only be found if you can
     tell us the exact question you asked and roughly when you asked it.
     Without that we cannot tell which record is yours, and it will be
     deleted automatically within 12 months anyway. For a saved playground
-    scenario, the share link is enough; for playground events, tell us
-    roughly when you used it and what you entered.
+    scenario, send the share link privately (LinkedIn message); for
+    playground events, tell us roughly when you used it and what you
+    entered.
   </p>
 </section>
 
@@ -231,7 +250,7 @@ canonicalPath: "/privacy/"
   <h2 id="changes">Changes to this page</h2>
   <p>
     If what the site stores changes, this page is updated in the same
-    change and its "Last reviewed" date moves. The full history is in the
+    change and the "Last updated" date at the top of this page moves. The full history is in the
     <a href="https://github.com/{{ site.repository }}/commits/main/src/privacy/index.njk">public
     Git log</a>.
   </p>
