@@ -6,6 +6,9 @@ in a pull request, and where the conventions live.
 
 ## Quick start
 
+For prerequisites, every command and the project layout, see
+**[DEVELOPMENT.md](./DEVELOPMENT.md)**.
+
 ```bash
 git clone https://github.com/sandgraal/letstalkcdc.git
 cd letstalkcdc
