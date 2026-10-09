@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /**
  * E2E accessibility tests using axe-core.
@@ -32,6 +32,11 @@ const SITEMAP_PAGES = [
   ).matchAll(/<loc>([^<]+)<\/loc>/g),
 ]
   .map(([, loc]) => new URL(loc).pathname.replace(/^\/letstalkcdc(?=\/)/, ""))
+  // Entries served by a separate app build (e.g. /playground/) are not in
+  // _site, so there is nothing to audit here.
+  .filter((p) =>
+    existsSync(new URL(`../../_site${p}index.html`, import.meta.url)),
+  )
   .sort();
 
 /**
