@@ -585,7 +585,12 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
             </li>
             <li>
               <strong>Log purged mid-snapshot:</strong> restart from last
-              completed chunk; increase retention; consider replica.
+              completed chunk; increase retention; consider replica. On
+              Postgres, a slot that lost its WAL cannot be resumed at all; see
+              the
+              <a href="{{ '/postgres-replication-slots/' | url }}"
+                >replication slot runbook</a
+              >.
             </li>
             <li>
               <strong>No primary key:</strong> declare a stable key (a unique

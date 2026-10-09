@@ -91,7 +91,7 @@ canonicalPath: "/security/"
       <tbody>
         <tr>
           <th scope="row">Postgres</th>
-          <td><code>REPLICATION</code> attribute, plus a replication slot</td>
+          <td><code>REPLICATION</code> attribute, plus a <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a></td>
           <td>
             The slot reads the whole WAL. An abandoned slot also pins WAL
             forever and can fill the disk — an availability risk, not just a
@@ -184,6 +184,12 @@ canonicalPath: "/security/"
       Whichever you choose, decide it before the first production topic exists.
       Retrofitting erasure onto a log that already contains two years of
       plaintext is a migration, not a configuration change.
+    </p>
+    <p>
+      The log is only one place the data lives. What happens to the copies in
+      the warehouse, its time-travel history, the dead-letter topic and the
+      backups once the delete has been applied is covered in
+      <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes That Stay Deleted</a>.
     </p>
   </section>
 </article>
