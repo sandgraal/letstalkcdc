@@ -13,7 +13,7 @@ const CONTENT_PAGES = [
   { path: "/snapshotting/", title: /snapshot/i },
   { path: "/quickstarts/", title: /quick\s*start/i },
   { path: "/tooling/", title: /tool/i },
-  { path: "/troubleshooting/", title: /troubleshoot/i },
+  { path: "/troubleshooting/", title: /troubleshoot|incident/i },
   { path: "/use-cases/", title: /use.case/i },
 ];
 

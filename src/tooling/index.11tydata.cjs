@@ -1,11 +1,11 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-08-25",
+  dateModified: "2026-10-09",
   seriesKey: "tooling",
   heroConfig: {
-    title: "The Modern CDC Toolkit",
+    title: "CDC Tool Profiles: What Each One Does",
     description:
-      "<p>Compare open-source, managed, and enterprise CDC platforms. Balance operational control, cost, and depth of guarantees before you pick your stack.</p>",
+      "<p>Profiles of the open-source, managed, and enterprise tools that capture changes: what each one does, how it works, and where it fits. Ready to choose? The Compare page has the decision matrix.</p>",
     align: "center",
     skillLevel: "Beginner",
     actions: [
@@ -55,7 +55,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "Selecting a CDC tool requires evaluating: (1) source/sink database support, (2) delivery guarantees (ALO vs EOS), (3) scalability and throughput needs, (4) operational complexity (self-hosted vs managed), (5) integration with your existing stack (Kafka, cloud platforms, schemas), and (6) total cost of ownership including licensing and operational overhead.",
+          "Selecting a CDC tool requires evaluating: (1) source/sink database support, (2) delivery guarantees (delivery is at-least-once, so check what any exactly-once claim covers and make the sink idempotent), (3) scalability and throughput needs, (4) operational complexity (self-hosted vs managed), (5) integration with your existing stack (Kafka, cloud platforms, schemas), and (6) total cost of ownership including licensing and operational overhead.",
       },
       {
         question: "What is the role of Kafka in many CDC architectures?",
