@@ -53,6 +53,7 @@
             "name": {{ site.title | dump | safe }},
             "url": {{ site.host | dump | safe }}
           },
+          "license": "https://creativecommons.org/licenses/by/4.0/",
           "mainEntityOfPage": {
             "@type": "WebPage",
             "@id": "{{ site.host }}{{ canonicalUrl }}"
@@ -427,6 +428,7 @@
           <p class="footer-copyright">{{ site.copyright }}</p>
           <p class="footer-meta">
             Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project
+            • <a href="https://github.com/{{ site.repository }}/blob/main/LICENSE-CONTENT.md" target="_blank" rel="noopener">Content: CC BY 4.0 · Code: MIT</a>
             {% if page.inputPath %} •
               <a href="https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}" target="_blank" rel="noopener" class="footer-edit-link">Edit this page on GitHub</a>
             {% endif %}
