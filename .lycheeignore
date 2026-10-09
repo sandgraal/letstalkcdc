@@ -45,3 +45,10 @@
 # in a browser. /blob/, /tree/ and /discussions stay checked (blob/tree/edit
 # are remapped to the checkout; the rest are light).
 ^https://github\.com/sandgraal/letstalkcdc/commits/
+
+# MySQL reference manual and error reference (dev.mysql.com/doc/refman/ and
+# /doc/mysql-errors/). Oracle's docs host answers [403] to CI bot requests
+# (checked with curl: some User-Agents get 403, others 200) but the pages are
+# valid in a browser. Linked from /sql-server-mysql-cdc/. Same precedent as the
+# LinkedIn and Oracle entries above; other dev.mysql.com paths stay checked.
+^https://dev\.mysql\.com/doc/(refman|mysql-errors)/
