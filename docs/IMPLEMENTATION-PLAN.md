@@ -390,10 +390,19 @@ remove the matching regex from `.lycheeignore`.
 - [ ] **`/intro/` perf debt — uncovered by the LHCI fix above.** The
       0.86 score is held back by:
   - `cumulative-layout-shift: 0.58` — large layout shifts during load
+    [✓ re-measured 2026-10-08: audit 1.0 in 9/9 runs, CLS median 0.0025,
+    max 0.0056 — see P13-5]
   - `layout-shifts: 0` (CLS culprits) — investigate `cls-culprits-insight`
+    [✓ audit 1.0 in 9/9 runs; Lighthouse's only culprit is the hero
+    `<h1>` web-font swap at 0.0056 — see P13-5]
   - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS [✓ closed by PR #275]
   - `mainthread-work-breakdown: 0.5` — minimize main-thread work
+    [✓ audit 1.0 in 9/9 runs (0.6–1.5 s) — see P13-5]
   - `unsized-images: 0.5` — add explicit `width`/`height` to images [✓ closed by Phase 7 SVG dimensions]
+  - **Still open (2026-10-08, P13-5):** `dom-size` is the only sub-item
+    below 0.9 (0.5, 1,035 elements in 9/9 runs); everything else in this
+    box scores 1.0. The box stays open until `dom-size` is trimmed or
+    consciously accepted.
   - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 947
     elements after the operational-checklist input-removal trim;
     LHCI's count is slightly higher because it includes
@@ -496,11 +505,17 @@ first so the threshold can ratchet up as we land them.
       `src/exactly-once/index.njk:260`. **DoD:** `unsized-images` audit
       → 1.0 across all module pages.
 
-- [ ] Identify remaining CLS culprits on `/intro/` via the LHCI
+- [x] Identify remaining CLS culprits on `/intro/` via the LHCI
       `cls-culprits-insight` audit (run `npm run lighthouse` after
       `build:lhci`). With the 404'd video embed gone and SVGs now
       dimensioned, suspects narrow to font-swap reflow on the long
       lede and the `.cdc-methods-grid` reveal.
+      **Done 2026-10-08 (P13-5):** the font-swap suspect is the only one
+      that registers — `section.hero-section … h1.type-display`, 0.0056,
+      caused by late-loaded Plex 500/700/mono-500/600 woff2. The
+      `.cdc-methods-grid` reveal did not register in Lighthouse or in the
+      independent `PerformanceObserver` cross-check. Audit scores 1.0 in 9/9
+      runs; total CLS median 0.0025 (well under 0.1).
 
 - [x] Eliminate render-blocking by moving the three base-layout
       stylesheets and page-specific `head_extra` stylesheet links to
@@ -1115,7 +1130,7 @@ dependencies).
 
 ### Tier B — measured performance work
 
-- [ ] **P13-5 · Measure `/intro/` before touching it.** Supersedes (and
+- [x] **P13-5 · Measure `/intro/` before touching it.** Supersedes (and
       closes, in the same commit, as far as the numbers justify) the open
       Phase 5 "`/intro/` perf debt" box and the Phase 7 "Identify
       remaining CLS culprits" box. Those perf items are open but the numbers are months old and
@@ -1128,15 +1143,125 @@ dependencies).
       command and date; sub-items whose audit already scores 1.0 are
       ticked in the Phase 5 / Phase 7 boxes. Verify: the recorded numbers reproduce within ±0.03 perf. Size: M. Role:
       `implementer`.
-- [ ] **P13-6 · Fix the dominant `/intro/` CLS culprit(s).** Needs
-      P13-5; completes the Phase 5 / Phase 7 CLS boxes it left open. Outcome: CLS under 0.1 (Core Web Vitals "good"). Accept: the
-      culprit named by P13-5 is fixed at source (reserved space, font
-      metrics override, or deferred reveal — not a Lighthouse-only
-      workaround); `.lighthouserc.json` perf threshold ratcheted to the
-      new median minus 0.04; no a11y regression. Verify: re-run LHCI
-      three times, `npm run test:e2e`, screenshots before / after.
-      Size: M (split if more than one culprit). Role: `implementer`,
-      `reviewer` on the diff.
+
+      **Result (2026-10-08, local macOS, 8 cores, Chrome 154 headless,
+      Lighthouse 12.6.1, mobile preset, simulated throttling).** Command:
+      `npm run build:lhci` then `npm run lighthouse` (config collects
+      3 runs per URL), repeated in 3 separate invocations = **9 runs of
+      `/intro/`**. Raw LHR JSON kept outside the repo.
+
+      | `/intro/` metric                         | Median of 9                | Min – max           | Threshold / note                        |
+      | ---------------------------------------- | -------------------------- | ------------------- | --------------------------------------- |
+      | Performance                              | **0.97**                   | 0.88 – 0.97         | error ≥ 0.82 — pass (`warn` 0.9: 4/9 below) |
+      | Accessibility                            | 0.97                       | 0.97 – 0.97         | error ≥ 0.93 — pass                     |
+      | Best practices / SEO                     | 1.00 / 1.00                | —                   | warn ≥ 0.9 — pass                       |
+      | FCP                                      | 1.81 s                     | 1.74 – 2.55 s       | bimodal, see below                      |
+      | LCP                                      | 2.43 s                     | 2.34 – 3.33 s       | bimodal                                 |
+      | TBT                                      | 31 ms                      | 0 – 59 ms           |                                         |
+      | Speed Index                              | 1.81 s                     | 1.74 – 2.55 s       |                                         |
+      | CLS                                      | **0.0025**                 | 0 – 0.0056          | audit 1.0 in 9/9                        |
+      | Main-thread work                         | 1.31 s                     | 0.62 – 1.52 s       | audit 1.0 in 9/9                        |
+      | DOM size                                 | **1,035 elements**         | constant            | audit 0.5 in 9/9; depth 13, max 28 children |
+      | Transfer                                 | 351 KiB (32 requests)      | 351 – 352 KiB       |                                         |
+
+      Per-invocation medians (the way CI sees it): perf 0.92 / 0.97 /
+      0.92 — a spread of 0.05, larger than the ±0.03 reproducibility
+      target, so the recorded perf is "0.92 – 0.97" not a single value.
+      All other audits (`render-blocking-resources`, `unsized-images`,
+      `font-display`, `bootup-time`, `total-blocking-time`) score 1.0.
+      No assertion failed or warned (LHCI's default optimistic
+      aggregation passes if any run passes). System load before the
+      runs 4.2 (1-min); 2.1 before the Playwright cross-check — Lighthouse
+      itself pushed it to ~7.8 mid-run, and the machine runs a desktop
+      session, so treat absolute ms as indicative.
+
+      **Surprise: the plan's premise is stale.** CLS is not 0.58 — it is
+      0.0025. The perf gap is not layout shift.
+
+      Ranked CLS culprits (Lighthouse `layout-shifts` /
+      `cls-culprits-insight`): (1) `section.hero-section > div.hero-container > div.prose > h1.type-display`
+      — 0.0056, cause "web font loaded" for `ibm-plex-sans-500`,
+      `-700`, `ibm-plex-mono-500`, `-600` (these four are discovered via
+      CSS, not preloaded; only sans-400/600 and mono-400 are). In 4/9
+      runs the fonts land before first paint and CLS is exactly 0.
+      Independent check (Playwright Chromium 156, 412×823 @1.75x,
+      `PerformanceObserver` layout-shift with sources, 10 runs each):
+      unthrottled CLS 0 in 10/10; with 4× CPU + 1.6 Mbps/150 ms network
+      CLS 0.0014 – 0.016 (median 0.015), 10/10 > 0, never near 0.1.
+      Observer **agrees** on the cause (font-swap reflow of the hero
+      block: `div.page-wrap.prose`, hero `li`s, `.hero-actions` buttons,
+      `h1`, plus `.nav-right`) and on magnitude; it sees a few more hero
+      elements than Lighthouse because the throttled swap reflows
+      neighbours too.
+
+      Why perf is bimodal (0.97 in 5 runs, 0.88 – 0.92 in 4): observed
+      FCP is ~130 ms in both, but Lighthouse's simulated FCP is 1.74 –
+      1.81 s when the late fonts finish after first paint and 2.26 – 2.55 s
+      when they finish before it (the CSS → font request chain is then
+      counted). FCP / LCP are the only perf audits below 0.9 (0.65 – 0.92);
+      this is a race on the late-discovered fonts, not a main-thread
+      problem. In the fast runs the font swap also triples Style & Layout
+      (≈ 650 ms vs ≈ 210 ms).
+
+      Main-thread / bootup offenders (median run): Style & Layout 656 ms,
+      Other 526 ms, Script Evaluation 192 ms, Rendering 108 ms. `bootup-time`
+      0.15 s: the document itself (1.11 s total, only 7 ms scripting —
+      i.e. layout), Unattributable 178 ms, `cdn.jsdelivr.net/npm/chart.js@4.4.4`
+      159 ms (96 ms scripting, 29 ms TBT — the only third party). First-party
+      JS is negligible.
+
+      Other audits: `unused-javascript` 0.5 (36 KiB, all chart.js from
+      jsDelivr), `unused-css-rules` 0.5 – 0 (12 KiB of 19 KiB
+      `styles.css`), `dom-size` 0.5. Top transfers: chart.js 68 KB,
+      `search-index.json` 32 KB, four Plex woff2 files 23 – 25 KB each,
+      document 21 KB, `app.js` 21 KB.
+
+      **Finding outside the brief:** `color-contrast` scores 0 in 9/9
+      runs (a11y 0.97, still over the 0.93 gate) on three nodes in the
+      CDC event demo: `span.ced-event-title` and `span.ced-op-badge`
+      (#6b7d8f on #0e141d = 4.36:1) and `span.ced-j-comment` (#6b7d8f on
+      #141b25 = 4.08:1), need 4.5:1. The Phase 5 "`/intro/` a11y debt"
+      box records contrast as fixed (page then scored 1.0); this widget
+      regressed it. Not touched here.
+
+      **Recommended P13-6 scope** (revised — a "CLS under 0.1" goal is
+      already met): (1) make the four late fonts deterministic —
+      preload `ibm-plex-sans-500/700` and `ibm-plex-mono-500/600` (or
+      drop those weights) and add a metric-matched fallback
+      (`size-adjust`, `ascent-override`) so the swap is invisible; this
+      removes the only CLS culprit and the 0.88 – 0.97 perf bimodality in
+      one change; (2) then ratchet the `/intro/` perf threshold from 0.82
+      to median-minus-0.04 and fix the three `color-contrast` nodes
+      (route the CSS to `css-refactor`). `dom-size` (1,035) and
+      chart.js lazy-loading are the next, smaller levers.
+
+- [ ] **P13-6 · Make `/intro/` font loading deterministic, fix the contrast
+      regression, ratchet the threshold.** Rewritten 2026-10-09 after P13-5:
+      CLS is already 0.0025 (goal was < 0.1), so the original "fix the CLS
+      culprit" is met. What the measurement actually found: (1) four web
+      fonts (`ibm-plex-sans-500`, `ibm-plex-sans-700`, `ibm-plex-mono-500`,
+      `ibm-plex-mono-600`) load after first paint while only three weights
+      are preloaded, which is the sole CLS source (the `h1.type-display`,
+      0.0056 in Lighthouse) and the reason performance swings 0.88–0.97;
+      (2) three nodes in the CDC event demo fail WCAG contrast
+      (`span.ced-event-title` and `span.ced-op-badge` #6b7d8f on #0e141d =
+      4.36:1; `span.ced-j-comment` on #141b25 = 4.08:1), which regressed the
+      Phase 5 contrast fix.
+      Accept: (a) the four weights are either preloaded or removed, and a
+      metric-matched fallback font removes the swap shift — at source, not a
+      Lighthouse-only workaround; (b) the three nodes reach ≥ 4.5:1 and
+      `color-contrast` scores 1 in all runs; (c) three fresh LHCI invocations
+      show `/intro/` performance with a narrower spread, and
+      `.lighthouserc.json`'s `/intro/` performance floor is ratcheted to the
+      new median minus 0.04 (and the README badge from P15-6 is bumped in the
+      same PR); (d) no a11y or CLS regression. Verify: `npm run lighthouse`
+      three times, the Playwright layout-shift observer from P13-5,
+      `npm run test:e2e`, before / after screenshots, CSS hashes recorded.
+      Size: M → split into two PRs: fonts (head / `@font-face` metrics; touches
+      `base.njk` and CSS) and contrast (CSS only). Role: `css-refactor` for
+      both CSS parts, `implementer` for the preload markup, `reviewer` on each
+      diff. Needs: the Phase 15 Tier 1 PRs merged first (they also edit
+      `base.njk`).
 - [x] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
       mobile-chrome for a "pointer-intercept flake" with no tracking (the
