@@ -249,11 +249,14 @@ describe("the router content matches the Debezium reference", () => {
 
   it("pins the config to the prose, the option table and the producer DDL", () => {
     const cfg = codeById("cfg-router");
-    const prop = (k) =>
-      new RegExp(
-        `^transforms\\.outbox\\.${k.replace(/\./g, "\\.")}=(.*)$`,
-        "m",
-      ).exec(cfg)?.[1];
+    // Parse "key=value" lines; no regex is built from the option name.
+    const props = new Map(
+      cfg
+        .split("\n")
+        .filter((l) => l.includes("=") && !l.startsWith("#"))
+        .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
+    );
+    const prop = (k) => props.get(`transforms.outbox.${k}`);
     const ddl = /CREATE TABLE outbox \(([\s\S]*?)\);/.exec(
       codeById("sql-producer"),
     )[1];
