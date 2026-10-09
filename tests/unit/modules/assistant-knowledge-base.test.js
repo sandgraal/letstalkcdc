@@ -397,3 +397,51 @@ describe("assistant knowledge base – the site's delivery thesis", () => {
     expect(a).toContain("does not make delivery exactly-once");
   });
 });
+
+describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
+  it.each([
+    "how do I test my cdc pipeline",
+    "test a cdc pipeline",
+    "how do I test debezium",
+    "cdc testing strategy",
+    "cdc contract test",
+    "how to test kafka connect",
+  ])("%j reaches the pipeline-testing answer", (query) => {
+    expect(idOf(query)).toBe("pipeline_testing");
+  });
+
+  it.each([
+    "how do i test for duplicate events",
+    "cdc idempotency test",
+    "how do i test out of order events",
+    "how do i test replay",
+    "property based testing for a sink",
+    "what is a resurrection test",
+    "how do i test idempotency",
+  ])("%j reaches the duplicate and replay test answer", (query) => {
+    expect(idOf(query)).toBe("duplicate_replay_tests");
+  });
+
+  it("does not steal the plain delivery questions", () => {
+    expect(idOf("why do i get duplicate events")).toBe("exactly_once");
+    expect(idOf("events arrive out of order")).toBe("idempotent_sink");
+  });
+
+  it("both intents carry no boost, enough triggers and a link to the page", () => {
+    for (const id of ["pipeline_testing", "duplicate_replay_tests"]) {
+      expect(byId(id).modules).toEqual([]);
+      expect(byId(id).triggers.length).toBeGreaterThanOrEqual(5);
+      expect(byId(id).links.map((l) => l.url)).toContain(
+        "/test-your-pipeline/",
+      );
+    }
+  });
+
+  it("neither answer promises exactly-once or timestamp ordering", () => {
+    for (const id of ["pipeline_testing", "duplicate_replay_tests"]) {
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).not.toMatch(/order(ed)? by (ts_ms|timestamp)/);
+    }
+  });
+});

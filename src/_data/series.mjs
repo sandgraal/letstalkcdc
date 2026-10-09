@@ -195,6 +195,19 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "test-your-pipeline",
+    title: "Testing a CDC Pipeline",
+    description:
+      "Contract, duplicate, out-of-order and replay tests for your own pipeline, with runnable examples and what not to test for.",
+    href: "test-your-pipeline/",
+    ctaLabel: "Write the Tests",
+    tags: [
+      { label: "Ops", variant: "tag-ops" },
+      { label: "Advanced Pattern", variant: "tag-pattern" },
+    ],
+    skillLevel: "Intermediate",
+  },
+  {
     key: "failure-drills",
     title: "Failure Scenario Drills",
     description:

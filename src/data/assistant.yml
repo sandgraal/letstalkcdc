@@ -406,6 +406,108 @@ intents:
         anchor: "#signals-title"
         preview: Golden signals, alerting rules, and dashboard setup.
 
+  - id: pipeline_testing
+    triggers:
+      [
+        "test my cdc pipeline",
+        "test a cdc pipeline",
+        "test cdc pipeline",
+        "testing a cdc pipeline",
+        "testing cdc pipeline",
+        "test my pipeline",
+        "test my debezium",
+        "test debezium",
+        "testing debezium",
+        "cdc testing strategy",
+        "cdc test plan",
+        "how do i test",
+        "how to test",
+        "contract test",
+        "testcontainers",
+        "test kafka connect",
+      ]
+    modules: []
+    answer: >
+      Test the contract, not the absence of duplicates. A CDC test plan has
+      three parts. Contract tests assert the change-event envelope on a
+      recorded fixture: op codes, before and after images, the key, the source
+      position fields and the tombstone after a delete. Sink tests replay the
+      same batch twice, shuffle events within a key and deliver a delete before
+      an older update, and require the final table to equal in-order
+      application by log position. Reconciliation checks (counts, checksums by
+      key range, max position per key) catch what injected events cannot. The
+      acceptance tests page checks the lab stack; this plan checks your
+      pipeline.
+    links:
+      - label: Testing a CDC Pipeline
+        url: /test-your-pipeline/
+        anchor: "#what-to-test-title"
+        preview: Seven tests, what each catches, and what each needs.
+      - label: Contract tests for the envelope
+        url: /test-your-pipeline/
+        anchor: "#contract-title"
+        preview: What to assert on op, before and after, key and source position.
+      - label: Acceptance Tests (lab stack)
+        url: /tests/
+        preview: Scripts that confirm the lab stack is up and events flow.
+
+  - id: duplicate_replay_tests
+    triggers:
+      [
+        "duplicate delivery test",
+        "test duplicate delivery",
+        "test for duplicate",
+        "test duplicate",
+        "idempotency test",
+        "test idempotency",
+        "test idempotent",
+        "cdc idempotency",
+        "replay test",
+        "test a replay",
+        "test replay",
+        "test for out of order",
+        "test out of order",
+        "test out-of-order",
+        "out of order test",
+        "property based",
+        "property based test",
+        "property-based test",
+        "property-based",
+        "resurrection",
+        "zombie row",
+        "convergence test",
+        "kill the connector",
+        "how do i test",
+        "how to test",
+      ]
+    modules: []
+    answer: >
+      To test a sink against at-least-once delivery, apply the same batch twice
+      and assert the table is unchanged, then deliver every event twice in a
+      shuffled order many times and assert the result equals in-order
+      application by source log position. Add a case where the delete arrives
+      before an older update for the same key: a sink that keeps the delete as
+      a marker with its position stays deleted, while one that removes the row
+      brings it back. Give the fixture two changes in the same millisecond, or
+      a sink ordered by a timestamp will pass. Do not assert that the topic has
+      no duplicates; Debezium documents that a crash can produce them.
+    links:
+      - label: Duplicate-delivery test
+        url: /test-your-pipeline/
+        anchor: "#duplicates-title"
+        preview: Apply the same batch twice and compare the state.
+      - label: Out-of-order and resurrection tests
+        url: /test-your-pipeline/
+        anchor: "#reorder-title"
+        preview: Shuffle events, deliver a delete before an older update.
+      - label: Property-based sketch
+        url: /test-your-pipeline/
+        anchor: "#property-title"
+        preview: Random logs against a reference model, with shrinking.
+      - label: Crash and restart
+        url: /ops-offsets/
+        preview: Offsets and safe replays, the operational side of the crash test.
+
   - id: event_envelope
     triggers:
       [
