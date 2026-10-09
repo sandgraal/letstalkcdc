@@ -195,6 +195,95 @@ const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
       },
     ],
   },
+  "replay against a guarded sink": {
+    summary:
+      "The log sends two changes to ORD-1 a second time. Compare what the destination does with them under each guard.",
+    controls: [
+      {
+        title: "Press Start with no guard",
+        detail:
+          "Every delivery is applied. Watch the destination go shipped, then paid, then shipped again as the replay arrives.",
+      },
+      {
+        title: "Switch the guard to position, then Start",
+        detail:
+          "Changing the guard resets the run. The repeats carry the position of their first delivery, so the guard skips them.",
+      },
+    ],
+    observations: [
+      {
+        title: "Stale applies",
+        detail:
+          "With no guard the counter shows the deliveries that were applied although the destination had already applied that position. With the position guard it stays at 0 and Skipped counts the repeats.",
+      },
+      {
+        title: "What this does not show",
+        detail:
+          "Delivery is still at-least-once: the log sent the changes twice either way. The guard makes applying them twice harmless for this key. Polling and trigger lanes are not redelivered.",
+      },
+    ],
+  },
+  "ts_ms against log position": {
+    summary:
+      "Two orders end up refunded at the source. See which guard agrees when ts_ms is out of step with the order of the log.",
+    controls: [
+      {
+        title: "Press Start with the timestamp guard",
+        detail:
+          "ORD-7's refund carries an older ts_ms than its paid change; ORD-8's two changes carry the same ts_ms. A guard that needs a newer ts_ms skips the refund both times.",
+      },
+      {
+        title: "Switch the guard to position, then Start",
+        detail:
+          "The log position only goes up, so the later change in the log wins whatever ts_ms says.",
+      },
+    ],
+    observations: [
+      {
+        title: "ts_ms is a clock reading",
+        detail:
+          "It can tie or lag behind when the node that committed a change has a different clock. The log position is assigned in log order.",
+      },
+      {
+        title: "Nothing is replayed here",
+        detail:
+          "Every change is delivered once and in order, so no guard is needed for this scenario to end correctly; the timestamp guard is the one that breaks it.",
+      },
+    ],
+  },
+  "delete followed by a late update": {
+    summary:
+      "An order is deleted at the source, then an older change to it arrives again. See what keeps it deleted.",
+    controls: [
+      {
+        title: "Press Start with no guard and no markers",
+        detail:
+          "The delete removes the row, and the repeated packed change then inserts it again.",
+      },
+      {
+        title: "Try the position guard without markers",
+        detail:
+          "It still comes back: after the delete the destination holds nothing to compare the repeat against.",
+      },
+      {
+        title: "Position guard plus delete markers, then Start",
+        detail:
+          "The delete leaves a marker with its position. The older change is compared with it and skipped.",
+      },
+    ],
+    observations: [
+      {
+        title: "Why the marker matters",
+        detail:
+          "Removing the row is only safe when nothing can deliver an older change for that key afterwards. Here something does.",
+      },
+      {
+        title: "Polling",
+        detail:
+          "The polling lane never sees the delete or the repeat, so it ends empty either way.",
+      },
+    ],
+  },
 };
 
 export function getScenarioGuidance(scenarioName: string | undefined | null): ScenarioGuidance | null {

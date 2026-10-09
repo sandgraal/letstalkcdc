@@ -1,0 +1,81 @@
+{
+  "id": "replay-guard",
+  "name": "Replay against a guarded sink",
+  "description": "One order is created, paid and shipped. Later the log sends the paid change and the shipped change a second time, each with the position it had the first time.",
+  "tags": [
+    "redelivery",
+    "guard",
+    "at-least-once"
+  ],
+  "schema": [
+    {
+      "name": "id",
+      "type": "string",
+      "pk": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "pk": false
+    },
+    {
+      "name": "total",
+      "type": "number",
+      "pk": false
+    }
+  ],
+  "ops": [
+    {
+      "t": 100,
+      "op": "insert",
+      "table": "orders",
+      "pk": {
+        "id": "ORD-1"
+      },
+      "after": {
+        "status": "created",
+        "total": 40
+      }
+    },
+    {
+      "t": 200,
+      "op": "update",
+      "table": "orders",
+      "pk": {
+        "id": "ORD-1"
+      },
+      "after": {
+        "status": "paid"
+      }
+    },
+    {
+      "t": 300,
+      "op": "update",
+      "table": "orders",
+      "pk": {
+        "id": "ORD-1"
+      },
+      "after": {
+        "status": "shipped"
+      }
+    },
+    {
+      "t": 500,
+      "op": "redeliver",
+      "ref": 1,
+      "table": "orders",
+      "pk": {
+        "id": "ORD-1"
+      }
+    },
+    {
+      "t": 800,
+      "op": "redeliver",
+      "ref": 2,
+      "table": "orders",
+      "pk": {
+        "id": "ORD-1"
+      }
+    }
+  ]
+}

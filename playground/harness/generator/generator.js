@@ -174,6 +174,11 @@ for (const op of scenario.ops) {
   const wait = Math.max(0, start + op.t - Date.now());
   if (wait) await new Promise(resolve => setTimeout(resolve, wait));
 
+  if (op?.op === "redeliver") {
+    // A delivery-layer op for the simulator's log lane: nothing is written at the source.
+    continue;
+  }
+
   if (!op?.table || !op?.pk?.id) {
     console.warn("Skipping op with missing table or pk", op);
     continue;

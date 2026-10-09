@@ -15,6 +15,7 @@ export type SourceOp =
       pk: { id: string };
       after: Record<string, any>;
       txn?: { id: string; index: number; total?: number; last?: boolean };
+      ts_ms?: number;
     }
   | {
       t: number;
@@ -23,6 +24,7 @@ export type SourceOp =
       pk: { id: string };
       after: Record<string, any>;
       txn?: { id: string; index: number; total?: number; last?: boolean };
+      ts_ms?: number;
     }
   | {
       t: number;
@@ -30,6 +32,7 @@ export type SourceOp =
       table: string;
       pk: { id: string };
       txn?: { id: string; index: number; total?: number; last?: boolean };
+      ts_ms?: number;
     }
   | {
       // Delivery-layer op: the log lane delivers the record produced by

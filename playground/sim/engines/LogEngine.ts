@@ -71,7 +71,7 @@ export class LogEngine extends BaseEngine {
         pk: op.pk,
         before: null,
         after: op.after,
-        commit_ts_ms: op.t,
+        commit_ts_ms: op.ts_ms ?? op.t,
       });
     } else if (op.op === "update") {
       const cur = this.table.get(op.pk.id);
@@ -98,7 +98,7 @@ export class LogEngine extends BaseEngine {
         pk: op.pk,
         before,
         after: next,
-        commit_ts_ms: op.t,
+        commit_ts_ms: op.ts_ms ?? op.t,
       });
     } else if (op.op === "delete") {
       const cur = this.table.get(op.pk.id);
@@ -115,7 +115,7 @@ export class LogEngine extends BaseEngine {
         pk: op.pk,
         before: cur ? cur.data : null,
         after: null,
-        commit_ts_ms: op.t,
+        commit_ts_ms: op.ts_ms ?? op.t,
       });
     }
   }

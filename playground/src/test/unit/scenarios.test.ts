@@ -87,6 +87,33 @@ const EXPECTED_SCENARIOS = [
     highlight: "Highlights polling gaps and diff overlays.",
     tags: ["lag", "polling"],
   },
+  {
+    id: "replay-guard",
+    name: "Replay against a guarded sink",
+    description:
+      "One order is created, paid and shipped. Later the log sends the paid change and the shipped change a second time, each with the position it had the first time.",
+    highlight:
+      "Starts with no guard: after shipped, the destination shows paid again, and it is right at the end only because the replay finished. Switch the guard to position and press Start: both repeats are skipped. One log lane, one key; delivery is still at-least-once.",
+    tags: ["redelivery", "guard", "at-least-once"],
+  },
+  {
+    id: "ts-vs-position",
+    name: "ts_ms against log position",
+    description:
+      "Two orders each get a paid change and then a refunded change. For ORD-7 the node that committed the refund has a clock 22 ms behind, so its ts_ms is older than the paid change. For ORD-8 both changes carry the same ts_ms.",
+    highlight:
+      "Starts with a timestamp guard, which keeps the change with the newer ts_ms: both orders stay paid and one change is skipped for each. Switch the guard to position and press Start: both end refunded. Here the log delivers every change once and in order; only the guard decides.",
+    tags: ["ordering", "ts_ms", "log-position", "guard"],
+  },
+  {
+    id: "delete-then-late-update",
+    name: "Delete followed by a late update",
+    description:
+      "An order is created, packed and then deleted at the source. After the delete, the log sends the packed change a second time.",
+    highlight:
+      "Starts with no guard and no delete marker: the deleted order comes back as packed. A position guard alone does not stop it, because the destination forgot the delete. Turn on delete markers with the position guard and press Start: the order stays deleted and the marker shows where. Polling never sees the repeat.",
+    tags: ["delete", "tombstone", "redelivery", "guard"],
+  },
 ];
 
 describe("Scenario templates", () => {

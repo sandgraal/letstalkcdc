@@ -264,7 +264,7 @@ var a = class extends t {
 			pk: e.pk,
 			before: null,
 			after: e.after,
-			commit_ts_ms: e.t
+			commit_ts_ms: e.ts_ms ?? e.t
 		});
 		else if (e.op === "update") {
 			let n = this.table.get(e.pk.id), s = n ? { ...n.data } : null, c = n ? {
@@ -289,7 +289,7 @@ var a = class extends t {
 				pk: e.pk,
 				before: s,
 				after: c,
-				commit_ts_ms: e.t
+				commit_ts_ms: e.ts_ms ?? e.t
 			});
 		} else if (e.op === "delete") {
 			let n = this.table.get(e.pk.id);
@@ -304,7 +304,7 @@ var a = class extends t {
 				pk: e.pk,
 				before: n ? n.data : null,
 				after: null,
-				commit_ts_ms: e.t
+				commit_ts_ms: e.ts_ms ?? e.t
 			});
 		}
 	}

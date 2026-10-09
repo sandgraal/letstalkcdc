@@ -236,6 +236,8 @@ export function createLogBasedAdapter(): ModeAdapter {
         return;
       }
       const commitTs = op.t;
+      // ts_ms stamped on the event: the committing node's clock, which may differ from t.
+      const eventTs = op.ts_ms ?? op.t;
       const key = makeRowKey(op.table, op.pk.id);
       ensureSchemaVersion(op.table);
       if (op.op === "insert") {
@@ -249,7 +251,7 @@ export function createLogBasedAdapter(): ModeAdapter {
         });
         walIndexByOp.set(opIndex, wal.length);
         wal.push(
-          buildRowEvent(op, "INSERT", null, cloneRowPayload(op.after), commitTs),
+          buildRowEvent(op, "INSERT", null, cloneRowPayload(op.after), eventTs),
         );
       } else if (op.op === "update") {
         const current = rows.get(key);
@@ -265,7 +267,7 @@ export function createLogBasedAdapter(): ModeAdapter {
         });
         walIndexByOp.set(opIndex, wal.length);
         wal.push(
-          buildRowEvent(op, "UPDATE", before, cloneRowPayload(merged), commitTs),
+          buildRowEvent(op, "UPDATE", before, cloneRowPayload(merged), eventTs),
         );
       } else if (op.op === "delete") {
         const current = rows.get(key);
@@ -279,7 +281,7 @@ export function createLogBasedAdapter(): ModeAdapter {
         });
         walIndexByOp.set(opIndex, wal.length);
         wal.push(
-          buildRowEvent(op, "DELETE", current ? cloneRowPayload(current.data) : null, null, commitTs),
+          buildRowEvent(op, "DELETE", current ? cloneRowPayload(current.data) : null, null, eventTs),
         );
       }
     },

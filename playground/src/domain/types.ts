@@ -103,6 +103,7 @@ export type SourceOp =
       pk: { id: string };
       after: Record<string, unknown>;
       txn?: TransactionMeta;
+      ts_ms?: number;
     }
   | {
       t: number;
@@ -111,6 +112,12 @@ export type SourceOp =
       pk: { id: string };
       after: Record<string, unknown>;
       txn?: TransactionMeta;
+      /**
+       * The ts_ms stamped on the change event when the committing node's clock
+       * differs from `t` (clock skew). `t` still decides when the write happens.
+       * Only the log lane honours it.
+       */
+      ts_ms?: number;
     }
   | {
       t: number;
@@ -118,6 +125,7 @@ export type SourceOp =
       table: string;
       pk: { id: string };
       txn?: TransactionMeta;
+      ts_ms?: number;
     }
   | {
       /**

@@ -163,6 +163,9 @@ The comparator mount (`#simShellRoot`) streams the Polling/Trigger/Log engines i
 | Orders + Items Transactions | Teaching multi-table commit semantics                        | Toggle apply-on-commit to keep orders/items destinations consistent      |
 | CRUD Basic                  | Teaching delete visibility basics                            | Minimal ops for first-time comparator demos                              |
 | Burst Updates               | Stressing lag/ordering behaviour under rapid updates         | Highlights polling gaps and diff overlays                                |
+| Replay against a guarded sink | Showing a consumer restart that redelivers changes         | Redeliver keeps the original log position; compare no guard with a position guard |
+| ts_ms against log position  | Showing why ordering uses log position, not ts_ms            | A skewed clock and a tied ts_ms fool a timestamp guard; a position guard is right |
+| Delete followed by a late update | Showing why a delete needs a marker                     | An older change arrives after a delete; only guard plus delete marker keeps the row deleted |
 
 ## Hacktoberfest 2025
 
