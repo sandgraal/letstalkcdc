@@ -40,10 +40,10 @@ Nothing was fixed in this change: it reports.
 | Pages with a heading problem                    |                 12 |                12 | 0        |
 | Articles more than 30 days behind git           |           21 of 30 |          18 of 45 | see 3.8  |
 
-Three things moved the most: Open Graph and Twitter tags now come from the
-layout, the Article and Breadcrumb JSON-LD is generated for module pages, and
-the internal link graph has a floor of 3 content links for every indexable
-page except `/` and `/privacy/`. One thing did not move at all: the 12 pages
+Three things moved the most: Open Graph and Twitter tags are present on every
+page except two, Article JSON-LD is present on 50 pages and `BreadcrumbList`
+on 39 (was 3), and the internal link graph has a floor of 3 content
+links for every indexable page except `/` and `/privacy/`. One thing did not move at all: the 12 pages
 with heading problems are the same 12 pages (see 3.1).
 
 ## 2. How far the old numbers can be reproduced
@@ -134,7 +134,7 @@ restrictive directive wins, but the page is exactly the thin per-user page that
 F-04 asked to keep out, and it is out of the sitemap only because of
 `eleventyExcludeFromSitemap`. A first-match reader (or a validator) sees
 "index". The earlier audit's per-page robots figure did not catch this because
-it read only the first tag; the script now joins all of them.
+it may have read only the first tag; the script now joins all of them.
 
 Proposed fix: have the layout emit one robots meta and let the page override
 it, as `/newsletter/` already does (it has a single `noindex,follow`). S,
@@ -228,9 +228,10 @@ file in `_site/`; the host-root `robots.txt` that crawlers actually fetch is a
 separate, live question (F-02) and is **not measured here**.
 
 Caveat on `lastmod`: 30 of 55 entries share `2026-10-09`. That is not the build
-date (the template reads `dateModified`); it is the date 29 Articles were
-last edited, i.e. today's module and metadata work. It is honest to the
-front matter but still low-information on the day many pages changed at once.
+date (the template reads `dateModified`). Counted from the built site, 29 of
+those 30 pages carry Article or TechArticle JSON-LD and the other is
+`/privacy/`, which carries none. It is honest to the front matter but still
+low-information when many pages share one date.
 
 Proposed fix: add `datePublished` to `/versions/`, S (`scribe`). Nothing else.
 

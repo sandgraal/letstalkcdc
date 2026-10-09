@@ -298,6 +298,43 @@ describe("seo-audit on a fixture site with known defects", () => {
   });
 });
 
+describe("seo-audit parsing hardening", () => {
+  let dir;
+  beforeAll(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), "ltcdc-seo-audit-hard-"));
+    writeFixture(dir);
+  });
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("treats a CDATA-wrapped feed description and link as present text", () => {
+    writeFileSync(
+      path.join(dir, "feed.xml"),
+      `<rss><channel><item><title>a</title><link><![CDATA[${HOST}/a/]]></link><description><![CDATA[<p>Has text</p>]]></description><pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate></item></channel></rss>`,
+    );
+    const r = auditSite(dir, { host: HOST, git: false });
+    expect(r.metrics["feed.itemsWithoutDescription"]).toBe(0);
+    expect(r.pages.find((p) => p.url === "/a/").inFeed).toBe(true);
+  });
+
+  it("does not throw on a malformed percent-escape in a fragment", () => {
+    const file = path.join(dir, "c/index.html");
+    writeFileSync(
+      file,
+      readFileSync(file, "utf8").replace(
+        "<h1>C</h1>",
+        '<h1>C</h1><a href="#%E0%A4%A">bad</a><a href="/guide/b/#%E0%A4%A">bad</a>',
+      ),
+    );
+    let r;
+    expect(() => {
+      r = auditSite(dir, { host: HOST, git: false });
+    }).not.toThrow();
+    expect(r.details["links.brokenFragments"]).toEqual(
+      expect.arrayContaining(["/c/ -> #%E0%A4%A", "/c/ -> /b/#%E0%A4%A"]),
+    );
+  });
+});
+
 const SITE_DIR = path.join(ROOT, "_site");
 describe.skipIf(!existsSync(path.join(SITE_DIR, "index.html")))(
   "seo-audit on the real build in _site/",

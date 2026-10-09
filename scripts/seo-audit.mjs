@@ -188,6 +188,16 @@ function lastCommitDate(repo, relPath, rev) {
   }
 }
 
+// A malformed escape in a fragment (e.g. "%E0%A4%A") makes decodeURIComponent
+// throw; fall back to the raw text so one bad link cannot abort the audit.
+function decodeFragment(fragment) {
+  try {
+    return decodeURIComponent(fragment);
+  } catch {
+    return fragment;
+  }
+}
+
 /**
  * Run every measurement.
  * @param {string} siteDir built site directory
@@ -620,8 +630,15 @@ export function auditSite(siteDir, options = {}) {
   const items = [...feed.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(
     (x) => x[1],
   );
-  const tag = (s, t) =>
-    (s.match(new RegExp(`<${t}>([^<]*)</${t}>`)) || [])[1] ?? "";
+  // Plain text or a CDATA-wrapped value; a CDATA description is not empty.
+  const tag = (s, t) => {
+    const hit = s.match(
+      new RegExp(
+        `<${t}>(?:\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>\\s*|([^<]*))</${t}>`,
+      ),
+    );
+    return hit ? (hit[1] ?? hit[2] ?? "") : "";
+  };
   const itemLinks = items.map((i) => tag(i, "link"));
   const realUrls = new Set(pages.map((p) => `${host}${p.urlPath}`));
   m("feed.items", items.length);
@@ -668,7 +685,7 @@ export function auditSite(siteDir, options = {}) {
         if (
           l.href.startsWith("#") &&
           l.href.length > 1 &&
-          !p.ids.has(decodeURIComponent(l.href.slice(1)))
+          !p.ids.has(decodeFragment(l.href.slice(1)))
         )
           brokenFragments.push(`${p.urlPath} -> ${l.href}`);
         continue;
@@ -704,7 +721,7 @@ export function auditSite(siteDir, options = {}) {
       });
       if (u.hash.length > 1) {
         const tp = byPath.get(target);
-        if (tp && !tp.ids.has(decodeURIComponent(u.hash.slice(1))))
+        if (tp && !tp.ids.has(decodeFragment(u.hash.slice(1))))
           brokenFragments.push(`${p.urlPath} -> ${rel}${u.hash}`);
       }
     }
