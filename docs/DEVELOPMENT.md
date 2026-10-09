@@ -183,7 +183,13 @@ only, and this badge states them (a unit test fails if it drifts from
 A floor passes if the best of the three runs reaches it (`aggregation` in
 `lighthouse-ci.config.json`, as Lighthouse CI did), because a run can be hurt by
 the machine instead of the page. The results table prints the median and every
-run. Runs that error or lose their LCP are retried, not counted.
+run. A run that errors or loses its LCP (Lighthouse logs `NO_LCP` when Chrome
+paints late) is invalid: it is retried up to 3 times with a short backoff and
+never counted. Floors are then asserted on the valid runs, with a warning naming
+the URL and how many runs were invalid. A URL with no valid run, or `/intro/`
+(which has `error` floors) with fewer than 2, ends the job with exit 2 rather
+than a pass or a score failure (`minValidRuns` and `minValidRunsForError` in the
+config).
 
 `linkcheck.yml` builds the site and crawls it with lychee.
 `deploy.yml` publishes to GitHub Pages. The playground has its own workflows
