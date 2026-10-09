@@ -48,8 +48,7 @@ git fetch origin && git log --oneline eb7f95e..origin/main
 grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md
 ```
 
-At `eb7f95e` the second command prints 22: 21 open boxes plus one line of
-instructions near the top of the plan (135 boxes are ticked).
+At `eb7f95e` the command prints 21 (open boxes; `grep -c '^ *- \[x\]'` prints 134 ticked).
 
 ## 2. What the site is, and what it is made of
 
@@ -133,6 +132,126 @@ which is configured in repository settings and has no file):
 | `playground-generated-bundles.yml` | same paths                                                                                 | Committed bundles match a fresh build                                                                                                                                                                      |
 | `playground-harness-nightly.yml`   | daily 07:00 UTC, manual                                                                    | Harness smoke test                                                                                                                                                                                         |
 | CodeQL (default setup)             | `gh api repos/sandgraal/letstalkcdc/code-scanning/default-setup` says `configured`, weekly | Code scanning on `actions` and JavaScript/TypeScript                                                                                                                                                       |
+
+## 3. Evidence kit
+
+Every number below was measured on 2026-10-09 at `eb7f95e` on one macOS
+machine (Node 24.19.0, Chrome from the system, Playwright browsers cached).
+Lab numbers vary by machine; treat the Lighthouse and timing rows as
+indicative. Runs happen in this order: install, build (production variables),
+publish the playground, then the checks.
+
+### Setup
+
+```bash
+npm ci
+```
+
+```bash
+ELEVENTY_PATH_PREFIX=/letstalkcdc SITE_HOST=https://sandgraal.github.io npm run build
+```
+
+```bash
+scripts/publish-playground.sh
+```
+
+The deploy workflow runs the second and third steps, so this is what ships.
+CI's build artifact skips the third step, which is why some CI numbers differ
+(see the e2e row).
+
+### Re-runnable measurements
+
+| Measure                  | Command                                                                                | Value on 2026-10-09                                                                                                                                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit tests               | `npm test`                                                                             | 1,704 passed in 54 files, about 17 s                                                                                                                                                                                                                          |
+| Lint                     | `npm run lint`                                                                         | exit 0, no output                                                                                                                                                                                                                                             |
+| E2E (as CI runs it)      | `npx playwright test --project=chromium --reporter=line`                               | 358 tests listed with no playground in `_site/`: 357 passed, 1 failed (below). With the playground published: 360 listed, 2 more fail                                                                                                                         |
+| axe contrast, all pages  | included in the e2e run above                                                          | Every sitemap page plus `/dashboard/`, `/styleguide/`, `/mermaid-sandbox/`, `/newsletter/`, both themes: passes. `/playground/` fails in both themes (section 6)                                                                                              |
+| pa11y-ci                 | `npm run a11y`                                                                         | 8 of 8 URLs, 0 errors                                                                                                                                                                                                                                         |
+| pa11y wrapper            | `npm run smoke:a11y`                                                                   | 6 pages pass                                                                                                                                                                                                                                                  |
+| Smoke                    | `npm run smoke:core`                                                                   | Both stages pass (canvases, fonts, edit links, errata, glossary, methodology, privacy; visual fingerprints)                                                                                                                                                   |
+| Size budgets             | `npm run smoke:perf`                                                                   | All pass. CSS 98.3 KB of 200; app JS 2.3 KB of 80; `/intro/` HTML 101.3 KB of 300; page scripts 1.0 to 12.6 KB of 120                                                                                                                                         |
+| Build time               | `time npm run build`                                                                   | 3.4 to 4.2 s warm (9.2 s on the first run); Eleventy reports "Copied 109 Wrote 90 files in 0.4 seconds"                                                                                                                                                       |
+| Production CSS hash      | `NODE_ENV=production npm run build:css && shasum -a 256 src/assets/css/styles.min.css` | `83943ab39baf798fdd5cfd1dc726035d030b0bd3d0dc4dc6bb322934d2d060b6`, equal to `CLAUDE.md` and to `_site/assets/css/styles.css` after the final minify                                                                                                          |
+| Output size              | `du -sh _site`                                                                         | 5.4 MB, 201 files (without the playground)                                                                                                                                                                                                                    |
+| `npm audit` (root)       | `npm audit` and `npm audit --omit=dev`                                                 | 9 findings (4 moderate, 5 high); 0 with `--omit=dev`                                                                                                                                                                                                          |
+| `npm audit` (playground) | `cd playground && npm audit --package-lock-only`                                       | 5 high; 0 with `--omit=dev`                                                                                                                                                                                                                                   |
+| Open Dependabot alerts   | `gh api "repos/sandgraal/letstalkcdc/dependabot/alerts?state=open"`                    | 0                                                                                                                                                                                                                                                             |
+| Link check (lychee)      | CI job `Link check`                                                                    | Green on all 18 recent `main` runs. **Not run locally**: lychee is not installed here. To run it, build with the setup above, then `lychee --no-progress --exclude-loopback '_site/**/*.html'` (expect external 403/429 noise; CI remaps the site's own URLs) |
+| Live deploy              | `npm run verify:deployment`                                                            | Configured site: 8 pass, 2 warnings (`x-content-type-options`, `x-frame-options` missing). The "host root" half returns 404 on 7 paths by design for a project site, so the command **exits non-zero**                                                        |
+
+The one e2e failure: `layout.spec.js` "`/intro/` accumulates no meaningful
+layout shift" failed in the full parallel run and passed 3 of 3 when re-run on
+its own. An earlier full run at `2eb0f29` passed it. Treat it as a load-sensitive
+flake candidate; the cause is **unverified**.
+
+### Bundles and page weight
+
+| Item                            |                Raw | Gzip (`gzip -9`) | Note                                                                              |
+| ------------------------------- | -----------------: | ---------------: | --------------------------------------------------------------------------------- |
+| `/intro/` HTML                  |          103,717 B |         23,214 B | 1,041 DOM elements in Lighthouse                                                  |
+| `assets/css/styles.css`         |          100,648 B |         18,590 B | The only shipped site stylesheet                                                  |
+| Vite `app.*.js`                 |           58,174 B |    about 19.6 KB | Hash changes with content; `dist/js/` holds 3 files                               |
+| Fonts                           |    8 files, 152 KB |              n/a | IBM Plex, self-hosted woff2                                                       |
+| `/intro/` as Lighthouse sees it | 381 KB transferred |              n/a | 33 requests; includes Chart.js (68 KB) from jsdelivr, `search-index.json` (41 KB) |
+
+### SEO audit headline (`npm run audit:seo`)
+
+Run after publishing the playground; add `-- --verbose` for the pages behind
+each count. It reads only and exits 0 whatever it finds.
+
+| Measure                                     |        Value | Measure                                       |                       Value |
+| ------------------------------------------- | -----------: | --------------------------------------------- | --------------------------: |
+| HTML files / content pages / redirect stubs | 87 / 60 / 26 | Sitemap entries / without `lastmod`           |                      56 / 2 |
+| Titles over 60 characters / longest         |       2 / 65 | Feed items / without description              |                      40 / 0 |
+| Descriptions over 160 / duplicate groups    |        0 / 0 | Internal links / broken / broken fragments    |               2,606 / 0 / 0 |
+| Pages with no `<h1>` / with level skips     |       2 / 11 | Pages with fewer than 3 content inbound links |                           2 |
+| Pages without `og:image` / Twitter card     |        2 / 2 | Pages unreachable via content links           |                           4 |
+| Distinct `og:image` values                  |            1 | Content pages linking into the glossary       |                          28 |
+| Article JSON-LD pages / missing `image`     |       51 / 0 | Articles more than 30 days behind git         | 17 of 46 (max lag 245 days) |
+| Pages with `BreadcrumbList`                 |           40 | JSON-LD parse failures                        |                           0 |
+
+### Lighthouse (`scripts/lighthouse-ci.mjs`)
+
+The runner needs a root-prefixed build and Chrome; it audits five URLs three
+times each with mobile emulation. Valid runs only are counted.
+
+```bash
+npm run build:lhci
+```
+
+```bash
+npm run lighthouse
+```
+
+| URL              | Performance | Accessibility | Best practices |  SEO | Valid runs |
+| ---------------- | ----------: | ------------: | -------------: | ---: | ---------: |
+| `/`              |        0.96 |          1.00 |           1.00 | 1.00 |     2 of 3 |
+| `/intro/`        |        0.91 |          1.00 |           1.00 | 1.00 |     3 of 3 |
+| `/overview/`     |        0.94 |          0.96 |           1.00 | 1.00 |     1 of 3 |
+| `/quickstarts/`  |        0.95 |          1.00 |           1.00 | 1.00 |     2 of 3 |
+| `/snapshotting/` |        0.93 |          1.00 |           1.00 | 1.00 |     3 of 3 |
+
+Gate result: "22 assertions over 5 URLs: 0 errors, 0 warnings". Floors are
+0.9 for every category at `warn` level; `/intro/` has `error` floors of 0.82
+(performance) and 0.93 (accessibility) in `lighthouse-ci.config.json`.
+Other figures: `/intro/` LCP 3.16 s, FCP 2.03 s, TBT 13 to 32 ms, CLS 0.
+`/overview/` transfers 1.19 MB (Mermaid 936 KB). The runner also reports an
+"agentic-browsing" category (0.50 on `/snapshotting/` and `/intro/`); its
+meaning was not investigated, so **unverified**. Lab only; there is no field
+(real-user) data. Invalid runs come from `NO_LCP` and `NO_FCP` (section 7).
+
+### Baseline documents: what each measures, and what it does not
+
+| Document                                                                         | Measures                                                                                                                             | Does NOT measure                                                                                                                                            |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`seo-audit-2026-10.md`](seo-audit-2026-10.md) (at `f462635`)                    | Built HTML: titles, descriptions, canonicals, JSON-LD, links, sitemap, feed; 10 key pages by reading; keyword targets are inferences | Traffic, rankings, indexing, social previews, live site vs build, Core Web Vitals, Google rules                                                             |
+| [`seo-baseline-2026-10-after.md`](seo-baseline-2026-10-after.md) (at `a6bb3c6`)  | The same audit re-run before/after the Phase 16 work, with `npm run audit:seo`                                                       | Search Console, GoatCounter, Lighthouse for key pages, the live deployment, title versus H1 agreement, rich-result validity                                 |
+| [`content-gap-plan-2026-10.md`](content-gap-plan-2026-10.md)                     | Coverage of the site against what the gap plan guessed readers search; assistant intents counted                                     | Search volume or ranking (none was available); the feedback table (not read). Its assistant counts (23 intents, 229 triggers) are out of date: 45 / 648 now |
+| [`playground-demos-inventory-2026-10.md`](playground-demos-inventory-2026-10.md) | Which scenario could back which lesson; defects found by reading source and replaying in Node                                        | A browser run; the `ops` replay skips the React layer; several defects listed there were fixed afterwards (#384, #393)                                      |
+
+Compare to the baselines with the same command: the seo-audit baseline recorded
+74 HTML files and 47 content pages; this brief's run has 87 and 60.
 
 ## 4. Content accuracy audit guide
 
