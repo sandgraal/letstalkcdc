@@ -1215,6 +1215,100 @@ intents:
         anchor: "#failover"
         preview: Failover slots by Postgres version, with caveats.
 
+  - id: mysql_binlog_purged
+    triggers:
+      [
+        "gtid",
+        "server_id",
+        "server.id",
+        "server id",
+        "binlog purged",
+        "binlog was purged",
+        "binlog expire",
+        "binlog_expire_logs_seconds",
+        "expire_logs_days",
+        "binlog retention",
+        "binary logs purged",
+        "purged binary logs",
+        "binlog position",
+        "binlog file and position",
+        "gtid_purged",
+        "gtid purged",
+        "binlog_row_image",
+        "database.server.id",
+        "snapshot.mode when_needed",
+        "mysql connector fails",
+      ]
+    modules: []
+    answer: >
+      MySQL keeps nothing for a consumer that is not connected: binlog files
+      are purged after binlog_expire_logs_seconds (default 30 days), so a
+      Debezium connector stopped longer than that cannot resume. It fails
+      with an error saying a new snapshot is required (snapshot.mode
+      when_needed snapshots automatically). The way back is a re-snapshot
+      into an idempotent sink, then a reconcile for rows deleted during the
+      gap; do not move the connector past the gap. Use binlog_format ROW,
+      binlog_row_image FULL, and a unique database.server.id. Compare log
+      positions as (file number, pos, row), within one server's lineage.
+    links:
+      - label: MySQL binlog retention and purge
+        url: /sql-server-mysql-cdc/
+        anchor: "#mysql"
+        preview: Settings, retention, the purge error and recovery.
+      - label: MySQL triage and runbook
+        url: /sql-server-mysql-cdc/
+        anchor: "#mysql-runbook"
+        preview: Symptom, check and fix for MySQL CDC.
+      - label: Snapshotting
+        url: /snapshotting/
+        preview: The re-snapshot that follows a lost position.
+
+  - id: sqlserver_cdc_jobs
+    triggers:
+      [
+        "sql server cdc",
+        "sql server change data capture",
+        "sp_cdc_change_job",
+        "sp_cdc_enable_table",
+        "sp_cdc_help_jobs",
+        "cdc cleanup job",
+        "cdc capture job",
+        "capture instance",
+        "capture instances",
+        "commit_lsn",
+        "change_lsn",
+        "event_serial_no",
+        "fn_cdc_get_min_lsn",
+        "sql server agent",
+        "log_reuse_wait",
+        "transaction log not truncating",
+        "mssql cdc",
+      ]
+    modules: []
+    answer: >
+      SQL Server CDC has a capture job that fills change tables from the
+      transaction log and a cleanup job that deletes old rows (default
+      retention 3 days). Debezium reads the change tables, so a connector
+      down longer than the retention can find its stored commit LSN below
+      the capture instance's low endpoint and needs a re-snapshot. A
+      stopped capture job stops the log from truncating. Order events by
+      the tuple (commit_lsn, change_lsn, event_serial_no); a schema change
+      needs a second capture instance. Raise retention with
+      sys.sp_cdc_change_job before an outage, not after.
+    links:
+      - label: SQL Server capture, cleanup and the validity interval
+        url: /sql-server-mysql-cdc/
+        anchor: "#sqlserver"
+        preview: Job defaults, retention, schema changes and availability groups.
+      - label: SQL Server triage and runbook
+        url: /sql-server-mysql-cdc/
+        anchor: "#sqlserver-runbook"
+        preview: Symptom, check and fix for SQL Server CDC.
+      - label: The position guard
+        url: /sql-server-mysql-cdc/
+        anchor: "#guard"
+        preview: Building the log position for an idempotent sink.
+
   - id: start_here
     triggers:
       [

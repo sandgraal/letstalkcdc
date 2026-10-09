@@ -121,6 +121,10 @@ GO</code></pre>
     <p class="muted">
       Disabling CDC removes the change tables and cleanup jobs, so take a fresh snapshot if you need to re-enable later.
     </p>
+    <p class="muted">
+      The cleanup job keeps change rows for 3 days by default, so a connector that is down longer loses its position.
+      See <a href="{{ '/sql-server-mysql-cdc/' | url }}">SQL Server &amp; MySQL CDC specifics</a> for retention, the capture job and the runbook.
+    </p>
   </section>
 
   <section class="box">

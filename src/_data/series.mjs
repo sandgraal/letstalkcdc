@@ -118,6 +118,15 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "sql-server-mysql-cdc",
+    title: "SQL Server & MySQL CDC Specifics",
+    description:
+      "Positions, retention and what breaks for Debezium on MySQL and SQL Server: binlog purge, GTIDs, CDC cleanup jobs, LSNs, triage queries and runbooks.",
+    href: "sql-server-mysql-cdc/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Intermediate",
+  },
+  {
     key: "non-relational",
     title: "CDC Beyond Relational Databases",
     description:

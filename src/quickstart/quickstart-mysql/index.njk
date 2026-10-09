@@ -103,6 +103,10 @@ FROM target_customers;</code></pre>
     <p>
       Stop the connector; keep binlogs until you are sure downstream systems are consistent. If you must prune logs, confirm all consumers are caught up first.
     </p>
+    <p class="muted">
+      MySQL purges binlogs on a timer, not when a connector has read them, and 8.4 removed <code>SHOW MASTER STATUS</code> (use <code>SHOW BINARY LOG STATUS</code>).
+      See <a href="{{ '/sql-server-mysql-cdc/' | url }}">SQL Server &amp; MySQL CDC specifics</a> for retention, the purge error and recovery.
+    </p>
   </section>
 
   <section class="box">
