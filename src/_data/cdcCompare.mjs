@@ -107,7 +107,7 @@ export const platforms = [
   {
     name: "Airbyte",
     slug: "airbyte",
-    deployment: "Self-hosted (OSS) or Airbyte Cloud",
+    deployment: "Self-hosted (public code, ELv2) or Airbyte Cloud",
     license: "Source-available (Elastic License 2.0) + managed cloud",
     method: "Log-based CDC (Debezium-embedded) + connectors",
     delivery: "At-least-once; the sync writes to a landing table deduped on PK",
@@ -115,11 +115,11 @@ export const platforms = [
     targets: "Warehouses, lakes, and many destinations",
     schema: "Schema propagation with configurable change handling",
     ops: "Medium self-hosted; low on Cloud",
-    cost: "Free OSS (self-run) or credit-based Cloud",
+    cost: "Free to self-run (you pay for infrastructure) or credit-based Cloud",
     bestFor:
       "Broad-coverage ELT where connector breadth matters more than sub-second latency.",
     strengths: [
-      "Huge connector catalog; open-source option you can self-host",
+      "Huge connector catalog; public code you can self-host under the Elastic License 2.0",
       "Log-based CDC for the major databases via embedded Debezium",
     ],
     tradeoffs: [

@@ -172,6 +172,9 @@ describe("/tooling/ and /compare/ have two jobs", () => {
     expect(by["aws-dms"].tradeoffs.join(" ")).not.toMatch(/AWS targets only/);
     expect(by.airbyte.license).toMatch(/Elastic License 2\.0/);
     expect(by.airbyte.license).not.toMatch(/^Open source/);
+    // Airbyte is source-available (ELv2), not open source: no OSS wording.
+    expect(JSON.stringify(by.airbyte)).not.toMatch(/\bOSS\b|open[- ]source/i);
+    expect(tooling.body).not.toMatch(/Airbyte \(OSS/);
     expect(by.debezium.delivery).toMatch(/^At-least-once by default/);
     expect(by.debezium.delivery).toMatch(/Kafka Connect exactly-once/);
   });
