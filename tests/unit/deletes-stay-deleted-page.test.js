@@ -442,7 +442,10 @@ describe("inbound links and the assistant", () => {
       "right to be forgotten with delta vacuum and time travel retention",
       "erasure_stores",
     ],
-    ["how long does time travel retention keep deleted data", "erasure_stores"],
+    [
+      "how long does delta time travel retention keep deleted data",
+      "erasure_stores",
+    ],
     ["do I need to expire snapshots for gdpr delete", "erasure_stores"],
   ])("%j reaches %s", (query, expected) => {
     expect(id(query)).toBe(expected);
@@ -484,19 +487,13 @@ describe("quiz", () => {
 });
 
 /**
- * Execute the SQL printed on the page. `node:sqlite` exists from Node 22.13
- * (22.5 behind a flag); the project's CI runs Node 20, where this block is
- * skipped. It is run by `npm test` on newer Nodes, including the author's.
+ * Execute the SQL printed on the page. `node:sqlite` is available without a
+ * flag from Node 22.13, which is the floor in package.json "engines", so this
+ * block always runs.
  */
-const sqlite = (() => {
-  try {
-    return require("node:sqlite");
-  } catch {
-    return null;
-  }
-})();
+const sqlite = require("node:sqlite");
 
-describe.skipIf(!sqlite)("the SQL on the page, executed against SQLite", () => {
+describe("the SQL on the page, executed against SQLite", () => {
   const schemaBlock = codeBlocks.find((b) => /CREATE TABLE customers/.test(b));
   const purgeBlock = codeBlocks.find((b) =>
     /Physical delete \(purge\)/.test(b),

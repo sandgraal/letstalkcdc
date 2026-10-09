@@ -134,7 +134,7 @@ head_extra: |
             <strong>The CDC Solution:</strong> Stream row-level changes into a
             lightweight transformer that denormalizes documents and ships them
             to Elasticsearch/OpenSearch/Solr. <em>Upsert</em> on create/update;
-            <em>delete</em> on tombstones. Use a deterministic
+            <em>delete</em> on the delete event. Use a deterministic
             <code>doc_id</code> to make replays idempotent.
           </p>
           <div class="seq" role="group" aria-label="Search indexing flow">
@@ -144,7 +144,7 @@ head_extra: |
             <div class="seq-cell">Row-level change events</div>
             <div class="seq-cell">Join/denormalize into documents</div>
             <div class="seq-cell">Upsert by <code>doc_id</code></div>
-            <div class="seq-cell">Tombstones</div>
+            <div class="seq-cell">Delete events</div>
             <div class="seq-cell">Mark as delete</div>
             <div class="seq-cell">Delete from index</div>
           </div>

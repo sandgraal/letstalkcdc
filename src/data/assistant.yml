@@ -550,7 +550,7 @@ intents:
     triggers:
       [
         "delete.retention.ms",
-        "retention.ms",
+        "delete.retention",
         "delete retention",
         "consumer missed",
         "tombstone retention",
@@ -597,7 +597,8 @@ intents:
       [
         "delta vacuum",
         "vacuum retention",
-        "time travel retention",
+        "delta time travel retention",
+        "time travel retention and delete",
         "deleted data",
         "expire snapshot",
         "expire snapshots",
@@ -618,7 +619,9 @@ intents:
       The delete event changes the current table only. Other copies live on
       under their own settings. Delta keeps old versions for time travel (30
       days by default) and removes data files only when VACUUM runs, for files
-      unreferenced longer than 7 days by default. Iceberg keeps old snapshots
+      unreferenced longer than 7 days by default; with deletion vectors enabled
+      a delete does not rewrite the file until REORG TABLE APPLY PURGE does.
+      Check your version. Iceberg keeps old snapshots
       until expire snapshots runs. BigQuery has a 7 day time travel window by
       default and a 7 day fail-safe for the operations it lists. Snowflake has
       1 day of time travel by default (up to 90 on Enterprise) and a 7 day

@@ -347,10 +347,10 @@ SELECT id, email FROM customers WHERE NOT is_deleted;</code></pre>
         </tr>
         <tr>
           <th scope="row">Delta Lake table history</th>
-          <td><code>DELETE</code> removes the data from the latest version only; it stays in physical storage until old versions are vacuumed.</td>
+          <td><code>DELETE</code> removes the data from the latest version only. Without deletion vectors the old files stay until <code>VACUUM</code>. With deletion vectors enabled, <code>DELETE</code> does not rewrite the Parquet file, so the deleted values stay in the live file until <code>REORG TABLE ... APPLY (PURGE)</code> rewrites it. After that, <code>VACUUM</code> removes the old files once they are past <code>delta.deletedFileRetentionDuration</code>.</td>
           <td>
-            <code>VACUUM</code> is never automatic; it removes unreferenced
-            files older than <code>delta.deletedFileRetentionDuration</code>
+            <code>VACUUM</code> is not triggered automatically in open-source
+            Delta; it removes unreferenced files older than <code>delta.deletedFileRetentionDuration</code>
             (default 7 days). Time travel is limited by
             <code>delta.logRetentionDuration</code> (default 30 days) <em>and</em>
             by whether the data files still exist. Change data feed files in
@@ -371,7 +371,7 @@ SELECT id, email FROM customers WHERE NOT is_deleted;</code></pre>
         </tr>
         <tr>
           <th scope="row">Iceberg delete files (format v2 and later)</th>
-          <td>A row-level delete can be a position delete or equality delete file. The data files are immutable and are not rewritten.</td>
+          <td>With merge-on-read (format v2 and later) a row-level delete writes a delete file (position or equality) and does not rewrite the data file. The default copy-on-write rewrites the affected data files. Format v3 uses deletion vectors for position deletes.</td>
           <td>
             <code>write.delete.mode</code>, <code>write.update.mode</code> and
             <code>write.merge.mode</code> default to <code>copy-on-write</code>;
@@ -387,10 +387,11 @@ SELECT id, email FROM customers WHERE NOT is_deleted;</code></pre>
             BigQuery keeps deletes for a 2-day retention window to handle
             out-of-order deletes. If CDC operations fail, or the reservation
             has too little capacity, the documentation warns that you might
-            unintentionally retain data you meant to delete. Then time travel
-            (7 days by default, 2 to 7 configurable) and a fixed 7-day
-            fail-safe for the operations the page lists (table or partition
-            deletion and replacement).
+            unintentionally retain data you meant to delete. After that, time
+            travel applies (7 days by default, 2 to 7 configurable). BigQuery
+            documents a fixed 7-day fail-safe for table deletion or
+            replacement and partition deletion. It does not say whether
+            row-level CDC deletes enter fail-safe.
           </td>
         </tr>
         <tr>
@@ -444,7 +445,15 @@ SELECT id, email FROM customers WHERE NOT is_deleted;</code></pre>
     <p>
       The 30-day figure is the time-travel history. The bytes leave storage on
       a different clock: the 7-day deleted-file retention, and only when
-      someone runs <code>VACUUM</code>. Delta recommends keeping the retention
+      someone runs <code>VACUUM</code>. With deletion vectors enabled there is
+      a step before that: <code>DELETE</code> only marks the rows, and
+      <code>REORG TABLE ... APPLY (PURGE)</code> is what rewrites the files that
+      hold them (<code>OPTIMIZE</code> and other DML have no strict guarantee
+      of doing so). The purge creates a new table version, and the time it
+      completes is the timestamp the <code>VACUUM</code> retention threshold
+      counts from. I did not verify the default of the
+      <code>delta.enableDeletionVectors</code> table property for your version;
+      check it. Delta recommends keeping the retention
       interval at least 7 days because shorter intervals can break concurrent
       readers or writers, and has a safety check that blocks shorter intervals
       unless you turn it off. So you cannot speed up erasure without taking a
@@ -551,7 +560,11 @@ WHERE is_deleted AND source_lsn &lt; :purge_below;</code></pre>
         <strong>Article 19</strong> requires the controller to communicate the
         erasure to each recipient to whom the data were disclosed, &ldquo;unless
         this proves impossible or involves disproportionate effort&rdquo;.
-        Every downstream consumer of your topics is a candidate recipient.
+        Downstream systems and other organisations that received the data
+        may be recipients; whether a given consumer counts is for your lawyer.
+        <strong>Article 17(2)</strong> adds that a controller that made the data
+        public and must erase it has to take reasonable steps to inform other
+        controllers processing it.
       </li>
       <li>
         <strong>Article 12(3)</strong> requires the controller to provide
@@ -576,8 +589,10 @@ WHERE is_deleted AND source_lsn &lt; :purge_below;</code></pre>
       &ldquo;backup&rdquo;, &ldquo;snapshot&rdquo; or &ldquo;time travel&rdquo;,
       so it does not answer the engineering questions below. The UK
       Information Commissioner&rsquo;s Office, writing about the UK&rsquo;s own
-      version of the regulation, has published guidance that data in backups
-      should be put &ldquo;beyond use&rdquo; until overwritten on an
+      version of the regulation, has published guidance that, where a valid request
+      is received and no exemption applies, you &ldquo;will have to take steps
+      to ensure erasure from backup systems as well as live systems&rdquo;; that
+      data in backups should be put &ldquo;beyond use&rdquo; until overwritten on an
       established schedule, that individuals should be told clearly what will
       happen to backup copies, and that the outcome is context-specific. That
       is one regulator&rsquo;s published view, not EU law, and others may
@@ -626,8 +641,9 @@ WHERE is_deleted AND source_lsn &lt; :purge_below;</code></pre>
       <li>
         Choose retention on purpose for the history of tables that hold personal
         data (time travel, snapshot age, fail-safe where configurable), and
-        schedule the job that makes expiry real (<code>VACUUM</code>,
-        <code>expireSnapshots</code>).
+        schedule the jobs that make expiry real (<code>REORG TABLE ... APPLY
+        (PURGE)</code> then <code>VACUUM</code> for Delta tables with deletion
+        vectors; <code>expireSnapshots</code> for Iceberg).
       </li>
       <li>
         Null the payload columns in the same statement that writes the marker,
@@ -675,7 +691,8 @@ WHERE is_deleted AND source_lsn &lt; :purge_below;</code></pre>
       <li>
         For Delta, Iceberg, BigQuery or Snowflake, check that the maintenance
         that makes expiry real is actually scheduled (<code>VACUUM</code>,
-        <code>expireSnapshots</code>), and record the retention numbers.
+        plus <code>REORG TABLE ... APPLY (PURGE)</code> if deletion vectors are
+        on; <code>expireSnapshots</code>), and record the retention numbers.
       </li>
       <li>
         Set the retention of the dead-letter topic and the raw archive on

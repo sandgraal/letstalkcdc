@@ -246,7 +246,7 @@ eleventyExcludeFromCollections: true
             <div class="sfield"><span class="mono" style="color:var(--ink-3)">&#8981;</span><input value="tombstone" aria-label="Search demo" readonly><kbd class="mono" style="font-size:.7rem; color:var(--ink-3); border:1px solid var(--line-2); border-radius:4px; padding:1px 6px">esc</kbd></div>
             <div class="res">
               <div class="r on"><b>CDC Glossary &mdash; <mark>tombstone</mark></b><span>A delete marker with a null value that lets log compaction drop a key.</span></div>
-              <div class="r"><b>Materialization</b><span>Apply deletes as <mark>tombstone</mark>s that remove or flag the row.</span></div>
+              <div class="r"><b>Materialization</b><span>Keep deletes as <mark>delete markers</mark> that carry a log position.</span></div>
             </div>
           </div>
         </div>

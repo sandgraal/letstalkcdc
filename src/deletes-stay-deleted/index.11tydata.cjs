@@ -51,7 +51,7 @@ module.exports = {
       },
       {
         question:
-          "A Delta table has default retention settings. You run DELETE for one person's rows. When do the bytes leave storage?",
+          "A Delta table has default retention settings and deletion vectors are off. You run DELETE for one person's rows. When do the bytes leave storage?",
         options: [
           "Immediately, because DELETE rewrites the files",
           "After 30 days, when the log retention expires",
@@ -60,7 +60,7 @@ module.exports = {
         ],
         correct: "4",
         explanation:
-          "Delta's DELETE removes the data from the latest version but not from physical storage. Data files are deleted only when VACUUM runs, and VACUUM only removes files that have been unreferenced for longer than delta.deletedFileRetentionDuration (7 days by default). Time travel to older versions keeps working until then.",
+          "(With deletion vectors on, DELETE does not even rewrite the Parquet file; REORG TABLE ... APPLY (PURGE) must rewrite it first, and the purge version's time starts the VACUUM clock.) Delta's DELETE removes the data from the latest version but not from physical storage. Data files are deleted only when VACUUM runs, and VACUUM only removes files that have been unreferenced for longer than delta.deletedFileRetentionDuration (7 days by default). Time travel to older versions keeps working until then.",
       },
       {
         question:
