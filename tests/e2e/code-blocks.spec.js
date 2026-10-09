@@ -14,6 +14,7 @@ import { expectHittable } from "./helpers/hit-test.js";
 const PAGES = [
   "/event-envelope/",
   "/materialization/",
+  "/troubleshooting/",
   "/troubleshooting/failure-drills/",
   "/merge-cookbook/",
   "/which-row-wins/",
@@ -135,6 +136,13 @@ test.describe("one copy control per code block", () => {
           await button.scrollIntoViewIfNeeded();
           await button.click();
           await expect(button).toHaveText("Copied!");
+          // The visible "Copied!" is hidden behind the button's aria-label,
+          // so a screen-reader user hears the confirmation from the polite
+          // live region instead.
+          const live = page.locator(".toast-live-region");
+          await expect(live).toHaveAttribute("role", "status");
+          await expect(live).toHaveAttribute("aria-live", "polite");
+          await expect(live).toContainText("code copied to clipboard");
 
           const copied = await page.evaluate(() =>
             navigator.clipboard.readText(),

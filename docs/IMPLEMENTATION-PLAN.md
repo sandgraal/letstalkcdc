@@ -1820,7 +1820,7 @@ production CSS hashes.
       contrast. Accept: measure by hand against the real backgrounds in both
       themes and record the ratios here; open a `css-refactor` item for any
       below 4.5:1 (3:1 for large text). Size: S. Role: `scout`, `reviewer`.
-- [ ] **P15-36 · Refresh `src/_data/toolVersions.mjs`.** Outcome: the
+- [x] **P15-36 · Refresh `src/_data/toolVersions.mjs`.** Outcome: the
       versions match what is current. Evidence: the file has Debezium
       `3.6.1.Final` while 3.7.0.Final exists, and Kafka `4.3.0` while 4.3.1
       exists. These feed the "Tested with" notes on the pages, so re-verify
@@ -1828,7 +1828,7 @@ production CSS hashes.
       versions are bumped only where the page's claim was re-checked against
       that release; `dateModified` bumped on the pages touched. Size: M.
       Role: `scout`, `implementer`, `reviewer`.
-      _2026-10-09: in flight as PR #408 (open, not merged). It separates `tools` (latest stable) from `tested` (what the lab compose files pin) and finds the old "Tested with" note was false; the lab images themselves are P15-46._
+      _2026-10-09: shipped in #408. `src/_data/toolVersions.mjs` has Debezium 3.7.0.Final and Kafka 4.3.1 under `tools` (latest stable) and separates `tested` (what the lab compose files pin, tied by `tests/unit/tool-versions.test.js`); it found the old "Tested with" note was false, so the note now reads `tested`. `dateModified` is 2026-10-09 on `/lab-kafka-debezium/`, `/case-study/` and `/tooling/` (their `.11tydata.cjs`); `/troubleshooting/failure-drills/` was edited by #408 but still said 2026-08-25, bumped in the P15-47..51 batch. The lab images themselves are P15-46._
 - [ ] **P15-37 · Playground Docker images are still `node:20-alpine`.**
       Outcome: the playground runs on Node 24. Accept: the two Dockerfiles
       under `playground/harness/`, its compose file, and
@@ -1915,9 +1915,8 @@ production CSS hashes.
       files), then re-run each lab; until then every page that depends on a 3.x
       feature must say "check your version". **Needs Docker.** Size: L. Role:
       `implementer`, `reviewer`.
-- [ ] **P15-47 · Dead scripts and config found by the script audit.**
-      Outcome: nothing in the repo that nothing calls. Accept: confirm Codacy
-      does not run `.codacy/cli.sh`, then remove it; remove
+- [x] **P15-47 · Dead scripts and config found by the script audit.**
+      Outcome: nothing in the repo that nothing calls. Accept: remove
       `playground/scenarios/01-canonical-reference/scripts/logging.sh` (no
       caller; coordinate under `playground/`); `.pa11yci.json` appears dead
       (CI reads `pa11y-ci.config.cjs`): verify, then remove; the
@@ -1925,7 +1924,8 @@ production CSS hashes.
       `preview:web` and `sim:seed-reset` are never referenced: document each
       in `docs/DEVELOPMENT.md` or remove it. Size: S. Role: `scout` (verify
       each), `implementer`.
-- [ ] **P15-48 · Post-merge nit batch.** Outcome: the small review remarks on
+      _2026-10-09: done, with two corrections to the item's premises. (1) `.pa11yci.json` is NOT dead: `npm run a11y` is bare `pa11y-ci`, whose default config is `.pa11yci` resolved to `.pa11yci.json` (`node_modules/pa11y-ci/bin/pa11y-ci.js` `resolveConfigPath`), and the CI job `a11y-tests` runs `npm run a11y`; kept. `pa11y-ci.config.cjs` is the dead one (no reference anywhere, never auto-discovered): removed. (2) `.codacy/cli.sh` was part of the original Accept but is NOT removed; that sub-point moved to P15-52. It was kept: it is the launcher Codacy's own tooling invokes (`.github/instructions/codacy.instructions.md` tells agents to run `codacy_cli_analyze`) and sits beside `.codacy/codacy.yaml`; no repo file calls it, but nothing proves the Codacy integration does not, so it stays. Removed after a repo-wide grep found no caller: `playground/scenarios/01-canonical-reference/scripts/logging.sh` (only its own usage comment), `playground/package.json` scripts `preview:sim`, `preview:web`, `sim:seed-reset` and the file only that script ran, `playground/sim/tests/reset-seeds.mjs`. Root `test:e2e:debug` is documented in `docs/DEVELOPMENT.md` already (kept); `test:watch` is now documented there too (kept)._
+- [x] **P15-48 · Post-merge nit batch.** Outcome: the small review remarks on
       merged work are fixed or consciously dropped. Accept: from the #376
       review: the caption class on `/overview/`, the link text on
       `/case-study/`, and the `/mermaid-sandbox/` skip link, which hides the
@@ -1934,8 +1934,9 @@ production CSS hashes.
       review texts were not recorded in the PRs: re-read each review, fix what
       still applies, and delete the rest. Size: S. Role: `scout`,
       `implementer`.
+      _2026-10-09: done for what could be reproduced. The #376 review text is not retrievable (`gh pr view 376` returns no review or comment bodies), so each named remark was checked against the diff. Fixed: `/overview/` put `diagram-section__caption` on a paragraph of links that is not a caption (now a plain `<p>`); `/case-study/` link text "DMS" is now "AWS DMS" and the sentence that began with the page title after a semicolon now reads "the CDC platform comparison lays out the trade-offs"; `tests/unit/internal-links-headings.test.js` skipped `/mermaid-sandbox/` entirely, so nothing guarded the `id="main"` skip target (the page already has the id): the skip is removed and the test fails with `/mermaid-sandbox/ -> #main` if the id is dropped (checked by removing it). Not reproduced: remarks from #366, #393 and #404, because their review text is not recorded anywhere; no change made for them._
 
-- [ ] **P15-49 · Copy confirmation is not announced to screen readers.**
+- [x] **P15-49 · Copy confirmation is not announced to screen readers.**
       Outcome: a keyboard or screen-reader user learns that the copy worked.
       Evidence (review of #409): the copy-button toast has no `role` or
       `aria-live`, and the header button's `aria-label` hides its visible
@@ -1944,6 +1945,7 @@ production CSS hashes.
       `src/assets/js/modules/toast.js` and `code-blocks.js`; a unit test
       asserts the announcement and `tests/e2e/code-blocks.spec.js` checks it
       on one page. Size: S. Role: `implementer`, `reviewer`.
+      _2026-10-09: done. `showToast` now announces the title and message (joined with a space after terminal punctuation, else ". ") through one visually hidden polite live region (`.toast-live-region.sr-only`, `role="status"`, `aria-live="polite"`) created when the module loads and reused, with the text set 50 ms later so the first message is not dropped; each message replaces the child node so a repeat is read again. The visible toast is unchanged (it holds buttons and is not a live region), the copy button's `aria-label` is unchanged, and no CSS was touched (`.sr-only` already exists). Unit tests: 7 in `toast.test.js` (fake timers) and 1 in `code-blocks.test.js` (real toast, region text contains "SQL code copied to clipboard", label still "Copy SQL code"). E2E: the clipboard test in `tests/e2e/code-blocks.spec.js` asserts the live region after each copy._
 - [ ] **P15-50 · Dead copy-button CSS.** Outcome: no rule for markup that no
       longer exists. Evidence (review of #409): the `.copy-snippet` rules in
       `src/assets/css/components/code-block.css` and `.copy-btn` in
@@ -1951,12 +1953,23 @@ production CSS hashes.
       #409. Accept: remove both, with the production CSS hash re-baselined
       (it will change) and recorded in `CLAUDE.md` and
       `.claude/commands/css-byte-check.md`. Size: S. Role: `css-refactor`.
-- [ ] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
+- [x] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
       Outcome: the one-copy-button test covers every page with code blocks.
       Evidence (review of #409): the `PAGES` list in
       `tests/e2e/code-blocks.spec.js` omits `/troubleshooting/`, which has the
       same markup as `/troubleshooting/failure-drills/`. Accept: add it (or
       derive the list from the sitemap) and the spec passes. Size: S. Role:
+      `implementer`.
+      _2026-10-09: `/troubleshooting/` added to `PAGES`; the spec passes on chromium (9 tests)._
+- [ ] **P15-52 · Confirm Codacy does not call `.codacy/cli.sh`, then remove it.**
+      Outcome: no launcher script that nothing runs. Evidence: split from
+      P15-47. No repo file calls `.codacy/cli.sh`, but it is the launcher the
+      Codacy tooling itself uses (`.github/instructions/codacy.instructions.md`
+      tells agents to run `codacy_cli_analyze`) and it sits beside
+      `.codacy/codacy.yaml`, so non-use is unproven. Accept: the maintainer
+      confirms in the Codacy dashboard (or by disabling the integration) that
+      nothing runs it; then remove `.codacy/cli.sh` and re-check the build.
+      **Maintainer step** for the confirmation. Size: S. Role: maintainer,
       `implementer`.
 
 ### Ordering
@@ -2065,8 +2078,20 @@ ready to start; the first job is to turn it into measured, specific items.
       and 0 broken fragments. Size: M. Role: `scout` (confirm each
       opportunity reads naturally), `implementer`, `reviewer`.
       _Approved by the maintainer 2026-10-09._
-      _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
-      _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
+      _Status 2026-10-09, still open: the audit numbers are met (0 broken
+      fragments, 2 pages under 3 content inbound links: `/` and `/privacy/`,
+      minimum 4 for every cloud lab and quickstart page). A data-driven
+      "Related lessons" list now ends 34 of 36 module pages (`related` keys
+      in `src/_data/series.mjs`, rendered by `series-nav.njk`; `cloud-labs`
+      and `failure-drills` have no `seriesKey`, so no series navigation).
+      Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
+      does not yet link out to the owning lesson; that needs a curated
+      `lesson` field on the 33 entries._
+  - [ ] Related-lessons list has no styling (bullets/indent: `.series-nav*`
+        classes have no rules in the shipped stylesheet); needs a
+        `css-refactor` pass.
+        _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
+        _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
 - [x] **P16-9 · Heading and fragment fixes.** Outcome: every content page has
       one `<h1>` and no skipped levels. Accept: `/merge-cookbook/` has an
       `<h1>`; the 10 pages with skips are corrected; the `#setup` link on
@@ -2077,7 +2102,7 @@ ready to start; the first job is to turn it into measured, specific items.
       _Approved by the maintainer 2026-10-09._
       _2026-10-09: PR #376 (open) covers the fragment half. Still open after it: 10 heading-level skips need a CSS hook (route to `css-refactor`), and 2 pages still lack an `<h1>`: `/merge-cookbook/` (#366 pending) and `/mermaid-sandbox/`. Tracked with the SEO leftovers in P16-28._
       _2026-10-09: #376 merged; the fragment half is done (`#setup` resolves). Still open: 10 heading-level skips (CSS hook), and `/merge-cookbook/` still has no `<h1>` after #366 (it is on `KNOWN_NO_H1` in the new test), as does `/mermaid-sandbox/`._
-      _2026-10-09: the 10 skips fixed and `/merge-cookbook/` given an `<h1>`; script [02] heading problems 12 -> 1 (only the non-indexed `/mermaid-sandbox/`). New `.h-as-3`/`.h-as-4` helpers in `05-utilities.css`; computed style, position and size of every heading on the 11 pages identical before/after at 375 and 1280 px in both themes (CSS hash re-baselined to `f59f964f…`). `tests/unit/internal-links-headings.test.js` now reuses `scripts/seo-audit.mjs`. P16-28 (a) and the merge-cookbook half of (b) are done by this._
+      _2026-10-09: the 10 skips fixed and `/merge-cookbook/` given an `<h1>`; script [02] heading problems 12 -> 1 (only the non-indexed `/mermaid-sandbox/`). New `.h-as-3`/`.h-as-4` helpers in `05-utilities.css`; computed style, position and size of every heading on the 11 pages identical before/after at 375 and 1280 px in both themes (CSS hash re-baselined to `f59f964f…`). `tests/unit/internal-links-headings.test.js` now reuses `scripts/seo-audit.mjs`. P16-28 (a) and the merge-cookbook half of (b) are done by this. Caveats from review: (1) `/merge-cookbook/` gained a visible `<h1>`, so it is not visually identical (content shifts down about 73px desktop / 101px mobile); its page-only `h1` margin-top in `pages/merge-cookbook.css` was raised from 0.4rem to 1.5rem so the title does not sit against the sticky header (no new bundle CSS; there is no top-spacing utility). (2) The heading-anchor script now adds anchors to the promoted headings and drops the 8 that were on the `/use-cases/` eyebrow labels (ids `use-case-1-analytics-business-intelligence`, `guardrails`, `see-it-in-action` and the like vanish; no inbound links found). (3) cssnano merges `.h-as-3` into the `.font-bold` rule; a warning comment sits next to `.h-as-3` in `05-utilities.css`._
 - [x] **P16-10 · Honest modification dates and a fuller feed.** Outcome:
       "updated" dates reflect real edits and the feed does not drop modules.
       Accept: the 21 pages in script [05] are reviewed and `dateModified`
@@ -2106,6 +2131,7 @@ ready to start; the first job is to turn it into measured, specific items.
       (Lighthouse), maintainer. Depends on domain: yes (re-verify after a
       move).
       _Approved by the maintainer 2026-10-09._
+      _2026-10-09: left open. #410 shipped the maintained audit script and `docs/seo-baseline-2026-10-after.md` (the before/after numbers), which is the measurable part; the Accept also needs GoatCounter installed, Search Console verified with the sitemap submitted, the 10-page Lighthouse run, and a 28-day snapshot, none of which exist yet (`docs/seo-baseline-2026-10-after.md` section 4 says so)._
 - [x] **P16-13 · Differentiate `/tooling/` and `/compare/`.** Outcome: two
       pages with two jobs. Accept: a one-paragraph decision (consolidate,
       or re-scope: `/compare/` = decision matrix, `/tooling/` = tool

@@ -52,7 +52,7 @@ CI runs the same checks and more (see [Checks in CI](#checks-in-ci)).
 | `npm run build:js`          | Vite bundle into `dist/`                                            |
 | `npm run build:11ty`        | Eleventy build into `_site/` (production mode)                      |
 | `npm run build:lhci`        | Production build with root path prefix, as the Lighthouse run needs |
-| `npm test`                  | Vitest unit suite                                                   |
+| `npm test`                  | Vitest unit suite (`test:watch` re-runs it on change)               |
 | `npm run test:coverage`     | Unit suite with coverage                                            |
 | `npm run test:e2e`          | Playwright end-to-end tests (also `test:e2e:ui`, `test:e2e:debug`)  |
 | `npm run lint`              | ESLint (`lint:fix` to apply fixes)                                  |

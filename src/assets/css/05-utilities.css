@@ -625,6 +625,10 @@
   margin-bottom: var(--space-md);
 }
 
+/* Warning: cssnano merges the font-weight here with `.font-bold` into one
+   rule (`.font-bold,.h-as-3{font-weight:700}`). If you change this weight,
+   or move `.font-bold`, check the built styles.min.css so the merge does not
+   change the other class. */
 .h-as-3 {
   font-size: var(--text-2xl);
   font-weight: 700;
