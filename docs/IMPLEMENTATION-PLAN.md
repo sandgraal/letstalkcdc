@@ -390,10 +390,19 @@ remove the matching regex from `.lycheeignore`.
 - [ ] **`/intro/` perf debt — uncovered by the LHCI fix above.** The
       0.86 score is held back by:
   - `cumulative-layout-shift: 0.58` — large layout shifts during load
+    [✓ re-measured 2026-10-08: audit 1.0 in 9/9 runs, CLS median 0.0025,
+    max 0.0056 — see P13-5]
   - `layout-shifts: 0` (CLS culprits) — investigate `cls-culprits-insight`
+    [✓ audit 1.0 in 9/9 runs; Lighthouse's only culprit is the hero
+    `<h1>` web-font swap at 0.0056 — see P13-5]
   - `render-blocking-resources: 0` — eliminate render-blocking CSS/JS [✓ closed by PR #275]
   - `mainthread-work-breakdown: 0.5` — minimize main-thread work
+    [✓ audit 1.0 in 9/9 runs (0.6–1.5 s) — see P13-5]
   - `unsized-images: 0.5` — add explicit `width`/`height` to images [✓ closed by Phase 7 SVG dimensions]
+  - **Still open (2026-10-08, P13-5):** `dom-size` is the only sub-item
+    below 0.9 (0.5, 1,035 elements in 9/9 runs); everything else in this
+    box scores 1.0. The box stays open until `dom-size` is trimmed or
+    consciously accepted.
   - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 947
     elements after the operational-checklist input-removal trim;
     LHCI's count is slightly higher because it includes
@@ -496,11 +505,17 @@ first so the threshold can ratchet up as we land them.
       `src/exactly-once/index.njk:260`. **DoD:** `unsized-images` audit
       → 1.0 across all module pages.
 
-- [ ] Identify remaining CLS culprits on `/intro/` via the LHCI
+- [x] Identify remaining CLS culprits on `/intro/` via the LHCI
       `cls-culprits-insight` audit (run `npm run lighthouse` after
       `build:lhci`). With the 404'd video embed gone and SVGs now
       dimensioned, suspects narrow to font-swap reflow on the long
       lede and the `.cdc-methods-grid` reveal.
+      **Done 2026-10-08 (P13-5):** the font-swap suspect is the only one
+      that registers — `section.hero-section … h1.type-display`, 0.0056,
+      caused by late-loaded Plex 500/700/mono-500/600 woff2. The
+      `.cdc-methods-grid` reveal did not register in Lighthouse or in the
+      independent `PerformanceObserver` cross-check. Audit scores 1.0 in 9/9
+      runs; total CLS median 0.0025 (well under 0.1).
 
 - [x] Eliminate render-blocking by moving the three base-layout
       stylesheets and page-specific `head_extra` stylesheet links to
@@ -1115,7 +1130,7 @@ dependencies).
 
 ### Tier B — measured performance work
 
-- [ ] **P13-5 · Measure `/intro/` before touching it.** Supersedes (and
+- [x] **P13-5 · Measure `/intro/` before touching it.** Supersedes (and
       closes, in the same commit, as far as the numbers justify) the open
       Phase 5 "`/intro/` perf debt" box and the Phase 7 "Identify
       remaining CLS culprits" box. Those perf items are open but the numbers are months old and
@@ -1128,15 +1143,125 @@ dependencies).
       command and date; sub-items whose audit already scores 1.0 are
       ticked in the Phase 5 / Phase 7 boxes. Verify: the recorded numbers reproduce within ±0.03 perf. Size: M. Role:
       `implementer`.
-- [ ] **P13-6 · Fix the dominant `/intro/` CLS culprit(s).** Needs
-      P13-5; completes the Phase 5 / Phase 7 CLS boxes it left open. Outcome: CLS under 0.1 (Core Web Vitals "good"). Accept: the
-      culprit named by P13-5 is fixed at source (reserved space, font
-      metrics override, or deferred reveal — not a Lighthouse-only
-      workaround); `.lighthouserc.json` perf threshold ratcheted to the
-      new median minus 0.04; no a11y regression. Verify: re-run LHCI
-      three times, `npm run test:e2e`, screenshots before / after.
-      Size: M (split if more than one culprit). Role: `implementer`,
-      `reviewer` on the diff.
+
+      **Result (2026-10-08, local macOS, 8 cores, Chrome 154 headless,
+      Lighthouse 12.6.1, mobile preset, simulated throttling).** Command:
+      `npm run build:lhci` then `npm run lighthouse` (config collects
+      3 runs per URL), repeated in 3 separate invocations = **9 runs of
+      `/intro/`**. Raw LHR JSON kept outside the repo.
+
+      | `/intro/` metric                         | Median of 9                | Min – max           | Threshold / note                        |
+      | ---------------------------------------- | -------------------------- | ------------------- | --------------------------------------- |
+      | Performance                              | **0.97**                   | 0.88 – 0.97         | error ≥ 0.82 — pass (`warn` 0.9: 4/9 below) |
+      | Accessibility                            | 0.97                       | 0.97 – 0.97         | error ≥ 0.93 — pass                     |
+      | Best practices / SEO                     | 1.00 / 1.00                | —                   | warn ≥ 0.9 — pass                       |
+      | FCP                                      | 1.81 s                     | 1.74 – 2.55 s       | bimodal, see below                      |
+      | LCP                                      | 2.43 s                     | 2.34 – 3.33 s       | bimodal                                 |
+      | TBT                                      | 31 ms                      | 0 – 59 ms           |                                         |
+      | Speed Index                              | 1.81 s                     | 1.74 – 2.55 s       |                                         |
+      | CLS                                      | **0.0025**                 | 0 – 0.0056          | audit 1.0 in 9/9                        |
+      | Main-thread work                         | 1.31 s                     | 0.62 – 1.52 s       | audit 1.0 in 9/9                        |
+      | DOM size                                 | **1,035 elements**         | constant            | audit 0.5 in 9/9; depth 13, max 28 children |
+      | Transfer                                 | 351 KiB (32 requests)      | 351 – 352 KiB       |                                         |
+
+      Per-invocation medians (the way CI sees it): perf 0.92 / 0.97 /
+      0.92 — a spread of 0.05, larger than the ±0.03 reproducibility
+      target, so the recorded perf is "0.92 – 0.97" not a single value.
+      All other audits (`render-blocking-resources`, `unsized-images`,
+      `font-display`, `bootup-time`, `total-blocking-time`) score 1.0.
+      No assertion failed or warned (LHCI's default optimistic
+      aggregation passes if any run passes). System load before the
+      runs 4.2 (1-min); 2.1 before the Playwright cross-check — Lighthouse
+      itself pushed it to ~7.8 mid-run, and the machine runs a desktop
+      session, so treat absolute ms as indicative.
+
+      **Surprise: the plan's premise is stale.** CLS is not 0.58 — it is
+      0.0025. The perf gap is not layout shift.
+
+      Ranked CLS culprits (Lighthouse `layout-shifts` /
+      `cls-culprits-insight`): (1) `section.hero-section > div.hero-container > div.prose > h1.type-display`
+      — 0.0056, cause "web font loaded" for `ibm-plex-sans-500`,
+      `-700`, `ibm-plex-mono-500`, `-600` (these four are discovered via
+      CSS, not preloaded; only sans-400/600 and mono-400 are). In 4/9
+      runs the fonts land before first paint and CLS is exactly 0.
+      Independent check (Playwright Chromium 156, 412×823 @1.75x,
+      `PerformanceObserver` layout-shift with sources, 10 runs each):
+      unthrottled CLS 0 in 10/10; with 4× CPU + 1.6 Mbps/150 ms network
+      CLS 0.0014 – 0.016 (median 0.015), 10/10 > 0, never near 0.1.
+      Observer **agrees** on the cause (font-swap reflow of the hero
+      block: `div.page-wrap.prose`, hero `li`s, `.hero-actions` buttons,
+      `h1`, plus `.nav-right`) and on magnitude; it sees a few more hero
+      elements than Lighthouse because the throttled swap reflows
+      neighbours too.
+
+      Why perf is bimodal (0.97 in 5 runs, 0.88 – 0.92 in 4): observed
+      FCP is ~130 ms in both, but Lighthouse's simulated FCP is 1.74 –
+      1.81 s when the late fonts finish after first paint and 2.26 – 2.55 s
+      when they finish before it (the CSS → font request chain is then
+      counted). FCP / LCP are the only perf audits below 0.9 (0.65 – 0.92);
+      this is a race on the late-discovered fonts, not a main-thread
+      problem. In the fast runs the font swap also triples Style & Layout
+      (≈ 650 ms vs ≈ 210 ms).
+
+      Main-thread / bootup offenders (median run): Style & Layout 656 ms,
+      Other 526 ms, Script Evaluation 192 ms, Rendering 108 ms. `bootup-time`
+      0.15 s: the document itself (1.11 s total, only 7 ms scripting —
+      i.e. layout), Unattributable 178 ms, `cdn.jsdelivr.net/npm/chart.js@4.4.4`
+      159 ms (96 ms scripting, 29 ms TBT — the only third party). First-party
+      JS is negligible.
+
+      Other audits: `unused-javascript` 0.5 (36 KiB, all chart.js from
+      jsDelivr), `unused-css-rules` 0.5 – 0 (12 KiB of 19 KiB
+      `styles.css`), `dom-size` 0.5. Top transfers: chart.js 68 KB,
+      `search-index.json` 32 KB, four Plex woff2 files 23 – 25 KB each,
+      document 21 KB, `app.js` 21 KB.
+
+      **Finding outside the brief:** `color-contrast` scores 0 in 9/9
+      runs (a11y 0.97, still over the 0.93 gate) on three nodes in the
+      CDC event demo: `span.ced-event-title` and `span.ced-op-badge`
+      (#6b7d8f on #0e141d = 4.36:1) and `span.ced-j-comment` (#6b7d8f on
+      #141b25 = 4.08:1), need 4.5:1. The Phase 5 "`/intro/` a11y debt"
+      box records contrast as fixed (page then scored 1.0); this widget
+      regressed it. Not touched here.
+
+      **Recommended P13-6 scope** (revised — a "CLS under 0.1" goal is
+      already met): (1) make the four late fonts deterministic —
+      preload `ibm-plex-sans-500/700` and `ibm-plex-mono-500/600` (or
+      drop those weights) and add a metric-matched fallback
+      (`size-adjust`, `ascent-override`) so the swap is invisible; this
+      removes the only CLS culprit and the 0.88 – 0.97 perf bimodality in
+      one change; (2) then ratchet the `/intro/` perf threshold from 0.82
+      to median-minus-0.04 and fix the three `color-contrast` nodes
+      (route the CSS to `css-refactor`). `dom-size` (1,035) and
+      chart.js lazy-loading are the next, smaller levers.
+
+- [ ] **P13-6 · Make `/intro/` font loading deterministic, fix the contrast
+      regression, ratchet the threshold.** Rewritten 2026-10-09 after P13-5:
+      CLS is already 0.0025 (goal was < 0.1), so the original "fix the CLS
+      culprit" is met. What the measurement actually found: (1) four web
+      fonts (`ibm-plex-sans-500`, `ibm-plex-sans-700`, `ibm-plex-mono-500`,
+      `ibm-plex-mono-600`) load after first paint while only three weights
+      are preloaded, which is the sole CLS source (the `h1.type-display`,
+      0.0056 in Lighthouse) and the reason performance swings 0.88–0.97;
+      (2) three nodes in the CDC event demo fail WCAG contrast
+      (`span.ced-event-title` and `span.ced-op-badge` #6b7d8f on #0e141d =
+      4.36:1; `span.ced-j-comment` on #141b25 = 4.08:1), which regressed the
+      Phase 5 contrast fix.
+      Accept: (a) the four weights are either preloaded or removed, and a
+      metric-matched fallback font removes the swap shift — at source, not a
+      Lighthouse-only workaround; (b) the three nodes reach ≥ 4.5:1 and
+      `color-contrast` scores 1 in all runs; (c) three fresh LHCI invocations
+      show `/intro/` performance with a narrower spread, and
+      `.lighthouserc.json`'s `/intro/` performance floor is ratcheted to the
+      new median minus 0.04 (and the README badge from P15-6 is bumped in the
+      same PR); (d) no a11y or CLS regression. Verify: `npm run lighthouse`
+      three times, the Playwright layout-shift observer from P13-5,
+      `npm run test:e2e`, before / after screenshots, CSS hashes recorded.
+      Size: M → split into two PRs: fonts (head / `@font-face` metrics; touches
+      `base.njk` and CSS) and contrast (CSS only). Role: `css-refactor` for
+      both CSS parts, `implementer` for the preload markup, `reviewer` on each
+      diff. Needs: the Phase 15 Tier 1 PRs merged first (they also edit
+      `base.njk`).
 - [x] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
       mobile-chrome for a "pointer-intercept flake" with no tracking (the
@@ -1240,8 +1365,225 @@ column; do not duplicate it here.
 
 ---
 
+### Resolved 2026-10-09 (maintainer interview)
+
+Every decision above was answered in a one-by-one interview. Outcomes, and
+where the work now lives:
+
+| #   | Decision                 | Answer                                                                                                                           | Work item             |
+| --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| D1  | License                  | **MIT for code, CC BY 4.0 for written content.** Copyright holder Christopher Ennis.                                             | P15-1                 |
+| D2  | Newsletter provider      | **Buttondown**, no account yet: build with a placeholder username, form disabled in production until the real one is set.        | P15-9                 |
+| D3  | Author photo             | **Yes.** Supplied as `~/Downloads/1783647301211.jpeg` (400×400 JPEG).                                                            | P15-2                 |
+| D4  | Author identity links    | **LinkedIn** `https://www.linkedin.com/in/cennis/`; footer "Get in touch" CTA (`advisoryUrl`) points at it.                      | P15-2                 |
+| D5  | CSS `@layer`             | **Won't do.** Closed, reopen only if a real specificity bug appears.                                                             | P15-7                 |
+| D6  | Lighthouse badge         | **Static badge** stating the enforced floor, bumped whenever `.lighthouserc.json` is raised.                                     | P15-6                 |
+| D7  | Dependabot PRs           | Resolved: #319 and #331 merged, #328 closed.                                                                                     | —                     |
+| —   | DB least privilege       | **Applied** 2026-10-09 (`assistant_feedback_least_privilege`): browser roles keep INSERT only.                                   | P15-4                 |
+| —   | Vote fallback            | **Keep as is** (no direct send when local storage fails).                                                                        | —                     |
+| —   | Feedback privacy         | **Privacy page + 12-month auto-delete** of feedback rows.                                                                        | P15-8                 |
+| —   | Assistant gaps           | **Add beginner intents + a gap review.**                                                                                         | P15-11                |
+| —   | Other agent / playground | **Finished.** Its docs under `playground/**` are open to the conductor for wording and link fixes only (no code changes).        | P15-5                 |
+| —   | Domain                   | **Move to an own domain, name not decided.** Keep every host reference in one place so the move is a variable change.            | P15-13                |
+| —   | Analytics                | **GoatCounter** (cookie-less), no account yet: placeholder, off until the site code is set.                                      | P15-10                |
+| —   | Next push                | **Content depth, SEO/growth and more interactive demos.**                                                                        | Phase 16              |
+| —   | Order                    | **Housekeeping bundle first**, then privacy page + retention, then newsletter and analytics, then perf fixes and major upgrades. | see Phase 15 ordering |
+| —   | Appwrite                 | **Deleted by the maintainer** (project and key).                                                                                 | P15-4 records it      |
+
+---
+
 ## Adding new phases
 
 Append below this line. Keep phases narrow; if a phase grows past ~10
 items, split it. Don't reorder existing phases — agents may have stale
 links.
+
+---
+
+## Phase 15 — Maintainer-directed work (decided 2026-10-09)
+
+Everything here follows from the interview recorded under Phase 14. Work
+the tiers in order. Item fields are as defined in Phase 13. Items that put
+text or links on the public site go through `reviewer`; anything under
+`src/assets/css/` goes through `css-refactor` and carries before / after
+production CSS hashes.
+
+### Tier 1 — housekeeping bundle (do first)
+
+- [ ] **P15-1 · License.** Outcome: the repo states what others may do with
+      it. Accept: `LICENSE` (MIT, copyright Christopher Ennis, current
+      year); `LICENSE-CONTENT.md` carrying CC BY 4.0 (summary, link, and
+      the attribution wording to use) and a precise statement of which paths
+      are content (lesson prose, diagrams and images under `src/`) and which
+      are code (everything else); `package.json` `license` field; a README
+      "License" section and a license badge (this closes the Phase 11
+      "README badge: license" box); the site footer links both and the
+      Article JSON-LD gains `license`. Verify: `/verify-all`,
+      `npm run smoke:core`, and `rg -n "license" _site/index.html`. Size: M.
+      Role: `implementer`, then `reviewer` (legal wording is copied from the
+      canonical CC text, not paraphrased).
+- [ ] **P15-2 · Author identity.** Outcome: the byline shows a photo and
+      verifiable profiles. Accept: the supplied image
+      (`~/Downloads/1783647301211.jpeg`, 400×400) is copied to
+      `src/static/author/christopher.jpg` and checked in; `author.mjs` sets
+      `image`, `sameAs` gains
+      `https://www.linkedin.com/in/cennis/`, and `advisoryUrl` is the
+      LinkedIn URL so the footer shows a soft "Get in touch" CTA; the
+      page-meta byline renders an `<img>` with explicit `width` / `height`,
+      meaningful `alt` and `loading="lazy"`; the Article JSON-LD author
+      block emits `image` and every `sameAs`; the styling is added through
+      `css-refactor` (circular crop, no layout shift) with hashes recorded.
+      Closes the two open Phase 8 author boxes. Verify: `/verify-all`,
+      `smoke:core`, e2e, an LHCI-style check that `unsized-images` and CLS do
+      not regress, JSON-LD validated. Size: M. Role: `implementer` (data,
+      templates), then `css-refactor`, then `reviewer`.
+- [ ] **P15-3 · iPhone Safari panel height.** Outcome: the open assistant
+      panel header stays on screen on short iPhones with the toolbars
+      showing. Accept: in `src/css/assistant.css`'s `max-width: 640px` block,
+      add the `svh` form after the existing `vh` declaration
+      (`max-height: min(75svh, calc(100svh - 6rem))`) so older browsers keep
+      the fallback; emulated large-viewport measurements from the #332
+      review (iPhone SE-class, 375×553 visible / 667 large) now give a panel
+      top ≥ 0. Production CSS hash is unchanged (the file ships on its own).
+      Verify: the review's measurement script, `npm run test:e2e`. Size: S.
+      Role: `css-refactor`.
+- [ ] **P15-4 · Docs match reality.** Outcome: no document describes a state
+      that no longer exists. Accept: `supabase/schema.sql` lists the
+      insert-only grants as applied (the revoke is no longer commented out,
+      and a note records the 2026-10-09 migration
+      `assistant_feedback_least_privilege`); `SECURITY.md` records that the
+      Appwrite project was deleted and its key rotated by the maintainer,
+      and drops the "maintainer should…" instruction; the plan's P13-10 note
+      records that production delivery was verified with a real vote
+      (2026-10-09 02:29 UTC). Verify: `rg -in appwrite SECURITY.md supabase`
+      shows only the history note. Size: S. Role: `scribe`.
+- [ ] **P15-5 · `playground/**` documentation cleanup.** Outcome: the
+      playground docs no longer instruct anyone to use Appwrite. Accept:
+      only wording and links in the Markdown files under `playground/docs/`
+      (about 20 mentions in 7 files, including
+      `playground/docs/issues/appwrite-persistence.md`) change, to say the
+      project uses the shared Supabase project documented in
+      `playground/docs/supabase-setup.md`; no code, config, test or
+      workflow file under `playground/` is edited. Verify:
+      `rg -il appwrite playground` lists nothing but intentional history
+      notes, and `git diff --stat` shows only `.md` files. Size: S. Role:
+      `scribe`, then `reviewer`.
+- [ ] **P15-6 · Lighthouse badge.** Outcome: the README shows the enforced
+      performance floor, honestly. Accept: a static shields.io badge whose
+      text states the floor CI enforces for `/intro/` (0.82 now) and that
+      links to `.lighthouserc.json`; a one-line comment in
+      `.lighthouserc.json`'s neighbour doc, or in CONTRIBUTING, says to bump
+      the badge whenever the threshold is raised. Closes the Phase 11
+      "README badge: Lighthouse perf" box. Verify: render check of the
+      README. Size: S. Role: `scribe`.
+- [ ] **P15-7 · Close the `@layer` boxes as "won't do".** Accept: the Phase 4
+      and Phase 11 `@layer` boxes are ticked with a dated "won't do — reopen
+      only if a real specificity bug appears" note. Size: S. Role: `scribe`.
+
+### Tier 2 — feedback data privacy
+
+- [ ] **P15-8 · Privacy page and 12-month retention.** Outcome: visitors can
+      see what the assistant stores, and old rows go away on their own.
+      Accept: a `/privacy/` page (what is stored — typed question, topic id,
+      vote, time; why; who can read it; how to request deletion; the
+      analytics disclosure from P15-10 once it exists) linked from the
+      footer and from the assistant's existing notice; a scheduled database
+      job deletes `public.assistant_feedback` rows older than 12 months,
+      defined in `supabase/schema.sql` and **applied only after the
+      maintainer approves the migration**; docs updated to state the
+      retention period. Verify: the job's definition is read back from the
+      database, a dry-run `select count(*)` of the rows it would delete,
+      `/verify-all`, `smoke:core`. Size: M. Role: `implementer` (page, copy,
+      SQL), `css-refactor` if the page needs styles, then `reviewer`.
+
+### Tier 3 — growth plumbing (placeholders, off until configured)
+
+- [ ] **P15-9 · Newsletter (Buttondown).** Outcome: an accessible,
+      static-first signup that cannot ship half-configured. Accept: a
+      `/newsletter/` page and a compact footer form posting to Buttondown's
+      embed endpoint; the username comes from a `BUTTONDOWN_USERNAME` build
+      variable, and while it is unset the form is not rendered and the page
+      says the newsletter is not open yet (nothing broken in production);
+      works with JavaScript off; labelled inputs, visible focus, no
+      third-party script; no secret anywhere. Closes the Phase 9
+      "Newsletter capture" box. Verify: `/verify-all`, `smoke:core`,
+      axe via `npm run smoke:a11y`, a test that the form is absent when the
+      variable is unset and present when set. **Maintainer step:** create the
+      Buttondown account and set `BUTTONDOWN_USERNAME`. Size: M. Role:
+      `implementer`, `css-refactor`, then `reviewer`.
+- [ ] **P15-10 · Analytics (GoatCounter).** Outcome: cookie-less visit counts,
+      off until configured. Accept: a `GOATCOUNTER_CODE` build variable
+      renders the single async GoatCounter script (no cookies, no consent
+      banner) and nothing when unset; it is added to the performance
+      budget check, disclosed on `/privacy/`, and excluded when
+      `navigator.doNotTrack` is on. Verify: unit test for the template
+      branch, LHCI-style check that the script does not move the `/intro/`
+      score, `/verify-all`. **Maintainer step:** create the GoatCounter
+      site and set `GOATCOUNTER_CODE`. Size: S. Role: `implementer`.
+- [ ] **P15-11 · Assistant beginner intents and gap review.** Outcome: the
+      question that scored the first real 👎 ("help me learn cdc") gets a
+      useful answer. Accept: new intents for "where do I start", "learn
+      CDC", "what should I read first" and close variants, answering with
+      the intro and the learning path, each with a unit test through the
+      real matcher; a `scout` reviews `src/` module titles against the
+      knowledge base and lists the top unanswered basics, of which the
+      clear ones are added in the same PR; no code change to the matcher
+      unless a test proves it is needed. Verify: `npm test`,
+      `npm run test:e2e -- assistant`, and after deploy a read-only
+      `select intent_id, helpful, count(*) from assistant_feedback group by 1,2`
+      to watch the effect. Size: M. Role: `implementer` (data, tests),
+      `scout` (gap list), `reviewer`.
+
+### Tier 4 — structural
+
+- [ ] **P15-13 · One place for the host.** Outcome: moving to an own domain
+      is a variable change, not a search-and-replace. Accept: an audit of
+      every hardcoded `sandgraal.github.io` outside history and tests
+      (`src/_data/site.mjs`, `src/feed.11ty.cjs`,
+      `scripts/deployment-verify.mjs`, README and docs) — code derives the
+      host from `SITE_HOST`, docs say "your site URL"; a short runbook
+      `docs/DOMAIN-MIGRATION.md` (GitHub Pages custom domain, `CNAME`,
+      `SITE_HOST` and path prefix, 301 plan for the old URLs, sitemap / RSS /
+      canonical / OG checks, `lychee` expectations); a test that a production
+      build with a different `SITE_HOST` emits no `sandgraal.github.io`.
+      Verify: that test plus `/verify-all`. Size: M. Role: `implementer`,
+      then `reviewer`.
+
+### Ordering
+
+Tier 1 → Tier 2 → Tier 3 → Tier 4, while the Phase 13 performance items
+(P13-5, P13-6) and the major upgrades (P13-8) run in parallel only when no
+browser-heavy job is measuring (Lighthouse needs a quiet machine). P15-12
+is intentionally unused so the IDs stay aligned with the interview notes.
+
+---
+
+## Phase 16 — Growth, content depth and interactive demos (to be scoped)
+
+The maintainer's next big push: **more CDC content depth**, **growth and
+discoverability (SEO)** and **more interactive demos**. Nothing here is
+ready to start; the first job is to turn it into measured, specific items.
+
+- [ ] **P16-1 · SEO baseline audit.** Outcome: a ranked list of the
+      technical and on-page SEO problems that matter. Accept: a written
+      audit (titles, descriptions, headings, internal links, structured
+      data, sitemap, canonical, Core Web Vitals) with each finding carrying
+      evidence and a proposed fix sized S / M; findings that are quick wins
+      become Phase 16 items. Role: `scout` gathers, `reviewer` checks the
+      claims.
+- [ ] **P16-2 · Content-gap and keyword plan.** Outcome: a prioritised
+      list of new modules / sections with the question each one answers.
+      Accept: a gap analysis against what readers search for and what the
+      assistant failed to answer (use the feedback table once it has data),
+      grouped into topic clusters, with a first batch of ≤ 5 modules
+      specified like the Phase 12 items (the thesis they must hold:
+      at-least-once delivery, idempotent sinks, ordering by log position,
+      no cross-system exactly-once). Candidate topics to evaluate, not
+      commitments: CDC into lakehouse table formats, testing and
+      observability of CDC pipelines, cost modelling, schema contracts.
+- [ ] **P16-3 · Interactive demos linked into the lessons.** Outcome: the
+      playground is part of the learning path, not a separate site. Accept:
+      an inventory of the lessons that should have a "try it" link into
+      `/playground/` with a named scenario, the gaps where no scenario
+      exists yet, and a proposal for the first three labs; coordinated with
+      the playground code owner before any change under `playground/`.
