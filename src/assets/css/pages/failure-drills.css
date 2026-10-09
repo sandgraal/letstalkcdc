@@ -180,23 +180,6 @@
   background: transparent;
 }
 
-.drill-content pre button.copy {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text, #1e293b);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.drill-content pre button.copy:hover {
-  background: var(--color-surface-hover, #f1f5f9);
-}
-
 /* Validation checklist styling */
 .drill-content ul.checklist {
   list-style: none;

@@ -249,7 +249,7 @@ scripts:
           <div class="perdb-grid">
             <details>
               <summary><strong>PostgreSQL</strong></summary>
-              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+              <pre><code>-- Requirements (once/admin):
 ALTER SYSTEM SET wal_level = logical;
 ALTER SYSTEM SET max_replication_slots = 10;  -- adjust
 SELECT pg_reload_conf();
@@ -263,7 +263,7 @@ SELECT pg_current_wal_lsn();  -- record this
 
             <details>
               <summary><strong>MySQL (InnoDB)</strong></summary>
-              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements:
+              <pre><code>-- Requirements:
 -- binlog_format=ROW; binlog_row_image=FULL; GTID (preferred)
 
 -- Boundary + consistent snapshot:
@@ -275,7 +275,7 @@ START TRANSACTION WITH CONSISTENT SNAPSHOT;
 
             <details>
               <summary><strong>SQL Server</strong></summary>
-              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+              <pre><code>-- Requirements (once/admin):
 ALTER DATABASE YourDb SET ALLOW_SNAPSHOT_ISOLATION ON;
 ALTER DATABASE YourDb SET READ_COMMITTED_SNAPSHOT ON;
 EXEC sys.sp_cdc_enable_db;  -- if using native CDC
@@ -290,7 +290,7 @@ BEGIN TRAN;
 
             <details>
               <summary><strong>Oracle</strong></summary>
-              <pre><button class="copy-btn" type="button">Copy</button><code>-- Requirements (once/admin):
+              <pre><code>-- Requirements (once/admin):
 ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;  -- minimal or ALL columns for PK-less
 
 -- Boundary:
@@ -530,7 +530,7 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
           </p>
           <details>
             <summary><strong>Warehouse MERGE example</strong></summary>
-            <pre><button class="copy-btn" type="button">Copy</button><code>-- Untested: not run against a live warehouse. Written for Snowflake, BigQuery
+            <pre><code>-- Untested: not run against a live warehouse. Written for Snowflake, BigQuery
 -- and PostgreSQL 15+. Assumes dw.customers has a primary key customer_id, a
 -- deleted flag, a source_lsn column that is never NULL, and nullable name and
 -- email (a delete carries no row values). Readers filter deleted = FALSE.
@@ -655,7 +655,7 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
           </ol>
           <details>
             <summary><strong>Dup check query</strong></summary>
-            <pre><button class="copy-btn" type="button">Copy</button><code>SELECT id, COUNT(*) AS c
+            <pre><code>SELECT id, COUNT(*) AS c
 FROM dw.orders
 GROUP BY id
 HAVING COUNT(*) &gt; 1;</code></pre>

@@ -100,7 +100,7 @@ head_extra: |
       <ol>
         <li>
           <strong>Baseline metrics:</strong> Record current consumer lag and throughput
-          <pre><button class="copy">copy</button><code>kafka-consumer-groups --bootstrap-server localhost:9092 \
+          <pre><code>kafka-consumer-groups --bootstrap-server localhost:9092 \
   --describe --group sink-group-inventory</code></pre>
         </li>
         <li>
@@ -112,7 +112,7 @@ head_extra: |
       <ol>
         <li>
           <strong>Stop the sink connector:</strong>
-          <pre><button class="copy">copy</button><code># If using JDBC Sink
+          <pre><code># If using JDBC Sink
 curl -X DELETE http://localhost:8083/connectors/jdbc-sink-connector
 
 # Or pause it
@@ -120,12 +120,12 @@ curl -X PUT http://localhost:8083/connectors/jdbc-sink-connector/pause</code></p
         </li>
         <li>
           <strong>Generate source changes:</strong> Insert, update, or delete rows in source database
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "INSERT INTO public.app_customer (name, email) VALUES ('Test User', 'test@example.com');"</code></pre>
         </li>
         <li>
           <strong>Watch lag grow:</strong> Monitor consumer group lag every 30 seconds
-          <pre><button class="copy">copy</button><code># Watch lag in real-time (Ctrl+C to stop)
+          <pre><code># Watch lag in real-time (Ctrl+C to stop)
 watch -n 5 "kafka-consumer-groups --bootstrap-server localhost:9092 \
   --describe --group sink-group-inventory | grep -v 'Consumer group'"</code></pre>
         </li>
@@ -160,7 +160,7 @@ watch -n 5 "kafka-consumer-groups --bootstrap-server localhost:9092 \
       </table>
 
       <h3>Recovery</h3>
-      <pre><button class="copy">copy</button><code># Resume or recreate the sink connector
+      <pre><code># Resume or recreate the sink connector
 curl -X PUT http://localhost:8083/connectors/jdbc-sink-connector/resume
 
 # Or re-register it
@@ -210,7 +210,7 @@ curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json
       <ol>
         <li>
           <strong>Enable DLQ on sink connector:</strong> Update connector config
-          <pre><button class="copy">copy</button><code>{
+          <pre><code>{
   "name": "jdbc-sink-connector",
   "config": {
     "errors.tolerance": "all",
@@ -223,7 +223,7 @@ curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json
         </li>
         <li>
           <strong>Create a consumer for DLQ monitoring:</strong>
-          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:9092 \
+          <pre><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.sink.inventory --from-beginning \
   --property print.headers=true \
   --property print.timestamp=true</code></pre>
@@ -234,20 +234,20 @@ curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json
       <ol>
         <li>
           <strong>Method 1: Inject incompatible data type</strong>
-          <pre><button class="copy">copy</button><code># Assuming sink expects integer but source sends string
+          <pre><code># Assuming sink expects integer but source sends string
 docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "INSERT INTO public.problematic_table (id, age) VALUES (999, 'not-a-number');"</code></pre>
         </li>
         <li>
           <strong>Method 2: Create missing target table scenario</strong>
-          <pre><button class="copy">copy</button><code># Rename target table to simulate missing destination
+          <pre><code># Rename target table to simulate missing destination
 # Note: postgres-sink is the sink database container (port 5433)
 docker exec -it postgres-sink psql -U sink_user -d warehouse -c \
   "ALTER TABLE public.app_customer RENAME TO app_customer_backup;"</code></pre>
         </li>
         <li>
           <strong>Method 3: Insert oversized payload</strong>
-          <pre><button class="copy">copy</button><code># Insert a very large text field that exceeds sink column limit
+          <pre><code># Insert a very large text field that exceeds sink column limit
 # (Assuming sink has VARCHAR(255) limit and this creates a 5000 char string)
 docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "INSERT INTO public.app_customer (name, email) VALUES (repeat('X', 5000), 'large@example.com');"</code></pre>
@@ -258,11 +258,11 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
       <ol>
         <li>
           <strong>Check connector status:</strong>
-          <pre><button class="copy">copy</button><code>curl -s http://localhost:8083/connectors/jdbc-sink-connector/status | jq '.tasks[].trace'</code></pre>
+          <pre><code>curl -s http://localhost:8083/connectors/jdbc-sink-connector/status | jq '.tasks[].trace'</code></pre>
         </li>
         <li>
           <strong>Inspect DLQ messages:</strong>
-          <pre><button class="copy">copy</button><code># List messages with error context
+          <pre><code># List messages with error context
 kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic dlq.sink.inventory --from-beginning \
   --property print.headers=true \
@@ -289,7 +289,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 \
             <li>Re-drive DLQ messages to original topic</li>
             <li>Let connector reprocess</li>
           </ol>
-          <pre><button class="copy">copy</button><code># Use kafka-console-producer with headers
+          <pre><code># Use kafka-console-producer with headers
 # Or use a DLQ replay tool</code></pre>
         </div>
         <div class="box">
@@ -344,12 +344,12 @@ kafka-console-consumer --bootstrap-server localhost:9092 \
       <ol>
         <li>
           <strong>Document current schema:</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "\d public.app_customer"</code></pre>
         </li>
         <li>
           <strong>Baseline a known-good record:</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "SELECT * FROM public.app_customer LIMIT 1;"</code></pre>
         </li>
       </ol>
@@ -358,20 +358,20 @@ kafka-console-consumer --bootstrap-server localhost:9092 \
       <ol>
         <li>
           <strong>Scenario A: Drop a column with active data</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "ALTER TABLE public.app_customer DROP COLUMN email;"</code></pre>
           <p class="muted">Impact: Sink may fail if it expects <code>email</code> column; Debezium emits event without field</p>
         </li>
         <li>
           <strong>Scenario B: Change column type (incompatible)</strong>
-          <pre><button class="copy">copy</button><code># Change integer to text (potentially lossy)
+          <pre><code># Change integer to text (potentially lossy)
 docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "ALTER TABLE public.app_customer ALTER COLUMN id TYPE TEXT USING id::TEXT;"</code></pre>
           <p class="muted">Impact: Type mismatch may cause sink errors if target schema is strict</p>
         </li>
         <li>
           <strong>Scenario C: Add NOT NULL constraint on existing nullable column</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "ALTER TABLE public.app_customer ADD COLUMN phone VARCHAR(20) NOT NULL DEFAULT '';"</code></pre>
           <p class="muted">Impact: Existing rows get default; new inserts must provide value</p>
         </li>
@@ -381,13 +381,13 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
       <ol>
         <li>
           <strong>Scenario D: Add nullable column (forward-compatible)</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "ALTER TABLE public.app_customer ADD COLUMN loyalty_points INTEGER DEFAULT 0;"</code></pre>
           <p class="muted success">✓ Safe: Sink ignores unknown columns or auto-adds if using schema sync</p>
         </li>
         <li>
           <strong>Scenario E: Increase column width</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "ALTER TABLE public.app_customer ALTER COLUMN name TYPE VARCHAR(500);"</code></pre>
           <p class="muted success">✓ Safe: Widening columns rarely breaks downstream systems</p>
         </li>
@@ -498,19 +498,19 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
       <ol>
         <li>
           <strong>Ensure idempotent sink:</strong> Verify sink uses UPSERT/MERGE, not INSERT
-          <pre><button class="copy">copy</button><code># Check sink connector config
+          <pre><code># Check sink connector config
 curl -s http://localhost:8083/connectors/jdbc-sink-connector/config | \
   jq '.["insert.mode"]'  # should be "upsert"</code></pre>
         </li>
         <li>
           <strong>Backup current state:</strong>
-          <pre><button class="copy">copy</button><code># Export connector offsets (Kafka Connect stores in internal topic)
+          <pre><code># Export connector offsets (Kafka Connect stores in internal topic)
 kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic my_connect_offsets --from-beginning --timeout-ms 5000 > offsets-backup.json</code></pre>
         </li>
         <li>
           <strong>Record sink row count:</strong>
-          <pre><button class="copy">copy</button><code># Note: postgres-sink is the sink database container (port 5433)
+          <pre><code># Note: postgres-sink is the sink database container (port 5433)
 docker exec -it postgres-sink psql -U sink_user -d warehouse -c \
   "SELECT COUNT(*) FROM public.app_customer;"</code></pre>
         </li>
@@ -520,12 +520,12 @@ docker exec -it postgres-sink psql -U sink_user -d warehouse -c \
       <ol>
         <li>
           <strong>Stop connector gracefully:</strong>
-          <pre><button class="copy">copy</button><code>curl -X DELETE http://localhost:8083/connectors/inventory-connector
+          <pre><code>curl -X DELETE http://localhost:8083/connectors/inventory-connector
 curl -X DELETE http://localhost:8083/connectors/jdbc-sink-connector</code></pre>
         </li>
         <li>
           <strong>Wipe connector offsets:</strong>
-          <pre><button class="copy">copy</button><code># Delete Postgres replication slot (forces new snapshot)
+          <pre><code># Delete Postgres replication slot (forces new snapshot)
 docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "SELECT pg_drop_replication_slot('debezium');"
 
@@ -534,7 +534,7 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
         </li>
         <li>
           <strong>Re-register source connector with fresh snapshot:</strong>
-          <pre><button class="copy">copy</button><code>curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+          <pre><code>curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
   "name": "inventory-connector-v2",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
@@ -552,7 +552,7 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
         </li>
         <li>
           <strong>Re-register sink connector to consume from new topic:</strong>
-          <pre><button class="copy">copy</button><code>curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+          <pre><code>curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
   "name": "jdbc-sink-connector-v2",
   "config": {
     "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
@@ -588,16 +588,16 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
       <ol>
         <li>
           <strong>Watch connector task state:</strong>
-          <pre><button class="copy">copy</button><code>watch -n 2 "curl -s http://localhost:8083/connectors/inventory-connector-v2/status | jq '.tasks[0].state'"</code></pre>
+          <pre><code>watch -n 2 "curl -s http://localhost:8083/connectors/inventory-connector-v2/status | jq '.tasks[0].state'"</code></pre>
         </li>
         <li>
           <strong>Monitor snapshot progress:</strong>
-          <pre><button class="copy">copy</button><code># Check connector logs for snapshot messages
+          <pre><code># Check connector logs for snapshot messages
 docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
         </li>
         <li>
           <strong>Count messages during snapshot:</strong>
-          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:9092 \
+          <pre><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server2.public.app_customer --from-beginning \
   --timeout-ms 10000 | wc -l</code></pre>
         </li>
@@ -607,12 +607,12 @@ docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
       <ol>
         <li>
           <strong>Make a live change:</strong>
-          <pre><button class="copy">copy</button><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
+          <pre><code>docker exec -it postgres psql -U start_data_engineer -d inventory -c \
   "UPDATE public.app_customer SET name = 'Updated After Snapshot' WHERE id = 1;"</code></pre>
         </li>
         <li>
           <strong>Verify streaming event arrives:</strong>
-          <pre><button class="copy">copy</button><code>kafka-console-consumer --bootstrap-server localhost:9092 \
+          <pre><code>kafka-console-consumer --bootstrap-server localhost:9092 \
   --topic server2.public.app_customer \
   --offset latest --partition 0 --timeout-ms 5000</code></pre>
           <p class="muted">Look for <code>"op":"u"</code> in the JSON payload for update operation</p>
@@ -648,7 +648,7 @@ docker logs -f connect 2>&1 | grep -i snapshot</code></pre>
       </table>
 
       <h3>Duplicate Detection Query</h3>
-      <pre><button class="copy">copy</button><code>-- Run on sink database
+      <pre><code>-- Run on sink database
 SELECT id, COUNT(*) AS occurrences
 FROM public.app_customer
 GROUP BY id
