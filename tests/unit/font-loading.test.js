@@ -11,6 +11,12 @@ import path from "node:path";
  * metric-matched local fallback so the shift is invisible even when a font
  * arrives late. Weights that are lazy by design are listed explicitly, so a
  * new late-loading weight fails here instead of silently costing CLS.
+ *
+ * Scope: this checks the preload markup and the internal consistency of the
+ * override numbers (ascent-override x size-adjust ~= 102.5, descent-override x
+ * size-adjust ~= 27.5, i.e. Plex's own vertical box). It does NOT measure real
+ * font metrics; the numbers themselves were computed with fontTools (see the
+ * comment above the fallback faces in 01-variables.css).
  */
 
 const read = (p) => fs.readFileSync(path.resolve(p), "utf8");

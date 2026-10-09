@@ -59,8 +59,9 @@
 /* Metric-matched fallbacks (P13-6). While a Plex file is still in flight
    (font-display: swap) the text is set in a locally installed face that has
    been rescaled to Plex's advance widths and given Plex's vertical metrics,
-   so the swap changes glyph shapes but not line breaks or line boxes, and
-   causes no layout shift. They are listed right after the Plex family in
+   so the swap changes glyph shapes but rarely line breaks or line boxes,
+   and reduces the layout shift (average-width matching is approximate, so
+   a small residual remains). They are listed right after the Plex family in
    --font-sans / --font-mono. The numbers are computed from the shipped
    woff2 files and Arial / Courier New with fontTools:
      size-adjust = Plex weighted average advance / fallback weighted average
