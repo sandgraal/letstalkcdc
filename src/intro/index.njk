@@ -179,7 +179,7 @@ scripts:
             </li>
             <li>
               <em>Disadvantage: Complexity.</em> Requires DB-level privileges and correct log retention
-              (<code>wal_keep_size</code> or logical slots in Postgres; binlog purge in MySQL; T-log backups in SQL Server).
+              (logical slots, capped by <code>max_slot_wal_keep_size</code>, in Postgres; binlog purge in MySQL; T-log backups in SQL Server).
             </li>
           </ul>
         </details>

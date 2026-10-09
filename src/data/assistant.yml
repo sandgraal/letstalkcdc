@@ -672,6 +672,93 @@ intents:
         anchor: "#glossary-terms"
         preview: Definitions with aliases and cross-references.
 
+  - id: replication_slot_wal
+    triggers:
+      [
+        "replication slot",
+        "replication slots",
+        "slot growing",
+        "postgres disk",
+        "postgres wal",
+        "wal_keep_size",
+        "pg_replication_slots",
+        "max_slot_wal_keep_size",
+        "restart_lsn",
+        "confirmed_flush_lsn",
+        "wal growth",
+        "wal growing",
+        "wal is growing",
+        "wal disk",
+        "wal accumulat",
+        "disk is filling",
+        "disk filling",
+        "disk full",
+        "pg_wal",
+        "drop the slot",
+        "drop a slot",
+        "abandoned slot",
+        "slot lost",
+        "lost slot",
+      ]
+    modules: []
+    answer: >
+      A Postgres logical replication slot keeps every WAL file from its
+      restart_lsn onward until the consumer confirms it, even when no
+      connector is connected, so a stopped or slow connector fills the disk.
+      Query pg_replication_slots for active, wal_status, restart_lsn and
+      confirmed_flush_lsn, and compare the retained WAL with free space.
+      max_slot_wal_keep_size caps retention (default -1 is unlimited), but a
+      slot that exceeds it is invalidated and the connector must re-snapshot
+      into an idempotent sink. Do not drop a slot until you know who owns it.
+    links:
+      - label: Replication slots and WAL growth
+        url: /postgres-replication-slots/
+        anchor: "#triage"
+        preview: The checks to run when a Postgres disk is filling.
+      - label: What to do, by situation
+        url: /postgres-replication-slots/
+        anchor: "#decision"
+        preview: Lagging, dead, abandoned and invalidated slots.
+      - label: Snapshotting
+        url: /snapshotting/
+        preview: The re-snapshot that follows a lost slot.
+
+  - id: debezium_heartbeat
+    triggers:
+      [
+        "heartbeat",
+        "heartbeat.interval.ms",
+        "heartbeat.action.query",
+        "slot.drop.on.stop",
+        "slot.name",
+        "failover slot",
+        "failover slots",
+        "slot synchronization",
+        "quiet table",
+        "low traffic database",
+        "low-traffic database",
+      ]
+    modules: []
+    answer: >
+      When most writes in a Postgres database are not on the captured tables,
+      the Debezium connector reads the log but rarely emits a change, so it
+      never confirms a new position and WAL piles up. Set
+      heartbeat.interval.ms, and for a quiet database add a heartbeat table,
+      put it in the publication and point heartbeat.action.query at it. Give
+      every connector its own slot.name and publication. On Postgres 17 and
+      later a failover slot can be synchronized to a standby; check your
+      version and verify the slot is ready before relying on it. Heartbeats
+      move the position; they do not make delivery exactly-once.
+    links:
+      - label: Debezium settings that decide slot health
+        url: /postgres-replication-slots/
+        anchor: "#debezium"
+        preview: Heartbeats, slot names, publications and slot.drop.on.stop.
+      - label: Failover and standbys
+        url: /postgres-replication-slots/
+        anchor: "#failover"
+        preview: Failover slots by Postgres version, with caveats.
+
   - id: start_here
     triggers:
       [

@@ -112,8 +112,10 @@ SELECT slot_name, active, restart_lsn, confirmed_flush_lsn
 FROM pg_replication_slots;
 
 -- retention &amp; pressure
-SHOW wal_keep_size;            -- size hint for retained WAL
-SELECT now() - pg_last_wal_replay_lsn()::text::pg_lsn; -- on standby
+SHOW max_slot_wal_keep_size;   -- cap on WAL a slot may retain; -1 = unlimited
+SELECT slot_name, wal_status,  -- on the primary
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_by_slot
+FROM pg_replication_slots;
 
 -- lag (if using logical slot)
 SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_from_slot
@@ -129,7 +131,8 @@ FROM pg_replication_slots WHERE slot_name='&lt;slot&gt;';</code></pre>
               <li>
                 <em>Slot disk pressure:</em> sink caught behind → raise sink
                 throughput or pause snapshot; never drop the slot without a
-                plan.
+                plan. See the
+                <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a>.
               </li>
               <li>
                 <em>Missing updates:</em> replica identity not full on keyless
