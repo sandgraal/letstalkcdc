@@ -183,6 +183,30 @@ export default [
     related: ["exactly-once", "idempotent-write", "at-least-once"],
   },
   {
+    term: "Convergence test",
+    slug: "convergence-test",
+    aliases: ["idempotence test", "replay test"],
+    definition: `<p>A test that applies a change log to a sink twice, and
+        again in shuffled order with duplicates, and requires the final
+        table state to equal in-order application by source log
+        position. It checks the at-least-once contract (duplicated,
+        late and replayed changes still converge), not the absence of
+        duplicates. See the testing module for runnable examples.</p>`,
+    related: ["idempotent-write", "effectively-once", "resurrection"],
+  },
+  {
+    term: "Resurrection",
+    slug: "resurrection",
+    aliases: ["zombie row"],
+    definition: `<p>A deleted row that reappears in a sink because an older
+        change for the same key was applied after the delete. It
+        happens when a delete physically removes the row, leaving
+        nothing to compare a late or replayed update against. Keeping
+        the delete as a marker that carries its log position, and
+        guarding updates on position, prevents it.</p>`,
+    related: ["tombstone", "idempotent-write", "lsn-scn"],
+  },
+  {
     term: "Lag",
     slug: "lag",
     definition: `<p>The time between a source commit and the
