@@ -1,4 +1,7 @@
 # Implementation Status Report
+
+> **2026-10: partly superseded.** The Appwrite config source named in section 1 no longer exists. `assets/feature-flags.js` reads the querystring, `CDC_FEATURE_FLAGS`, localStorage and `PLAYGROUND_CFG.featureFlags`. Persistence is now Supabase; see [supabase-setup.md](./supabase-setup.md).
+
 **Review Date:** 2025-11-17
 **Reviewer:** GitHub Copilot Agent
 **Repository:** sandgraal/Lets-Talk-CDC-Change-Feed-Playground
