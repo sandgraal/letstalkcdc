@@ -229,6 +229,22 @@ phase it logically belongs to, or append a new `## Phase N` heading.
   spawn it via the Agent tool for any CSS change. It enforces the
   byte-identity workflow and the anti-pattern list automatically.
 
+## Orchestration (conductor + roles)
+
+This repo's main session runs as the **`conductor`** agent
+(`"agent": "conductor"` in `.claude/settings.json`): it plans, delegates,
+integrates and verifies, and does not edit files itself. Work is done by
+single-purpose roles in `.claude/agents/` — `scout`, `verifier`, `scribe`
+(Haiku 5.5) and `implementer`, `reviewer`, `css-refactor` (Sonnet 5.5).
+**Only those two models are permitted**; nothing above Sonnet is
+configured, and a hook plus a unit test enforce it.
+
+Read [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) before starting: it has the
+routing table, the brief template, the Definition of Ready / Done, and the
+honest limits of the model lock. Phase 13 of the plan is the
+agent-executable queue; Phase 14 is the maintainer's decision register —
+do not start Phase 14 items.
+
 ## Auto-continue on merge
 
 When a `claude/*` PR you authored merges on GitHub, the next session

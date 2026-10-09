@@ -159,17 +159,27 @@ it in a browser, or assume it is broken.
 These items don't require code changes — they require checking
 GitHub-side state and decisions.
 
-- [ ] Confirm `vars.SITE_HOST` is set to `https://sandgraal.github.io` in
+- [x] Confirm `vars.SITE_HOST` is set to `https://sandgraal.github.io` in
       the repo's **Variables** (not Secrets) at
       `https://github.com/sandgraal/letstalkcdc/settings/variables/actions`.
       `deploy.yml` reads it but doesn't fail loudly if unset, so the
       production canonical/OG URLs depend on it being correct.
-- [ ] Confirm `vars.ELEVENTY_PATH_PREFIX` is `/letstalkcdc` (or
+      **Resolved 2026-10-08:** the variable is _unset_ (the repo's only
+      Actions variables are the two `COPILOT_AGENT_FIREWALL_*` ones), and
+      that is fine — `src/_data/site.mjs` falls back to
+      `https://sandgraal.github.io` and warns on a production build.
+      Verified against the live site below.
+- [x] Confirm `vars.ELEVENTY_PATH_PREFIX` is `/letstalkcdc` (or
       explicitly unset — `lib/path-prefix.mjs` will auto-derive the same
-      value from `GITHUB_REPOSITORY`).
-- [ ] Trigger a `deploy.yml` run after confirming both, and spot-check
+      value from `GITHUB_REPOSITORY`). **Resolved 2026-10-08:** explicitly
+      unset; auto-derivation yields `/letstalkcdc/`.
+- [x] Trigger a `deploy.yml` run after confirming both, and spot-check
       a deployed page's `<link rel="canonical">` and Open-Graph tags
-      resolve to the right host.
+      resolve to the right host. **Resolved 2026-10-08:** the latest
+      `deploy.yml` run (push to `main`, 2026-08-27) succeeded, and
+      `/intro/` serves `canonical` and `og:url` of
+      `https://sandgraal.github.io/letstalkcdc/intro/` and `og:image` under
+      the same prefix.
 
 ---
 
@@ -973,6 +983,146 @@ end-to-end exactly-once across systems is not achievable.
       and Pub/Sub — in particular that Pub/Sub gives **no ordering
       without an ordering key**, Kinesis orders per shard with a fixed
       retention window, and how each changes the sink's dedup strategy.
+
+---
+
+## Phase 13 — Maintenance & performance queue (agent-executable)
+
+Added 2026-10-08 from a backlog sweep (this plan's open boxes, a code
+scan for TODO / skipped-test / placeholder signals, GitHub issue / PR /
+CI state, and `npm outdated`). Everything here can be done without a
+maintainer decision; everything that cannot is in Phase 14.
+
+**Working agreement.** The conductor protocol, role → model routing,
+Definition of Ready and Definition of Done live in
+[`CONDUCTOR.md`](CONDUCTOR.md). Items are ordered by value ÷ effort
+within each tier, one PR per item, no item left half-done.
+
+Item fields: **Outcome** (what is true afterwards) · **Accept** (testable
+criteria — an item is not done until each holds) · **Verify** (the
+commands that prove it) · **Size** (S ≤ 1 h, M ≤ half a day, L = split
+it) · **Role** (who executes; see `CONDUCTOR.md`) · **Needs** (ordering
+dependencies).
+
+### Tier A — quick wins
+
+- [ ] **P13-1 · Retire the stale `.lycheeignore` canonical-loopback
+      entries.** Outcome: link-check no longer carries workarounds for
+      pages that have been live since 2026-08-27. Accept: the six
+      entries for `/glossary/`, `/methodology/`, `/cloud-labs/`,
+      `/compare/`, `/non-relational/`, `/security/` are removed (the
+      Snowflake / Oracle / Fivetran entries stay — those are external);
+      the `linkcheck` workflow passes on the PR. Verify: all six URLs
+      return 200 in production (checked 2026-10-08); `npm run build`;
+      CI `linkcheck`. Size: S. Role: `scribe`.
+- [ ] **P13-2 · Make link-check tolerate transient 5xx.** Outcome: a
+      single flaky 503 (as on the Dependabot PR's run of 2026-09-01,
+      1 error in 519 links, healthy a moment later) no longer fails
+      the check. Accept: `linkcheck.yml` passes `--max-retries` and
+      `--retry-wait-time` to lychee; the workflow still fails on a real 404. Verify: workflow lint (`actionlint` if present, else YAML
+      parse) and a green CI run. Size: S. Role: `implementer`.
+- [ ] **P13-3 · Remove dead "coming soon" copy.**
+      `src/cloud-labs/index.njk:158` renders a "Cloud labs are coming
+      soon" callout when `publishedLabs == 0`, but all five labs
+      exist; `src/_includes/components/ui.njk:73,112` default a CTA to
+      "Coming Soon". Outcome: no user-visible placeholder copy. Accept:
+      `rg -i "coming soon" _site` finds nothing that a reader can reach;
+      if a branch is genuinely unreachable it is deleted, not just
+      hidden. Verify: `npm run build`, `rg -i "coming soon" _site`,
+      `npm test`. Size: S. Role: `implementer`.
+- [ ] **P13-4 · Take the in-range dependency updates as one batch.**
+      Ten packages (`@11ty/eleventy` 3.1.2→3.1.6, `@axe-core/playwright`,
+      `@playwright/test`, `autoprefixer`, `eslint`, `fuse.js`, `globals`,
+      `postcss`, `prettier`, `vite`) plus an `engines` field
+      (`node >=20`, matching `.nvmrc` and CI). Accept: `verify-all`,
+      `smoke:core` and the Playwright suite pass; if
+      `autoprefixer` / `postcss` move the production CSS hash, the diff
+      of `_site/assets/css/styles.css` is walked and the new baseline is
+      recorded in `CLAUDE.md`. Verify: `/verify-all`, `/css-byte-check`,
+      `npm run smoke:core`, `npm run test:e2e`. Size: M. Role:
+      `implementer` (+ `css-refactor` if the CSS hash moves).
+
+### Tier B — measured performance work
+
+- [ ] **P13-5 · Measure `/intro/` before touching it.** The Phase 5 and
+      Phase 7 perf items are open but the numbers are months old and
+      several suspects were fixed since (render-blocking, unsized
+      images, vendor cards). Outcome: a current table — LHCI perf score,
+      CLS and its culprit elements from `cls-culprits-insight`,
+      main-thread breakdown, DOM element count — recorded in this plan.
+      Accept: numbers come from `npm run build:lhci` followed by
+      `npm run lighthouse`, three runs, median reported, with the
+      command and date; items whose audit already scores 1.0 are ticked. Verify: the
+      recorded numbers reproduce within ±0.03 perf. Size: M. Role:
+      `implementer`.
+- [ ] **P13-6 · Fix the dominant `/intro/` CLS culprit(s).** Needs
+      P13-5. Outcome: CLS under 0.1 (Core Web Vitals "good"). Accept: the
+      culprit named by P13-5 is fixed at source (reserved space, font
+      metrics override, or deferred reveal — not a Lighthouse-only
+      workaround); `.lighthouserc.json` perf threshold ratcheted to the
+      new median minus 0.04; no a11y regression. Verify: re-run LHCI
+      three times, `npm run test:e2e`, screenshots before / after.
+      Size: M (split if more than one culprit). Role: `implementer`,
+      `reviewer` on the diff.
+- [ ] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
+      `tests/e2e/assistant.spec.js:31` skips three FAB tests on
+      mobile-chrome for a "pointer-intercept flake" with no tracking.
+      Outcome: the skip is either gone or has a written, dated reason
+      and an owner. Accept: time-boxed to 2 h — either the tests pass 10
+      consecutive local runs un-skipped, or the skip comment records the
+      root-cause finding and the plan carries a follow-up. Verify:
+      `npx playwright test assistant --repeat-each=10 --project=mobile-chrome`.
+      Size: S. Role: `implementer`.
+
+### Tier C — larger upgrades (one PR each, never batched)
+
+- [ ] **P13-8 · Major dependency upgrades.** Nine majors are pending:
+      `vitest` + `@vitest/coverage-v8` 4→5 (together), `jsdom` 28→30,
+      `cssnano` 7→9 (**will likely move the production CSS hash —
+      treat as a CSS change**), `dotenv` 17→18, `rimraf` 5→6,
+      `postcss-cli` 11→12, `postcss-import` 16→17, `pa11y-ci` 4→5. Accept
+      per upgrade: read the changelog for breaking changes, `verify-all`
+      green, no behavioural change in `_site/`. Verify: `/verify-all`,
+      `/css-byte-check`, `npm run smoke`. Size: L → one sub-PR per
+      package group. Role: `implementer`; `css-refactor` for the
+      `cssnano` / `postcss-*` group.
+
+### Tier D — documentation hygiene
+
+- [ ] **P13-9 · Refresh `STATE-OF-PROJECT.md`.** The snapshot is dated
+      2026-05-19 and describes 274 tests and 16 open boxes. Do this last,
+      once the queue above has landed. Accept: a new dated snapshot
+      supersedes it (the old one stays reachable through Git history, as
+      its header already promises) and quotes numbers produced by
+      commands, not recollection. Size: M. Role: `scribe` drafts,
+      `reviewer` checks the numbers.
+
+### Done in this phase
+
+- [x] **P13-0 · Conductor roster and working agreement.** Role-based
+      subagents pinned to Sonnet 5.5 and Haiku 5.5, a hook that denies any
+      other model, and [`CONDUCTOR.md`](CONDUCTOR.md).
+
+---
+
+## Phase 14 — Maintainer decisions register
+
+These are not tasks an agent can do, because each one needs a human
+choice or an action in GitHub's UI. They are collected here so they stop
+being scattered across five phases. Each row has a **recommended
+default** — replying "go with the defaults" is a valid answer. The
+authoritative checkbox for each stays in the phase named in the last
+column; do not duplicate it here.
+
+| #   | Decision                            | Recommended default                                                                                                                                             | Unblocks                                                       | Tracked in        |
+| --- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------- |
+| D1  | Repository license                  | **MIT for code, CC BY 4.0 for the written content.** Standard for an educational repo; keeps both reuse-friendly and requires attribution for the prose.        | `LICENSE` file, `package.json` `license`, README licence badge | Phase 11          |
+| D2  | Newsletter provider                 | **Buttondown** — static-embed form works with no JS and no secrets in the repo; Kit is the alternative if you want landing-page tooling.                        | `/newsletter/` page and footer capture (~1 PR)                 | Phase 9           |
+| D3  | Author photo                        | Supply a square image ≥ 400 px; agents wire `author.mjs`, `base.njk` and the Article JSON-LD.                                                                   | Author byline photo and richer structured data                 | Phase 8           |
+| D4  | Author identity links               | Provide LinkedIn / talks / podcast URLs when they exist; leave `advisoryUrl` null until you want the footer CTA.                                                | `sameAs` expansion                                             | Phase 8           |
+| D5  | CSS `@layer` migration              | **Declare it "won't do" until a real specificity bug forces it.** The plan itself says "no user value otherwise", and it carries visual-regression risk.        | Closes two duplicate open boxes (Phase 4 and Phase 11)         | Phase 4, Phase 11 |
+| D6  | Lighthouse badge in README          | **Static badge, bumped when the LHCI threshold is raised** (the plan's "option 2"). A hosted LHCI store is more infrastructure than a badge is worth.           | README badge                                                   | Phase 11          |
+| D7  | Dependabot PR #319 (dev dependency) | Re-run its checks and merge; it is mergeable and a dev-only patch bump, and 37 days of staleness is itself a risk. Agents do not merge PRs without your say-so. | Clears the only open PR                                        | —                 |
 
 ---
 

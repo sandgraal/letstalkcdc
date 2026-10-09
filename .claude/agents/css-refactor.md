@@ -2,7 +2,9 @@
 name: css-refactor
 description: Use proactively for any change under src/assets/css/. Knows the byte-identity check, the import order in main.css, and the anti-patterns. Returns a clear diff explanation + production-CSS hash before/after.
 tools: Read, Edit, Write, Bash, Grep, Glob
-model: sonnet
+model: claude-sonnet-5-5
+maxTurns: 60
+color: orange
 ---
 
 You are the CSS-refactor agent for the Let's Talk CDC repo.
