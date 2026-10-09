@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-08-25",
+  dateModified: "2026-10-09",
   seriesKey: "exactly-once",
   schemaType: "TechArticle",
   schemaAbout: [
@@ -13,7 +13,7 @@ module.exports = {
   heroConfig: {
     title: "Exactly-Once Processing, For Real",
     description:
-      "<p>Cut through marketing myths and learn how to deliver CDC pipelines that behave idempotently under failure, even when end-to-end EOS is impossible.</p>",
+      "<p>Cut through marketing myths. See which hops of a CDC pipeline can be exactly-once, which cannot, and how to build sinks that behave idempotently under failure.</p>",
     align: "center",
     skillLevel: "Advanced",
     actions: [
@@ -34,7 +34,7 @@ module.exports = {
           "Every message is physically delivered only once across the entire system",
           "The observable effect is as-if each message was processed exactly once, even if retries occur",
           "Messages are never duplicated or lost under any circumstances",
-          "EOS is impossible and only a marketing term",
+          "EOS is only a marketing term and no real system offers it on any hop",
         ],
         correct: "2",
         explanation:
@@ -64,7 +64,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "End-to-end EOS requires all components in the chain—source database, CDC capture, message broker, and sink—to participate in coordinated transactions or idempotent protocols. Since these are often independent systems with different guarantees, achieving true EOS across the entire pipeline is complex and sometimes impossible.",
+          "End-to-end EOS requires all components in the chain—source database, CDC capture, message broker, and sink—to participate in coordinated transactions or idempotent protocols. Since these are independent systems with different guarantees, the hops can be exactly-once only individually (for example Kafka to Kafka, or an opt-in Kafka Connect source), not as one guarantee from the source database to the destination.",
       },
       {
         question:
@@ -81,7 +81,7 @@ module.exports = {
       },
       {
         question:
-          "What is an alternative to true EOS when it's not achievable?",
+          "What do you rely on for a hop that can't be exactly-once delivery, such as writing into an external sink?",
         options: [
           "Give up and accept data corruption",
           "Implement idempotent operations so duplicate processing is safe",
