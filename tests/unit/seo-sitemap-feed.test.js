@@ -291,8 +291,13 @@ describe("built site", () => {
   });
 
   describe("feed.xml", () => {
+    // The feed lists items with a `seriesKey` (src/feed.11ty.cjs); base.njk
+    // renders that as <body data-journey-slug>, so this mirrors the feed's
+    // own filter without depending on which pages emit article:* meta.
     const moduleFiles = () =>
-      [...pages].filter(([, html]) => modifiedOf(html)).map(([file]) => file);
+      [...pages]
+        .filter(([, html]) => /<body[^>]*\sdata-journey-slug="/.test(html))
+        .map(([file]) => file);
 
     it("is well-formed RSS 2.0 pointing at the configured host", () => {
       const doc = parseXml(feed);
