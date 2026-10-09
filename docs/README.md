@@ -33,6 +33,8 @@ The running checklist for in-flight work is
 
 ## 🤝 Contributing
 
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** — Run, build and check the site
+  locally; project structure, commands, CI checks
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — Human-contributor workflow
   (branching, PR expectations, local checks)
 - **[adding-modules.md](adding-modules.md)** — Adding new educational
@@ -73,7 +75,7 @@ The running checklist for in-flight work is
 
 ## 🔗 Repo-Root Files
 
-- **[../README.md](../README.md)** — Project overview and quick start
+- **[../README.md](../README.md)** — Project overview for readers
 - **[../CLAUDE.md](../CLAUDE.md)** — AI-agent quick reference
 - **[../CHANGELOG.md](../CHANGELOG.md)** — Release notes and unreleased
   changes

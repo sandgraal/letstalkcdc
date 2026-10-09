@@ -1,22 +1,15 @@
 import { getPathPrefix, getPathPrefixForHost } from "../../lib/path-prefix.mjs";
+import { DEFAULT_SITE_HOST, getEnvSiteHost } from "../../lib/site-host.mjs";
 
-const normalizeHost = (host) => {
-  if (!host) {
-    return null;
-  }
-
-  return host.replace(/\/$/, "");
-};
-
-// Production lives at https://sandgraal.github.io/letstalkcdc/, so this
-// default matches reality. CI / deploy workflows should still set
-// SITE_HOST explicitly (see .github/workflows/deploy.yml,
-// linkcheck.yml); this default is a fallback so canonical / OG / JSON-LD
-// URLs don't ship pointing at a host that doesn't exist.
-const defaultHost = "https://sandgraal.github.io";
+// The fallback host lives in lib/site-host.mjs (the one place it is
+// written down). CI / deploy workflows should still set SITE_HOST
+// explicitly (see .github/workflows/deploy.yml, linkcheck.yml); the
+// default only keeps canonical / OG / JSON-LD URLs from shipping pointing
+// at a host that doesn't exist.
+const defaultHost = DEFAULT_SITE_HOST;
 const pathPrefix = getPathPrefix();
 const hostPathPrefix = getPathPrefixForHost(pathPrefix);
-const envHost = normalizeHost(process.env.SITE_HOST);
+const envHost = getEnvSiteHost();
 
 if (!envHost && process.env.NODE_ENV === "production") {
   console.warn(

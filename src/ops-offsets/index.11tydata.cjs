@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-10-09",
   seriesKey: "ops-offsets",
   heroConfig: {
     title: "Ops Playbook: Offsets & Replays",

@@ -44,7 +44,7 @@ module.exports = class {
 
   render({ collections, site, author, feedLimit }) {
     // `site.host` already includes the path prefix
-    // (https://sandgraal.github.io/letstalkcdc in prod). Module
+    // (<SITE_HOST>/<path prefix>, e.g. https://example.org/site). Module
     // `item.url` does NOT include the prefix — Eleventy strips it
     // for the collection-iteration value — so we append item.url
     // directly to the prefixed host, same convention as

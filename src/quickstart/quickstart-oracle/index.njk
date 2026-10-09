@@ -103,7 +103,7 @@ GROUP BY TO_CHAR(first_time, 'YYYY-MM-DD HH24:MI');</code></pre>
       <h2>Acceptance (target/sink)</h2>
       <ul class="checklist">
         <li>No duplicate PKs after connector restart.</li>
-        <li>Latest-wins per key by commit timestamp/SCN.</li>
+        <li>Latest-wins per key by SCN (log position), not a commit timestamp.</li>
         <li>DLQ empty or only expected test errors.</li>
       </ul>
       <pre><code>SELECT COUNT(*) AS rows, COUNT(DISTINCT ID) AS distinct_keys

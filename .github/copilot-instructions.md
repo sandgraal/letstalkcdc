@@ -278,7 +278,7 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 
 - **Production**: GitHub Pages via `.github/workflows/deploy.yml` (auto-deploy on push to `main`)
 - **Environment variables** (set in repo settings):
-  - `SITE_HOST`: Full domain (e.g., `https://letstalkcdc.github.io`)
+  - `SITE_HOST`: Your site URL (e.g., `https://<owner>.github.io` or a custom domain)
   - `ELEVENTY_PATH_PREFIX`: Leave blank for root, or `/<repo-name>` for project pages
 
 ## When in Doubt
@@ -296,7 +296,8 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 
 - **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Supabase feedback, tracing, all features)
 - **[docs/HOSTING.md](../docs/HOSTING.md)** — Hosting platforms and deployment
-- **[README.md](../README.md)** — Project overview and quick start
+- **[docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)** — Running, building and checking the site locally
+- **[README.md](../README.md)** — Project overview for readers
 
 **Features:**
 
