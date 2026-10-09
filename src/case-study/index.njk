@@ -342,6 +342,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO debezium_use
     "transforms.unwrap.delete.handling.mode": "rewrite"
   }
 }</code></pre>
+      <p><strong>Check your version:</strong> <code>drop.tombstones</code> and <code>delete.handling.mode</code> are marked deprecated in the Debezium 2.7 and 3.0 documentation, which names <code>delete.tombstone.handling.mode</code> as the replacement. The 3.3 and 3.7 pages document only the new option. If you run a newer Debezium than this config targets, check the <a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" target="_blank" rel="noopener">ExtractNewRecordState reference</a> for your version before copying these two lines.</p>
       <p>
         <strong>Key Decisions:</strong>
       </p>

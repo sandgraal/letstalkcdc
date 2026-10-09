@@ -314,7 +314,7 @@ scripts:
         <details class="version-reference">
           <summary>Tool Version Reference</summary>
           <p>
-            <em>This page references the following tool versions (last updated: {{ toolVersions.lastUpdated }}):</em>
+            <em>Latest stable releases of the tools this page references (checked {{ toolVersions.lastUpdated }}; the versions our labs pin are on the <a href="{{ '/versions/' | url }}#lab-pins">version matrix</a>):</em>
           </p>
           <ul class="version-reference__list">
             {%- if toolVersions.tools.debezium and toolVersions.tools.debezium.status !== 'saas' %}

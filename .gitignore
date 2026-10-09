@@ -15,6 +15,9 @@ src/assets/css/styles.min.css
 .env.*.local
 coverage/
 
+# Output of `npm run audit:seo` (scripts/seo-audit.mjs)
+seo-audit.json
+
 playwright-report/
 test-results/
 .lighthouseci/

@@ -13,7 +13,9 @@ head_extra: |
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="note">
-  Tested with: Kafka {{ pkg.kafka }}, Kafka Connect {{ pkg.connect }}, Debezium {{ pkg.debezium }}, PostgreSQL {{ pkg.pg }}
+  Versions this lab's compose file pins: Confluent Platform {{ toolVersions.tested.confluentPlatform }} (Apache Kafka {{ toolVersions.tested.apacheKafka }}), the <code>quay.io/debezium/connect:{{ toolVersions.tested.debeziumConnect }}</code> image (Debezium {{ toolVersions.tested.debeziumConnect }} with its Kafka Connect worker), PostgreSQL {{ toolVersions.tested.postgresMajor }}.
+  These are not the newest releases; see the <a href="{{ '/versions/' | url }}#version-matrix">version matrix</a> for those.
+  Confluent&rsquo;s support policy lists standard support for Confluent Platform 7.7.x as ending on July 26, 2026, so this line is past it. The lab is a teaching sandbox, not a deployment recommendation.
 </div>
 
         <p class="text-xl text-slate-600">
@@ -109,7 +111,7 @@ services:
       - POSTGRES_DB=inventory
 
   connect:
-    image: debezium/connect:2.7
+    image: quay.io/debezium/connect:2.7.4.Final
     hostname: connect
     container_name: connect
     ports:
@@ -212,6 +214,7 @@ services:
                     <p>Register the sink connector:</p>
                     <pre><code>curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @register-sink.json</code></pre>
                     <p><strong>Note:</strong> The sink connector uses Debezium's <code>ExtractNewRecordState</code> transform to unwrap the event envelope and extract just the <code>after</code> state, making it suitable for simple upserts.</p>
+                    <p><strong>Check your version:</strong> <code>drop.tombstones</code> and <code>delete.handling.mode</code> are marked deprecated in the Debezium 2.7 and 3.0 documentation, which names <code>delete.tombstone.handling.mode</code> as the replacement. The 3.3 and 3.7 pages document only the new option. If you run a newer Debezium than this config targets, check the <a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" target="_blank" rel="noopener">ExtractNewRecordState reference</a> for your version before copying these two lines.</p>
                     <p><strong>Production Tip:</strong> For production deployments, externalize credentials using environment variables or secure credential stores instead of hardcoding them in the connector configuration.</p>
                 </li>
                 <li>
