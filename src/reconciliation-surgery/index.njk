@@ -191,7 +191,7 @@ ORDER BY partition_day DESC;</code></pre>
     <ul>
       <li><strong>Editing offsets to hide data loss:</strong> If source logs expired, offsets can't fix it.</li>
       <li><strong>Arbitrarily jumping to "now":</strong> Creates unbounded data gaps.</li>
-      <li><strong>Deleting offsets without understanding state:</strong> Forces full snapshot, which may overload source.</li>
+      <li><strong>Deleting offsets without understanding state:</strong> Forces a full <a href="{{ '/snapshotting/' | url }}">snapshot</a>, which may overload source.</li>
     </ul>
 
     <p class="callout">
