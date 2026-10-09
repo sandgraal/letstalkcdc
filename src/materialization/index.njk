@@ -121,8 +121,18 @@ WHEN NOT MATCHED THEN
     </details>
     <details>
       <summary>BigQuery change-applier</summary>
-      <pre><code class="language-sql">CREATE OR REPLACE TABLE analytics.orders AS
-SELECT AS VALUE latest.*
+      <pre><code class="language-sql">-- Full rebuild from the retained event history in staging. The delete is kept
+-- as a delete marker (deleted = TRUE plus its position), exactly as in the
+-- incremental targets above and below, so readers filter deleted = FALSE and
+-- nothing that later re-applies older events can resurrect a deleted key.
+-- amount/status are NULL on a delete, so those columns must be nullable.
+CREATE OR REPLACE TABLE analytics.orders AS
+SELECT
+  order_id,
+  amount,
+  status,
+  (op = 'd') AS deleted,
+  lsn AS source_lsn
 FROM (
   SELECT *,
          -- order by log position (authoritative commit order); seq is the
@@ -130,35 +140,95 @@ FROM (
          ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY lsn DESC, seq DESC) AS rnk
   FROM staging.orders_src
 )
-WHERE rnk = 1 AND op != 'd';
+WHERE rnk = 1;
 </code></pre>
+      <p class="muted">
+        Untested: not run against a live BigQuery project. Check it against your own schema before use.
+      </p>
     </details>
     <details>
       <summary>dbt incremental model</summary>
       {% raw %}
-      <pre><code class="language-sql">{{
+      <pre><code class="language-sql">-- models/orders.sql. Written for Snowflake, BigQuery and PostgreSQL 15+
+-- adapters that support incremental_strategy='merge'. The target needs
+-- order_id, amount, status (nullable), deleted and source_lsn (never NULL).
+{{
   config(
     materialized='incremental',
+    incremental_strategy='merge',
     unique_key='order_id'
   )
 }}
 
-with ranked as (
-  select *,
+with source_events as (
+  select order_id, amount, status, op, lsn, seq
+  from {{ source('cdc', 'orders') }}
+  {% if is_incremental() %}
+  -- Bound the scan by the source log position already applied. It is >=, not >:
+  -- re-reading the changes at the high-water position is harmless (the guard
+  -- below drops them) and keeps a different key's change that shares that
+  -- position. The same key at the same lsn is dropped by the strict guard, so
+  -- if one key can have two changes at one position, store the ordinal and
+  -- compare the pair. A strict
+  -- bound is not safe if changes can land in this table out of order: the
+  -- late row has a lower lsn than max(source_lsn) and is skipped for good.
+  -- var('lsn_lookback') subtracts a margin (default 0) to re-read further back.
+  where lsn &gt;= (
+    select coalesce(max(source_lsn), 0) - {{ var('lsn_lookback', 0) }}
+    from {{ this }}
+  )
+  {% endif %}
+),
+
+ranked as (
+  select order_id, amount, status, op, lsn,
+         -- order by log position (authoritative); seq is the within-transaction
+         -- ordinal for changes that share a position
          row_number() over (
            partition by order_id
-           -- order by log position (authoritative); seq is the within-transaction
-           -- ordinal for changes that share a position
            order by lsn desc, seq desc
          ) as rnk
-  from {{ source('cdc', 'orders') }}
+  from source_events
+),
+
+latest as (
+  select order_id, amount, status, op, lsn
+  from ranked
+  where rnk = 1
 )
 
-select * except(rnk)
-from ranked
-where rnk = 1 and op != 'd';
+-- The delete is not filtered out here. It becomes a delete marker row:
+-- deleted = true plus the delete's position, so a replayed older update
+-- cannot bring the key back. Readers filter deleted = false.
+select
+  l.order_id,
+  l.amount,
+  l.status,
+  (l.op = 'd') as deleted,
+  l.lsn as source_lsn
+from latest l
+{% if is_incremental() %}
+-- The version guard. Keep a change only if the key is new or the change is
+-- later in the log than the row already stored. A replay carries the same
+-- position it had the first time, so it is dropped here.
+left join {{ this }} t
+  on t.order_id = l.order_id
+where t.order_id is null
+   or t.source_lsn &lt; l.lsn
+{% endif %}
 </code></pre>
       {% endraw %}
+      <p class="muted">
+        Untested: not run against a live warehouse. Two limits to know. The guard is evaluated
+        before dbt issues the merge, so it assumes one run at a time per model (two concurrent runs
+        can race). It also assumes <code>lsn</code> is a single number that is unique per change for a key;
+        if it can repeat, or is a tuple (MySQL file and position, SQL Server LSNs), store the ordinal
+        alongside it and compare the pair as in
+        <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>, and bound on
+        a loader-assigned load id instead of <code>lsn</code>. Do not use
+        <code>incremental_predicates</code> for the guard: it goes into the merge&rsquo;s
+        <code>ON</code> clause, so a row that fails it is treated as new and inserted again.
+      </p>
     </details>
   </section>
 
