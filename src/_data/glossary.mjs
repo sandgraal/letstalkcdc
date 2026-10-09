@@ -311,6 +311,42 @@ export default [
     related: ["idempotent-write", "upsert", "effectively-once"],
   },
   {
+    term: "Debezium Server",
+    slug: "debezium-server",
+    definition: `<p>A ready-to-use Debezium application that runs one
+        source connector and streams its change events to a sink
+        (Kinesis, Pub/Sub, Pulsar, Redis, HTTP and others) without Apache
+        Kafka. You configure the offset store yourself. Delivery is
+        at-least-once, so a crash repeats some events and the consumer
+        deduplicates on the source log position.</p>`,
+    related: ["embedded-engine", "at-least-once", "deduplication"],
+  },
+  {
+    term: "Embedded engine",
+    slug: "embedded-engine",
+    aliases: ["Debezium Engine"],
+    definition: `<p>The Debezium library that runs a connector inside your
+        own application. A change consumer receives batches and calls
+        <code>markProcessed</code> for each record and
+        <code>markBatchFinished</code> at the end; offsets are flushed
+        from those calls. Mark a record only after its effect is durable:
+        a crash then repeats it instead of losing it.</p>`,
+    related: ["debezium-server", "at-least-once", "idempotent-write"],
+  },
+  {
+    term: "External versioning",
+    slug: "external-versioning",
+    aliases: ["version_type=external"],
+    definition: `<p>Letting the caller supply the version of a document
+        instead of the store counting it. In Elasticsearch and OpenSearch
+        a write with <code>version_type=external</code> succeeds only if
+        its version is strictly higher than the stored one, so with the
+        source log position as the version a stale replay or duplicate is
+        refused. A deleted document&rsquo;s version is remembered only
+        for <code>index.gc_deletes</code> (60 seconds by default).</p>`,
+    related: ["idempotent-write", "lsn-scn", "tombstone"],
+  },
+  {
     term: "Deduplication",
     slug: "deduplication",
     aliases: ["dedup", "dedupe"],

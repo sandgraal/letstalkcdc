@@ -57,6 +57,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "non-kafka-cdc",
+    title: "CDC Without Kafka",
+    description:
+      "Debezium Server, the embedded engine, managed services and search-index sync: what each guarantees, what a crash repeats, and why the log position is the version.",
+    href: "non-kafka-cdc/",
+    ctaLabel: "Leave Kafka Out",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "transactional-outbox",
     title: "Transactional Outbox and Relay",
     description:
