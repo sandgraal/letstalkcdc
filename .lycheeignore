@@ -2,31 +2,10 @@
 #
 # Each pattern is a regex. Add a comment above any new entry explaining
 # why it's excluded and when it can be re-enabled.
-
-# New page: /glossary/. The page's own canonical link points at the
-# production URL, which doesn't exist until this PR deploys — lychee
-# would otherwise 404 on the canonical loopback. Remove this entry
-# after the next deploy lands.
-^https://sandgraal\.github\.io/letstalkcdc/glossary/$
-
-# New page: /methodology/. Same canonical-loopback chicken-and-egg as
-# above. Remove after the next deploy publishes the page.
-^https://sandgraal\.github\.io/letstalkcdc/methodology/$
-
-# New (Phase 4a): the /cloud-labs/ hub + 5 managed-platform labs. Their own
-# canonical URLs don't exist in production until this PR deploys — the
-# canonical loopback would otherwise 404. Remove after the next deploy.
-^https://sandgraal\.github\.io/letstalkcdc/cloud-labs/
-
-# New (Phase 4b): /compare/ vendor hub. Same canonical-loopback — the page's
-# own production URL doesn't exist until this PR deploys. Remove after deploy.
-^https://sandgraal\.github\.io/letstalkcdc/compare/$
-
-# New (Phase 12): the /non-relational/ and /security/ modules. Same
-# canonical-loopback as the entries above — each page's own production URL
-# does not exist until this PR deploys. Remove after the next deploy.
-^https://sandgraal\.github\.io/letstalkcdc/non-relational/$
-^https://sandgraal\.github\.io/letstalkcdc/security/$
+#
+# Lesson: A brand-new page's own canonical URL does not exist in production
+# until it deploys, so link-check on that PR can flag it; add a temporary
+# entry with a removal note and delete it in the next PR.
 
 # Placeholder Snowflake account URL used in the Snowflake/Matillion lab
 # examples — readers substitute their own account locator.
