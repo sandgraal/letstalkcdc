@@ -11,8 +11,6 @@
     "dev:web": "npm-run-all2 build:sim dev:web:serve",
     "dev:web:serve": "vite --mode web",
     "dev:all": "npm-run-all2 --parallel dev:sim dev:web:serve",
-    "preview:sim": "vite preview --mode sim",
-    "preview:web": "vite preview --mode web",
     "test:sim": "node sim/tests/property-tests.mjs",
     "test:e2e": "playwright test",
     "test:unit": "vitest run --config vitest.config.ts",
@@ -29,7 +27,6 @@
     "prepare:scenario": "node harness/scripts/prepare-scenario.mjs",
     "snapshot:scenarios": "node harness/scripts/snapshot-scenarios.mjs",
     "snapshot:harness-report": "node tests/snapshot-harness-report.mjs",
-    "sim:seed-reset": "node sim/tests/reset-seeds.mjs",
     "ladle": "ladle dev"
   },
   "dependencies": {

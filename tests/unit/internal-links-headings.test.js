@@ -144,7 +144,6 @@ describe("internal links and headings (built site)", () => {
   it("internal links and their fragments resolve", () => {
     const broken = [];
     for (const [url, html] of pages) {
-      if (url === "/mermaid-sandbox/") continue;
       for (const m of html.matchAll(/<a\s[^>]*?href=["']([^"']+)["']/g)) {
         const href = m[1].replace(/&amp;/g, "&");
         if (href.includes("${")) continue;
