@@ -10,7 +10,7 @@ _A lightweight, open learning project for Change Data Capture (CDC) and streamin
 
 Status: **beta** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/JS + CSV/JSON content**
 
-🌐 **Live Site**: https://sandgraal.github.io/letstalkcdc/
+**Live Site**: https://sandgraal.github.io/letstalkcdc/
 
 ---
 
@@ -57,7 +57,7 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 For complete setup instructions including optional features (Supabase assistant-feedback storage, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
 
-### 🚀 CDC Sandbox for Hands-On Practice
+### CDC Sandbox for Hands-On Practice
 
 Get started with CDC in minutes using our pre-configured Docker Compose sandbox:
 
@@ -74,10 +74,10 @@ open http://localhost:8080
 
 **Includes:**
 
-- ✅ Pre-loaded sample data (products, customers, orders)
-- ✅ Postgres & MySQL configured for CDC
-- ✅ Kafka, Zookeeper, Debezium Connect
-- ✅ Kafka UI for visual message inspection
+- Pre-loaded sample data (products, customers, orders)
+- Postgres & MySQL configured for CDC
+- Kafka, Zookeeper, Debezium Connect
+- Kafka UI for visual message inspection
 
 📖 **Full guide:** [docs/SANDBOX.md](docs/SANDBOX.md) | [Quick reference](sandbox/README.md)
 
@@ -85,11 +85,11 @@ open http://localhost:8080
 
 Recent additions to the platform:
 
-- 🐳 **Docker Compose CDC Sandbox** — Complete CDC environment with one command
-- 🔍 **Client-side search** — Press `/` to search all content instantly
-- 📊 **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
-- 🧪 **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
-- 🚀 **Deployment verification** — Post-deploy checks with `npm run verify:deployment`
+- **Docker Compose CDC Sandbox** — Complete CDC environment with one command
+- **Client-side search** — Press `/` to search all content instantly
+- **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
+- **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
+- **Deployment verification** — Post-deploy checks with `npm run verify:deployment`
 
 ### Basic Deployment
 
