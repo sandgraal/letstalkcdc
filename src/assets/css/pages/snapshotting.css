@@ -215,13 +215,14 @@ html[data-theme="dark"] .prose h2 {
   padding-bottom: 0.25rem;
   margin-top: 2rem;
 }
-/* :not(.button) — a button inside .prose keeps its own text colour. This rule
-   (0,2,2) used to outrank `.button` (0,1,0) and painted cyan text on the
-   cyan primary-button gradient (1.08:1). */
-html[data-theme="dark"] .prose a:not(.button) {
+/* A button inside .prose keeps its own text colour. This rule (0,2,2) used to
+   outrank `.button` (0,1,0) and painted cyan text on the cyan primary-button
+   gradient (1.08:1). `:not(:where(.button))` excludes buttons without adding
+   specificity, so the rule still ranks exactly as it did before. */
+html[data-theme="dark"] .prose a:not(:where(.button)) {
   color: var(--cdc-accent);
 }
-html[data-theme="dark"] .prose a:not(.button):hover {
+html[data-theme="dark"] .prose a:not(:where(.button)):hover {
   text-decoration: underline;
 }
 html[data-theme="dark"] .prose ul > li::marker {

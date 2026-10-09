@@ -390,8 +390,13 @@
   border: none;
 }
 
+/* `a:hover` (0,1,1) outranks `.button-primary` (0,1,0), so the hover colour
+   must be stated here. `--accent-dark` and `--hover-bg` were never defined:
+   the fallbacks painted a green fill / near-white fill in both themes. Use
+   the theme's hover accent, which keeps --color-text-inverse above 4.5:1. */
 .button-primary:hover {
-  background: var(--accent-dark, #00cc6a);
+  background: var(--accent-hover, #22b3e0);
+  color: var(--color-text-inverse, #06131a);
 }
 
 .button-secondary {
@@ -401,7 +406,8 @@
 }
 
 .button-secondary:hover {
-  background: var(--hover-bg, #f9fafb);
+  background: var(--color-surface-hover, #f9fafb);
+  color: var(--text-primary, #1a1a1a);
 }
 
 /* Dark mode */
@@ -442,7 +448,7 @@
   }
 
   .button-secondary:hover {
-    background: var(--hover-bg, #252525);
+    background: var(--color-surface-hover, #252525);
   }
 }
 

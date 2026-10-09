@@ -77,9 +77,12 @@
          the deferred-CSS onload-swap don't measure browser-default
          blue (#0000EE). #6fd6f5 on #0a0e14 is ~9:1; #0a6d8f on the
          light ground #f4f7fb is ~4.7:1 — both clear WCAG AA and match
-         the design system's --color-link in each theme. */
+         the design system's --color-link in each theme. The light rule
+         excludes buttons (their text is dark on the cyan gradient) through
+         :where(), which adds no specificity: it stays (0,1,2), so nav and
+         footer link colours keep ranking exactly as they did. */
       a { color: #6fd6f5; }
-      html[data-theme="light"] a:not(.button) { color: #0a6d8f; }
+      html[data-theme="light"] a:not(:where(.button)) { color: #0a6d8f; }
       .skip-link { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
       .skip-link:focus, .skip-link:active { left: 1rem; top: 1rem; width: auto; height: auto; overflow: visible; z-index: 1000; }
     </style>

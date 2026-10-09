@@ -241,8 +241,11 @@
   transition: background 0.2s;
 }
 
+/* `--color-primary-dark` / `--color-secondary-dark` were never defined, so the
+   fallbacks (#22b3e0 / #475569) were used in both themes and failed against
+   the inverse text in one of them. Derive the hover fill from the live fill. */
 .actions .button:hover {
-  background: var(--color-primary-dark, #22b3e0);
+  background: var(--color-accent-hover, #22b3e0);
 }
 
 .actions .button.secondary {
@@ -253,7 +256,7 @@
 }
 
 .actions .button.secondary:hover {
-  background: var(--color-secondary-dark, #475569);
+  background: color-mix(in srgb, var(--color-secondary, #64748b) 90%, #000);
 }
 
 /* Responsive adjustments */

@@ -88,11 +88,14 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: e70f54c78b5f0cd3a3c8e3c3477d40898970fd5837e26b90ee27344e51dde06d
-# (re-baselined 2026-10-08: visible-UI fixes - new `.discussion-callout`
+# baseline at HEAD of main is: 1d52a8f2177561ab5c3f334ad65d760ef8c719ce7695aab4601364d2eccb2487
+# (re-baselined 2026-10-09: visible-UI fixes - new `.discussion-callout`
 #  rules (community box), the orphaned dead `.stats-*` / `.session-modal`
-#  rules removed along with the chip markup, and the `.button-primary`
-#  text colour. Previously 424e77a0… from the same day:
+#  rules removed along with the chip markup, the `.button-primary` text
+#  and hover colours, and the `a.button:where(:hover, :active,
+#  :focus-visible)` text-colour rule in 04-components.css so plain
+#  `.button` anchors keep a passing label on hover/active. Previously
+#  e70f54c7… (same PR, before the hover fix) and 424e77a0… from 2026-10-08:
 #  light-theme accent darkened for WCAG AA,
 #  `--color-accent-primary/-hover/-active` and `--color-info/-info-hover`
 #  in the `:root[data-theme="light"]` block of 01-variables.css, the only
@@ -315,7 +318,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`e70f54c78b5f…`).
+3. **`/css-byte-check` baseline is in this file** (`1d52a8f21775…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.
