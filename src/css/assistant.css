@@ -294,11 +294,19 @@
 /* ── Responsive ───────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
+  /* The FAB stays fixed at bottom/right 1.5rem (56px, z-index 1001, see
+     09-mobile-responsive.css), so a panel that spans the full width down
+     to `bottom: 0.5rem` sits underneath it and the FAB swallows taps on
+     Send (P13-7). Lift the panel to clear the FAB's top edge plus the same
+     0.5rem gutter used at the sides: 1.5rem + 56px + 0.5rem = 5.5rem.
+     This sheet loads after the main bundle, so this `bottom` also wins over
+     the duplicate `#askPanel` block in 09-mobile-responsive.css. */
   #askPanel {
     left: 0.5rem;
     right: 0.5rem;
-    bottom: 0.5rem;
+    bottom: calc(1.5rem + 56px + 0.5rem);
     width: auto;
-    max-height: 75vh;
+    /* Keep the header on screen: never taller than the space above the lift. */
+    max-height: min(75vh, calc(100vh - 6rem));
   }
 }

@@ -1137,7 +1137,7 @@ dependencies).
       three times, `npm run test:e2e`, screenshots before / after.
       Size: M (split if more than one culprit). Role: `implementer`,
       `reviewer` on the diff.
-- [ ] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
+- [x] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
       mobile-chrome for a "pointer-intercept flake" with no tracking (the
       Phase 11 e2e-coverage note explains the skip but sets no deadline).
@@ -1160,7 +1160,7 @@ dependencies).
     `.assistant-send` (x332–376 y666–710). `elementFromPoint` at the
     Send centre returns `#askBtn`. A real tap on Send hits the FAB,
     which closes the panel. Not a Playwright artefact.
-  - [ ] **Follow-up (css-refactor, not implementer):** stop the FAB
+  - [x] **Follow-up (css-refactor, not implementer):** stop the FAB
         overlapping the open panel at ≤640px, e.g. hide the FAB or
         lift the panel above it while `#askBtn[aria-expanded="true"]`,
         or reserve space for it (panel `bottom` ≥ FAB bottom + 56px +
@@ -1173,6 +1173,20 @@ dependencies).
         `tests/e2e/assistant.spec.js`, run
         `npx playwright test assistant --project=mobile-chrome --repeat-each=10`
         (and `--workers=1`), and flip P13-7 to `[x]`.
+    - **Done 2026-10-08.** Fixed in `src/css/assistant.css` only: at
+      <=640px `#askPanel` now has `bottom: calc(1.5rem + 56px + 0.5rem)`
+      (clears the FAB with an 8px gap) and
+      `max-height: min(75vh, calc(100vh - 6rem))`. That file ships as its
+      own `/css/assistant.css`, not in the `main.css` bundle, so the
+      production hash is unchanged (`b1478af0...`, before and after);
+      the baseline needed no update. The thumbs-up `test.skip` is gone and
+      a new hit-test case asserts Send and close are not covered.
+      `--project=mobile-chrome --repeat-each=10`: 50/50 (5 tests x 10);
+      `--workers=1 --repeat-each=3`: 15/15; `--project=chromium` full
+      suite: 136/136. The duplicate `#askPanel` `bottom` in
+      `09-mobile-responsive.css` is overridden by the later-loading
+      `assistant.css` and was left untouched to keep the bundle
+      byte-identical.
 
 ### Tier C — larger upgrades (one PR each, never batched)
 

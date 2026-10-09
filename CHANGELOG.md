@@ -81,6 +81,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **On phones, the assistant's Send button is no longer covered by the
+  floating button.** At 640px and narrower the open assistant panel ran
+  down to the bottom of the screen, underneath the round chat button, so a
+  tap on Send landed on the chat button and closed the panel instead. The
+  panel now sits above the chat button on small screens (320px to 640px
+  wide); larger screens are unchanged. Found by un-skipping the
+  `mobile-chrome` assistant e2e tests (P13-7); a new hit-test case in
+  `tests/e2e/assistant.spec.js` fails against the previous CSS.
 - **The `/overview/` series grid rendered zero module cards** — in
   production, for every module. `src/overview/index.11tydata.cjs` is
   CommonJS and `require()`d `src/_data/series.mjs`, which is an ES
