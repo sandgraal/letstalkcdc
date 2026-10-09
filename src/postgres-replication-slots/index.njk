@@ -966,6 +966,7 @@ SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), :'t0')) AS written_s
     <ul>
       <li><a href="{{ '/ops-offsets/' | url }}">Ops: Offsets &amp; Replays</a> for stored offsets and safe rewinds.</li>
       <li><a href="{{ '/snapshotting/' | url }}">Snapshotting</a> for the re-snapshot after a lost slot.</li>
+      <li><a href="{{ '/backfill-resnapshot/' | url }}">Backfill and Re-Snapshot Safely</a> for choosing a reload and sweeping the deletes a snapshot cannot carry.</li>
       <li><a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a> for repairing the sink afterwards.</li>
       <li><a href="{{ '/connector-builder/' | url }}">Connector Config Builder</a> for generating a Postgres connector config with a distinct slot and publication.</li>
       <li><a href="{{ '/quickstarts/quickstart-postgres/' | url }}">Postgres quickstart</a> and <a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>.</li>

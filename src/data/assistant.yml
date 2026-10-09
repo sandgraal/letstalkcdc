@@ -72,6 +72,118 @@ intents:
         url: /ops-offsets/
         preview: Diagnose and fix common lag causes.
 
+  # backfill_overwrite and backfill_reload sit above snapshot_strategy on
+  # purpose: a question about a backfill or a re-snapshot contains the word
+  # "snapshot" and would otherwise lose the tie to the generic answer.
+  - id: backfill_overwrite
+    triggers:
+      [
+        "backfill overwrote",
+        "backfill overwrites",
+        "backfill overwrite",
+        "snapshot overwrote",
+        "snapshot overwrites",
+        "overwrote newer",
+        "overwrites newer",
+        "overwrote the newer",
+        "stale snapshot",
+        "old snapshot rows",
+        "ghost row",
+        "ghost rows",
+        "no longer exist at the source",
+        "deleted at the source",
+        "backfill while streaming",
+        "backfill and live",
+        "backfill duplicates",
+        "safe to rerun a backfill",
+        "rerun a backfill",
+        "re-run a backfill",
+        "run a backfill twice",
+        "run the backfill twice",
+      ]
+    modules: ["backfill-resnapshot"]
+    answer: >
+      A backfill sends old content at the same time as the live stream, so
+      the sink has to decide which version wins. Stamp the backfill rows with
+      the snapshot's source log position and apply a row only when its
+      position is higher than the stored one. A backfill row then cannot
+      overwrite a newer streamed change, and running the backfill twice
+      changes nothing. A snapshot only carries rows that exist now, so rows
+      deleted at the source during a gap stay live in the sink until you sweep
+      them: compare the sink's keys with the source's keys for the backfill
+      scope and mark the extras as deleted with a position. Verify with counts
+      and checksums by key range.
+    links:
+      - label: The correctness rule
+        url: /backfill-resnapshot/
+        anchor: "#rule"
+        preview: The position guard that makes a backfill safe.
+      - label: Rows the snapshot never mentions
+        url: /backfill-resnapshot/
+        anchor: "#ghosts"
+        preview: Sweeping rows that were deleted during a gap.
+      - label: Verify the result
+        url: /backfill-resnapshot/
+        anchor: "#verify"
+        preview: Counts, checksums and suspect rows after a backfill.
+
+  - id: backfill_reload
+    triggers:
+      [
+        "backfill",
+        "how do i backfill",
+        "how to backfill",
+        "back-fill",
+        "re-snapshot",
+        "how do i re-snapshot",
+        "how to re-snapshot",
+        "resnapshot",
+        "re snapshot",
+        "reload history",
+        "reload the sink",
+        "reload a table",
+        "reload a sink",
+        "execute-snapshot",
+        "ad hoc snapshot",
+        "blocking snapshot",
+        "snapshot signal",
+        "signal table",
+        "snapshot.mode",
+        "which snapshot.mode",
+        "what snapshot.mode",
+        "snapshot mode",
+        "when_needed",
+        "chunk size",
+        "data-collections",
+        "rebuild the sink",
+        "rebuild a sink",
+      ]
+    modules: ["backfill-resnapshot"]
+    answer: >
+      To reload history into a sink you can re-snapshot the connector
+      (snapshot.mode), send an execute-snapshot signal for an incremental or
+      blocking snapshot of chosen tables, replay the Kafka topic from an
+      earlier offset, or load from the source with SQL. An incremental
+      snapshot keeps streaming and appends to the existing topic, a blocking
+      snapshot pauses streaming, and a replay is limited by topic retention.
+      Whichever you pick, delivery is at-least-once, so the sink must be keyed
+      on the primary key, apply a row only when its source log position is
+      higher than the stored one, and keep deletes as markers. Check the names
+      and defaults against your Debezium version.
+    links:
+      - label: Backfill and re-snapshot
+        url: /backfill-resnapshot/
+        anchor: "#choices"
+        preview: The five ways to reload, side by side.
+      - label: The runbook
+        url: /backfill-resnapshot/
+        anchor: "#runbook"
+        preview: Steps from naming the reason to verifying the result.
+      - label: Snapshotting
+        url: /snapshotting/
+        anchor: "#watermarks"
+        preview: How incremental snapshots use watermarks.
+
   - id: snapshot_strategy
     triggers:
       [
@@ -245,6 +357,117 @@ intents:
         anchor: "#compatibility"
         preview: Compatibility levels and migration strategies.
 
+  - id: outbox_router_relay
+    triggers:
+      [
+        "outbox event router",
+        "outbox router",
+        "outbox relay",
+        "outbox smt",
+        "eventrouter",
+        "message relay",
+        "polling publisher",
+        "route.by.field",
+        "route.topic.replacement",
+        "table.field.event.id",
+        "table.expand.json.payload",
+        "table.fields.additional.placement",
+        "table.op.invalid.behavior",
+      ]
+    modules: []
+    answer: >
+      The relay moves committed outbox rows to the broker. A polling publisher
+      queries the table; a log-tailing relay such as a Debezium connector reads
+      the transaction log and applies the Outbox Event Router SMT
+      (io.debezium.transforms.outbox.EventRouter). The router uses the
+      aggregateid column as the message key, puts the event id in a header,
+      routes by aggregatetype, discards delete operations, and does not accept
+      updates to the outbox table. Both relays are at-least-once: a restart or a
+      crash between publish and record repeats events, so the consumer must be
+      idempotent. The router does not forward the source log position, so carry
+      a per-aggregate version in a column. Option names change between
+      releases, so check your version.
+    links:
+      - label: Debezium's Outbox Event Router
+        url: /transactional-outbox/
+        anchor: "#router-title"
+        preview: Options, defaults and what the router keeps and drops.
+      - label: The relay, polling or log tailing
+        url: /transactional-outbox/
+        anchor: "#relay-title"
+        preview: Where the duplicates come from in each design.
+
+  - id: outbox_consumer_order
+    triggers:
+      [
+        "outbox duplicate",
+        "outbox duplicates",
+        "outbox dedupe",
+        "outbox deduplication",
+        "outbox idempotent consumer",
+        "outbox ordering",
+        "outbox out of order",
+        "outbox event id",
+        "outbox sequence number",
+        "outbox version column",
+        "order outbox events",
+        "uuid event id order",
+      ]
+    modules: []
+    answer: >
+      An outbox event id identifies an event, so it removes repeats, but a random
+      UUID gives no order. Carry the aggregate id as the Kafka key plus a
+      per-aggregate version written in the same transaction, using UPDATE with
+      RETURNING under the aggregate's row lock. The consumer applies an event
+      only if its version is higher than the last one applied for that
+      aggregate, which handles duplicates and stale events in one comparison,
+      and keeps deletes as markers. If it also keeps seen ids, prune them by
+      time rather than by Kafka offset, because a connector replay arrives at a
+      new offset. The router does not forward the source log position.
+    links:
+      - label: Dedupe by id, order by version
+        url: /transactional-outbox/
+        anchor: "#consumer-title"
+        preview: What to carry, the guarded upsert and the pruning trap.
+      - label: Making Sinks Bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Version guards and why the position is not a timestamp.
+
+  - id: outbox_cleanup
+    triggers:
+      [
+        "outbox cleanup",
+        "outbox clean up",
+        "clean up the outbox",
+        "outbox table growth",
+        "outbox table size",
+        "outbox housekeeping",
+        "delete outbox rows",
+        "delete outbox row",
+        "outbox row after publish",
+        "outbox grows forever",
+      ]
+    modules: []
+    answer: >
+      With a log-tailing relay the outbox row can be deleted in the same
+      transaction as the insert: the connector reads the insert from the log and
+      the router discards the delete, so the table stays empty. The cost is that
+      nothing in the table remains to inspect or re-send if the slot is lost.
+      With a polling publisher, delete rows only after they are marked published
+      plus a safety window. Never mark rows with an UPDATE while the router is
+      in use, because it does not accept updates. This is housekeeping on a
+      queue, not the delete-marker rule, which applies to the consumer state.
+    links:
+      - label: Outbox table growth and cleanup
+        url: /transactional-outbox/
+        anchor: "#cleanup-title"
+        preview: When a physical delete of outbox rows is safe.
+      - label: The Transactional Outbox Pattern
+        url: /exactly-once/
+        anchor: "#outbox"
+        preview: The pattern and its diagram.
+
   - id: outbox
     triggers:
       [
@@ -272,6 +495,10 @@ intents:
         url: /intro/
         anchor: "#core-components"
         preview: Write, publish and consume idempotently, with sample SQL.
+      - label: Outbox, router and relay
+        url: /transactional-outbox/
+        anchor: "#table-title"
+        preview: The table, the transaction, the relay and the consumer guard.
 
   - id: idempotent_sink
     triggers:

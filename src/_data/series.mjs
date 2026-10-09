@@ -57,6 +57,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "transactional-outbox",
+    title: "Transactional Outbox and Relay",
+    description:
+      "The outbox pattern with Debezium's Outbox Event Router: why dual writes fail, what at-least-once means for the relay, and how consumers dedupe and order.",
+    href: "transactional-outbox/",
+    ctaLabel: "Publish It Right",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "multi-tenancy",
     title: "Multi-Tenancy",
     description: "Isolation patterns, topic math, and rough egress estimates.",
@@ -135,6 +145,15 @@ export default [
     href: "sql-server-mysql-cdc/",
     tags: [{ label: "Ops", variant: "tag-ops" }],
     skillLevel: "Intermediate",
+  },
+  {
+    key: "backfill-resnapshot",
+    title: "Backfill and Re-Snapshot Safely",
+    description:
+      "Reload history into a sink without overwriting newer changes: snapshot modes, incremental snapshots, Kafka replay, the position guard and a runbook.",
+    href: "backfill-resnapshot/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Advanced",
   },
   {
     key: "non-relational",
