@@ -200,6 +200,8 @@ describe("assistant knowledge base – module boosts never let a new intent stea
       // Module-specific intents boosted only on their own page.
       "target_ordering",
       "delete_markers",
+      "backfill_reload",
+      "backfill_overwrite",
     ]);
     for (const intent of kb.intents.filter((i) => !original.has(i.id))) {
       expect(intent.modules, intent.id).toEqual([]);
