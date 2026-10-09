@@ -1572,7 +1572,7 @@ production CSS hashes.
 
 ### Tier 4 — structural
 
-- [x] **P15-13 · One place for the host.** Outcome: moving to an own domain
+- [ ] **P15-13 · One place for the host.** Outcome: moving to an own domain
       is a variable change, not a search-and-replace. Accept: an audit of
       every hardcoded `sandgraal.github.io` outside history and tests
       (`src/_data/site.mjs`, `src/feed.11ty.cjs`,
@@ -1584,7 +1584,7 @@ production CSS hashes.
       build with a different `SITE_HOST` emits no `sandgraal.github.io`.
       Verify: that test plus `/verify-all`. Size: M. Role: `implementer`,
       then `reviewer`.
-      _2026-10-09: shipped in #354. `lib/site-host.mjs` holds the host once; `docs/DOMAIN-MIGRATION.md` is the runbook; `tests/unit/site-host.test.js` builds production with another `SITE_HOST` (root and sub-directory) and asserts the old host appears nowhere in the output; `grep -rn "sandgraal.github.io" src scripts lib` now finds only the `DEFAULT_SITE_HOST` fallback in `lib/site-host.mjs`. Docs and the README keep the current URL as an example or live link on purpose; the runbook's hand-edited checklist enumerates them._
+      _2026-10-09: mostly shipped in #354, kept open. Met: code derives the host from `SITE_HOST` (`lib/site-host.mjs`; `grep -rn "sandgraal.github.io" src scripts lib` finds only its `DEFAULT_SITE_HOST` fallback), `docs/DOMAIN-MIGRATION.md` exists, and `tests/unit/site-host.test.js` builds production with another `SITE_HOST` (root and sub-directory) and asserts the old host appears nowhere. Remaining gap: "docs say your site URL" is not true yet. Occurrences of `sandgraal.github.io` today: `README.md` 44; `docs/` excluding `docs/archive` and this plan: `SETUP.md` 1, `DEVELOPMENT.md` 3, `STATE-OF-PROJECT.md` 1, `seo-audit-2026-10.md` 3. That remainder counts as covered by the runbook's hand-edited checklist only if the maintainer says so._
 
 ### Tier 5 — found along the way (2026-10-09)
 
@@ -1770,13 +1770,14 @@ The maintainer's next big push: **more CDC content depth**, **growth and
 discoverability (SEO)** and **more interactive demos**. Nothing here is
 ready to start; the first job is to turn it into measured, specific items.
 
-- [ ] **P16-1 · SEO baseline audit.** Outcome: a ranked list of the
+- [x] **P16-1 · SEO baseline audit.** Outcome: a ranked list of the
       technical and on-page SEO problems that matter. Accept: a written
       audit (titles, descriptions, headings, internal links, structured
       data, sitemap, canonical, Core Web Vitals) with each finding carrying
       evidence and a proposed fix sized S / M; findings that are quick wins
       become Phase 16 items. Role: `scout` gathers, `reviewer` checks the
       claims.
+      _2026-10-09: shipped in #356 (`docs/seo-audit-2026-10.md`); its findings became P16-4 to P16-14 below; the claims were reviewed._
 - [ ] **P16-2 · Content-gap and keyword plan.** Outcome: a prioritised
       list of new modules / sections with the question each one answers.
       Accept: a gap analysis against what readers search for and what the
