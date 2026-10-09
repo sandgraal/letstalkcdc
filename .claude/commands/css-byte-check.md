@@ -22,9 +22,13 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   424e77a0282c4be9669060dabd3afc645a222a0b9abf35b68b113a3554fb5fe7
+   e70f54c78b5f0cd3a3c8e3c3477d40898970fd5837e26b90ee27344e51dde06d
    ```
-   (re-baselined 2026-10-08 for the light-theme accent contrast fix: only
+   (re-baselined 2026-10-08 for the visible-UI fixes: `.discussion-callout`
+   rules in 02-base.css, the orphaned stats-chip / session-modal rules
+   removed from 09-mobile-responsive.css along with their markup, and the
+   `.button-primary` text colour in dashboard-page.css; previously `424e77a0…`, the light-theme
+   accent contrast fix: only
    `--color-accent-primary/-hover/-active` and `--color-info/-info-hover`
    in the light block changed; previously `e54f4182…`, which added the
    `.page-meta__author > .author-photo` headshot rule over `b1478af0…`.)

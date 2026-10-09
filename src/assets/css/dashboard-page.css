@@ -384,7 +384,9 @@
 
 .button-primary {
   background: var(--accent, #00ff88);
-  color: #fff;
+  /* Inverse of the accent in each theme: #06131a on cyan (dark), white on
+     the deep blue (light). Plain #fff was 1.96:1 on the dark-theme cyan. */
+  color: var(--color-text-inverse, #06131a);
   border: none;
 }
 

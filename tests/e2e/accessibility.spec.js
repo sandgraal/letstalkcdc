@@ -247,3 +247,82 @@ test.describe("accessibility", () => {
     expect(await nav.count()).toBeGreaterThan(0);
   });
 });
+
+// Buttons inside `.prose` regressed twice because a link-colour rule with
+// higher specificity than `.button` repainted their text: `html[data-theme=
+// "dark"] .prose a` (cyan on the cyan gradient, 1.08:1 on /snapshotting/) and
+// the inline `html[data-theme="light"] a` (link blue on the cyan gradient,
+// 1.55:1 on /tooling/ and /cloud-labs/). axe's color-contrast cannot score a
+// gradient background (it reports "needs review"), so measure it directly: the
+// worst case is the text colour against each gradient stop.
+const BUTTON_PAGES = [
+  ...PAGES_TO_AUDIT,
+  "/snapshotting/",
+  "/cloud-labs/",
+  "/dashboard/",
+  "/strategy/",
+  "/troubleshooting/failure-drills/",
+];
+
+test.describe("buttons inside .prose meet 4.5:1", () => {
+  for (const theme of ["light", "dark"]) {
+    for (const pagePath of BUTTON_PAGES) {
+      test(`${pagePath} (${theme} theme)`, async ({ page }) => {
+        await page.addInitScript((t) => {
+          window.localStorage.setItem("theme", t);
+        }, theme);
+        await page.goto(pagePath);
+        await page.waitForLoadState("networkidle");
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+        // Sample the settled colours, not a mid-transition frame.
+        await page.addStyleTag({
+          content:
+            "*,*::before,*::after{transition:none!important;animation:none!important}",
+        });
+
+        const buttons = await page.evaluate(() => {
+          const lum = (c) => {
+            const f = (v) => {
+              v /= 255;
+              return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+            };
+            return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+          };
+          const ratio = (a, b) => {
+            const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p);
+            return (hi + 0.05) / (lo + 0.05);
+          };
+          const rgbs = (s) =>
+            [...s.matchAll(/rgba?\(([^)]+)\)/g)].map((m) =>
+              m[1].split(",").map(Number),
+            );
+          const opaque = (c) => c && (c.length === 3 || c[3] > 0.9);
+          return [...document.querySelectorAll(".prose a.button")].map((el) => {
+            const cs = getComputedStyle(el);
+            const fg = rgbs(cs.color)[0];
+            let stops = rgbs(cs.backgroundImage);
+            if (!stops.length) {
+              let bg = rgbs(cs.backgroundColor)[0];
+              for (let n = el; !opaque(bg) && n; n = n.parentElement) {
+                bg = rgbs(getComputedStyle(n).backgroundColor)[0];
+              }
+              stops = [opaque(bg) ? bg : [255, 255, 255]];
+            }
+            return {
+              label: `${el.textContent.trim()} [${el.className}] ${cs.color}`,
+              ratio: Math.min(...stops.map((s) => ratio(fg, s))),
+            };
+          });
+        });
+
+        const failures = buttons
+          .filter((b) => b.ratio < 4.5)
+          .map((b) => `${b.label}: ${b.ratio.toFixed(2)}:1`);
+        expect(
+          failures,
+          `.prose a.button contrast failures on ${pagePath} (${theme}):\n${failures.join("\n")}`,
+        ).toEqual([]);
+      });
+    }
+  }
+});

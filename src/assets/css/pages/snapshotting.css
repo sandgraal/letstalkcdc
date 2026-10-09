@@ -215,10 +215,13 @@ html[data-theme="dark"] .prose h2 {
   padding-bottom: 0.25rem;
   margin-top: 2rem;
 }
-html[data-theme="dark"] .prose a {
+/* :not(.button) — a button inside .prose keeps its own text colour. This rule
+   (0,2,2) used to outrank `.button` (0,1,0) and painted cyan text on the
+   cyan primary-button gradient (1.08:1). */
+html[data-theme="dark"] .prose a:not(.button) {
   color: var(--cdc-accent);
 }
-html[data-theme="dark"] .prose a:hover {
+html[data-theme="dark"] .prose a:not(.button):hover {
   text-decoration: underline;
 }
 html[data-theme="dark"] .prose ul > li::marker {

@@ -88,8 +88,12 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 424e77a0282c4be9669060dabd3afc645a222a0b9abf35b68b113a3554fb5fe7
-# (re-baselined 2026-10-08: light-theme accent darkened for WCAG AA,
+# baseline at HEAD of main is: e70f54c78b5f0cd3a3c8e3c3477d40898970fd5837e26b90ee27344e51dde06d
+# (re-baselined 2026-10-08: visible-UI fixes - new `.discussion-callout`
+#  rules (community box), the orphaned dead `.stats-*` / `.session-modal`
+#  rules removed along with the chip markup, and the `.button-primary`
+#  text colour. Previously 424e77a0… from the same day:
+#  light-theme accent darkened for WCAG AA,
 #  `--color-accent-primary/-hover/-active` and `--color-info/-info-hover`
 #  in the `:root[data-theme="light"]` block of 01-variables.css, the only
 #  CSS difference. Previously e54f4182… from the same day: author headshot
@@ -311,7 +315,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`424e77a0282c…`).
+3. **`/css-byte-check` baseline is in this file** (`e70f54c78b5f…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.

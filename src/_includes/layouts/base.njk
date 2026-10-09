@@ -79,7 +79,7 @@
          light ground #f4f7fb is ~4.7:1 — both clear WCAG AA and match
          the design system's --color-link in each theme. */
       a { color: #6fd6f5; }
-      html[data-theme="light"] a { color: #0a6d8f; }
+      html[data-theme="light"] a:not(.button) { color: #0a6d8f; }
       .skip-link { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
       .skip-link:focus, .skip-link:active { left: 1rem; top: 1rem; width: auto; height: auto; overflow: visible; z-index: 1000; }
     </style>
@@ -285,28 +285,6 @@
         <div class="agent-scroll" role="log" aria-live="polite" aria-label="CDC agent activity"></div>
       </div>
     </section>
-
-    <div class="stats-wrapper" aria-live="polite">
-      <button type="button" class="stats-chip" id="statsButton" aria-haspopup="dialog" aria-controls="sessionModal">
-        <span class="sr-only">Open dashboard activity</span>
-        <span aria-hidden="true">📊</span>
-        <span class="stats-counter" id="statsCounter">0</span>
-      </button>
-    </div>
-
-    <div class="session-modal hidden" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionModalTitle">
-      <div class="modal-content">
-        <header>
-          <h2 id="sessionModalTitle">Session Activity</h2>
-        </header>
-        <div id="sessionDetails"></div>
-        <div class="export-controls">
-          <button type="button" id="exportTxt">Export TXT</button>
-          <button type="button" id="exportJson">Export JSON</button>
-        </div>
-        <button type="button" class="button ghost" id="closeModal">Close</button>
-      </div>
-    </div>
 
     <script>
       (function () {
