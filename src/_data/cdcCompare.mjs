@@ -5,8 +5,10 @@
  * carries richer, comparison-specific fields.
  *
  * Honesty rules baked into the content (they are the whole point of the
- * page): every platform's wire delivery is **at-least-once** — none give
- * end-to-end exactly-once across systems. Correctness comes from
+ * page): every platform delivers **at-least-once** by default (Debezium
+ * with Kafka Connect has an opt-in exactly-once mode for the source-to-Kafka
+ * hop, off by default) — none give end-to-end exactly-once across
+ * independent systems. Correctness comes from
  * **idempotent sinks** (upsert on the primary key, ordered by the source
  * log position). Where a vendor markets "exactly-once", the `delivery`
  * field states the honest version. No fabricated pricing or benchmarks:
@@ -36,7 +38,7 @@ export const platforms = [
     license: "Open source (Apache-2.0)",
     method: "Log-based (WAL / binlog / redo)",
     delivery:
-      "At-least-once; dedupe on a PK-keyed sink (Kafka log compaction + idempotent consumer)",
+      "At-least-once by default; opt-in Kafka Connect exactly-once for the source-to-Kafka hop (Debezium 3.3+). Dedupe on a PK-keyed sink (Kafka log compaction + idempotent consumer)",
     latency: "Sub-second",
     targets: "Anything downstream of Kafka",
     schema: "Schema Registry + compatibility modes; DDL surfaced as events",
@@ -63,7 +65,8 @@ export const platforms = [
     delivery:
       "At-least-once; restarts can re-emit — upsert on PK ordered by log position at the sink",
     latency: "Seconds",
-    targets: "AWS targets: S3, Redshift, Kinesis, RDS, others",
+    targets:
+      "Databases (on AWS or on-premises), S3, Redshift, Kinesis, Apache Kafka, DynamoDB, OpenSearch, others",
     schema: "Limited transforms; some DDL handled, verify per engine",
     ops: "Low–medium — managed, but tasks and monitoring are yours",
     cost: "Per replication-instance hour + transfer",
@@ -74,7 +77,7 @@ export const platforms = [
       "Handles snapshot + CDC in one task with the log-position handoff",
     ],
     tradeoffs: [
-      "AWS targets only; less useful outside the AWS estate",
+      "Built around the AWS estate (on-premises databases and Kafka are supported targets, but one endpoint must be on AWS); less useful outside it",
       "Transformation is limited compared with a streaming platform",
     ],
   },
@@ -104,19 +107,19 @@ export const platforms = [
   {
     name: "Airbyte",
     slug: "airbyte",
-    deployment: "Self-hosted (OSS) or Airbyte Cloud",
-    license: "Open source (ELv2) + managed cloud",
+    deployment: "Self-hosted (public code, ELv2) or Airbyte Cloud",
+    license: "Source-available (Elastic License 2.0) + managed cloud",
     method: "Log-based CDC (Debezium-embedded) + connectors",
     delivery: "At-least-once; the sync writes to a landing table deduped on PK",
     latency: "Minutes (scheduled syncs)",
     targets: "Warehouses, lakes, and many destinations",
     schema: "Schema propagation with configurable change handling",
     ops: "Medium self-hosted; low on Cloud",
-    cost: "Free OSS (self-run) or credit-based Cloud",
+    cost: "Free to self-run (you pay for infrastructure) or credit-based Cloud",
     bestFor:
       "Broad-coverage ELT where connector breadth matters more than sub-second latency.",
     strengths: [
-      "Huge connector catalog; open-source option you can self-host",
+      "Huge connector catalog; public code you can self-host under the Elastic License 2.0",
       "Log-based CDC for the major databases via embedded Debezium",
     ],
     tradeoffs: [
