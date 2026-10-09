@@ -98,6 +98,8 @@ Verify:      the exact commands that prove each criterion
 Constraints: files/areas NOT to touch; no commits; report format
 ```
 
+Briefs for large or review tasks should say how many tool calls to budget; a role that stops at its turn cap returns partial output and is resumed with SendMessage, not restarted.
+
 ### Parallelism
 
 Run roles in parallel when their work is independent **and** touches
@@ -112,6 +114,8 @@ A role that fails once is re-briefed with the failure evidence. A `scribe`
 fails twice on Sonnet is not retried a third time: the conductor splits it,
 or records the blocker under the plan item (**⚠️ Blocked by:**) and asks the
 maintainer.
+
+A reviewer's verdict is never inferred from a partial report — resume it and ask for findings first.
 
 ## Definition of Ready
 
