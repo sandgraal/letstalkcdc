@@ -1691,7 +1691,7 @@ production CSS hashes.
       group fixed at its shared cause, then the audit's narrow exemption list
       shrinks to zero and every sitemap page is checked in both themes. Size:
       L → one PR per group. Role: `css-refactor`, `reviewer`.
-      _2026-10-09: shipped in #378. axe failing `color-contrast` nodes at rest across all 49 built pages: light 206 -> 0, dark 587 -> 0; the `KNOWN_CONTRAST_ELEMENTS` exemption list is deleted, and the e2e audit covers every page in `sitemap.xml` (45) plus the noindex `/dashboard/`, `/styleguide/` and `/mermaid-sandbox/`, in both themes; the repaired controls are also measured on hover and focus-visible. Production CSS hash re-baselined (see `CLAUDE.md`). Not covered: gradient-clipped headline text, which axe cannot score (P15-35, open); `/playground/` is built separately and skipped._
+      _2026-10-09: shipped in #378. axe failing `color-contrast` nodes at rest across all 49 built pages: light 206 -> 0, dark 587 -> 0; the `KNOWN_CONTRAST_ELEMENTS` exemption list is deleted, and the e2e audit covers every page in `sitemap.xml` (45) plus the noindex `/dashboard/`, `/styleguide/` and `/mermaid-sandbox/`, in both themes; the repaired controls are also measured on hover and focus-visible. Production CSS hash re-baselined (see `CLAUDE.md`). Not covered: gradient-clipped headline text, which axe cannot score (P15-35, measured since); `/playground/` is built separately and skipped._
 - [x] **P15-22 · Rewrite `/merge-cookbook/` to the log-position rule.** The
       most copyable page on the site is timestamp-ordered throughout: about 20
       statements across Snowflake, BigQuery, Oracle, Postgres, MySQL and SQL
@@ -1820,12 +1820,13 @@ production CSS hashes.
       updated; no console output added. Size: S. Role: `implementer`,
       `reviewer`.
       _2026-10-09: shipped in #409. `initLegacyCopyButtons` is gone; `enhanceCodeBlocks` removes any in-`pre` `button.copy`, `.copy-btn` or `.copy-snippet`, so there is one header Copy button per block (counted on the built site: 33 blocks on failure-drills went from 3 controls each to 1). Proof: 26 unit tests in `tests/unit/modules/code-blocks.test.js`, new `tests/e2e/code-blocks.spec.js` on six pages (one visible, hit-testable, keyboard-focusable button per block; copied text equals the code), the failure-drills contrast selector updated, no console output added. Follow-ups: P15-49 to P15-51._
-- [ ] **P15-35 · Contrast of gradient-clipped headline text is unmeasured.**
+- [x] **P15-35 · Contrast of gradient-clipped headline text is unmeasured.**
       Outcome: a measured answer for `h1.type-display` and `span.accent`,
       whose text is clipped to a gradient, so axe cannot compute their
       contrast. Accept: measure by hand against the real backgrounds in both
       themes and record the ratios here; open a `css-refactor` item for any
       below 4.5:1 (3:1 for large text). Size: S. Role: `scout`, `reviewer`.
+      _2026-10-09: measured; nothing fails, so no CSS change (production hash unchanged). Only two rules in `src` use `background-clip: text`: `.hero-section h1` (`03-layout.css`; `h1.type-display` and `h1.type-hero` from the `hero` macro, 52 built pages) and `.hero h1 .accent` (`pages/styleguide.css`, one page). `scripts/measure-gradient-contrast.mjs` renders the built site and, for every fully covered glyph pixel, compares the gradient colour that pixel shows against the real background behind it (section gradient and glow included); all four are large text, so 3:1 applies. Minimum contrast (Chromium): `.hero-section h1` light 7.48 at 375 px, 7.20 at 1280 px; dark 9.46, 9.62. `.hero h1 .accent` light 4.41, 4.20; dark 6.85, 6.66. The hero also clears 4.5:1 everywhere; the styleguide accent in light dips under 4.5:1 (4.20) but is 37-62 px, so 3:1 is the bar. Guard: `tests/unit/gradient-text-contrast.test.js` fails when a new `background-clip: text` rule is added without an allowlist entry carrying a measurement. Not covered: the playground (built separately; its gradient-background `color-contrast` incompletes are tracked in the axe-in-CI item). Not done: an axe e2e addition, because axe cannot see this text at all._
 - [x] **P15-36 · Refresh `src/_data/toolVersions.mjs`.** Outcome: the
       versions match what is current. Evidence: the file has Debezium
       `3.6.1.Final` while 3.7.0.Final exists, and Kafka `4.3.0` while 4.3.1
