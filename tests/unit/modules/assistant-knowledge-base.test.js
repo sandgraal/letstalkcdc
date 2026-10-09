@@ -397,3 +397,49 @@ describe("assistant knowledge base – the site's delivery thesis", () => {
     expect(a).toContain("does not make delivery exactly-once");
   });
 });
+
+describe("assistant knowledge base – Postgres replication slots", () => {
+  const CASES = [
+    ["my postgres disk is filling and I use debezium", "replication_slot_wal"],
+    ["replication slot growing wal", "replication_slot_wal"],
+    ["what is max_slot_wal_keep_size", "replication_slot_wal"],
+    ["is it safe to drop the slot", "replication_slot_wal"],
+    ["pg_replication_slots restart_lsn", "replication_slot_wal"],
+    ["debezium heartbeat for a quiet table", "debezium_heartbeat"],
+    ["what does heartbeat.action.query do", "debezium_heartbeat"],
+    ["how do failover slots work", "debezium_heartbeat"],
+  ];
+
+  it.each(CASES)("%j -> %s", (query, expected) => {
+    expect(idOf(query)).toBe(expected);
+  });
+
+  it("answers the same way from the runbook page, which has no module boost of its own", () => {
+    for (const [query, expected] of CASES) {
+      expect(idOf(query, "postgres-replication-slots")).toBe(expected);
+    }
+  });
+
+  it("does not steal the older lag and offset phrasings", () => {
+    expect(idOf("my replication lag keeps growing")).toBe("lag_handling");
+    expect(idOf("how do I reset an offset")).toBe("offset_management");
+  });
+
+  it("keeps the thesis: an idempotent sink and a re-snapshot, no exactly-once promise", () => {
+    const slot = byId("replication_slot_wal").answer.toLowerCase();
+    expect(slot).toContain("idempotent sink");
+    expect(slot).toContain("re-snapshot");
+    const hb = byId("debezium_heartbeat").answer.toLowerCase();
+    expect(hb).toContain("do not make delivery exactly-once");
+  });
+
+  it("points at runbook sections that exist", () => {
+    for (const id of ["replication_slot_wal", "debezium_heartbeat"]) {
+      for (const link of byId(id).links) {
+        if (link.url === "/postgres-replication-slots/") {
+          expect(link.anchor).toMatch(/^#(triage|decision|debezium|failover)$/);
+        }
+      }
+    }
+  });
+});

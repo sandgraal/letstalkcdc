@@ -129,7 +129,8 @@ FROM pg_replication_slots WHERE slot_name='&lt;slot&gt;';</code></pre>
               <li>
                 <em>Slot disk pressure:</em> sink caught behind → raise sink
                 throughput or pause snapshot; never drop the slot without a
-                plan.
+                plan. See the
+                <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a>.
               </li>
               <li>
                 <em>Missing updates:</em> replica identity not full on keyless

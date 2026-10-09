@@ -90,6 +90,15 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "postgres-replication-slots",
+    title: "Postgres Replication Slots & WAL Growth",
+    description:
+      "A runbook for a Postgres disk filling behind a CDC slot: the checks, max_slot_wal_keep_size, Debezium heartbeats, and safe recovery.",
+    href: "postgres-replication-slots/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Intermediate",
+  },
+  {
     key: "non-relational",
     title: "CDC Beyond Relational Databases",
     description:

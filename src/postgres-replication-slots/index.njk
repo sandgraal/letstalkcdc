@@ -1,0 +1,939 @@
+---
+layout: base.njk
+title: "Postgres Replication Slots & WAL Growth"
+description: "Runbook for a Postgres disk filling behind a CDC slot: the pg_replication_slots checks, max_slot_wal_keep_size, Debezium heartbeats, and safe recovery."
+canonicalPath: "/postgres-replication-slots/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<article class="prose">
+  <section id="scope" aria-labelledby="scope-title">
+    <h2 id="scope-title">What this runbook covers</h2>
+    <p>
+      You run Postgres with a logical-decoding CDC connector (this page uses
+      Debezium's Postgres connector as the example). The disk on the primary is
+      filling, or an alert says it might, and you need to know whether a
+      replication slot is the cause, what each fix costs, and what the pipeline
+      owes you afterwards.
+    </p>
+    <p>
+      The thread through all of it is the same as the rest of this site. A slot
+      is a <em>position held on the source</em>. The consumer moves that position
+      forward only by confirming it has received changes, so delivery is
+      at-least-once. Anything that gives up or loses the position (a drop, an
+      invalidation) means the only correct way back is a re-snapshot into a sink
+      that is idempotent: keyed by primary key and ordered by log position. There
+      is no end-to-end exactly-once at any point in this runbook.
+    </p>
+    <aside class="callout" aria-label="Versions checked">
+      <p>
+        <strong>Checked against:</strong> the PostgreSQL documentation for
+        versions 14, 16, 17 and 18 (the supported releases as of 2026-10-09; the
+        docs for 15 were not read separately), and the Debezium PostgreSQL
+        connector reference at <code>debezium.io/documentation/reference/stable</code>,
+        which was labelled 3.7 when read. Where behaviour differs by version the
+        text says so, and where I could not confirm something it says
+        &ldquo;check your version&rdquo;. The last section lists what was run
+        and what was not.
+      </p>
+    </aside>
+  </section>
+
+  <section id="triage" aria-labelledby="triage-title">
+    <h2 id="triage-title">Triage: is a slot why the disk is filling?</h2>
+    <p>
+      Connect to the primary (not a replica) and look at every slot, logical and
+      physical. <code>pg_current_wal_lsn()</code> cannot run during recovery, so
+      on a standby use <code>pg_last_wal_replay_lsn()</code> in its place.
+    </p>
+    <pre><code>-- Every slot, biggest WAL pin first. Needs PostgreSQL 13+ (wal_status, safe_wal_size).
+SELECT slot_name,
+       slot_type,
+       plugin,
+       database,
+       active,
+       active_pid,
+       wal_status,
+       pg_size_pretty(safe_wal_size)                                       AS safe_wal_size,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn))  AS restart_lag,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS unconfirmed,
+       restart_lsn,
+       confirmed_flush_lsn
+FROM pg_replication_slots
+ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC NULLS LAST;</code></pre>
+    <table>
+      <caption>How to read the columns</caption>
+      <thead>
+        <tr>
+          <th scope="col">Column</th>
+          <th scope="col">What it tells you</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>active</code>, <code>active_pid</code></th>
+          <td>
+            <code>true</code> means a session is streaming from the slot right
+            now, and <code>active_pid</code> is its process. <code>false</code>
+            with a NULL pid means <em>nobody is connected</em>. The slot keeps
+            pinning WAL anyway.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>restart_lsn</code></th>
+          <td>
+            The oldest WAL that might still be required by the consumer. The
+            server will not remove WAL from here onward, unless a
+            <code>max_slot_wal_keep_size</code> limit is exceeded. NULL if no
+            WAL was ever reserved.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>confirmed_flush_lsn</code></th>
+          <td>
+            How far the consumer has confirmed receiving. Changes from
+            transactions that committed before it are not sent again. (Logical
+            slots only; NULL for physical slots.)
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>restart_lag</code></th>
+          <td>
+            Current WAL position minus <code>restart_lsn</code>, in bytes. This is
+            the WAL this slot makes the server keep. It is an estimate of what
+            the slot pins, not the size of <code>pg_wal</code>.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>unconfirmed</code></th>
+          <td>
+            Current position minus <code>confirmed_flush_lsn</code>: how much
+            the consumer has not yet confirmed. Sample twice to separate a slow
+            consumer from a stopped one (see the decision table).
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>wal_status</code></th>
+          <td>
+            <code>reserved</code>: the WAL the slot needs is within
+            <code>max_wal_size</code>. <code>extended</code>: beyond
+            <code>max_wal_size</code> but still retained. <code>unreserved</code>:
+            the slot no longer retains the WAL it needs and some will be removed
+            at the next checkpoint (it can return to <code>reserved</code> or
+            <code>extended</code>). <code>lost</code>: the slot is no longer
+            usable. For WAL retention, the last two states normally appear only
+            when <code>max_slot_wal_keep_size</code> is non-negative; newer
+            releases can also invalidate a slot for other reasons.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>safe_wal_size</code></th>
+          <td>
+            Bytes that can still be written before the slot is in danger of
+            becoming <code>lost</code>. NULL for lost slots, and NULL whenever
+            <code>max_slot_wal_keep_size</code> is <code>-1</code>.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      Careful with NULLs: a <code>lost</code> slot has a NULL
+      <code>restart_lsn</code> (observed, see the last section), so its
+      <code>restart_lag</code> is NULL too. It does not mean &ldquo;nothing is
+      retained&rdquo;. It means the slot has already failed. Always read
+      <code>wal_status</code> next to the lag columns.
+    </p>
+    <p>
+      Next, confirm the disk is really WAL, and look for the other thing a slot
+      pins. Reading <code>pg_ls_waldir()</code> needs a superuser or a role with
+      <code>pg_monitor</code> privileges.
+    </p>
+    <pre><code>-- Size of the WAL directory
+SELECT pg_size_pretty(sum(size)) AS pg_wal_size FROM pg_ls_waldir();
+
+-- The same slots also hold back VACUUM on catalog rows
+SELECT slot_name,
+       age(xmin)         AS xmin_age,
+       age(catalog_xmin) AS catalog_xmin_age
+FROM pg_replication_slots;
+
+-- PostgreSQL 17+ only: when did it go idle, and was it invalidated?
+SELECT slot_name, inactive_since, invalidation_reason, failover, synced
+FROM pg_replication_slots;</code></pre>
+    <p>
+      If <code>pg_wal_size</code> is far larger than <code>max_wal_size</code>
+      and a slot's <code>restart_lag</code> accounts for most of it, a slot is
+      the cause. If no slot explains it, look at WAL archiving and at physical
+      slots for standbys before blaming CDC (the first query lists those too).
+    </p>
+  </section>
+
+  <section id="how-slots-work" aria-labelledby="how-slots-work-title">
+    <h2 id="how-slots-work-title">How a logical slot holds WAL</h2>
+    <p>
+      A logical slot represents a stream of changes that can be replayed to a
+      client in the order they were made. It lives on one database, persists
+      independently of whichever connection is using it, and is crash-safe.
+      Crucially it <em>knows nothing about its consumer</em>. Only one receiver
+      can consume from it at a time, but the server does not care whether that
+      receiver is alive.
+    </p>
+    <ol>
+      <li>
+        The consumer connects and starts streaming. The server begins at the
+        greater of the position the client asks for and the slot's
+        <code>confirmed_flush_lsn</code>, so a client cannot read behind its own
+        confirmed position.
+      </li>
+      <li>
+        As it processes changes, the consumer sends status updates that report
+        the WAL position it has flushed. That is how
+        <code>confirmed_flush_lsn</code> moves forward. <code>restart_lsn</code>
+        follows, possibly a little behind it, and that is what lets the server
+        recycle older WAL.
+      </li>
+      <li>
+        If the consumer stops confirming, nothing else moves. Both positions
+        stay where they were, and every new WAL file written from
+        <code>restart_lsn</code> onward is kept.
+      </li>
+    </ol>
+    <p>
+      Two details matter for the rest of this page. First, the slot's current
+      position is persisted only at checkpoints, so after a server crash the
+      slot can return to an earlier position and recent changes are sent again;
+      the PostgreSQL docs say logical decoding clients are responsible for
+      handling the same message more than once. Second, the confirmation is
+      about <em>receipt by the consumer</em>. It says nothing about whether the
+      sink applied the change.
+    </p>
+    <aside class="callout" aria-label="wal_keep_size is not the slot cap">
+      <p>
+        <strong><code>wal_keep_size</code> does not cap a slot.</strong> It sets
+        the <em>minimum</em> amount of past WAL kept in case a standby needs to
+        fetch it for streaming replication. The setting that limits what
+        replication slots may retain is <code>max_slot_wal_keep_size</code>,
+        covered below. Glossary:
+        <a href="{{ '/glossary/#log-retention' | url }}">log retention</a>,
+        <a href="{{ '/glossary/#lsn-scn' | url }}">LSN</a>.
+      </p>
+    </aside>
+  </section>
+
+  <section id="why-it-fills" aria-labelledby="why-it-fills-title">
+    <h2 id="why-it-fills-title">Why an unconsumed or inactive slot fills the disk</h2>
+    <p>
+      The PostgreSQL docs put it bluntly: replication slots persist across
+      crashes and prevent removal of required resources <em>even when there is
+      no connection using them</em>. The WAL is not recycled, so the disk fills
+      at the rate the database writes. The usual routes into that state:
+    </p>
+    <ul>
+      <li>
+        <strong>The connector is stopped, paused, crash-looping or deleted but
+        its slot remains.</strong> With Debezium's defaults the slot survives a
+        graceful stop (<code>slot.drop.on.stop</code> is <code>false</code>), so
+        a connector you shut down on Friday is still pinning WAL on Monday.
+      </li>
+      <li>
+        <strong>The connector is running but slower than the write rate.</strong>
+        The slot is active, <code>unconfirmed</code> keeps growing, and
+        <code>restart_lsn</code> trails.
+      </li>
+      <li>
+        <strong>Most of the database's writes are not on captured tables.</strong>
+        The connector reads the log as usual but rarely emits a change record,
+        so no offset is committed and it never gets the chance to send the
+        latest LSN back. The database keeps WAL for events the connector has
+        already read. Debezium documents this case and the heartbeat fix below.
+      </li>
+      <li>
+        <strong>The captured database is the quiet one in a busy cluster.</strong>
+        Slots are per database, but WAL is shared by all databases in the
+        cluster. If only another database is busy, the connector is never
+        invoked, cannot confirm a position, and WAL grows until the captured
+        database emits an event.
+      </li>
+      <li>
+        <strong>Managed idle environments.</strong> Debezium's docs note that on
+        AWS RDS for PostgreSQL, writes to RDS's own system tables that are
+        invisible to clients can leave a nominally idle database in the same
+        situation. Regular events solve it. Check your provider's behaviour.
+      </li>
+      <li>
+        <strong>The slot is abandoned.</strong> A test connector, a retired
+        pipeline, a trial of a managed ELT product. Nobody remembers it exists.
+      </li>
+    </ul>
+    <p>
+      WAL is not the only cost. The same caution in the PostgreSQL docs says a
+      slot also prevents <code>VACUUM</code> from removing the catalog rows it
+      still needs, and that in extreme cases the database can shut down to
+      prevent transaction ID wraparound. That is why the triage includes
+      <code>age(catalog_xmin)</code>.
+    </p>
+  </section>
+
+  <section id="cap" aria-labelledby="cap-title">
+    <h2 id="cap-title">Capping retention: <code>max_slot_wal_keep_size</code></h2>
+    <p>
+      <code>max_slot_wal_keep_size</code> is the maximum size of WAL that
+      replication slots are allowed to retain in <code>pg_wal</code> at
+      checkpoint time. The default is <code>-1</code>, which means
+      <strong>unlimited</strong>: slots may retain any amount of WAL. A value
+      without units is read as megabytes. The setting exists in PostgreSQL 13 and
+      later and the docs for 13, 16, 17 and 18 describe it the same way.
+    </p>
+    <p>
+      With a limit set, if a slot's <code>restart_lsn</code> falls behind the
+      current position by more than the limit, the server stops protecting that
+      WAL. The slot moves through <code>unreserved</code> to <code>lost</code>,
+      and the consumer can no longer continue from it because the WAL it
+      needs has been removed. The docs word it as the consumer possibly
+      &ldquo;no longer [being] able to continue replication due to removal of
+      required WAL files&rdquo;. In PostgreSQL 17 and later
+      <code>invalidation_reason</code> says <code>wal_removed</code>.
+    </p>
+    <h3>What a limit trades</h3>
+    <p>
+      A limit trades <strong>disk for a lost slot</strong>. With no limit, a stuck
+      consumer can fill the volume and stop the primary from writing, which
+      takes the application down with it. With a limit, the primary survives, and the cost
+      moves to the pipeline: the slot is invalidated and the only correct
+      recovery is a re-snapshot. Both are real costs. A limit decides which one
+      you pay.
+    </p>
+    <p>
+      So size it as policy, not as a number copied from a blog post: it should be
+      <strong>large enough to cover the longest consumer outage you intend to
+      survive at your peak WAL rate, and small enough that the volume still has
+      headroom</strong> for normal WAL, checkpoints and archiving. Both inputs
+      (write rate, disk size) are yours. Treat <code>safe_wal_size</code> as the
+      countdown to <code>lost</code> and alert well before it reaches zero.
+    </p>
+    <h3>Newer safety nets, by version</h3>
+    <table>
+      <caption>Version differences that matter for slot health</caption>
+      <thead>
+        <tr>
+          <th scope="col">PostgreSQL</th>
+          <th scope="col">What is new</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">13+</th>
+          <td>
+            <code>max_slot_wal_keep_size</code>, <code>wal_status</code>,
+            <code>safe_wal_size</code>.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">17+</th>
+          <td>
+            <code>inactive_since</code> and <code>invalidation_reason</code> in
+            <code>pg_replication_slots</code>; the <code>failover</code> and
+            <code>synced</code> columns; failover slots (see below).
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">18+</th>
+          <td>
+            <code>idle_replication_slot_timeout</code>: invalidates a slot that
+            has been inactive longer than the duration. The default is zero,
+            which disables it, and invalidation happens at a checkpoint. It
+            shows up as <code>invalidation_reason = 'idle_timeout'</code>. It
+            only helps if you want an abandoned slot to be invalidated
+            automatically. An idle slot that is invalidated this way is lost,
+            with the same recovery as any other lost slot.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      The docs say <code>max_slot_wal_keep_size</code> can only be set in
+      <code>postgresql.conf</code> or on the server command line. On PostgreSQL
+      18.3, <code>pg_settings.context</code> for it is <code>sighup</code>, which
+      means a reload applies it; check the same column on your version and on a
+      managed service, where the setting may live in a parameter group.
+    </p>
+  </section>
+
+  <section id="debezium" aria-labelledby="debezium-title">
+    <h2 id="debezium-title">Debezium specifics</h2>
+    <table>
+      <caption>Debezium PostgreSQL connector settings that decide slot health</caption>
+      <thead>
+        <tr>
+          <th scope="col">Setting</th>
+          <th scope="col">Default</th>
+          <th scope="col">What it does for this problem</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>slot.name</code></th>
+          <td><code>debezium</code></td>
+          <td>
+            The slot the connector streams from; created automatically if
+            missing (the user needs the <code>REPLICATION</code> privilege, and
+            with <code>pgoutput</code> also <code>CREATE</code> on the
+            database). <strong>Every connector instance needs its own slot
+            name</strong> and its own publication. Debezium warns that if
+            connectors share a slot, each change reaches only one of them, with
+            no warning from Postgres. Names are lower-case letters, digits and
+            underscore.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>slot.drop.on.stop</code></th>
+          <td><code>false</code></td>
+          <td>
+            Drop the slot when the connector stops gracefully. Debezium says to
+            set it to <code>true</code> only in testing or development, because
+            dropping the slot lets the database discard WAL and the connector
+            then has to snapshot again or continue from a stored offset that the
+            new slot cannot honour. In production the default is what you want,
+            and the consequence is that <strong>decommissioning a connector
+            means dropping its slot yourself</strong>.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>heartbeat.interval.ms</code></th>
+          <td><code>0</code> (off)</td>
+          <td>
+            A positive value makes the connector emit heartbeat messages, which
+            gives it the chance to send the latest LSN to the database so old WAL
+            can be reclaimed. Needed when many writes happen in the database but
+            few touch the captured tables. Debezium also says heartbeats can
+            reduce the number of change events re-sent when the connector
+            restarts.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>heartbeat.action.query</code></th>
+          <td>none</td>
+          <td>
+            A statement the connector runs on the source at each heartbeat. For
+            a quiet database in a busy cluster, create a heartbeat table and
+            point this at an <code>INSERT</code> (or repeated <code>UPDATE</code>)
+            on it, so there are always captured changes to confirm. The
+            connector's database user must be able to run it.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>publication.name</code>, <code>publication.autocreate.mode</code></th>
+          <td><code>dbz_publication</code>, <code>all_tables</code></td>
+          <td>
+            With <code>pgoutput</code>, a publication defines which tables'
+            changes are sent. <strong>The heartbeat table must be in the
+            publication</strong> or the connector never sees the heartbeat
+            writes. If the publication predates your deployment and is not
+            <code>FOR ALL TABLES</code>, add it explicitly.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>lsn.flush.mode</code></th>
+          <td><code>connector</code></td>
+          <td>
+            Who confirms the LSN to the slot. <code>manual</code> means the
+            connector does not flush at all, and the docs warn WAL accumulates
+            unless you build something that does. Newer releases only (it
+            replaces <code>flush.lsn.source</code>), and
+            <code>connector_and_driver</code> is documented as Technology
+            Preview: check your version before relying on either.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <pre><code>-- Heartbeat table for a quiet database (the connector user needs rights on it)
+CREATE TABLE IF NOT EXISTS cdc_heartbeat (id int PRIMARY KEY, beat timestamptz);
+ALTER PUBLICATION dbz_publication ADD TABLE cdc_heartbeat;  -- only for a publication that is not FOR ALL TABLES</code></pre>
+    <pre><code>{
+  "heartbeat.interval.ms": "10000",
+  "heartbeat.action.query": "INSERT INTO cdc_heartbeat (id, beat) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET beat = EXCLUDED.beat"
+}</code></pre>
+    <p class="muted small">
+      The interval above is an example, not a recommendation: pick it from how
+      long you can tolerate WAL being pinned on a quiet database. The queries
+      and snippets on this page were checked for syntax where noted in the last
+      section; the connector JSON was not run against a live Debezium.
+    </p>
+    <h3>What happens to <code>confirmed_flush_lsn</code> while the connector is down</h3>
+    <p>
+      Nothing. It stays at the last position the connector confirmed, and
+      <code>restart_lsn</code> stays with it, so WAL accumulates for the whole
+      outage. Heartbeats do not help here, because there is no connector to send
+      them. When the connector restarts it asks for its stored offset, and the
+      server streams from the greater of that and the slot's
+      <code>confirmed_flush_lsn</code>. Changes the connector had already
+      published to Kafka but not yet confirmed come around again. Debezium
+      states this plainly: it provides at-least-once delivery and a recovering
+      connector might emit duplicates.
+    </p>
+    <aside class="callout" aria-label="Heartbeats move the position, nothing more">
+      <p>
+        <strong>Heartbeats move the position for quiet tables. They do not make
+        delivery exactly-once.</strong> They shrink the window of changes that
+        can be replayed after a restart and let the server free WAL. The sink
+        still has to expect duplicates.
+      </p>
+    </aside>
+  </section>
+
+  <section id="failover" aria-labelledby="failover-title">
+    <h2 id="failover-title">Failover and standbys</h2>
+    <p>
+      A slot lives on one server. What happens to it when the primary fails
+      depends on the PostgreSQL version.
+    </p>
+    <table>
+      <caption>Slots across a primary failure, by PostgreSQL version</caption>
+      <thead>
+        <tr>
+          <th scope="col">Version</th>
+          <th scope="col">Behaviour</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">15 and earlier</th>
+          <td>
+            Logical slots can only be created on the primary, and are not
+            propagated to replicas. After a failover the new primary has no
+            slot, so treat it as a lost slot: re-snapshot. Debezium's
+            <code>snapshot.mode=always</code> is documented for exactly the case
+            where a new primary was promoted.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">16</th>
+          <td>
+            Logical slots can be created on a standby, but Debezium's docs say
+            the standby's slot is not synchronised automatically and should be
+            advanced manually to match the primary.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">17 and later</th>
+          <td>
+            A slot created with <code>failover = true</code> (the fifth argument
+            of <code>pg_create_logical_replication_slot</code>; Debezium's
+            <code>slot.failover</code>) can be synchronised to a standby, so the
+            consumer can continue from the new primary after promotion.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Failover slots are not a setting you flip on a slot. For synchronisation to
+      work on PostgreSQL 17 and later, the PostgreSQL docs require:
+    </p>
+    <ul>
+      <li>
+        <code>sync_replication_slots = on</code> on the standby (it is off by
+        default), a physical slot between primary and standby named in
+        <code>primary_slot_name</code>, <code>hot_standby_feedback</code> enabled,
+        and a valid <code>dbname</code> in <code>primary_conninfo</code>.
+      </li>
+      <li>
+        Strongly recommended: list that physical slot in
+        <code>synchronized_standby_slots</code> on the primary, so a subscriber
+        cannot consume changes faster than the standby. The price is latency:
+        logical senders wait for the standby to confirm, and the primary will not
+        shut down completely until the listed standbys confirm.
+      </li>
+    </ul>
+    <p>Caveats worth knowing before you trust it:</p>
+    <ul>
+      <li>
+        The standby persists a synchronised slot only if the WAL and catalog rows
+        it needs are still available on the standby. Otherwise it logs that
+        synchronisation could lead to data loss and does not persist the slot.
+        Temporary synchronised slots cannot be used for logical decoding.
+      </li>
+      <li>
+        Verify readiness before you rely on it. The PostgreSQL docs give this
+        check on the standby (<code>synced</code> and not temporary and not
+        invalidated):
+        <pre><code>SELECT slot_name,
+       (synced AND NOT temporary AND invalidation_reason IS NULL) AS failover_ready
+FROM pg_replication_slots
+WHERE synced;</code></pre>
+      </li>
+      <li>
+        A slot with no active consumer will not advance, which stalls
+        synchronisation; the docs suggest advancing it manually on the primary.
+      </li>
+      <li>
+        If the old primary comes back during promotion, subscribers can keep
+        talking to it. The docs recommend disabling subscriptions before
+        promotion and re-enabling them once the connection string points at the
+        new primary.
+      </li>
+      <li>
+        Synchronisation is periodic. My reading, not a documented guarantee: the
+        position on the promoted standby can be behind what the consumer had
+        confirmed, so expect some replay after a failover. That is the same
+        at-least-once rule, not a new failure mode.
+      </li>
+      <li>
+        Debezium: do not drop or re-create a failover slot, and pause the
+        connector until you have verified the slot is intact. Some managed
+        services (Debezium names AWS RDS and Google Cloud SQL) replicate the
+        slot with disk replication instead, so check what yours does.
+      </li>
+    </ul>
+  </section>
+
+  <section id="decision" aria-labelledby="decision-title">
+    <h2 id="decision-title">Decision table: what is wrong, and what to do</h2>
+    <p>
+      Take two samples of the triage query a minute or more apart, and read them
+      against this table. Dropping a slot is the last row you should reach for,
+      not the first.
+    </p>
+    <table>
+      <caption>Slot situations, how to recognise them, and the recovery path</caption>
+      <thead>
+        <tr>
+          <th scope="col">Situation</th>
+          <th scope="col">How you tell</th>
+          <th scope="col">Recovery path</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Lagging consumer</th>
+          <td>
+            <code>active = true</code>; <code>confirmed_flush_lsn</code> is
+            moving between samples but <code>unconfirmed</code> and
+            <code>restart_lag</code> are growing or not shrinking;
+            <code>wal_status</code> is <code>reserved</code> or
+            <code>extended</code>.
+          </td>
+          <td>
+            Fix throughput: the sink, the Connect task, the network, or a
+            snapshot hogging the connector. Leave the slot alone. It costs disk
+            until the consumer catches up; watch <code>safe_wal_size</code> if
+            you set a limit. See
+            <a href="{{ '/observability/' | url }}">Observability</a> and
+            <a href="{{ '/ops-offsets/' | url }}">Ops: Offsets &amp; Replays</a>.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Dead consumer, slot still healthy</th>
+          <td>
+            <code>active = false</code>; <code>confirmed_flush_lsn</code> does
+            not move between samples; <code>wal_status</code> is not
+            <code>lost</code>.
+          </td>
+          <td>
+            Restart the connector. It resumes from the slot, and some changes
+            will be delivered again, so the sink must already be idempotent
+            (<a href="#replay">below</a>). If it cannot come back before the
+            disk fills, buy time (extend the volume, set or lower
+            <code>max_slot_wal_keep_size</code>) knowing a limit may turn this
+            row into the last one.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Abandoned slot</th>
+          <td>
+            <code>active = false</code> for a long time and no running
+            connector, pipeline or product claims the <code>slot_name</code>.
+          </td>
+          <td>
+            Confirm ownership, then drop it (<a href="#drop">next section</a>).
+            Nothing is lost if it really is abandoned. If you are wrong, you
+            have just created the last row for someone's live pipeline.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Invalidated slot</th>
+          <td>
+            <code>wal_status = 'lost'</code> (and, on 17+,
+            <code>invalidation_reason = 'wal_removed'</code>).
+          </td>
+          <td>
+            The position is gone. Stop the connector, drop the slot, discard the
+            old offset, and re-snapshot into the idempotent sink; then
+            reconcile. A snapshot copies the rows that exist now, so rows
+            deleted while the slot was lost stay in a sink that you did not
+            rebuild, until a diff finds them. See
+            <a href="{{ '/snapshotting/' | url }}">Snapshotting</a> and
+            <a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a>.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Do not restart the connector against a fresh slot while keeping the old
+      offset. Debezium's own upgrade procedure explains why: a new slot can only
+      return changes from after it was created, so when the connector asks for
+      the stored offset it can skip the existing change events and resume from
+      the newest position, silently, with no records for what it skipped. Debezium
+      documents a manual procedure for a rebuilt slot (rename the connector,
+      remove old offsets, recreate the slot and publication, choose a snapshot
+      mode); follow the version of that procedure that matches your Debezium.
+    </p>
+  </section>
+
+  <section id="drop" aria-labelledby="drop-title">
+    <h2 id="drop-title">Dropping an abandoned slot safely</h2>
+    <ol>
+      <li>
+        <strong>Identify the owner.</strong> Match <code>slot_name</code>,
+        <code>plugin</code> and <code>database</code> against your connector
+        configs (<code>slot.name</code>), your managed ELT products and your
+        runbooks. If you cannot find an owner, ask before dropping.
+      </li>
+      <li>
+        <strong>Stop the consumer first.</strong> Dropping an active slot raises
+        an error by default; the replication-protocol command has a
+        <code>WAIT</code> option that waits instead. Check
+        <code>active = false</code>.
+      </li>
+      <li>
+        <strong>Write down what you are giving up.</strong> Save the row from
+        the triage query (<code>restart_lsn</code>,
+        <code>confirmed_flush_lsn</code>, <code>wal_status</code>). It is the
+        evidence of how far the pipeline had got.
+      </li>
+      <li>
+        <strong>Drop it.</strong>
+        <pre><code>SELECT pg_drop_replication_slot('my_abandoned_slot');</code></pre>
+        The function drops a physical or logical slot and is the same as the
+        replication command <code>DROP_REPLICATION_SLOT</code>. Re-run the triage
+        query to confirm it is gone, then watch the WAL directory size over the
+        following checkpoints rather than expecting an instant change.
+      </li>
+      <li>
+        <strong>Clean up the consumer side.</strong> If the pipeline is retired,
+        delete the connector and its offsets, drop its publication and heartbeat
+        table, and remove it from monitoring. If the pipeline continues, you are
+        in the invalidated-slot row: the old offset is not safe to reuse, and a
+        re-snapshot is the way back.
+      </li>
+    </ol>
+    <p class="muted small">
+      Dropping is a decision about the pipeline's history, not a rule you apply
+      at a given size. &ldquo;Drop the slot when it exceeds N GB&rdquo; is how a
+      live pipeline ends up in the invalidated-slot row.
+    </p>
+  </section>
+
+  <section id="replay" aria-labelledby="replay-title">
+    <h2 id="replay-title">After a restart: replay, duplicates and the idempotent sink</h2>
+    <p>
+      The slot confirms what the connector received. Debezium publishes to Kafka
+      and Kafka Connect commits offsets on its own schedule; Debezium's docs tie
+      the two together, noting that when no offsets are committed the connector
+      has no opportunity to send the latest LSN to the database. So there is
+      always a window of changes that were delivered downstream but not yet
+      confirmed to the slot.
+      A restart, a crash (the slot may return to its last checkpointed position)
+      or a failover sends them again. Debezium documents this as at-least-once
+      delivery.
+    </p>
+    <p>
+      The fix lives in the sink, not in Postgres:
+    </p>
+    <ul>
+      <li>
+        Key the target on the <strong>primary key</strong>.
+      </li>
+      <li>
+        Carry the change's <strong>log position</strong> (for Postgres,
+        Debezium's <code>source.lsn</code>) into the target, and apply a change
+        only when its position is newer than the one stored for that key. A
+        replay then does nothing, and an older change arriving after a newer one
+        cannot overwrite it. Do not order by an event timestamp.
+      </li>
+      <li>
+        Keep deletes as delete markers with their own log position, so a replayed
+        insert cannot resurrect a deleted row.
+      </li>
+    </ul>
+    <p>
+      The worked patterns are on
+      <a href="{{ '/partitioning/#recon' | url }}">Partitioning: version guards and watermarks</a>,
+      <a href="{{ '/materialization/' | url }}">Materialization 101</a> and
+      <a href="{{ '/snapshotting/#idempotent' | url }}">Snapshotting: idempotent apply</a>.
+      They matter doubly after slot loss: a re-snapshot is the one time rows
+      from two different eras meet in the sink, and a position guard is what
+      lets the snapshot and the stream converge. The related glossary entries
+      are <a href="{{ '/glossary/#idempotent-write' | url }}">idempotent write</a>
+      and <a href="{{ '/glossary/#effectively-once' | url }}">effectively-once</a>.
+    </p>
+    <aside class="callout" aria-label="No end-to-end exactly-once">
+      <p>
+        <strong>There is no exactly-once across the whole path.</strong> A slot
+        gives the connector each change at least once. Whatever a particular
+        component promises about exactly-once applies to its own hop; the
+        pipeline as a whole is at-least-once delivery plus an idempotent sink,
+        which gets you the same final state. See
+        <a href="{{ '/exactly-once/' | url }}">Exactly-Once Semantics</a>.
+      </p>
+    </aside>
+  </section>
+
+  <section id="try-it" aria-labelledby="try-it-title">
+    <h2 id="try-it-title">Try the recovery sequence</h2>
+    <p>
+      The <a href="{{ '/playground/' | url }}">Change Feed Playground</a> has a
+      <strong>Snapshot Replay</strong> template (offset resets and re-seeding a
+      change feed, with dedupe controls). Pick it from the template list and
+      replay the feed to see an older change arrive after a newer one: the same
+      problem you meet after a slot is lost and the sink is re-seeded. The
+      playground is a simulation with made-up data; it has no Postgres slots.
+    </p>
+  </section>
+
+  <section id="alerting" aria-labelledby="alerting-title">
+    <h2 id="alerting-title">Alerting: policy, not magic numbers</h2>
+    <p>
+      Any threshold quoted without the database's write rate and the volume's
+      free space is a guess. Write the alerts as rules, then derive the numbers
+      from your own measurements. To measure the write rate, take the WAL
+      position twice and difference it:
+    </p>
+    <pre><code>-- psql: remember the position now ...
+SELECT pg_current_wal_lsn() AS t0 \gset
+-- ... and later, bytes of WAL written since then
+SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), :'t0')) AS written_since_t0;</code></pre>
+    <table>
+      <caption>Alert rules and what each one is derived from</caption>
+      <thead>
+        <tr>
+          <th scope="col">Alert when</th>
+          <th scope="col">Derive the threshold from</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">A slot has had no active consumer for longer than the pipeline can tolerate</th>
+          <td>
+            That pipeline's recovery objective: time to notice, restart and
+            catch up. Use <code>inactive_since</code> on 17+, or two samples of
+            <code>active</code> on older versions.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Estimated time-to-full for the WAL volume is shorter than on-call response time</th>
+          <td>
+            Free space divided by the measured WAL growth rate, including the
+            WAL a stalled slot is pinning. This is the one that keeps the
+            primary up.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>wal_status</code> leaves <code>reserved</code>; page on <code>unreserved</code>, treat <code>lost</code> as an incident</th>
+          <td>
+            Your <code>max_slot_wal_keep_size</code> and your WAL rate.
+            <code>safe_wal_size</code> is the countdown; alert at a fraction of
+            the limit chosen so someone can act before it reaches zero.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>confirmed_flush_lsn</code> has not moved over a window while <code>pg_current_wal_lsn()</code> has</th>
+          <td>
+            A window several times longer than your heartbeat interval (or, if
+            you run no heartbeats, longer than your normal quiet period). It
+            catches both a stuck consumer and a quiet table with no heartbeat.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Heartbeat records stop arriving at the sink</th>
+          <td>
+            The heartbeat interval, if you use heartbeats. It tells you the whole
+            path is alive, not only the connector.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row"><code>age(catalog_xmin)</code> keeps rising on a slot</th>
+          <td>
+            The same guardrails you already use for transaction ID wraparound on
+            this cluster.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Wire these into the dashboards and routes described on
+      <a href="{{ '/observability/' | url }}">Observability Basics</a>, and link
+      each alert to the matching row of the decision table above.
+    </p>
+  </section>
+
+  <section id="checked" aria-labelledby="checked-title">
+    <h2 id="checked-title">What was checked, and what was not</h2>
+    <ul>
+      <li>
+        <strong>Read in the primary docs on 2026-10-09:</strong> the
+        PostgreSQL pages for <code>pg_replication_slots</code> (14, 16, 17, 18),
+        replication configuration (13, 16, 17, 18), logical decoding concepts
+        (17), the replication protocol (17), the administration functions (17),
+        logical replication failover (17) and the PostgreSQL 17 release notes,
+        plus the Debezium PostgreSQL connector reference (stable).
+      </li>
+      <li>
+        <strong>Run:</strong> the monitoring queries were executed on PGlite
+        0.5.8, which embeds PostgreSQL 18.3, with <code>wal_level = logical</code>
+        and a real <code>pgoutput</code> slot that nothing consumed. They parse,
+        plan and return the columns shown. On that instance, with
+        <code>max_slot_wal_keep_size = 32MB</code>, writing about 50 MB of WAL
+        took the slot from <code>reserved</code> (<code>safe_wal_size</code>
+        41 MB) to <code>unreserved</code> (<code>safe_wal_size</code> had gone
+        negative, -10048 kB), and a <code>CHECKPOINT</code> then moved it to
+        <code>lost</code> with NULL <code>restart_lsn</code> and
+        <code>safe_wal_size</code> and <code>invalidation_reason =
+        'wal_removed'</code>. Peeking at the lost slot failed with &ldquo;can no
+        longer access replication slot&rdquo;, and
+        <code>pg_drop_replication_slot</code> removed it.
+      </li>
+      <li>
+        <strong>Not run:</strong> an actively streaming consumer. Decoding
+        pending changes in PGlite (<code>pg_logical_slot_peek_binary_changes</code>
+        with <code>pgoutput</code>) returned nothing and the instance then
+        stopped returning rows, so <code>active</code> and
+        <code>active_pid</code> were only checked as columns and never seen as
+        <code>true</code>; PostgreSQL 14 to 17 behaviour (docs only), failover
+        slots and synchronisation, <code>idle_replication_slot_timeout</code>,
+        the Debezium JSON, and any managed service (RDS, Cloud SQL) or the
+        Fivetran product. Settings that depend on your Debezium release
+        (<code>lsn.flush.mode</code>, <code>slot.failover</code>) are marked
+        &ldquo;check your version&rdquo; for that reason.
+      </li>
+    </ul>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <h3>On this site</h3>
+    <ul>
+      <li><a href="{{ '/ops-offsets/' | url }}">Ops: Offsets &amp; Replays</a> for stored offsets and safe rewinds.</li>
+      <li><a href="{{ '/snapshotting/' | url }}">Snapshotting</a> for the re-snapshot after a lost slot.</li>
+      <li><a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a> for repairing the sink afterwards.</li>
+      <li><a href="{{ '/connector-builder/' | url }}">Connector Config Builder</a> for generating a Postgres connector config with a distinct slot and publication.</li>
+      <li><a href="{{ '/quickstarts/quickstart-postgres/' | url }}">Postgres quickstart</a> and <a href="{{ '/troubleshooting/' | url }}">Troubleshooting</a>.</li>
+    </ul>
+    <h3>Primary sources (read 2026-10-09)</h3>
+    <ul>
+      <li><a href="https://www.postgresql.org/docs/18/view-pg-replication-slots.html">PostgreSQL: pg_replication_slots</a> (columns, <code>wal_status</code> values, <code>safe_wal_size</code>; <a href="https://www.postgresql.org/docs/14/view-pg-replication-slots.html">14</a> and <a href="https://www.postgresql.org/docs/17/view-pg-replication-slots.html">17</a> differ in the newer columns).</li>
+      <li><a href="https://www.postgresql.org/docs/18/runtime-config-replication.html">PostgreSQL: replication configuration</a> (<code>max_slot_wal_keep_size</code>, <code>wal_keep_size</code>, <code>idle_replication_slot_timeout</code>, <code>synchronized_standby_slots</code>, <code>sync_replication_slots</code>).</li>
+      <li><a href="https://www.postgresql.org/docs/17/logicaldecoding-explanation.html">PostgreSQL: logical decoding concepts</a> (replication slots, slot synchronisation and the disk-usage caution).</li>
+      <li><a href="https://www.postgresql.org/docs/17/logical-replication-failover.html">PostgreSQL: logical replication failover</a> (the <code>failover_ready</code> check).</li>
+      <li><a href="https://www.postgresql.org/docs/17/protocol-replication.html">PostgreSQL: streaming replication protocol</a> (<code>START_REPLICATION</code>, <code>DROP_REPLICATION_SLOT</code>, standby status updates).</li>
+      <li><a href="https://www.postgresql.org/docs/17/functions-admin.html">PostgreSQL: system administration functions</a> (<code>pg_drop_replication_slot</code>, <code>pg_wal_lsn_diff</code>, <code>pg_ls_waldir</code>).</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/connectors/postgresql.html">Debezium connector for PostgreSQL</a> (WAL disk space consumption, heartbeats, <code>slot.*</code> and snapshot settings, failure handling, topologies).</li>
+    </ul>
+  </section>
+</article>

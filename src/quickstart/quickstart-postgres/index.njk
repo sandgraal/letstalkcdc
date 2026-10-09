@@ -120,6 +120,7 @@ FROM target_customers;</code></pre>
 SELECT pg_drop_replication_slot('cdc_slot');</code></pre>
     <p class="muted">
       Dropping a live slot can force WAL recycling and data loss for downstream readers. Pause, plan a snapshot, then drop.
+      The <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a> covers how to tell a lagging slot from an abandoned one.
     </p>
   </section>
 </div>
