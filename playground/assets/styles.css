@@ -2974,6 +2974,10 @@ body.is-onboarding {
   text-align: center;
 }
 
+body[data-theme="light"] .footer {
+  background: var(--bg-surface);
+}
+
 code {
   background: rgba(18, 32, 60, 0.7);
   padding: 2px 6px;
@@ -3655,7 +3659,8 @@ body.megadesk-mode .hero-ambient .orb {
 }
 
 .simulator__tab[aria-selected="true"] .simulator__tab-hint {
-  color: rgba(255, 255, 255, 0.78);
+  color: #ffffff;
+  opacity: 1;
 }
 
 .simulator__tab:focus-visible {
@@ -3721,6 +3726,11 @@ body.megadesk-mode .hero-ambient .orb {
   margin: 0 0 12px;
   color: #d7e3fa;
   line-height: 1.5;
+}
+
+/* This panel keeps a dark surface in both themes, so its lead text stays light. */
+.method-guidance .section-lead {
+  color: #bac8e6;
 }
 
 .method-guidance__heading {
@@ -4071,7 +4081,7 @@ body[data-theme="light"] .method-guidance__chip {
 
 .section-lead {
   margin: 6px 0 0;
-  color: #bac8e6;
+  color: var(--muted-strong);
   line-height: 1.5;
 }
 

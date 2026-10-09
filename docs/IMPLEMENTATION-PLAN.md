@@ -1265,7 +1265,7 @@ dependencies).
       Lighthouse-only workaround; (b) the three nodes reach ≥ 4.5:1 and
       `color-contrast` scores 1 in all runs; (c) three fresh LHCI invocations
       show `/intro/` performance with a narrower spread, and
-      `.lighthouserc.json`'s `/intro/` performance floor is ratcheted to the
+      `lighthouse-ci.config.json`'s `/intro/` performance floor is ratcheted to the
       new median minus 0.04 (and the README badge from P15-6 is bumped in the
       same PR); (d) no a11y or CLS regression. Verify: `npm run lighthouse`
       three times, the Playwright layout-shift observer from P13-5,
@@ -1393,7 +1393,7 @@ where the work now lives:
 | D3  | Author photo             | **Yes.** Supplied as `~/Downloads/1783647301211.jpeg` (400×400 JPEG).                                                            | P15-2                 |
 | D4  | Author identity links    | **LinkedIn** `https://www.linkedin.com/in/cennis/`; footer "Get in touch" CTA (`advisoryUrl`) points at it.                      | P15-2                 |
 | D5  | CSS `@layer`             | **Won't do.** Closed, reopen only if a real specificity bug appears.                                                             | P15-7                 |
-| D6  | Lighthouse badge         | **Static badge** stating the enforced floor, bumped whenever `.lighthouserc.json` is raised.                                     | P15-6                 |
+| D6  | Lighthouse badge         | **Static badge** stating the enforced floor, bumped whenever `lighthouse-ci.config.json` is raised.                              | P15-6                 |
 | D7  | Dependabot PRs           | Resolved: #319 and #331 merged, #328 closed.                                                                                     | —                     |
 | —   | DB least privilege       | **Applied** 2026-10-09 (`assistant_feedback_least_privilege`): browser roles keep INSERT only.                                   | P15-4                 |
 | —   | Vote fallback            | **Keep as is** (no direct send when local storage fails).                                                                        | —                     |
@@ -1890,7 +1890,7 @@ production CSS hashes.
 - [ ] **P15-44 · Lighthouse `/intro/` performance floor ratchet after the font
       work.** Outcome: the enforced floor reflects what the page now scores.
       Accept: from at least three measured CI runs after #404, set the
-      `/intro/` performance floor in `.lighthouserc.json` to the median minus
+      `/intro/` performance floor in `lighthouse-ci.config.json` to the median minus
       0.04 (it is 0.82 today) and bump the README badge in the same PR. Needs
       measured CI runs, not local ones. Split from P13-6. Size: S. Role:
       `implementer`.
@@ -2236,4 +2236,27 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       priority) and on `/merge-cookbook/` once #366 merges; (c) the audit scripts
       re-run after the module batch and the numbers recorded (the measured
       baseline itself stays with P16-12). Size: S. Role: `css-refactor`,
+      `implementer`.
+
+### Follow-ups found in the autopsy (2026-10-09)
+
+- [x] **P16-29 · Autopsy fixes: analytics claim, playground contrast, stale
+      config name.** Accept: README no longer says "No analytics" and matches
+      the privacy page; `/playground/` has 0 axe `color-contrast` violations
+      in both themes on the onboarding overlay, the Feed tab (before and
+      after Seed + Emit Snapshot) and the Compare tab; the current-state
+      `.lighthouserc.json` references in this plan name
+      `lighthouse-ci.config.json`. Size: S. Role: `implementer`.
+      _2026-10-09: done; historical notes that describe the old file keep its name._
+- [ ] **P16-30 · Put `/playground/` under the contrast check in CI.**
+      Outcome: a contrast regression in the playground fails a PR. Accept:
+      CI publishes the playground into the artifact the e2e/axe job audits
+      (the root axe test skips `/playground/` because `_site` has no
+      playground when only `npm run build` ran; `scripts/publish-playground.sh`
+      is run only by `deploy.yml` and `linkcheck.yml`), and
+      `tests/e2e/accessibility.spec.js` audits it in both themes with the
+      onboarding overlay dismissed. Also decide what to do about the 230 to
+      380 `color-contrast` "incomplete" nodes per state that axe cannot score
+      over the playground's gradient background (same class as P15-35).
+      **Needs maintainer approval: it changes CI behaviour.** Size: M. Role:
       `implementer`.

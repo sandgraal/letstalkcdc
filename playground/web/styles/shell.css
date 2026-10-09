@@ -1220,6 +1220,10 @@
   background: rgba(220, 38, 38, 0.18);
   color: var(--sem-danger);
 }
+body[data-theme="light"] .sim-shell__lane-diff-chip--missing {
+  /* 0.18 tint put --sem-danger at 4.15:1; a lighter tint clears 4.5:1 */
+  background: rgba(220, 38, 38, 0.1);
+}
 .sim-shell__lane-diff-chip--extra {
   background: rgba(249, 115, 22, 0.18);
   color: var(--sem-amplification);

@@ -130,7 +130,7 @@ It works on a phone, and has a light and a dark theme:
 - **Vendor-neutral first.** Concepts come in general terms, then map to stacks such as Debezium, Kafka, Snowflake and Matillion.
 - **Corrections are public.** See the [errata](https://sandgraal.github.io/letstalkcdc/errata/) and the [methodology](https://sandgraal.github.io/letstalkcdc/methodology/) page on how claims are checked.
 - **Checked by machines.** Every change runs [unit, pa11y, axe and Lighthouse checks](.github/workflows/ci.yml), and a [link check](.github/workflows/linkcheck.yml) crawls the built site.
-- **No analytics.** No analytics script and no cookies from the site's own code; a few pages load Mermaid or Chart.js from a CDN, and the playground can use Supabase for saved scenarios and share links (see the [privacy note](https://sandgraal.github.io/letstalkcdc/privacy/)).
+- **Minimal, disclosed data collection.** The site's own code sets no cookies. When the maintainer enables it, it counts page views with GoatCounter (no cookies, no cross-site tracking, Do Not Track respected; not loaded on the playground). An optional newsletter signup sends the address you type to Buttondown only when you press Subscribe. The assistant's 👍/👎 and the playground's saved scenarios and change events go to a Supabase database, and a few pages load Mermaid, Chart.js or the Supabase library from a CDN. Everything is listed on the [privacy page](https://sandgraal.github.io/letstalkcdc/privacy/), which is the source of truth.
 - **The assistant is optional.** A thumbs-up or thumbs-down can store your last typed question with the vote, so don't paste secrets into it ([privacy note](https://sandgraal.github.io/letstalkcdc/privacy/), [SECURITY.md](SECURITY.md)).
 
 ## Found a mistake? Want to help?
