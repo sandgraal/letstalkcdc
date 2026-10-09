@@ -1,9 +1,9 @@
 ---
 layout: base.njk
 title: "merge / upsert cookbook — sinks for CDC"
-description: "Battle-tested merge/upsert templates for Snowflake, BigQuery, Databricks Delta, Postgres, MySQL, and Redshift — handling duplicates, late events, and deletes."
+description: "Idempotent merge/upsert templates for Snowflake, BigQuery, Databricks, Oracle, SQL Server, Postgres, MySQL and Redshift, ordered by source log position."
 datePublished: "2026-02-06"
-dateModified: "2026-08-25"
+dateModified: "2026-10-09"
 canonicalPath: "/merge-cookbook/"
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/merge-cookbook.css' | url }}">
@@ -11,173 +11,356 @@ head_extra: |
 <section class="box callout">
 <h2>shared assumptions (adapt to your schema)</h2>
 <ul class="list">
-<li>staging table: <code>STG_CUSTOMERS</code> (raw CDC) with columns <code>ID</code>, <code>EMAIL</code>, <code>OP</code> (c/u/d), <code>OP_TS</code> (event time), optional <code>VERSION</code> or <code>LSN/GTID/SCN</code>.</li>
-<li>target table: <code>TARGET_CUSTOMERS</code> (latest state).</li>
+<li>delivery is at-least-once: the same event can arrive twice, and an older change can show up after a newer one. every statement below is safe to run again on the same events. correctness comes from an idempotent sink keyed on the primary key and ordered by the <strong>source log position</strong>, not by a clock and not by a Kafka offset. end-to-end exactly-once across independent systems is not achievable; this pattern gives exactly-once <em>processing</em> (see <a href="{{ '/exactly-once/' | url }}">exactly-once semantics</a>).</li>
+<li>staging table: <code>STG_CUSTOMERS</code> (raw CDC, append-only) with <code>ID</code>, <code>EMAIL</code>, <code>OP</code> (c/u/d; r for a snapshot read, treated like c), <code>SOURCE_LSN</code> (the change's position in the source's transaction log, copied from the event as-is), <code>SEQ</code> (ordinal for changes that share one position, such as the index within the transaction) and <code>OP_TS</code> (commit time).</li>
+<li>target table: <code>TARGET_CUSTOMERS</code> (latest state) with <code>ID</code> as the primary key, the payload (<code>EMAIL</code>), an <code>IS_DELETED</code> marker, and the <code>SOURCE_LSN</code> and <code>SEQ</code> of the change that wrote the row. <code>SOURCE_LSN</code> and <code>SEQ</code> are <code>NOT NULL</code> on the target: a <code>NULL</code> makes the comparison <code>NULL</code> and the row is silently never updated.</li>
 <li>business key: <code>ID</code>. replace with your key columns as needed.</li>
-<li>late events: we accept an incoming row if its <code>OP_TS</code> ≥ current target <code>OP_TS</code>.</li>
-<li>soft deletes: either actually delete or set a <code>IS_DELETED</code> flag.</li>
+<li>the position column is the source's own, so the name changes by source: Postgres <code>source.lsn</code> (<code>SOURCE_LSN</code>); MySQL binlog file + <code>pos</code> + row index; Oracle <code>scn</code> with <code>rs_id</code>/<code>ssn</code> as the ordinal (<code>SOURCE_SCN</code>); SQL Server <code>commit_lsn</code>, <code>change_lsn</code>, <code>event_serial_no</code>. the cards below use the field that fits their usual source, but the sink engine and the source are independent choices. compare positions as numbers or typed tuples, never as free text, and check which field is unique per change for your connector version: <a href="{{ '/partitioning/' | url }}#recon">making sinks bulletproof</a>.</li>
+<li>ordering rule: apply an incoming change only if its <code>(SOURCE_LSN, SEQ)</code> is <strong>strictly greater</strong> than the pair stored on the target row, that is <code>s.SOURCE_LSN &gt; t.SOURCE_LSN OR (s.SOURCE_LSN = t.SOURCE_LSN AND s.SEQ &gt; t.SEQ)</code>. a replay of the same change carries the same pair, so it is skipped; an older change is skipped too.</li>
+<li>why not <code>OP_TS</code>: two changes to one row can share a millisecond, so <code>&gt;=</code> lets both pass and whichever is processed last wins; clocks on different hosts disagree; a replay or a snapshot carries a later time than the change it repeats. <code>OP_TS</code> is for partition pruning, retention windows and lag metrics only. a Kafka offset is no substitute either: a connector restart re-emits earlier changes at higher offsets.</li>
+<li>deletes are delete markers, not <code>DELETE</code> statements: set <code>IS_DELETED</code> and store the delete's position. a physical delete removes the stored position with the row, so a late replay of an older update would find no row and insert it again. readers filter <code>IS_DELETED</code>. the Kafka null-value tombstone that follows a delete is not this marker; it carries no position.</li>
+<li>every card first reduces staging to one row per key (latest by the same <code>(SOURCE_LSN, SEQ)</code> order), because engines reject or mis-handle several source rows for one target row.</li>
+<li>positions are comparable only within one source log lineage. after a failover that loses the old primary's tail, a point-in-time restore or a move to another server, positions can restart lower and the guard would skip every change; compare a <code>source_epoch</code> column first, then the position.</li>
 </ul>
-<p class="muted">if your source doesn’t emit <code>OP_TS</code>, use commit LSN/GTID/SCN as the ordering surrogate.</p>
+<p class="muted"><strong>status of the SQL on this page:</strong> the Postgres card, the Postgres snippets under “handling hard parts” and the acceptance checks were executed against PGlite 0.5.8 (PostgreSQL 18.3 compiled to WebAssembly). every other statement is untested: it was checked against the vendor's reference for that statement, not run on a live engine. run each one on a scratch table before you adopt it.</p>
 </section>
 <section class="grid">
 <article class="box">
 <h2>snowflake</h2>
-<pre><code>MERGE INTO TARGET_CUSTOMERS t
+<pre><code>-- EMAIL is NULL on a delete (no after-image), so it must be nullable.
+MERGE INTO TARGET_CUSTOMERS t
 USING (
-  SELECT ID, EMAIL, OP, OP_TS FROM STG_CUSTOMERS
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+  SELECT ID, EMAIL, OP, SOURCE_LSN, SEQ FROM STG_CUSTOMERS
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC) = 1
 ) s
 ON t.ID = s.ID
-WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
-  DELETE
-WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS THEN
-  UPDATE SET EMAIL = s.EMAIL, OP_TS = s.OP_TS
-WHEN NOT MATCHED AND s.OP &lt;&gt; 'd' THEN
-  INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
-<p class="muted">dedup in the <code>USING</code> subquery protects against duplicate events in staging.</p>
+WHEN MATCHED AND (s.SOURCE_LSN &gt; t.SOURCE_LSN
+              OR (s.SOURCE_LSN = t.SOURCE_LSN AND s.SEQ &gt; t.SEQ)) THEN
+  UPDATE SET EMAIL = s.EMAIL,
+             IS_DELETED = (s.OP = 'd'),
+             SOURCE_LSN = s.SOURCE_LSN,
+             SEQ = s.SEQ
+WHEN NOT MATCHED THEN
+  INSERT (ID, EMAIL, IS_DELETED, SOURCE_LSN, SEQ)
+  VALUES (s.ID, s.EMAIL, (s.OP = 'd'), s.SOURCE_LSN, s.SEQ);</code></pre>
+<p class="muted">dedup in the <code>USING</code> subquery keeps one source row per target row; otherwise the result is nondeterministic or the merge errors, depending on <code>ERROR_ON_NONDETERMINISTIC_MERGE</code>. a delete for a key the target has never seen still inserts a marker, so a late older insert cannot create the row.</p>
+<p class="muted"><strong>status:</strong> untested on a live Snowflake account.</p>
 </article>
 <article class="box">
 <h2>bigquery</h2>
-<pre><code>MERGE `dataset.TARGET_CUSTOMERS` t
+<pre><code>-- staging is partitioned by commit time so a scan can be pruned;
+-- the target is clustered by key and has no timestamp column at all.
+CREATE TABLE `dataset.STG_CUSTOMERS` (
+  ID INT64, EMAIL STRING, OP STRING,
+  SOURCE_LSN INT64, SEQ INT64, OP_TS TIMESTAMP
+)
+PARTITION BY DATE(OP_TS)
+CLUSTER BY ID;
+
+CREATE TABLE `dataset.TARGET_CUSTOMERS` (
+  ID INT64, EMAIL STRING, IS_DELETED BOOL NOT NULL,
+  SOURCE_LSN INT64 NOT NULL, SEQ INT64 NOT NULL
+)
+CLUSTER BY ID;
+
+MERGE `dataset.TARGET_CUSTOMERS` t
 USING (
-  SELECT ID, EMAIL, OP, OP_TS FROM `dataset.STG_CUSTOMERS`
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+  SELECT ID, EMAIL, OP, SOURCE_LSN, SEQ
+  FROM (
+    SELECT ID, EMAIL, OP, SOURCE_LSN, SEQ,
+           ROW_NUMBER() OVER (PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC) AS rn
+    FROM `dataset.STG_CUSTOMERS`
+    -- optional pruning: WHERE DATE(OP_TS) BETWEEN @from_day AND @to_day
+  )
+  WHERE rn = 1
 ) s
 ON t.ID = s.ID
-WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
-  DELETE
-WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS THEN
-  UPDATE SET EMAIL = s.EMAIL, OP_TS = s.OP_TS
-WHEN NOT MATCHED AND s.OP != 'd' THEN
-  INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
-<p class="muted">consider partitioning <code>TARGET_CUSTOMERS</code> by <code>DATE(OP_TS)</code> and clustering by <code>ID</code> for merge performance.</p>
+WHEN MATCHED AND (s.SOURCE_LSN &gt; t.SOURCE_LSN
+              OR (s.SOURCE_LSN = t.SOURCE_LSN AND s.SEQ &gt; t.SEQ)) THEN
+  UPDATE SET EMAIL = s.EMAIL,
+             IS_DELETED = (s.OP = 'd'),
+             SOURCE_LSN = s.SOURCE_LSN,
+             SEQ = s.SEQ
+WHEN NOT MATCHED THEN
+  INSERT (ID, EMAIL, IS_DELETED, SOURCE_LSN, SEQ)
+  VALUES (s.ID, s.EMAIL, (s.OP = 'd'), s.SOURCE_LSN, s.SEQ);</code></pre>
+<p class="muted">partition the append-only <em>staging</em> table by <code>DATE(OP_TS)</code> to prune scans and expire old partitions, and cluster the target by <code>ID</code> for merge performance. the date is a pruning key only, not the ordering key. pruning is safe because the guard compares against the target row, not against the window. BigQuery raises a runtime error when several source rows match one target row, so keep the dedup.</p>
+<p class="muted"><strong>status:</strong> untested on a live BigQuery project.</p>
 </article>
 <article class="box">
 <h2>databricks delta</h2>
 <pre><code>MERGE INTO target_customers AS t
 USING (
-  SELECT ID, EMAIL, OP, OP_TS
+  SELECT ID, EMAIL, OP, SOURCE_LSN, SEQ
   FROM   stg_customers
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY OP_TS DESC) = 1
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC) = 1
 ) AS s
 ON t.ID = s.ID
-WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN DELETE
-WHEN MATCHED AND s.OP IN ('c','u') AND s.OP_TS &gt;= t.OP_TS
-  THEN UPDATE SET t.EMAIL = s.EMAIL, t.OP_TS = s.OP_TS
-WHEN NOT MATCHED AND s.OP &lt;&gt; 'd'
-  THEN INSERT (ID, EMAIL, OP_TS) VALUES (s.ID, s.EMAIL, s.OP_TS);</code></pre>
-<p class="muted">enable <code>OPTIMIZE</code> + <code>ZORDER BY (ID)</code> on large tables to keep merge fast.</p>
+WHEN MATCHED AND (s.SOURCE_LSN &gt; t.SOURCE_LSN
+              OR (s.SOURCE_LSN = t.SOURCE_LSN AND s.SEQ &gt; t.SEQ))
+  THEN UPDATE SET EMAIL = s.EMAIL,
+                  IS_DELETED = (s.OP = 'd'),
+                  SOURCE_LSN = s.SOURCE_LSN,
+                  SEQ = s.SEQ
+WHEN NOT MATCHED
+  THEN INSERT (ID, EMAIL, IS_DELETED, SOURCE_LSN, SEQ)
+       VALUES (s.ID, s.EMAIL, (s.OP = 'd'), s.SOURCE_LSN, s.SEQ);</code></pre>
+<p class="muted">Delta fails the merge with <code>DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE</code> if the source has two rows for a key, so the dedup is required. enable <code>OPTIMIZE</code> + <code>ZORDER BY (ID)</code> on large tables to keep merge fast.</p>
+<p class="muted"><strong>status:</strong> untested on a live Databricks workspace.</p>
+</article>
+<article class="box">
+<h2>oracle</h2>
+<pre><code>-- Oracle has no BOOLEAN column before 23ai, so the marker is NUMBER(1).
+CREATE TABLE target_customers (
+  id         NUMBER(19) PRIMARY KEY,
+  email      VARCHAR2(320),
+  is_deleted NUMBER(1) DEFAULT 0 NOT NULL CHECK (is_deleted IN (0, 1)),
+  source_scn NUMBER NOT NULL,
+  seq        NUMBER NOT NULL
+);
+
+MERGE INTO target_customers t
+USING (
+  SELECT id, email, op, source_scn, seq
+  FROM (
+    SELECT c.id, c.email, c.op, c.source_scn, c.seq,
+           ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.source_scn DESC, c.seq DESC) AS rn
+    FROM stg_customers c
+  )
+  WHERE rn = 1
+) s
+ON (t.id = s.id)
+WHEN MATCHED THEN UPDATE SET
+  t.email      = s.email,
+  t.is_deleted = CASE WHEN s.op = 'd' THEN 1 ELSE 0 END,
+  t.source_scn = s.source_scn,
+  t.seq        = s.seq
+  WHERE s.source_scn &gt; t.source_scn
+     OR (s.source_scn = t.source_scn AND s.seq &gt; t.seq)
+WHEN NOT MATCHED THEN INSERT (id, email, is_deleted, source_scn, seq)
+  VALUES (s.id, s.email, CASE WHEN s.op = 'd' THEN 1 ELSE 0 END, s.source_scn, s.seq);</code></pre>
+<p class="muted">the guard sits in the <code>WHERE</code> of the update branch. Oracle also offers <code>DELETE WHERE</code> inside <code>WHEN MATCHED</code>, which would physically remove the row and its stored SCN; that is unsafe under replay, so it is not used. with duplicate source rows Oracle fails with <code>ORA-30926</code>, hence the dedup. an SCN can repeat across changes in one transaction, which is why an ordinal <code>seq</code> (for example from <code>rs_id</code>/<code>ssn</code>) is part of the compare.</p>
+<p class="muted"><strong>status:</strong> untested on a live Oracle database.</p>
+</article>
+<article class="box">
+<h2>sql server</h2>
+<pre><code>-- commit_lsn alone is shared by every change in a transaction, so the
+-- compare uses (commit_lsn, change_lsn, event_serial_no). LSNs are
+-- BINARY(10): compare as binary, never as text.
+CREATE TABLE dbo.target_customers (
+  id              BIGINT NOT NULL PRIMARY KEY,
+  email           NVARCHAR(320) NULL,
+  is_deleted      BIT NOT NULL DEFAULT 0,
+  commit_lsn      BINARY(10) NOT NULL,
+  change_lsn      BINARY(10) NOT NULL,
+  event_serial_no INT NOT NULL
+);
+
+MERGE dbo.target_customers WITH (HOLDLOCK) AS t
+USING (
+  SELECT id, email, op, commit_lsn, change_lsn, event_serial_no
+  FROM (
+    SELECT id, email, op, commit_lsn, change_lsn, event_serial_no,
+           ROW_NUMBER() OVER (
+             PARTITION BY id
+             ORDER BY commit_lsn DESC, change_lsn DESC, event_serial_no DESC
+           ) AS rn
+    FROM dbo.stg_customers
+  ) x
+  WHERE rn = 1
+) AS s
+ON t.id = s.id
+WHEN MATCHED AND (
+       s.commit_lsn &gt; t.commit_lsn
+    OR (s.commit_lsn = t.commit_lsn AND s.change_lsn &gt; t.change_lsn)
+    OR (s.commit_lsn = t.commit_lsn AND s.change_lsn = t.change_lsn
+        AND s.event_serial_no &gt; t.event_serial_no)
+  ) THEN
+  UPDATE SET email = s.email,
+             is_deleted = CASE WHEN s.op = 'd' THEN 1 ELSE 0 END,
+             commit_lsn = s.commit_lsn,
+             change_lsn = s.change_lsn,
+             event_serial_no = s.event_serial_no
+WHEN NOT MATCHED BY TARGET THEN
+  INSERT (id, email, is_deleted, commit_lsn, change_lsn, event_serial_no)
+  VALUES (s.id, s.email, CASE WHEN s.op = 'd' THEN 1 ELSE 0 END,
+          s.commit_lsn, s.change_lsn, s.event_serial_no);</code></pre>
+<p class="muted">Debezium delivers SQL Server LSNs as strings such as <code>00000027:00000ac0:0002</code>; convert them once on load, for example <code>CONVERT(BINARY(10), REPLACE(commit_lsn_text, ':', ''), 2)</code>. <code>MERGE</code> needs the closing semicolon, and <code>HOLDLOCK</code> keeps two concurrent merges from both inserting the same key; Microsoft recommends testing MERGE under your own concurrency, and separate <code>UPDATE</code>/<code>INSERT</code> statements are the alternative.</p>
+<p class="muted"><strong>status:</strong> untested on a live SQL Server instance.</p>
 </article>
 <article class="box">
 <h2>postgres</h2>
-<pre><code>-- ensure pk
-ALTER TABLE target_customers ADD PRIMARY KEY (id);
+<pre><code>-- pk plus the log position of the change that wrote the row
+CREATE TABLE target_customers (
+  id         bigint PRIMARY KEY,
+  email      text,
+  is_deleted boolean NOT NULL DEFAULT false,
+  source_lsn bigint  NOT NULL,
+  seq        integer NOT NULL
+);
 
--- idempotent upsert with latest-wins
-INSERT INTO target_customers (id, email, op_ts)
-SELECT id, email, op_ts
+-- idempotent upsert; a change applies only if its (source_lsn, seq) is
+-- strictly greater than the stored pair
+INSERT INTO target_customers AS t (id, email, is_deleted, source_lsn, seq)
+SELECT s.id, s.email, (s.op = 'd'), s.source_lsn, s.seq
 FROM (
-  SELECT id, email, op, op_ts,
-         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) AS rn
+  SELECT id, email, op, source_lsn, seq,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY source_lsn DESC, seq DESC) AS rn
   FROM stg_customers
 ) s
-WHERE s.rn = 1 AND s.op &lt;&gt; 'd'
+WHERE s.rn = 1
 ON CONFLICT (id) DO UPDATE
-SET email = EXCLUDED.email,
-    op_ts = GREATEST(target_customers.op_ts, EXCLUDED.op_ts);
-
--- deletes
-DELETE FROM target_customers t
-USING (
-  SELECT id, MAX(op_ts) AS op_ts
-  FROM stg_customers WHERE op = 'd'
-  GROUP BY id
-) d
-WHERE t.id = d.id AND d.op_ts &gt;= t.op_ts;</code></pre>
-<p class="muted">two-step approach (upsert then delete) is simple and fast; wrap in a transaction.</p>
+SET email      = EXCLUDED.email,
+    is_deleted = EXCLUDED.is_deleted,
+    source_lsn = EXCLUDED.source_lsn,
+    seq        = EXCLUDED.seq
+WHERE (t.source_lsn, t.seq) &lt; (EXCLUDED.source_lsn, EXCLUDED.seq);</code></pre>
+<p class="muted">one atomic statement; add <code>RETURNING t.id</code> and a clean replay returns zero rows. <code>ON CONFLICT</code> cannot touch a row twice, so the dedup is required. Postgres 15+ can use <code>MERGE</code> with the same guard (see <a href="{{ '/partitioning/' | url }}#recon">making sinks bulletproof</a>); <code>ON CONFLICT</code> is the safer choice under concurrent writers. <code>source.lsn</code> is a 64-bit integer in Debezium; if you keep the native <code>pg_lsn</code> type instead, the same comparison works, but never compare LSNs as text (<code>0/9</code> sorts after <code>0/10</code>).</p>
+<p class="muted"><strong>status:</strong> executed on PGlite (PostgreSQL 18.3 in WebAssembly): out-of-order, duplicate, same-position and delete-then-late-update cases, and a clean replay returned zero rows.</p>
 </article>
 <article class="box">
 <h2>mysql</h2>
-<pre><code>-- latest non-delete per id into a temp table
+<pre><code>-- MySQL's position is the binlog file + position, plus the row index
+-- (several rows can share one binlog row event). "row" is a reserved word.
+CREATE TABLE target_customers (
+  id          BIGINT NOT NULL PRIMARY KEY,
+  email       VARCHAR(320) NULL,
+  is_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
+  binlog_file VARCHAR(255) NOT NULL,
+  binlog_pos  BIGINT NOT NULL,
+  row_idx     INT NOT NULL
+);
+
+-- latest change per id, by the full position
 CREATE TEMPORARY TABLE tmp_latest AS
-SELECT id, email, op, op_ts
+SELECT id, email, op, binlog_file, binlog_pos, row_idx
 FROM (
-  SELECT id, email, op, op_ts,
-         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) rn
+  SELECT id, email, op, binlog_file, binlog_pos, row_idx,
+         ROW_NUMBER() OVER (
+           PARTITION BY id
+           ORDER BY binlog_file DESC, binlog_pos DESC, row_idx DESC
+         ) AS rn
   FROM stg_customers
-) x WHERE rn = 1;
+) x
+WHERE rn = 1;
 
--- upsert
-INSERT INTO target_customers (id, email, op_ts)
-SELECT id, email, op_ts FROM tmp_latest WHERE op &lt;&gt; 'd'
-ON DUPLICATE KEY UPDATE
-  email = VALUES(email),
-  op_ts = GREATEST(target_customers.op_ts, VALUES(op_ts));
+START TRANSACTION;
 
--- delete
-DELETE t FROM target_customers t
-JOIN tmp_latest d ON d.id = t.id AND d.op = 'd' AND d.op_ts &gt;= t.op_ts;</code></pre>
-<p class="muted">ensure an index/PK on <code>target_customers(id)</code>. MySQL 8+ window functions simplify the dedupe step.</p>
+-- existing rows: only a strictly later position wins (row comparison is lexicographic)
+UPDATE target_customers t
+JOIN tmp_latest s ON s.id = t.id
+SET t.email       = s.email,
+    t.is_deleted  = (s.op = 'd'),
+    t.binlog_file = s.binlog_file,
+    t.binlog_pos  = s.binlog_pos,
+    t.row_idx     = s.row_idx
+WHERE (s.binlog_file, s.binlog_pos, s.row_idx) &gt; (t.binlog_file, t.binlog_pos, t.row_idx);
+
+-- keys the target has never seen (a delete inserts a marker)
+INSERT INTO target_customers (id, email, is_deleted, binlog_file, binlog_pos, row_idx)
+SELECT s.id, s.email, (s.op = 'd'), s.binlog_file, s.binlog_pos, s.row_idx
+FROM tmp_latest s
+WHERE NOT EXISTS (SELECT 1 FROM target_customers t WHERE t.id = s.id);
+
+COMMIT;</code></pre>
+<p class="muted">MySQL 8+ is needed for the window function. <code>INSERT ... ON DUPLICATE KEY UPDATE</code> has no <code>WHERE</code>, so a guard would have to be repeated in an <code>IF()</code> per column, and MySQL evaluates those assignments left to right; that is why this card uses an <code>UPDATE ... JOIN</code> plus an insert. binlog file names compare correctly as text only while they keep the same width (<code>mysql-bin.000009</code> vs <code>mysql-bin.000010</code>). run one applier per table; with several, retry on duplicate-key error 1062. GTIDs are sets, not a total order, and a binlog reset or a failover to another server restarts file names, so add the <code>source_epoch</code> compare from above.</p>
+<p class="muted"><strong>status:</strong> untested on a live MySQL server.</p>
 </article>
 <article class="box">
 <h2>redshift</h2>
-<pre><code>-- staging dedupe (late-events safe)
+<pre><code>-- staging dedupe (late-events safe): latest by log position
 CREATE TEMP TABLE stg_dedup DISTKEY(id) SORTKEY(id) AS
-SELECT id, email, op, op_ts
+SELECT id, email, op, source_lsn, seq
 FROM (
-  SELECT id, email, op, op_ts,
-         ROW_NUMBER() OVER (PARTITION BY id ORDER BY op_ts DESC) rn
+  SELECT id, email, op, source_lsn, seq,
+         ROW_NUMBER() OVER (PARTITION BY id ORDER BY source_lsn DESC, seq DESC) AS rn
   FROM stg_customers
-) s WHERE rn = 1;
+) x
+WHERE rn = 1;
 
--- deletes first (to avoid extra writes)
-DELETE FROM target_customers t
-USING stg_dedup d
-WHERE d.op = 'd' AND t.id = d.id AND d.op_ts &gt;= t.op_ts;
+BEGIN;
 
--- upsert via MERGE (supported)
-MERGE INTO target_customers t
-USING stg_dedup s
-ON t.id = s.id
-WHEN MATCHED AND s.op &lt;&gt; 'd' AND s.op_ts &gt;= t.op_ts THEN
-  UPDATE SET email = s.email, op_ts = s.op_ts
-WHEN NOT MATCHED AND s.op &lt;&gt; 'd' THEN
-  INSERT (id, email, op_ts) VALUES (s.id, s.email, s.op_ts);</code></pre>
-<p class="muted">consider <code>VACUUM</code> / <code>ANALYZE</code> schedules on heavy churn tables.</p>
+-- existing rows: only a strictly later position wins
+UPDATE target_customers
+SET email      = s.email,
+    is_deleted = (s.op = 'd'),
+    source_lsn = s.source_lsn,
+    seq        = s.seq
+FROM stg_dedup s
+WHERE target_customers.id = s.id
+  AND (s.source_lsn &gt; target_customers.source_lsn
+       OR (s.source_lsn = target_customers.source_lsn AND s.seq &gt; target_customers.seq));
+
+-- keys the target has never seen (a delete inserts a marker)
+INSERT INTO target_customers (id, email, is_deleted, source_lsn, seq)
+SELECT s.id, s.email, (s.op = 'd'), s.source_lsn, s.seq
+FROM stg_dedup s
+LEFT JOIN target_customers t ON t.id = s.id
+WHERE t.id IS NULL;
+
+COMMIT;</code></pre>
+<p class="muted">Redshift's <code>MERGE</code> takes no <code>AND condition</code> on its <code>WHEN</code> clauses, so a version guard cannot be expressed in it; use <code>UPDATE ... FROM</code> plus <code>INSERT</code> in one transaction. Redshift does not enforce primary keys, so run one writer per table or two appliers can insert the same key. consider <code>VACUUM</code> / <code>ANALYZE</code> schedules on heavy churn tables.</p>
+<p class="muted"><strong>status:</strong> untested on a live Redshift cluster.</p>
 </article>
 </section>
 <section class="box">
 <h2>handling hard parts</h2>
 <h3>1) replays after a crash</h3>
-<pre><code>-- safe replay: re-run the last N minutes of staging
-DELETE FROM target_customers
-WHERE (id, op_ts) IN (
-  SELECT id, op_ts FROM stg_customers WHERE op_ts &gt;= NOW() - INTERVAL '10 minutes'
-);
--- re-run the regular upsert + delete logic</code></pre>
+<p>there is nothing to undo first. re-load the staging rows you doubt and run the same merge again: a change that was already applied has the same <code>(SOURCE_LSN, SEQ)</code> as the stored pair, so the strict comparison skips it, and anything the crash lost is applied. choose how far back to reload by consumer progress (rewind the consumer group, or re-read the landed files) or by log position; a clock-time window only decides how much to re-read, never which change wins.</p>
+<pre><code>-- Postgres. stg_archive is the append-only landing history.
+-- reload window: it starts at a position you trust, inclusive. re-reading a
+-- change is harmless; this is not the apply guard, which stays strict.
+INSERT INTO stg_customers (id, email, op, source_lsn, seq, op_ts)
+SELECT id, email, op, source_lsn, seq, op_ts
+FROM stg_archive
+WHERE source_lsn &gt;= 4294967296;
+-- then re-run the regular upsert above, unchanged</code></pre>
 <h3>2) keyless tables</h3>
-<p>avoid “replica identity full” targets. pick a **natural business key** or synthesize one (hash of stable columns). worst case, land to a history table only.</p>
-<h3>3) soft deletes vs hard deletes</h3>
-<pre><code>-- soft delete variant (Snowflake example)
-WHEN MATCHED AND s.OP = 'd' AND s.OP_TS &gt;= t.OP_TS THEN
-  UPDATE SET IS_DELETED = TRUE, OP_TS = s.OP_TS</code></pre>
+<p>avoid “replica identity full” targets. pick a <strong>natural business key</strong> or synthesize one (hash of stable columns). worst case, land to a history table only. a key change is a delete of the old key plus an insert of the new one, so the ordering guarantee does not span it.</p>
+<h3>3) deletes: markers first, purge later</h3>
+<p>the cards above never run a <code>DELETE</code>: a delete event becomes <code>IS_DELETED = true</code> with its position. readers use a view that hides the markers.</p>
+<pre><code>-- Postgres. readers never see markers
+CREATE VIEW customers AS
+SELECT id, email FROM target_customers WHERE NOT is_deleted;
+
+-- physical delete (purge), the only one on this page: it is safe only for
+-- markers older than anything that can still be replayed. set the bound from
+-- your topic and archive retention, and from any re-snapshot you might run.
+DELETE FROM target_customers
+WHERE is_deleted AND source_lsn &lt; 8589934592;</code></pre>
+<p>the cost of markers is storage and a retention policy. if you must erase personal data, null the payload columns in the same update that sets the marker; keep the key and the position.</p>
 <h3>4) schema evolution</h3>
 <p>additive columns are easiest: default target to <code>NULL</code> and include them in the <code>UPDATE SET</code>. for type changes, land to a compatible staging column and cast during merge.</p>
+<h3>5) where timestamps still belong</h3>
+<p><code>OP_TS</code> answers “when”, not “which one is newer”. use it to partition and prune the staging table, to expire old staging data, to bound a reload, and to report freshness. never use it to rank two changes to the same row, and never as the <code>WHEN MATCHED</code> condition.</p>
 </section>
 <section class="box">
 <h2>acceptance checks (copy/paste)</h2>
-<pre><code>-- duplicates: expect 0 difference
-SELECT COUNT(*) AS rows, COUNT(DISTINCT id) AS keys FROM target_customers;
+<p class="muted">Postgres syntax; adapt the <code>DISTINCT ON</code> view with <code>ROW_NUMBER()</code> on other engines. these checks need staging to keep its history (do not truncate it between runs).</p>
+<pre><code>-- newest staged change per key, by log position
+CREATE VIEW stg_latest AS
+SELECT DISTINCT ON (id) id, op, source_lsn, seq
+FROM stg_customers
+ORDER BY id, source_lsn DESC, seq DESC;
 
--- latest-wins: target should reflect max OP_TS per id (expect 0 stale)
-WITH last AS (SELECT id, MAX(op_ts) AS last_ts FROM stg_customers GROUP BY id)
-SELECT COUNT(*) FROM target_customers t JOIN last l USING(id)
-WHERE t.op_ts &lt; l.last_ts;
+-- duplicates: expect row_count = key_count
+SELECT COUNT(*) AS row_count, COUNT(DISTINCT id) AS key_count FROM target_customers;
 
--- delete sanity (expect 0)
+-- missing keys, including deletes that left no marker (expect 0)
+SELECT COUNT(*) FROM stg_latest l
+LEFT JOIN target_customers t USING (id)
+WHERE t.id IS NULL;
+
+-- latest-wins: target holds the newest position per id (expect 0 stale)
 SELECT COUNT(*) FROM target_customers t
-JOIN (
-  SELECT id, MAX(op_ts) op_ts FROM stg_customers WHERE op='d' GROUP BY id
-) d USING(id)
-WHERE t.op_ts &lt; d.op_ts;</code></pre>
+JOIN stg_latest l USING (id)
+WHERE (t.source_lsn, t.seq) &lt; (l.source_lsn, l.seq);
+
+-- delete sanity: a key whose newest change is a delete is marked (expect 0)
+SELECT COUNT(*) FROM target_customers t
+JOIN stg_latest l USING (id)
+WHERE l.op = 'd' AND NOT t.is_deleted;
+
+-- freshness: a metric for dashboards, not part of correctness
+SELECT now() - MAX(op_ts) AS staging_lag FROM stg_customers;</code></pre>
 </section>
