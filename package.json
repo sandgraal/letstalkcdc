@@ -14,6 +14,7 @@
     "build": "NODE_ENV=production npm run build:css && NODE_ENV=production npm run build:js && npm run build:11ty && NODE_ENV=production npx postcss _site/assets/css/styles.css -o _site/assets/css/styles.css",
     "build:lhci": "ELEVENTY_PATH_PREFIX=/ npm run build",
     "lint:content": "node scripts/lint-content.js",
+    "audit:seo": "node scripts/seo-audit.mjs",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
     "smoke:a11y": "node scripts/run-pa11y.mjs",
     "smoke:perf": "node scripts/perf-budget.mjs",
