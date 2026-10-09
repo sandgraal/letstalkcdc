@@ -9,6 +9,18 @@ on:
 permissions:
   contents: read
 
+# pa11y / pa11y-ci depend on puppeteer, whose postinstall downloads a
+# Chrome build on every `npm ci` and fails the step when the download
+# providers are unreachable ("Failed to set up chrome-headless-shell ...
+# All providers failed"). No job uses that download: the e2e job uses
+# Playwright's own browser, and smoke/a11y point puppeteer at the
+# runner's google-chrome-stable via PUPPETEER_EXECUTABLE_PATH. (The
+# PUPPETEER_SKIP_CHROMIUM_DOWNLOAD set on those two steps is the
+# pre-v20 name and is ignored by puppeteer 24; it is
+# PUPPETEER_EXECUTABLE_PATH that has been skipping the download there.)
+env:
+  PUPPETEER_SKIP_DOWNLOAD: "true"
+
 jobs:
   # ───────────────────────────────────────────────────
   # Job 1: Build the site and cache the artifact
@@ -19,10 +31,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -47,10 +59,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -71,10 +83,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -92,10 +104,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -114,10 +126,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install Chrome
@@ -158,10 +170,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install Chrome
@@ -200,10 +212,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -230,7 +242,7 @@ jobs:
           retention-days: 14
 
   # ───────────────────────────────────────────────────
-  # Job 7: Lighthouse CI (needs build)
+  # Job 7: Lighthouse score gate (needs build)
   # ───────────────────────────────────────────────────
   lighthouse:
     runs-on: ubuntu-latest
@@ -239,10 +251,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -250,15 +262,18 @@ jobs:
 
       # Don't reuse the `site-build` artifact: the production build
       # emits asset URLs under the `/letstalkcdc/` path prefix, but
-      # LHCI serves `_site/` at root, so referenced assets 404 and
-      # the audit measures an unstyled page. `build:lhci` is the
-      # same build pipeline with `ELEVENTY_PATH_PREFIX=/`, producing
-      # a root-deployable artifact that LHCI can actually exercise.
-      - name: Build root-prefixed site for LHCI
+      # scripts/lighthouse-ci.mjs serves `_site/` at root, so referenced
+      # assets 404 and the audit measures an unstyled page.
+      # `build:lhci` is the same build pipeline with
+      # `ELEVENTY_PATH_PREFIX=/`, producing a root-deployable artifact
+      # that Lighthouse can actually exercise.
+      - name: Build root-prefixed site for Lighthouse
         run: npm run build:lhci
 
-      - name: Run Lighthouse CI
-        run: npx @lhci/cli autorun
+      # Uses the Chrome preinstalled on the runner (or $CHROME_PATH).
+      # Needs Node 22.19+ (lighthouse 13).
+      - name: Run Lighthouse
+        run: npm run lighthouse
 
       - name: Upload Lighthouse report
         uses: actions/upload-artifact@v4
@@ -266,4 +281,7 @@ jobs:
         with:
           name: lighthouse-report
           path: .lighthouseci/
+          # `.lighthouseci/` is a dot-directory; without this the action
+          # skips it and uploads nothing.
+          include-hidden-files: true
           retention-days: 14

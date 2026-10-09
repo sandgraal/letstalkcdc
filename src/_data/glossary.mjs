@@ -58,10 +58,12 @@ export default [
         behind and its checkpoint LSN ages out, the connector can't
         resume — it has to bootstrap with a full snapshot. Tune
         retention to cover your worst-case consumer outage plus a
-        margin; on Postgres this means <code>wal_keep_size</code>
-        (or replication slots, which are stricter) and
-        <code>max_slot_wal_keep_size</code>.</p>`,
-    related: ["wal-redo-log", "snapshot"],
+        margin; on Postgres, a replication slot retains WAL until
+        its consumer confirms it, <code>max_slot_wal_keep_size</code>
+        caps that (default <code>-1</code>, unlimited), and
+        <code>wal_keep_size</code> is only a minimum kept for
+        standbys.</p>`,
+    related: ["wal-redo-log", "snapshot", "replication-slot"],
   },
   {
     term: "Checkpoint",
@@ -113,12 +115,16 @@ export default [
     definition: `<p>The bootstrap process: read the current state of
         every row, emit it as change events, then switch to
         streaming the log. Initial snapshots can interleave with
-        live changes — design consumers to reconcile by version
-        column or <code>op_ts</code>. Incremental snapshots (signal-
+        live changes — design consumers to reconcile by source log
+        position (LSN/SCN/binlog coordinates), not by a timestamp:
+        keep a row only if the incoming event's position is newer
+        than the one the row already holds. Snapshot reads carry the
+        snapshot's boundary position, so live streaming events that
+        follow it win. Incremental snapshots (signal-
         based, popularized by Debezium) let you re-snapshot a
         subset without taking down the whole connector, at the
         cost of potential duplicates the sink has to dedupe.</p>`,
-    related: ["log-retention", "idempotent-write"],
+    related: ["log-retention", "idempotent-write", "backfill", "watermark"],
   },
   {
     term: "Schema evolution",
@@ -130,6 +136,7 @@ export default [
         the old and new field present. Schema Registry (Confluent,
         Karapace, AWS Glue) enforces compatibility rules at
         produce time.</p>`,
+    related: ["schema-registry", "backfill"],
   },
 
   // ---- Delivery semantics ----
@@ -139,24 +146,28 @@ export default [
     definition: `<p>An operation that produces the same end state
         regardless of how many times it's replayed. Keyed
         <code>MERGE</code> / <code>UPSERT</code> on a stable
-        primary key is the most common pattern. Without
-        idempotency, at-least-once delivery from the source
-        amplifies into duplicate rows in the sink on every
-        connector restart.</p>`,
-    related: ["exactly-once", "effectively-once"],
+        primary key is the most common pattern, applied only if
+        the incoming event's source log position is newer than the
+        one the row already holds, so a replayed older event
+        becomes a no-op. Without idempotency, at-least-once
+        delivery from the source amplifies into duplicate rows in
+        the sink on every connector restart.</p>`,
+    related: ["exactly-once", "effectively-once", "upsert", "at-least-once"],
   },
   {
     term: "Exactly-once",
     slug: "exactly-once",
-    definition: `<p>The (mostly aspirational) guarantee that every
-        source event lands in the sink exactly once, with no
-        duplicates and no drops. End-to-end exactly-once across a
-        CDC pipeline requires coordinated transactions in the
-        source, the broker, and the sink — most stacks settle for
-        "effectively-once" (at-least-once delivery + idempotent
-        sinks + a deduplication ledger). The errata page covers
-        the specific traps.</p>`,
-    related: ["effectively-once", "idempotent-write"],
+    definition: `<p>The guarantee that every source event lands in the
+        sink exactly once, with no duplicates and no drops.
+        End-to-end exactly-once across independent systems (source
+        database, broker, warehouse) is not achievable;
+        exactly-once is possible only inside one transactional
+        boundary, such as Kafka to Kafka (and Debezium's opt-in
+        Kafka Connect EOS covers only the source-to-Kafka hop).
+        Most stacks ship "effectively-once" (at-least-once delivery
+        + idempotent sinks + a deduplication ledger). The errata
+        page covers the specific traps.</p>`,
+    related: ["effectively-once", "idempotent-write", "at-least-once"],
   },
   {
     term: "Effectively-once",
@@ -165,9 +176,35 @@ export default [
         source is at-least-once, but the sink's idempotent writes
         plus a durable <code>event_id</code> ledger collapse
         duplicates so the observable end state matches an
-        exactly-once delivery. This is what most production CDC
-        pipelines actually ship.</p>`,
-    related: ["exactly-once", "idempotent-write"],
+        exactly-once delivery. The write is a keyed upsert applied
+        only if the incoming source log position is newer than the
+        row's. This is what most production CDC pipelines actually
+        ship.</p>`,
+    related: ["exactly-once", "idempotent-write", "at-least-once"],
+  },
+  {
+    term: "Convergence test",
+    slug: "convergence-test",
+    aliases: ["idempotence test", "replay test"],
+    definition: `<p>A test that applies a change log to a sink twice, and
+        again in shuffled order with duplicates, and requires the final
+        table state to equal in-order application by source log
+        position. It checks the at-least-once contract (duplicated,
+        late and replayed changes still converge), not the absence of
+        duplicates. See the testing module for runnable examples.</p>`,
+    related: ["idempotent-write", "effectively-once", "resurrection"],
+  },
+  {
+    term: "Resurrection",
+    slug: "resurrection",
+    aliases: ["zombie row"],
+    definition: `<p>A deleted row that reappears in a sink because an older
+        change for the same key was applied after the delete. It
+        happens when a delete physically removes the row, leaving
+        nothing to compare a late or replayed update against. Keeping
+        the delete as a marker that carries its log position, and
+        guarding updates on position, prevents it.</p>`,
+    related: ["tombstone", "idempotent-write", "lsn-scn"],
   },
   {
     term: "Lag",
@@ -202,5 +239,193 @@ export default [
         the connector either drops the event (data loss) or stalls
         the whole partition (head-of-line blocking). With one, the
         bad records are visible and triageable.</p>`,
+  },
+
+  // ---- Added from usage (P16-14) ----
+  {
+    term: "Upsert",
+    slug: "upsert",
+    aliases: ["MERGE", "INSERT … ON CONFLICT"],
+    definition: `<p>A write that inserts a row when its primary key is
+        absent and updates it when present — <code>INSERT … ON
+        CONFLICT DO UPDATE</code> in Postgres, <code>MERGE</code> in
+        SQL Server, Oracle, Snowflake and BigQuery. Keyed on the
+        source primary key, it lets a sink apply insert and update
+        events idempotently, so a replay converges on the same row
+        instead of duplicating it. An upsert alone does not stop an
+        older event from overwriting a newer one; guard it with the
+        source log position.</p>`,
+    related: ["idempotent-write", "deduplication", "lsn-scn"],
+  },
+  {
+    term: "Kafka Connect",
+    slug: "kafka-connect",
+    definition: `<p>The Apache Kafka framework for running source
+        connectors (system into Kafka) and sink connectors (Kafka
+        out to a system) on a pool of workers that handle
+        configuration, scaling and offset storage. Debezium's CDC
+        connectors are Kafka Connect source connectors; they commit
+        the source log position as their offset in a Kafka topic in
+        distributed mode (standalone mode stores offsets in a file),
+        and a restart resumes from the last committed one.</p>`,
+    related: ["smt", "dead-letter-queue", "checkpoint", "at-least-once"],
+  },
+  {
+    term: "Kafka transaction",
+    slug: "kafka-transaction",
+    aliases: ["transactional producer", "read_committed"],
+    definition: `<p>An atomic write that a Kafka producer with a
+        <code>transactional.id</code> makes across topic partitions,
+        optionally together with a consumer's offsets
+        (<code>sendOffsetsToTransaction</code>). A consumer sees only
+        committed records if it sets
+        <code>isolation.level=read_committed</code>; the default,
+        <code>read_uncommitted</code>, also returns records from aborted
+        transactions. The atomicity stops at Kafka: it does not include a
+        database, a warehouse load or an HTTP call.</p>`,
+    related: ["exactly-once", "fencing", "at-least-once"],
+  },
+  {
+    term: "Fencing",
+    slug: "fencing",
+    aliases: ["zombie fencing"],
+    definition: `<p>Disabling an older instance of a producer or task so
+        that it can no longer write, after a newer instance has taken
+        over. Kafka ties a transactional producer to its
+        <code>transactional.id</code> and an epoch; Kafka Connect's
+        exactly-once source mode gives each task its own transactional ID
+        so that a zombie task is fenced out.</p>`,
+    related: ["kafka-transaction", "kafka-connect", "exactly-once"],
+  },
+  {
+    term: "Offsets in the sink transaction",
+    slug: "offsets-in-sink-transaction",
+    aliases: ["offsets stored with the data"],
+    definition: `<p>A consumer pattern for a sink that has transactions: the
+        consumer saves its Kafka offset in the same database transaction
+        as the rows it writes, then seeks to that stored offset on
+        restart. A crash cannot leave data and offset out of step. It does
+        not remove a duplicate that already sits in the topic at another
+        offset, so the upsert still needs a guard on the source log
+        position.</p>`,
+    related: ["idempotent-write", "upsert", "effectively-once"],
+  },
+  {
+    term: "Deduplication",
+    slug: "deduplication",
+    aliases: ["dedup", "dedupe"],
+    definition: `<p>Collapsing repeated deliveries of the same change
+        into one effect. At-least-once delivery allows repeats
+        after retries and restarts, so the sink either makes the
+        write idempotent (an upsert on the primary key) or skips any
+        event whose source log position is not newer than what the
+        row already holds. Compare by log position (LSN/SCN/binlog
+        coordinates), not by timestamp or Kafka offset: a timestamp
+        can tie or move backwards, and an offset is local to one
+        topic partition.</p>`,
+    related: ["idempotent-write", "upsert", "effectively-once", "lsn-scn"],
+  },
+  {
+    term: "Replication slot",
+    slug: "replication-slot",
+    aliases: ["slot", "logical replication slot"],
+    definition: `<p>A Postgres server-side bookmark recording how far a
+        replication consumer, such as a Debezium connector, has read,
+        so the server keeps every WAL segment that consumer still
+        needs. An unconsumed or abandoned slot retains WAL
+        indefinitely and can fill the primary's disk. Cap the
+        retention with <code>max_slot_wal_keep_size</code> (default
+        <code>-1</code>, unlimited), accepting that a slot that falls
+        further behind is invalidated and the connector must
+        re-snapshot, and drop slots you no longer use.</p>`,
+    related: ["wal-redo-log", "log-retention", "checkpoint", "snapshot"],
+  },
+  {
+    term: "Backfill",
+    slug: "backfill",
+    aliases: ["re-snapshot", "historical load"],
+    definition: `<p>Re-loading existing rows into a sink — after the
+        first deploy, a schema change, a bug fix or a sink rebuild —
+        usually with a snapshot or an incremental snapshot. A
+        backfill interleaves with live changes and produces
+        duplicates, so it must go through the same idempotent,
+        primary-key-keyed writes as streaming and must never replace
+        a newer streamed value with an older snapshot read.</p>`,
+    related: ["snapshot", "idempotent-write", "watermark", "upsert"],
+  },
+  {
+    term: "At-least-once",
+    slug: "at-least-once",
+    aliases: ["ALO", "at least once"],
+    definition: `<p>A delivery guarantee: every committed change reaches
+        the consumer one or more times, never zero. Duplicates follow
+        retries, restarts and replays from a checkpoint, so
+        correctness comes from idempotent sinks keyed on the primary
+        key and ordered by source log position, not from the
+        transport. It is a per-hop property: Debezium documents
+        at-least-once delivery, and its opt-in Kafka Connect
+        exactly-once mode (requires Kafka Connect 3.3+, KIP-618;
+        documented from Debezium 3.3) covers only the source-to-Kafka
+        hop, and the docs note open correctness issues in Kafka
+        transactions, so it does not make the pipeline exactly-once
+        end to end.</p>`,
+    related: [
+      "exactly-once",
+      "effectively-once",
+      "idempotent-write",
+      "deduplication",
+    ],
+  },
+  {
+    term: "Schema registry",
+    slug: "schema-registry",
+    definition: `<p>A service that stores versioned event schemas (Avro,
+        Protobuf, JSON Schema) so each message carries a small schema
+        ID instead of the full schema, and that rejects a new schema
+        version that breaks the configured compatibility rule.
+        Confluent Schema Registry, Karapace and AWS Glue Schema
+        Registry are common implementations. It guards the payload
+        shape only; it does nothing about ordering or duplicates.</p>`,
+    related: ["schema-evolution", "kafka-connect", "dead-letter-queue"],
+  },
+  {
+    term: "Outbox",
+    slug: "outbox",
+    aliases: ["outbox pattern", "transactional outbox"],
+    definition: `<p>A pattern where a service writes its business row and
+        an event row to an outbox table in the same database
+        transaction, and CDC reads the outbox and publishes the
+        events. It removes the dual write (database plus broker) that
+        can lose or invent events, but delivery stays at-least-once,
+        so consumers deduplicate on a stable event id. Debezium ships
+        an Outbox Event Router SMT for it.</p>`,
+    related: ["smt", "at-least-once", "deduplication", "effectively-once"],
+  },
+  {
+    term: "SMT (single message transform)",
+    slug: "smt",
+    aliases: ["SMT", "single message transform"],
+    definition: `<p>A Kafka Connect transformation applied to each record
+        as it passes through a connector, configured in the
+        connector's JSON rather than written as a separate service —
+        for example Debezium's <code>ExtractNewRecordState</code> to
+        flatten the change envelope, or the outbox event router. An
+        SMT sees one record at a time, so it cannot join, aggregate
+        or reorder across records.</p>`,
+    related: ["kafka-connect", "outbox"],
+  },
+  {
+    term: "Watermark",
+    slug: "watermark",
+    aliases: ["high-watermark", "low-watermark"],
+    definition: `<p>A marker of how far processing has safely progressed.
+        In snapshotting, the high-watermark is the source log position
+        (LSN/SCN) recorded at the snapshot boundary, where streaming
+        takes over; incremental snapshots write low and high marker
+        rows so the log brackets each chunk read. A consumer-side
+        watermark (a polling cursor, or “safe up to T-Δ” event time
+        for aggregates) only bounds replay or window closing — it
+        never decides which version of a row wins; log position does.</p>`,
+    related: ["snapshot", "lsn-scn", "checkpoint", "backfill"],
   },
 ];

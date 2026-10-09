@@ -197,6 +197,9 @@ describe("assistant knowledge base – module boosts never let a new intent stea
       "troubleshooting",
       "materialization",
       "observability",
+      // Module-specific intents boosted only on their own page.
+      "target_ordering",
+      "delete_markers",
     ]);
     for (const intent of kb.intents.filter((i) => !original.has(i.id))) {
       expect(intent.modules, intent.id).toEqual([]);
@@ -395,5 +398,186 @@ describe("assistant knowledge base – the site's delivery thesis", () => {
     const a = byId("outbox").answer.toLowerCase();
     expect(a).toContain("at-least-once");
     expect(a).toContain("does not make delivery exactly-once");
+  });
+});
+
+describe("assistant knowledge base – Postgres replication slots", () => {
+  const CASES = [
+    ["my postgres disk is filling and I use debezium", "replication_slot_wal"],
+    ["replication slot growing wal", "replication_slot_wal"],
+    ["what is max_slot_wal_keep_size", "replication_slot_wal"],
+    ["is it safe to drop the slot", "replication_slot_wal"],
+    ["pg_replication_slots restart_lsn", "replication_slot_wal"],
+    ["debezium heartbeat for a quiet table", "debezium_heartbeat"],
+    ["what does heartbeat.action.query do", "debezium_heartbeat"],
+    ["how do failover slots work", "debezium_heartbeat"],
+  ];
+
+  it.each(CASES)("%j -> %s", (query, expected) => {
+    expect(idOf(query)).toBe(expected);
+  });
+
+  it("answers the same way from the runbook page, which has no module boost of its own", () => {
+    for (const [query, expected] of CASES) {
+      expect(idOf(query, "postgres-replication-slots")).toBe(expected);
+    }
+  });
+
+  it("does not steal the older lag and offset phrasings", () => {
+    expect(idOf("my replication lag keeps growing")).toBe("lag_handling");
+    expect(idOf("how do I reset an offset")).toBe("offset_management");
+  });
+
+  it("keeps the thesis: an idempotent sink and a re-snapshot, no exactly-once promise", () => {
+    const slot = byId("replication_slot_wal").answer.toLowerCase();
+    expect(slot).toContain("idempotent sink");
+    expect(slot).toContain("re-snapshot");
+    const hb = byId("debezium_heartbeat").answer.toLowerCase();
+    expect(hb).toContain("do not make delivery exactly-once");
+  });
+
+  it("points at runbook sections that exist", () => {
+    for (const id of ["replication_slot_wal", "debezium_heartbeat"]) {
+      for (const link of byId(id).links) {
+        if (link.url === "/postgres-replication-slots/") {
+          expect(link.anchor).toMatch(/^#(triage|decision|debezium|failover)$/);
+        }
+      }
+    }
+  });
+});
+
+describe("assistant knowledge base – is CDC exactly-once, per hop (M2)", () => {
+  it.each([
+    "is cdc exactly once",
+    "is debezium exactly once",
+    "does debezium support exactly once",
+    "is change data capture exactly once",
+    "kafka connect exactly once source connector",
+    "what does exactly.once.support do",
+  ])("%j reaches the claims answer", (query) => {
+    expect(idOf(query)).toBe("exactly_once_claims");
+  });
+
+  it.each([
+    "what is read_committed",
+    "how do i use sendoffsetstotransaction",
+    "kafka streams exactly once",
+    "store offsets in the database with the data",
+    "what guarantee do i really have",
+  ])("%j reaches the transactions and sink-offsets answer", (query) => {
+    expect(idOf(query)).toBe("kafka_transactions_sink_offsets");
+  });
+
+  it("does not capture PostgreSQL isolation-level questions", () => {
+    expect(idOf("what is read committed in postgres")).toBeNull();
+    expect(idOf("what is isolation.level in a database")).not.toBe(
+      "kafka_transactions_sink_offsets",
+    );
+  });
+
+  it("leaves the plain delivery questions to exactly_once", () => {
+    expect(idOf("exactly once delivery guarantee")).toBe("exactly_once");
+    expect(idOf("why do i get duplicate events")).toBe("exactly_once");
+  });
+
+  it("shares no trigger with another intent and carries no boost", () => {
+    const mine = ["exactly_once_claims", "kafka_transactions_sink_offsets"];
+    for (const id of mine) {
+      expect(byId(id).modules).toEqual([]);
+      for (const t of byId(id).triggers) {
+        for (const o of kb.intents.filter((i) => i.id !== id)) {
+          expect(o.triggers, `${t} also in ${o.id}`).not.toContain(t);
+        }
+      }
+    }
+  });
+
+  it("neither answer promises exactly-once across systems", () => {
+    for (const id of mine2()) {
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).toContain("source log position");
+    }
+  });
+});
+
+function mine2() {
+  return ["exactly_once_claims", "kafka_transactions_sink_offsets"];
+}
+
+describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
+  it.each([
+    "how do I test my cdc pipeline",
+    "test a cdc pipeline",
+    "how do I test debezium",
+    "cdc testing strategy",
+    "cdc contract test",
+    "how to test kafka connect",
+    "does testcontainers work with debezium",
+  ])("%j reaches the pipeline-testing answer", (query) => {
+    expect(idOf(query)).toBe("pipeline_testing");
+  });
+
+  it.each([
+    "how do i test for duplicate events",
+    "cdc idempotency test",
+    "how do i test out of order events",
+    "how do i test replay",
+    "property based testing for a sink",
+    "kill the connector",
+    "how to test connector restart",
+    "what is a late older update test",
+    "how do i test idempotency",
+  ])("%j reaches the duplicate and replay test answer", (query) => {
+    expect(idOf(query)).toBe("duplicate_replay_tests");
+  });
+
+  it("leaves unrelated how-to-test questions to nobody", () => {
+    expect(idOf("how do i test the dlq")).toBeNull();
+    expect(idOf("how to test retention")).toBeNull();
+  });
+
+  it("does not share a trigger with another intent, so no ambiguous ties", () => {
+    const mine = ["pipeline_testing", "duplicate_replay_tests"];
+    const others = kb.intents.filter((i) => !mine.includes(i.id));
+    for (const id of mine) {
+      for (const t of byId(id).triggers) {
+        for (const o of others) {
+          expect(o.triggers, `${t} is also in ${o.id}`).not.toContain(t);
+        }
+      }
+    }
+  });
+
+  it("the crash link points at the crash section of the page", () => {
+    const link = byId("duplicate_replay_tests").links.find(
+      (l) => l.label === "Crash and restart",
+    );
+    expect(link.url).toBe("/test-your-pipeline/");
+    expect(link.anchor).toBe("#crash-title");
+  });
+
+  it("does not steal the plain delivery questions", () => {
+    expect(idOf("why do i get duplicate events")).toBe("exactly_once");
+    expect(idOf("events arrive out of order")).toBe("idempotent_sink");
+  });
+
+  it("both intents carry no boost, enough triggers and a link to the page", () => {
+    for (const id of ["pipeline_testing", "duplicate_replay_tests"]) {
+      expect(byId(id).modules).toEqual([]);
+      expect(byId(id).triggers.length).toBeGreaterThanOrEqual(5);
+      expect(byId(id).links.map((l) => l.url)).toContain(
+        "/test-your-pipeline/",
+      );
+    }
+  });
+
+  it("neither answer promises exactly-once or timestamp ordering", () => {
+    for (const id of ["pipeline_testing", "duplicate_replay_tests"]) {
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).not.toMatch(/order(ed)? by (ts_ms|timestamp)/);
+    }
   });
 });

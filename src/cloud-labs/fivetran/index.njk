@@ -232,7 +232,7 @@ ALTER USER fivetran_user SET DEFAULT_ROLE = FIVETRAN_ROLE;</code></pre>
 
     <h4>What Happens During Initial Sync?</h4>
     <ul>
-      <li>Fivetran snapshots each table (full SELECT * equivalent)</li>
+      <li>Fivetran takes a <a href="{{ '/snapshotting/' | url }}">snapshot</a> of each table (full SELECT * equivalent)</li>
       <li>Creates replication slot in PostgreSQL</li>
       <li>Captures current WAL position as baseline</li>
       <li>Begins tailing WAL for subsequent changes</li>
@@ -251,7 +251,7 @@ ALTER USER fivetran_user SET DEFAULT_ROLE = FIVETRAN_ROLE;</code></pre>
   <section class="box" id="schema-changes">
     <h2>Schema Change Handling</h2>
     <p>
-      Fivetran automatically detects and propagates schema changes. Here's how it handles common DDL operations:
+      Fivetran automatically detects and propagates schema changes; the <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a> lesson covers the general problem. Here's how it handles common DDL operations:
     </p>
 
     <h3>Column Addition</h3>
@@ -458,6 +458,7 @@ WHERE slot_name LIKE 'fivetran%';
 -- If lag > 10GB and connector won't resume, drop slot:
 SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
       <p><strong>Prevention:</strong> Set alerts for replication lag, resume connectors promptly.</p>
+      <p>Before dropping a slot, read the <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a>: a dropped slot means a re-snapshot, not a resume.</p>
     </div>
 
     <div class="callout callout-warning">
@@ -552,7 +553,7 @@ analytics_mysql   → FIVETRAN_DB.ANALYTICS_MYSQL.*</code></pre>
     <p>Avoids table name collisions, simplifies multi-environment setups.</p>
 
     <h3>2. Implement Idempotent Downstream Transforms</h3>
-    <p>Since Fivetran can re-sync data, ensure downstream dbt/transformations are idempotent:</p>
+    <p>Since Fivetran can re-sync data, ensure downstream dbt/transformations are idempotent (the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a> has templates):</p>
     <pre><code>-- Bad: Incremental without unique key
 INSERT INTO fact_orders SELECT * FROM staging.orders;
 
@@ -697,6 +698,9 @@ published pricing tiers.</code></pre>
         </tr>
       </tbody>
     </table>
+    <p>
+      For a wider side-by-side, see <a href="{{ '/compare/' | url }}">Compare CDC Platforms</a>. The <a href="{{ '/cloud-labs/aws-dms/' | url }}">AWS DMS lab</a> and the <a href="{{ '/cloud-labs/matillion-cdc/' | url }}">Matillion lab</a> show the other managed and warehouse-native approaches.
+    </p>
   </section>
 
   <section class="box" id="troubleshooting">

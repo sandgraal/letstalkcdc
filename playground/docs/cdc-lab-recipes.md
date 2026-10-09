@@ -58,19 +58,17 @@ Use **Retention & Erasure** to explain delete handling and GDPR erasure workflow
 - Polling plus soft-delete visibility supports legal-hold workflows without hard deletion.
 - Log capture ensures tombstones propagate for sinks that require hard deletes.
 
-## Lab 5 – Snapshot Replay and Offset Resets
-Demonstrate how to keep downstream sinks consistent when snapshots or offsets replay historical rows using **Snapshot Replay**.
+## Lab 5 – Re-insert after Update
+See how a re-insert of older values is captured when it is a later source write, using **Re-insert after Update**. This scenario does not model redelivery of an old event or an offset reset.
 
-1. Load **Snapshot Replay** and enable **Polling** and **Log** (keep **Trigger** off for signal clarity).
-2. Run once with default Event Log settings to surface the duplicate insert for `LED-100` when the snapshot replays at `t=190`.
-3. Toggle **Drop snapshot rows** and **Dedupe on PK** in the Event Log toolbar, then rerun.
-4. Open the **Lane diff overlay** to confirm duplicate rows are suppressed and ordering stays aligned despite the replayed snapshot.
-5. Use **Apply on commit** while re-running to show how multi-row ledger updates stay atomic even during catch-up.
+1. Load **Re-insert after Update** and enable **Polling** and **Log** (keep **Trigger** off for signal clarity).
+2. Run once with default Event Log settings and find the re-insert of `LED-100` at `t=190`, between the update at `t=150` and the update at `t=230`.
+3. Open the **Lane diff overlay**: Log reports the re-insert in source order, while Polling samples the table and may fold it into a neighbouring change.
+4. Check the sink: `LED-100` ends at the last update (`balance` 12,980) because that was the last write, not because anything was rejected.
 
 **What to highlight**
-- Snapshot replays and offset resets often re-emit historical rows; downstream dedupe is essential.
-- PK-based dedupe plus drop-snapshot controls prevent ledger drift when recovering from outages.
-- Pairing dedupe with apply-on-commit keeps multi-row ledger changes consistent across sinks during resyncs.
+- A re-insert of an old key is an ordinary later write; a position guard would apply it too.
+- Snapshot replays and offset resets can re-emit older records, and a sink needs a position or version guard to reject them. The playground cannot show that yet.
 
 ## Tips for Live Demos
 - Keep the **Lane checks** overlay pinned while running labs to anchor the discussion on measurable lag and ordering.

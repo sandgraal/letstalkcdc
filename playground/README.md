@@ -155,9 +155,9 @@ The comparator mount (`#simShellRoot`) streams the Polling/Trigger/Log engines i
 | Omnichannel Orders          | Walking through status transitions and fulfilment edge cases | Mix of inserts/updates with delete coverage; great for lag comparisons   |
 | Real-time Payments          | Demonstrating idempotent updates or risk review flows        | Trigger overhead tuning + delete capture expectations                    |
 | Outbox Relay                | Contrasting log capture with an application-managed outbox   | Ordering and dedupe safety for downstream business events                |
-| Snapshot Replay             | Explaining offset resets and re-seeding change feeds         | Drop-snapshot + PK dedupe toggles for idempotent apply                   |
-| Retention & Erasure         | Teaching privacy deletes, masking, and legal holds           | Soft-delete visibility + drop snapshot and dedupe controls               |
-| Snapshot ➜ Stream Handoff   | Showing snapshot catch-up handing off to change feed tails   | Compare drop-snapshot + dedupe toggles; log vs. trigger resume semantics |
+| Re-insert after Update      | Showing a re-insert as a later source write (not redelivery) | The sink applies it in order; no old event is delivered twice            |
+| Retention & Erasure         | Teaching privacy deletes, masking, and legal holds           | Tombstones, masking, and delayed deletes for privacy workflows           |
+| Account Changes             | Comparing capture methods on updates, an insert and a delete | No snapshot phase or handoff; compare what each method reports           |
 | IoT Telemetry               | Showing rolling measurements with anomaly flags              | Highlights soft-delete vs. log consistency and clock controls            |
 | Schema Evolution            | Demonstrating column additions while capturing changes       | Compare immediate log/trigger propagation with polling lag               |
 | Orders + Items Transactions | Teaching multi-table commit semantics                        | Toggle apply-on-commit to keep orders/items destinations consistent      |

@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "Acceptance Tests — Kafka + Debezium Lab"
+title: "Debezium Lab Acceptance Tests"
 description: "Run acceptance tests for the Kafka + Debezium lab: stack up, connector healthy, topic has change events, and (optional) chaos smoke."
 canonicalPath: "/tests/"
 seriesKey: 'tests'
@@ -159,6 +159,15 @@ bash scripts/test_events.sh</code></pre>
             wedge)
           </li>
         </ul>
+      </section>
+
+      <section class="box callout">
+        <h2>Testing your own pipeline</h2>
+        <p>
+          These scripts check the <em>lab stack</em>. To test how your pipeline
+          behaves when events are duplicated, late or replayed, see
+          <a href="{{ '/test-your-pipeline/' | url }}">Testing a CDC Pipeline</a>.
+        </p>
       </section>
 
       <section class="box">

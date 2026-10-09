@@ -109,7 +109,7 @@ window in between where one of the two URLs is broken.
   the same way), so for a root-domain site set `ELEVENTY_PATH_PREFIX` to `/`,
   not to an empty value.
 - `npm run build:lhci` already builds with `ELEVENTY_PATH_PREFIX=/` and needs no
-  change. Lighthouse CI audits a local build, not the live domain.
+  change. The Lighthouse run audits a local build, not the live domain.
 - `lib/site-host.mjs` holds `DEFAULT_SITE_HOST`, used only when `SITE_HOST` is
   unset (local builds). Change it to the new origin once the move is done so a
   bare `npm run build` produces the right URLs.
@@ -179,8 +179,12 @@ SITE_HOST=https://example.org ELEVENTY_PATH_PREFIX=/ npm run verify:deployment
 - **Supabase:** if the assistant feedback or the playground are configured for a
   project, check the Supabase project's URL configuration (and any allowed
   origins or redirect URLs) for the old host.
-- **Playground:** `scripts/publish-playground.sh` copies `playground/` as-is, so
-  its hardcoded site URLs do not follow `SITE_HOST`. See the checklist.
+- **Playground:** `scripts/publish-playground.sh` copies `playground/` and
+  fills the `__SITE_URL__` placeholder in the `<head>` of `index.html`
+  (canonical, `og:url`, `og:image`, Twitter image) from `SITE_HOST` and
+  `ELEVENTY_PATH_PREFIX`, so those follow the variables. The other hardcoded
+  site URLs in the playground (`LTCDC_BASE`, `shareBaseUrl`) do not. See the
+  checklist. The sitemap lists `/playground/` from `src/sitemap.11ty.cjs`.
 - **Old URLs:** `curl -sI` a handful of the old URLs and record what they do.
 
 ## Hand-edited references checklist

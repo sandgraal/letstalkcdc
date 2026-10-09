@@ -3,7 +3,7 @@
 The CDC Method Comparator (`#simShellRoot`) is the React shell that streams the Polling, Trigger, and Log capture engines side by side so you can see ordering, lag, and delete semantics in one place. Use this guide to launch it locally, pick the right knobs, and run demos with data engineers or architects evaluating change feed patterns.
 
 ## Prerequisites
-- Node 18+ and npm installed locally.
+- Node 22.13+ and npm installed locally.
 - Bundles generated at least once via `npm run build` (creates `assets/generated/ui-shell.js` and `assets/generated/ui-shell.css`).
 - Optional but recommended: run `npm run build:sim` to rebuild simulator engines if you touched any `sim/` sources.
 
@@ -37,8 +37,8 @@ The CDC Method Comparator (`#simShellRoot`) is the React shell that streams the 
   - Turn on Polling with soft deletes visible and Log without apply-on-commit. Show how Polling surfaces deletes as tombstones only when the record is observed, while Log captures the delete immediately.
 - **Schema evolution (Schema Evolution)**
   - Trigger a column add in the scenario controls, then inspect events. Log propagates column changes immediately; Polling sees them after the next snapshot or diff cycle.
-- **Snapshot re-seed (Snapshot Replay)**
-  - Reset offsets for Polling to simulate a snapshot resume. Use lane diffs to illustrate how dedupe and apply-on-commit avoid double-apply after the snapshot completes.
+- **Re-insert after update (Re-insert after Update)**
+  - Enable Log and Polling. Use lane diffs to see the re-insert of `LED-100` reported as its own write by Log and possibly folded into a neighbouring change by Polling. This is a source write, not a redelivery; the playground does not model snapshot replay or offset resets.
 
 ## Troubleshooting
 - Comparator stuck on "Enable the comparator_v2 feature flag": run `npm run build` to regenerate bundles so the shell code is available.

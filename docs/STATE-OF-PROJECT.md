@@ -31,7 +31,7 @@ dashboard, not its replacement.
   no reviews pending. Tomorrow's agents start with a clean slate.
 - **Tests are green**: 274 unit cases across 14 files, 6 Playwright
   e2e specs, `verify-all` clean on `origin/main`.
-- **LHCI baseline on `/intro/`** unchanged thresholds: error-level
+- **Lighthouse baseline on `/intro/`** unchanged thresholds: error-level
   perf ≥ 0.82, a11y ≥ 0.93. Expand-on-demand drops rendered-tree
   count by ~5% so the next `npm run lighthouse` should reflect a
   small but real bump.
@@ -72,7 +72,7 @@ Chronological, freshest first. All on `main`:
 
 Stack and pipeline unchanged. `npm run verify-all` is the local
 minimum bar (format + lint + 274 unit tests + build). Four CI
-workflows: `ci.yml` (verify-all + LHCI), `deploy.yml` (Pages),
+workflows: `ci.yml` (verify-all + Lighthouse script), `deploy.yml` (Pages),
 `linkcheck.yml` (lychee), `fortify.yml` (SAST).
 
 The CDC platforms work in PRs #293 and #294 closed the largest
@@ -118,7 +118,7 @@ BreadcrumbList, sitemap, three README badges).
 
 ## A11y & perf
 
-LHCI thresholds in [`.lighthouserc.json`](../.lighthouserc.json)
+Lighthouse thresholds in [`lighthouse-ci.config.json`](../lighthouse-ci.config.json)
 unchanged: warn-level 0.9 floor across all sampled URLs;
 `/intro/` error-level perf ≥ 0.82 and a11y ≥ 0.93.
 

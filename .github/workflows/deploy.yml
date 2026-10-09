@@ -25,11 +25,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+        env:
+          # puppeteer (via pa11y-ci, a devDependency) downloads Chrome in its
+          # postinstall and fails the install when the download is flaky.
+          # Building the site needs no browser.
+          PUPPETEER_SKIP_DOWNLOAD: "true"
 
       - name: Build site
         env:
@@ -37,10 +42,17 @@ jobs:
           SITE_HOST: ${{ vars.SITE_HOST }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          BUTTONDOWN_USERNAME: ${{ vars.BUTTONDOWN_USERNAME }}
+          GOATCOUNTER_CODE: ${{ vars.GOATCOUNTER_CODE }}
         run: npm run build
 
       # Publishes the static Change Feed Playground at /playground/.
       - name: Publish playground to /playground/
+        env:
+          # Same variables as the build: the playground's canonical and
+          # Open Graph URLs are filled in from them.
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
+          SITE_HOST: ${{ vars.SITE_HOST }}
         run: scripts/publish-playground.sh
 
       - name: Upload artifact

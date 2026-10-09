@@ -2,7 +2,7 @@
 layout: base.njk
 title: "CDC Use Cases & Applications"
 canonicalPath: "/use-cases/"
-description: "Explore real-world CDC use cases, including real-time data warehousing, cache invalidation, auditing, microservices integration, and full-text search indexing."
+description: "Real-world CDC use cases: real-time data warehousing, cache invalidation, auditing, microservices integration, and full-text search indexing."
 scripts:
   - "/assets/js/lib/quiz.js"
 head_extra: |
@@ -84,7 +84,7 @@ head_extra: |
           <p>
             <strong>The CDC Solution:</strong> CDC enables the
             <strong>Event-Carried State Transfer</strong> pattern via the
-            Transactional Outbox. When a service makes a change (an `orders`
+            Transactional <a href="{{ '/glossary/#outbox' | url }}">Outbox</a>. When a service makes a change (an `orders`
             service creates an order), it writes the business data and an event
             record to an "outbox" table in the same atomic transaction. The CDC
             agent streams only the committed outbox events to a Kafka topic.
@@ -134,7 +134,7 @@ head_extra: |
             <strong>The CDC Solution:</strong> Stream row-level changes into a
             lightweight transformer that denormalizes documents and ships them
             to Elasticsearch/OpenSearch/Solr. <em>Upsert</em> on create/update;
-            <em>delete</em> on tombstones. Use a deterministic
+            <em>delete</em> on the delete event. Use a deterministic
             <code>doc_id</code> to make replays idempotent.
           </p>
           <div class="seq" role="group" aria-label="Search indexing flow">
@@ -144,7 +144,7 @@ head_extra: |
             <div class="seq-cell">Row-level change events</div>
             <div class="seq-cell">Join/denormalize into documents</div>
             <div class="seq-cell">Upsert by <code>doc_id</code></div>
-            <div class="seq-cell">Tombstones</div>
+            <div class="seq-cell">Delete events</div>
             <div class="seq-cell">Mark as delete</div>
             <div class="seq-cell">Delete from index</div>
           </div>
@@ -193,6 +193,10 @@ head_extra: |
             <div class="seq-cell">Training datasets</div>
             <div class="seq-cell">Serve features to models</div>
           </div>
+          <p>
+            Which row wins in each lakehouse table format is covered in
+            <a href="{{ '/which-row-wins/' | url }}">Which Row Wins in Your Target</a>.
+          </p>
           <p><strong>The Business Impact:</strong></p>
           <ul class="impact-list">
             <li>
@@ -250,6 +254,12 @@ head_extra: |
             metadata about the transaction. This entire stream can be durably
             archived to low-cost object storage (like Amazon S3), creating a
             verifiable and replayable history of the data's entire lifecycle.
+          </p>
+          <p>
+            <strong>The catch:</strong> an immutable history and a request to
+            erase a person pull in opposite directions. Decide how long each
+            archived copy lives before you build it; see
+            <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes That Stay Deleted</a>.
           </p>
           <p><strong>The Business Impact:</strong></p>
           <ul class="impact-list">

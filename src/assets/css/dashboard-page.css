@@ -217,6 +217,7 @@
   background: var(--card-bg, #fff);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 6px;
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -228,7 +229,7 @@
 
 .filter-btn.active {
   background: var(--accent, #00ff88);
-  color: #fff;
+  color: var(--color-text-inverse);
   border-color: var(--accent, #00ff88);
 }
 

@@ -39,7 +39,7 @@ scripts:
     <h2 id="storage-title">Offset storage patterns</h2>
     <p>
       Treat offsets as crown jewels. They decide whether a replay is a clean
-      rewind or a week-long dedupe exercise.
+      rewind or a week-long <a href="{{ '/glossary/#deduplication' | url }}">dedupe</a> exercise.
     </p>
     <table>
       <caption>Choose durable storage intentionally</caption>
@@ -81,7 +81,7 @@ scripts:
       <li>Pause ingestion and confirm downstream consumers are idle.</li>
       <li>Restore the offset snapshot you want to resume from.</li>
       <li>Validate that the target system can handle replays idempotently.</li>
-      <li>Resume the connector and watch lag + error metrics.</li>
+      <li>Resume the connector and watch <a href="{{ '/glossary/' | url }}#lag">lag</a> + error metrics.</li>
       <li>Document the incident: why rewind happened, what data was affected.</li>
     </ol>
     <p class="callout">
@@ -97,7 +97,7 @@ scripts:
       <p class="muted">
         Before attempting any offset manipulation, back up the current state.
         The offset storage topic name is configured via <code>OFFSET_STORAGE_TOPIC</code>
-        in Kafka Connect (defaults to <code>connect-offsets</code> in the Debezium image).
+        in <a href="{{ '/glossary/#kafka-connect' | url }}">Kafka Connect</a> (defaults to <code>connect-offsets</code> in the Debezium image).
       </p>
       <pre><code class="language-bash"># Discover your offset topic name from the Connect worker config
 # Check the container environment variable
@@ -180,7 +180,7 @@ curl -X POST "${CONNECT_URL}/connectors/${CONNECTOR_NAME}/resume"
     <h2 id="audits-title">Quarterly offset audits</h2>
     <ol>
       <li>Verify snapshots exist for every critical connector and restore one into staging.</li>
-      <li>Reconcile stored offsets against the target system watermark to catch drift.</li>
+      <li>Reconcile stored offsets against the target system <a href="{{ '/glossary/#watermark' | url }}">watermark</a> to catch drift.</li>
       <li>Document gaps, update runbooks, and assign owners for remediation tasks.</li>
     </ol>
     <p>

@@ -89,7 +89,7 @@ scripts:
         <span class="learn-icon" aria-hidden="true">②</span>
         <div>
           <strong>Execution made safe.</strong>
-          <p>Pick the right snapshot mode, chunk large tables, and cap parallelism to respect OLTP workloads.</p>
+          <p>Pick the right snapshot mode, chunk large tables, and cap parallelism to respect OLTP workloads. The <a href="{{ '/quickstarts/' | url }}">quickstarts</a> show the snapshot settings for each database.</p>
         </div>
       </li>
       <li>
@@ -116,9 +116,9 @@ scripts:
           Consistent-read isolation is enabled where applicable (REPEATABLE READ/SNAPSHOT).
         </li>
         <li>
-          Sink MERGE/UPSERT implemented; delete/tombstone semantics defined.
+          Sink MERGE/UPSERT implemented; delete/<a href="{{ '/glossary/' | url }}#tombstone">tombstone</a> semantics defined.
         </li>
-        <li>Offsets are durable and backed up/versioned.</li>
+        <li>Offsets are durable and backed up/versioned (see <a href="{{ '/ops-offsets/' | url }}">Offsets &amp; Replays</a>).</li>
         <li>DDL freeze or schema-compatibility policy in place.</li>
       </ul>
     </details>
@@ -487,23 +487,80 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
         <!-- SME ADDITIONS START: Patterns, Observability, Lab, Gotchas -->
         <section aria-labelledby="idempotent">
           <h2 id="idempotent">Idempotent sink patterns</h2>
-          <p>Use UPSERT/MERGE semantics and explicit delete handling.</p>
+          <p>
+            Use UPSERT/MERGE semantics keyed on the primary key, ordered by
+            the source log position, with explicit delete markers. Ready-made templates are in the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a>.
+          </p>
+          <p>
+            <strong>How snapshot rows interleave with streamed changes.</strong>
+            A snapshot row (<code>op = 'r'</code>) is a read of the table as
+            it stood at one point in the source log, and it carries that log
+            position: for an initial snapshot, the position the snapshot read
+            from; for an incremental chunk, a position in the log at the time
+            the chunk was read. Check the <code>source</code> block of an
+            <code>r</code> event for your connector. Streamed changes that
+            commit after that point carry higher positions, so when a streamed
+            change and a snapshot row for the same key meet in the sink, the
+            higher position wins. That is why the guard compares log
+            position: a snapshot row that arrives late, is re-sent after a
+            retry, or comes from an overlapping chunk or a re-run snapshot
+            holds an older position than the streamed change already applied,
+            and is skipped instead of overwriting it. A timestamp cannot do
+            this job: snapshot rows carry the time of the snapshot, and the
+            envelope <code>ts_ms</code> is later on every replay, so a stale
+            row can look newer than the streamed change it should lose to.
+          </p>
           <details>
             <summary><strong>Warehouse MERGE example</strong></summary>
-            <pre><button class="copy-btn" type="button">Copy</button><code>MERGE INTO dw.customers AS t
-USING staging.customers AS s
+            <pre><button class="copy-btn" type="button">Copy</button><code>-- Untested: not run against a live warehouse. Written for Snowflake, BigQuery
+-- and PostgreSQL 15+. Assumes dw.customers has a primary key customer_id, a
+-- deleted flag, a source_lsn column that is never NULL, and nullable name and
+-- email (a delete carries no row values). Readers filter deleted = FALSE.
+-- If you add source_lsn to an existing table, backfill it first: NULL < x is
+-- NULL, so a row with a NULL source_lsn would never be updated. Or compare
+-- COALESCE(t.source_lsn, -1) < s.lsn.
+-- lsn is the log position copied from the event as-is, never a clock time.
+-- If you keep a source updated_at as a data column, copy it but never
+-- compare it.
+MERGE INTO dw.customers AS t
+USING (
+  -- overlapping chunks and replays put several rows per key in staging;
+  -- MERGE needs one source row per target row, so keep the latest by position
+  SELECT customer_id, name, email, op, lsn
+  FROM (
+    SELECT customer_id, name, email, op, lsn,
+           ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY lsn DESC) AS rn
+    FROM staging.customers
+  ) ranked
+  WHERE rn = 1
+) AS s
 ON t.customer_id = s.customer_id
-WHEN MATCHED THEN UPDATE SET
+WHEN MATCHED AND t.source_lsn &lt; s.lsn THEN UPDATE SET
   name = s.name,
   email = s.email,
-  updated_at = s.updated_at
-WHEN NOT MATCHED THEN INSERT (customer_id, name, email, updated_at)
-VALUES (s.customer_id, s.name, s.email, s.updated_at);</code></pre>
+  deleted = (s.op = 'd'),
+  source_lsn = s.lsn
+WHEN NOT MATCHED THEN INSERT (customer_id, name, email, deleted, source_lsn)
+VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
+            <p class="muted">
+              The strict <code>&lt;</code> makes a replay of the same change
+              (same position) a no-op. If two different changes to one key can
+              share a position, order by and compare the (position, ordinal)
+              pair; see
+              <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>
+              and <a href="{{ '/materialization/' | url }}#sql">Materialization</a>.
+            </p>
           </details>
           <aside aria-label="Gotcha" class="callout">
-            <strong>Gotcha:</strong> Handle deletes explicitly (tombstones or a
-            <code>__op</code> field). Otherwise replays produce resurrected
-            rows.
+            <strong>Gotcha:</strong> Without the position guard, any replay or
+            overlapping snapshot chunk overwrites a newer row with an older
+            one, and without a delete marker it brings back a row that was
+            deleted after the snapshot read it. Keep deletes as a
+            <code>deleted</code> flag plus the delete&rsquo;s position (a
+            marker row, not a physical <code>DELETE</code>), so a late
+            older <code>r</code> or update finds the marker, loses the
+            comparison and cannot resurrect the row. Delivery is
+            at-least-once, so expect to see the same row more than once.
           </aside>
         </section>
 
@@ -528,11 +585,20 @@ VALUES (s.customer_id, s.name, s.email, s.updated_at);</code></pre>
             </li>
             <li>
               <strong>Log purged mid-snapshot:</strong> restart from last
-              completed chunk; increase retention; consider replica.
+              completed chunk; increase retention; consider replica. On
+              Postgres, a slot that lost its WAL cannot be resumed at all; see
+              the
+              <a href="{{ '/postgres-replication-slots/' | url }}"
+                >replication slot runbook</a
+              >.
             </li>
             <li>
-              <strong>No primary key:</strong> define synthetic key or dedupe in
-              sink (hash + latest timestamp).
+              <strong>No primary key:</strong> declare a stable key (a unique
+              column set, for example with Debezium&rsquo;s
+              <code>message.key.columns</code>, or a surrogate column) and key
+              the sink on it, ordered by log position. A hash of all columns
+              changes with every update, so it identifies a version, not a
+              row, and a timestamp cannot say which version is newer.
             </li>
             <li>
               <strong>DDL during snapshot:</strong> retry chunk with stable

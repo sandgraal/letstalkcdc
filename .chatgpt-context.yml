@@ -6,7 +6,7 @@ stack:
   bundler: vite@7
   css: postcss + cssnano + autoprefixer
   tests: vitest + playwright + pa11y-ci
-  node: ">=20"
+  node: ">=22.19"
 entry_doc_for_agents: CLAUDE.md
 directories:
   source: src

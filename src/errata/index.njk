@@ -1,30 +1,32 @@
 ---
 layout: base.njk
-title: "CDC Nuances & Errata — Read Before You Ship"
-description: "Corrections, caveats, and sharp edges in CDC systems."
+title: "CDC Nuances & Errata"
+description: "Pre-flight checks before you promise exactly-once or zero data loss: corrections and sharp edges on snapshots, tombstones, schema changes, and sinks."
 canonicalPath: "/errata/"
-head_extra: |
-  <meta
-        name="description"
-        content="Corrections, caveats, and sharp edges in CDC systems."
-      />
 ---
 {% import "components/ui.njk" as ui %}
 
 {{ ui.hero(heroConfig) | safe }}
       <p class="lede">
         A living list of precise clarifications, corrections, and “gotchas”.
-        Treat this as pre‑flight checks before promising
+        Corrections follow the process in the <a href="{{ '/methodology/' | url }}#corrections">methodology</a>; for a live incident start with the <a href="{{ '/troubleshooting/' | url }}">first-15-minutes playbook</a>. Treat this as pre‑flight checks before promising
         <em>exactly‑once</em> or “zero data loss.”
       </p>
 
-      {% call ui.panel({ id: 'exactly-once', titleId: 'exactly-once', title: 'End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em>' }) %}
+      {% call ui.panel({ id: 'exactly-once', titleId: 'exactly-once-title', title: 'End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em>' }) %}
         <ul>
           <li>
-            <strong>Source connectors are at‑least‑once</strong> in practice.
-            You can achieve <em>effectively‑once</em> by making sinks idempotent
-            (UPSERT on stable keys) and/or <em>deduplicating</em> using a
-            durable <code>event_id</code> ledger.
+            <strong>Source connectors are at‑least‑once</strong> by default.
+            Kafka Connect has an opt‑in exactly‑once mode for source
+            connectors (Debezium documents it from 3.3), but it covers only
+            the hop into Kafka and comes with open caveats; see
+            <a href="{{ '/exactly-once/' | url }}#per-hop">exactly‑once, hop by hop</a>,
+            and <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a>
+            for how to scope a vendor's claim.
+            Either way, achieve <em>effectively‑once</em> at the sink by making
+            it idempotent (UPSERT on stable keys, ordered by log position)
+            and/or <em>deduplicating</em> using a durable
+            <code>event_id</code> ledger.
           </li>
           <li>
             <strong>Transaction boundaries</strong>: Database transactions map
@@ -39,17 +41,21 @@ head_extra: |
         </ul>
       {% endcall %}
 
-      {% call ui.panel({ id: 'snapshots', titleId: 'snapshots', title: 'Snapshots, backfills, and replays' }) %}
+      {% call ui.panel({ id: 'snapshots', titleId: 'snapshots-title', title: 'Snapshots, backfills, and replays' }) %}
         <ul>
           <li>
             <strong>Initial snapshots</strong> can interleave with live changes;
-            design consumers to reconcile using version columns or
-            <code>op_ts</code>.
+            design consumers to reconcile by <strong>log position</strong>:
+            key the sink on the primary key and apply a change only if its
+            source log position (LSN, SCN or binlog position) is greater than
+            the one stored. Do not use <code>op_ts</code>, <code>ts_ms</code>
+            or any other timestamp as the version; timestamps tie and can run
+            backwards.
           </li>
           <li>
             <strong>Incremental snapshots</strong> (signal‑based) are powerful
-            but can produce duplicates; always merge on keys + highest version
-            and keep idempotent sinks.
+            but can produce duplicates; always merge on the primary key and
+            the highest log position, and keep idempotent sinks.
           </li>
           <li>
             <strong>Backfills</strong> are just another snapshot; isolate them
@@ -66,8 +72,11 @@ head_extra: |
             consumers.
           </li>
           <li>
-            <strong>Soft‑delete models</strong> still need physical deletes or a
-            retention strategy in the sink to avoid data resurrection.
+            <strong>Soft‑delete models</strong> (a delete marker plus the
+            delete&rsquo;s log position) are what stop a replayed older change
+            resurrecting a row. They need a retention and cleanup policy so
+            markers do not pile up, and a marker must not be purged while
+            older events can still be replayed.
           </li>
         </ul>
       {% endcall %}

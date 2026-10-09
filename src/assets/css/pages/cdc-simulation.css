@@ -55,7 +55,7 @@
 
 .sim-btn:hover {
   background: var(--accent-primary, #3cc8f0);
-  color: white;
+  color: var(--color-text-inverse);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(60, 200, 240, 0.3);
 }
@@ -66,37 +66,37 @@
 
 .sim-btn.active {
   background: var(--accent-primary, #3cc8f0);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 .sim-btn-insert {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .sim-btn-insert:hover {
-  background: #10b981;
-  color: white;
+  background: var(--color-success);
+  color: var(--color-text-inverse);
 }
 
 .sim-btn-update {
-  border-color: #f59e0b;
-  color: #f59e0b;
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .sim-btn-update:hover {
-  background: #f59e0b;
-  color: white;
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
 }
 
 .sim-btn-delete {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .sim-btn-delete:hover {
-  background: #ef4444;
-  color: white;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
 }
 
 .sim-btn-reset {

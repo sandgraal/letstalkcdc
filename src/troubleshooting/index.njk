@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "First 15 Minutes — CDC Troubleshooting"
+title: "First 15 Minutes of a CDC Incident"
 description: "A repeatable first-15-minutes playbook to triage Change Data Capture incidents across Postgres, MySQL, Oracle, Kafka/Debezium, and common sinks."
 datePublished: "2026-02-06"
 dateModified: "2026-10-09"
@@ -24,7 +24,7 @@ head_extra: |
         <ol>
           <li>
             <strong>Freeze changes</strong> that make state drift: pause
-            backfills, schema changes, and connector restarts.
+            <a href="{{ '/glossary/#backfill' | url }}">backfills</a>, schema changes, and connector restarts.
           </li>
           <li>
             <strong>Define the failure mode</strong>: <em>stuck</em> (no
@@ -112,8 +112,10 @@ SELECT slot_name, active, restart_lsn, confirmed_flush_lsn
 FROM pg_replication_slots;
 
 -- retention &amp; pressure
-SHOW wal_keep_size;            -- size hint for retained WAL
-SELECT now() - pg_last_wal_replay_lsn()::text::pg_lsn; -- on standby
+SHOW max_slot_wal_keep_size;   -- cap on WAL a slot may retain; -1 = unlimited
+SELECT slot_name, wal_status,  -- on the primary
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_by_slot
+FROM pg_replication_slots;
 
 -- lag (if using logical slot)
 SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_from_slot
@@ -129,7 +131,8 @@ FROM pg_replication_slots WHERE slot_name='&lt;slot&gt;';</code></pre>
               <li>
                 <em>Slot disk pressure:</em> sink caught behind → raise sink
                 throughput or pause snapshot; never drop the slot without a
-                plan.
+                plan. See the
+                <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a>.
               </li>
               <li>
                 <em>Missing updates:</em> replica identity not full on keyless
@@ -175,6 +178,7 @@ SHOW GLOBAL STATUS LIKE 'Binlog_cache_disk_use';</code></pre>
         </div>
         <div class="box">
           <h2>Oracle Quick Checks</h2>
+          <p>Background and tuning: <a href="{{ '/oracle-notes/' | url }}">Vendor Nuances — Oracle CDC</a>.</p>
           <details open="">
             <summary><strong>Configuration + Health</strong></summary>
             <pre><button class="copy">copy</button><code>-- supplemental logging
@@ -274,7 +278,7 @@ WHERE t.source_lsn &lt; l.last_lsn;   -- expect 0</code></pre>
         <ul class="checklist">
           <li>
             Source log gap detected (WAL/binlog/redo missing) and you can’t
-            reconstruct from another source → plan a clean resnapshot.
+            reconstruct from another source → plan a clean <a href="{{ '/snapshotting/' | url }}">resnapshot</a>.
           </li>
           <li>
             Schema/key change incompatible with current sink merge logic →
@@ -296,7 +300,7 @@ WHERE t.source_lsn &lt; l.last_lsn;   -- expect 0</code></pre>
         <ul>
           <li><strong>Backpressure simulation:</strong> Shut down sink, observe lag metrics</li>
           <li><strong>DLQ exercise:</strong> Inject bad data, trigger serialization errors</li>
-          <li><strong>Schema drift:</strong> Test incompatible column changes</li>
+          <li><strong>Schema drift:</strong> Test incompatible column changes (<a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a>)</li>
           <li><strong>Offset replay:</strong> Wipe offsets, observe snapshot + stream behavior</li>
         </ul>
         <p class="muted">

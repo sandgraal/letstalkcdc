@@ -1,0 +1,33 @@
+{
+  "runs": 3,
+  "minValidRuns": 1,
+  "minValidRunsForError": 2,
+  "aggregation": "optimistic",
+  "distDir": "_site",
+  "outputDir": ".lighthouseci",
+  "urls": [
+    "/index.html",
+    "/intro/index.html",
+    "/overview/index.html",
+    "/quickstarts/index.html",
+    "/snapshotting/index.html"
+  ],
+  "assertMatrix": [
+    {
+      "matchingUrlPattern": ".*",
+      "assertions": {
+        "categories:performance": ["warn", { "minScore": 0.9 }],
+        "categories:accessibility": ["warn", { "minScore": 0.9 }],
+        "categories:best-practices": ["warn", { "minScore": 0.9 }],
+        "categories:seo": ["warn", { "minScore": 0.9 }]
+      }
+    },
+    {
+      "matchingUrlPattern": ".*/intro/index\\.html$",
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.82 }],
+        "categories:accessibility": ["error", { "minScore": 0.93 }]
+      }
+    }
+  ]
+}

@@ -88,8 +88,17 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 163231e666f0b6cd0659deda39d6362547e468577b775ca570217f9a1d613d74
-# (re-baselined 2026-10-09: visible-UI fixes - new `.discussion-callout`
+# baseline at HEAD of main is: 7ba70b5050df87cee4b5d9c7c2b4ca195d0b0861c0fe707b236100e3cda904a3
+# (re-baselined 2026-10-09 (P13-8): cssnano 7 -> 9 tool upgrade, no source
+#  CSS change; output proven computed-style/pixel equivalent (declaration
+#  order is no longer alphabetised, `transition ... ease` and similar
+#  default tokens dropped, calc() rewritten). Previously c32d01ac… from
+#  earlier the same day (P15-21, contrast debt): new
+#  `components/code-block.css` (the code-block header / copy-button
+#  classes were essentially unstyled), light-theme
+#  `--color-success/-warning/-error` (+ hovers) darkened to 4.5:1, the
+#  `.status-badge` variants in 07-version-status.css moved onto those
+#  tokens, and `.badge.recommended` given dark ink. Previously 163231e6… from earlier the same day: visible-UI fixes - new `.discussion-callout`
 #  rules (community box), the orphaned dead `.stats-*` / `.session-modal`
 #  rules removed along with the chip markup, the `.button-primary` text
 #  and hover colours, and the `a.button:where(:hover, :active,
@@ -319,14 +328,14 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`163231e666f0…`).
+3. **`/css-byte-check` baseline is in this file** (`7ba70b5050df…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.
-4. **The LHCI baseline is honest as of May 2026** (perf 0.86 on
+4. **The Lighthouse baseline is honest as of May 2026** (perf 0.86 on
    `/intro/`). Earlier `1.0` scores measured an unstyled DOM; ignore
    any pre-May docs claiming higher numbers and trust the threshold
-   in `.lighthouserc.json`.
+   in `lighthouse-ci.config.json`.
 5. **The `viteAsset` filter falls back to source paths in dev.** If
    you're seeing 404s for hashed JS in dev, that's a `.vite/manifest.json`
    absence, not a real bug. Run `npm run build:js` once or use `npm run dev`.

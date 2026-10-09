@@ -29,10 +29,11 @@ export const MetricsStrip: FC<MetricsStripProps> = ({
 }) => {
   return (
     <div role="status" aria-live="polite">
-      <span>Lag: {lagMs}ms</span> ·<span>TPS: {throughput.toFixed(1)}</span> ·
+      <span data-tooltip={TOOLTIP_COPY.metricLag}>Lag: {lagMs}ms</span> ·
+      <span>TPS: {throughput.toFixed(1)}</span> ·
       <span>Deletes: {Math.round(deletesPct)}%</span> ·
-      <span>Ordering: {orderingOk ? "OK" : "KO"}</span> ·
-      <span>Consistency: {consistent ? "OK" : "Drift"}</span>
+      <span data-tooltip={TOOLTIP_COPY.metricOrdering}>Ordering: {orderingOk ? "OK" : "KO"}</span> ·
+      <span data-tooltip={TOOLTIP_COPY.metricConsistency}>Consistency: {consistent ? "OK" : "Drift"}</span>
       {" "}·<span>
         Ops C/U/D: {insertCount}/{updateCount}/{deleteCount}
       </span>

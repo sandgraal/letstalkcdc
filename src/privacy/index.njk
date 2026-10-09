@@ -1,14 +1,18 @@
 ---
 layout: base.njk
-title: "Privacy — what Let's Talk CDC stores about you"
+title: "Privacy: What This Site Stores"
 description: "What the CDC Assistant stores when you vote on an answer, what stays on your device, who can see it, how long it is kept, and how to ask about it."
 canonicalPath: "/privacy/"
 ---
 {% import "components/ui.njk" as ui %}
 
+{# analytics.goatcounterCode is set only when visit counting is configured
+   (GOATCOUNTER_CODE, P15-10). Everything about analytics on this page is
+   conditional on it, so the page stays true either way. #}
+{% set heroVisits %}{% if analytics.goatcounterCode %}Page visits are counted in aggregate by GoatCounter without cookies (see "Visit counts"), and a browser that sends Do Not Track is not counted. {% endif %}{% endset %}
 {{ ui.hero({
   title: "Privacy",
-  description: "<p>Short version: reading the module pages stores nothing about you on a server. Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted.</p>",
+  description: "<p>Short version: reading the module pages stores nothing about you on a server" + ("" if not analytics.goatcounterCode else ", apart from an anonymous visit count") + ". " + heroVisits + "Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted.</p>" + ("<p>The newsletter signup is a third optional feature: if you use it, the email address you type is sent to Buttondown.</p>" if newsletter.enabled else ""),
   align: "center",
   skillLevel: "About"
 }) | safe }}
@@ -123,6 +127,56 @@ canonicalPath: "/privacy/"
   </ul>
 </section>
 
+<section class="prose" aria-labelledby="newsletter">
+  <h2 id="newsletter">The newsletter signup</h2>
+  {% if newsletter.enabled %}
+  <p>
+    The <a href="{{ '/newsletter/' | url }}">newsletter</a> has a signup form
+    on its page and in the footer, with one field: your email address. The
+    newsletter is run by Buttondown, a separate company.
+  </p>
+  <ul>
+    <li>
+      <strong>What is sent:</strong> the email address you typed, plus what
+      any request reveals to the receiving site (your IP address and browser
+      details).
+    </li>
+    <li>
+      <strong>To whom:</strong> Buttondown (<strong>buttondown.com</strong>),
+      which then sends its own confirmation and newsletter emails. This site
+      does not keep the address.
+    </li>
+    <li>
+      <strong>When:</strong> only when you press Subscribe. The form is an
+      ordinary web form: your browser sends it and you continue on
+      Buttondown's site. Nothing is sent as you type, and the site loads no
+      script from Buttondown. Buttondown's own pages, where you continue
+      after pressing Subscribe, may set cookies under its privacy policy.
+    </li>
+  </ul>
+  <p>
+    Buttondown handles the address under its own
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">privacy policy</a>.
+    As the newsletter's sender, the maintainer, {{ author.name }}, can see
+    the subscriber list in Buttondown.
+  </p>
+  <p>
+    To unsubscribe, use the unsubscribe link Buttondown normally includes in
+    its emails. You can also write to the maintainer on
+    <a href="{{ author.advisoryUrl }}" rel="noopener">LinkedIn</a> to ask
+    about your address. The "Asking about or deleting your entry" section
+    below is for anonymous assistant and playground entries, not for
+    newsletter subscribers.
+  </p>
+  {% else %}
+  <p>
+    The newsletter signup is not open yet, so this site does not ask for or
+    send an email address anywhere. This section will describe the signup
+    when it opens.
+  </p>
+  {% endif %}
+</section>
+
 <section class="prose" aria-labelledby="device">
   <h2 id="device">What stays on your device</h2>
   <p>
@@ -144,10 +198,22 @@ canonicalPath: "/privacy/"
 
 <section class="prose" aria-labelledby="cookies">
   <h2 id="cookies">Cookies and analytics</h2>
-  {# Update this section when analytics ships (P15-10). #}
+  {% if analytics.goatcounterCode %}
+  <p>
+    The site's own code does not set cookies. It does count visits with
+    GoatCounter, which sets no cookies either; see "Visit counts" below.
+  </p>
+  {% else %}
   <p>
     The site's own code does not set cookies or use analytics.
   </p>
+  {% endif %}
+  {% if newsletter.enabled %}
+  <p>
+    Separately, if you use the newsletter signup, the Buttondown page you continue to
+    may set its own cookies.
+  </p>
+  {% endif %}
   <p>
     Some features load things from other companies, which can behave
     differently. If you click play on an embedded YouTube video, YouTube's
@@ -158,16 +224,79 @@ canonicalPath: "/privacy/"
   </p>
 </section>
 
+{% if analytics.goatcounterCode %}
+<section class="prose" aria-labelledby="visit-counts">
+  <h2 id="visit-counts">Visit counts</h2>
+  <p>
+    The site counts visits with <a href="https://www.goatcounter.com/" rel="noopener">GoatCounter</a>,
+    a privacy-friendly analytics service. It sets no cookies and shows no
+    consent banner, because it stores nothing in your browser and keeps no
+    personal profile of you.
+  </p>
+  <ul>
+    <li>
+      <strong>What is counted</strong> when you open a page: the page path
+      and title, the page you came from (the referrer), your browser name
+      and version, your operating system, your screen width, your language,
+      and your country, which GoatCounter works out from your IP address.
+      Per GoatCounter, the results are stored as totals per day or hour, so
+      the browser and country figures cannot be linked to each other or to
+      you.
+    </li>
+    <li>
+      <strong>What is not kept:</strong> according to GoatCounter's privacy
+      policy it does not store your IP address, your full browser
+      identification string or any tracking ID. To avoid counting a
+      repeat visit twice it holds a short-lived random string in its
+      server's memory for up to 8 hours; that string is not written to its
+      database. There is no cross-site tracking: the counts are not
+      combined with data from other sites.
+    </li>
+    <li>
+      <strong>Who handles it:</strong> GoatCounter (goatcounter.com,
+      operated by an individual in Ireland, with servers in Finland and
+      Germany) processes the counts on the maintainer's behalf. Your browser
+      loads a small script from <strong>gc.zgo.at</strong> and sends the
+      count to this site's address at <strong>goatcounter.com</strong>, so
+      those two hosts see your IP address as any host you contact does. The
+      maintainer reads the totals in GoatCounter's dashboard.
+    </li>
+    <li>
+      <strong>Do Not Track is respected.</strong> If your browser sends a
+      Do Not Track signal, the script is not loaded and nothing is sent to
+      either host. Content blockers that block the script have the same
+      effect, and nothing on the site depends on it.
+    </li>
+    <li>
+      <strong>How long:</strong> the totals contain no personal data. By
+      default nothing deletes them on a schedule; the
+      maintainer can delete the whole GoatCounter site, and with it all the
+      totals, at any time in GoatCounter's settings (GoatCounter says
+      copies can remain in its backups for up to 30 days).
+    </li>
+  </ul>
+</section>
+{% endif %}
+
 <section class="prose" aria-labelledby="third-parties">
   <h2 id="third-parties">Third-party requests</h2>
   <p>
     The pages are hosted on GitHub Pages, so GitHub receives each page
     request as any web host does. Fonts, styles and the site's own scripts
-    are served from the site itself. A few features load something from
+    are served from the site itself{% if analytics.goatcounterCode %}, except the visit-count script
+    described below{% endif %}. A few features load something from
     another company, and any request to another host necessarily shows that
     host your IP address and browser details:
   </p>
   <ul>
+    {% if analytics.goatcounterCode %}
+    <li>
+      <strong>gc.zgo.at</strong> and <strong>goatcounter.com</strong>: the
+      visit-count script and the count itself, on every page except the
+      playground; skipped when your browser sends Do Not Track (see "Visit
+      counts").
+    </li>
+    {% endif %}
     <li>
       <strong>cdn.jsdelivr.net</strong> (the jsDelivr CDN): the Mermaid
       library on pages that draw diagrams, the Chart.js library on pages
@@ -182,6 +311,12 @@ canonicalPath: "/privacy/"
       <strong>www.youtube-nocookie.com</strong>: only if you click play on that
       video, which then loads YouTube's player.
     </li>
+    {% if newsletter.enabled %}
+    <li>
+      <strong>buttondown.com</strong>: only when you press Subscribe on the
+      newsletter form, as described under "The newsletter signup".
+    </li>
+    {% endif %}
     <li>
       <strong>Supabase</strong>, the database host: when you send an
       assistant vote, and whenever you open the Change Feed Playground, as
@@ -214,6 +349,15 @@ canonicalPath: "/privacy/"
     cannot change that. The playground also asks you, on the page,
     to use made-up data only. This policy took effect on 2026-10-09.
   </p>
+  {% if newsletter.enabled %}
+  <p>
+    Newsletter subscribers are a separate case: Buttondown, not this site,
+    keeps your address for as long as you are subscribed. What it keeps after
+    you unsubscribe is set by its
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">privacy policy</a>
+    and its own clean-up schedule.
+  </p>
+  {% endif %}
 </section>
 
 <section class="prose" aria-labelledby="who-sees">

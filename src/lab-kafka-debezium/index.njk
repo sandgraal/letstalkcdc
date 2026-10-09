@@ -1,7 +1,7 @@
 ---
 layout: base.njk
-title: "Hands-On Lab: CDC with Kafka, Debezium, and Postgres (with Sinks)"
-description: "A complete guide to building a real-time Change Data Capture pipeline using Docker, Postgres, Kafka, Debezium, and JDBC Sink connector—from source to destination."
+title: "Kafka + Debezium + Postgres Lab"
+description: "Build a real-time Change Data Capture pipeline with Docker, Postgres, Kafka, Debezium, and the JDBC Sink connector, from source to destination."
 canonicalPath: "/lab-kafka-debezium/"
 skillLevel: "Intermediate"
 head_extra: |
@@ -146,7 +146,7 @@ services:
                 </li>
                  <li>
                     <h3>Register the Postgres Connector</h3>
-                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the Kafka Connect REST API. Create a file named <code>register-postgres.json</code>:</p>
+                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the <a href="{{ '/glossary/#kafka-connect' | url }}">Kafka Connect</a> REST API. Create a file named <code>register-postgres.json</code>:</p>
                     <pre><code>{
   "name": "inventory-connector",
   "config": {
@@ -424,5 +424,6 @@ docker-compose exec -u postgres postgres-sink psql -U sink_user -d warehouse -c 
                 <li><strong><a href="{{ '/schema-evolution/' | url }}">Schema evolution strategies</a></strong> for production environments</li>
                 <li><strong><a href="{{ '/exactly-once/' | url }}">Exactly-once semantics</a></strong> for critical pipelines</li>
                 <li><strong><a href="{{ '/observability/' | url }}">Observability best practices</a></strong> for monitoring your CDC pipeline</li>
+                <li><strong><a href="{{ '/test-your-pipeline/' | url }}">Testing a CDC pipeline</a></strong> for duplicate, reorder and crash tests against your own sink</li>
             </ul>
         </section>

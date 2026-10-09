@@ -24,3 +24,24 @@
 # but the author profile link on module pages and in the footer is valid in
 # a browser. Referenced from src/_data/author.mjs (sameAs, advisoryUrl).
 ^https://www\.linkedin\.com/
+
+# The maintainer's GitHub profile page (the byline/footer author link, from
+# src/_data/author.mjs; ~46 occurrences). A cold request to it is slow to
+# render (~10 s from an ordinary connection); from shared CI runner IPs
+# GitHub's gateway gives up first and answers [504] Gateway Timeout. lychee
+# does not retry a 5xx (checked against lychee 0.24.2, the newest release:
+# one request to a server answering 504, no retry, with --max-retries 3), so
+# retry settings cannot fix it, and accepting 5xx would hide real outages on
+# every other link. Anchored to this exact URL, so every other
+# github.com/sandgraal/... link (repo, blob, discussions) is still checked.
+# Same precedent as the LinkedIn entry above: a link we control that is
+# valid in a browser.
+^https://github\.com/sandgraal/?$
+
+# File-history pages of this repo (github.com/sandgraal/letstalkcdc/commits/
+# main/...), linked from the privacy page. Same reason as the profile entry
+# above: history pages are heavy for GitHub's gateway and answer [504] to CI
+# runner IPs, which lychee does not retry. A link we control that is valid
+# in a browser. /blob/, /tree/ and /discussions stay checked (blob/tree/edit
+# are remapped to the checkout; the rest are light).
+^https://github\.com/sandgraal/letstalkcdc/commits/

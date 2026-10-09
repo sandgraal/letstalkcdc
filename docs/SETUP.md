@@ -26,6 +26,8 @@ The site is built with **progressive enhancement** — core features work immedi
 | **Local progress tracking**           | ✅ Ready      | None — uses browser localStorage |
 | **Client-side tracing**               | ❌ Removed    | See [TRACING.md](TRACING.md)     |
 | **Assistant feedback (Supabase)**     | ⚠️ Optional   | Two build-time variables         |
+| **Newsletter (Buttondown)**           | ⚠️ Optional   | One build-time variable          |
+| **Visit counts (GoatCounter)**        | ⚠️ Optional   | One build-time variable          |
 | **User authentication**               | ⚠️ Deprecated | Authentication has been removed  |
 | **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed      |
 
@@ -38,6 +40,9 @@ Nothing in this repo loads a `.env` file: `npm run dev` and `npm run build` read
 ```bash
 # Optional - assistant feedback (Supabase). Leave unset for local dev.
 SUPABASE_URL=https://<project-ref>.supabase.co SUPABASE_PUBLISHABLE_KEY=sb_publishable_... npm run dev
+
+# Optional - newsletter signup (Buttondown). Leave unset and the signup stays off.
+BUTTONDOWN_USERNAME=your-username npm run dev
 
 # Site configuration (for GitHub Pages deployment)
 SITE_HOST=https://your-site.example npm run build
@@ -208,6 +213,24 @@ purpose-built parser, not general YAML). Rules that bite:
 
 ---
 
+### Analytics (GoatCounter)
+
+**Status**: off until you configure it. Cookie-less visit counts, no consent banner.
+
+With `GOATCOUNTER_CODE` unset (the default, and what every fork and every local build gets) the site renders no analytics markup at all and the [privacy page](https://sandgraal.github.io/letstalkcdc/privacy/) says so ("no cookies or analytics"). With it set, every page that uses the base layout (not redirect stubs, the 404 page or the playground) gets one small inline loader that adds one async `count.js` script from `gc.zgo.at`, and the privacy page gains a "Visit counts" section that says what GoatCounter counts. The loader does nothing when the browser sends Do Not Track (GoatCounter's own script ignores that signal, so the script is not loaded at all). The site sets no Content-Security-Policy (GitHub Pages cannot send headers, and there is no `<meta>` policy), so nothing else needs allowing. If you ever add one, allow `https://gc.zgo.at` in `script-src`, `https://<code>.goatcounter.com` in `connect-src` (and `img-src` for the fallback beacon), and hash the inline loader.
+
+To turn it on:
+
+1. Create a free site at [goatcounter.com](https://www.goatcounter.com/signup). The site code you choose is the subdomain, for example `letstalkcdc` for `https://letstalkcdc.goatcounter.com`.
+2. In the site's settings, leave **Collect individual pageviews** off (the default). The privacy page says the totals are stored as aggregates; turning that on would make that sentence untrue. Keep the dashboard private for the same reason: the page says only the maintainer reads the totals.
+3. In the GitHub repository, go to Settings, Secrets and variables, Actions, Variables, and add a **repository variable** `GOATCOUNTER_CODE` with the code (lowercase letters, digits and hyphens only; anything else is ignored with a build warning and analytics stays off). It is a variable, not a secret: the code is visible in the page source by design.
+4. Re-run the deploy workflow. [`deploy.yml`](../.github/workflows/deploy.yml) passes the variable to the build; `ci.yml` and `linkcheck.yml` deliberately leave it unset so CI builds stay analytics-free.
+5. Check: view source on a deployed page and look for `gc.zgo.at`; in a browser with Do Not Track on, confirm there is no request to `gc.zgo.at` or `goatcounter.com`.
+
+To turn it off again, delete the variable and redeploy. Locally: `GOATCOUNTER_CODE=mycode npm run build`. GoatCounter ignores `localhost` by default, so local runs do not count.
+
+---
+
 ### 4. Archived: User Authentication and Cloud Progress Sync
 
 **Status**: ⚠️ **DEPRECATED** — Authentication and cloud sync have been removed
@@ -244,6 +267,36 @@ For historical reference, the complete authentication setup documentation has be
 
 ---
 
+### 5. Optional Newsletter (Buttondown)
+
+The site has a `/newsletter/` page and a compact signup form in the footer. Both post straight to [Buttondown](https://buttondown.com)'s embed endpoint with a plain HTML form: no JavaScript, no third-party script, no secret in the repository.
+
+#### Turn it on (maintainer steps)
+
+1. Create a Buttondown account and note your **username** (it is the last part of `https://buttondown.com/<username>`).
+2. In the repository, go to **Settings → Secrets and variables → Actions → Variables** and add a **repository variable** named `BUTTONDOWN_USERNAME` with that username. It is a variable, not a secret: the username is public in the form's action URL.
+3. Re-run the **Deploy** workflow (or push to `main`). The value is read at build time, so nothing changes until the site is rebuilt.
+
+Only letters, digits, `-` and `_` are accepted. Any other value is ignored with a warning in the build log (the value itself is not printed) and the signup stays off.
+
+#### What happens when it is not set
+
+This is the state of the site today. The form is not rendered anywhere, the footer has no newsletter link, and `/newsletter/` says the newsletter is not open yet. In that state the page is `noindex` and left out of `sitemap.xml`, so it is not advertised. `linkcheck.yml` and `ci.yml` deliberately do not set the variable, so their builds always test the off state.
+
+When it is set, the form appears in the footer and on `/newsletter/`, the page becomes indexable and joins the sitemap, and the privacy page describes what is sent (the visitor's email address, to buttondown.com, only when they press Subscribe).
+
+#### Test locally
+
+```bash
+BUTTONDOWN_USERNAME=your-username npm run build
+# Open _site/newsletter/index.html: the form action should be
+# https://buttondown.com/api/emails/embed-subscribe/your-username
+```
+
+Buttondown asks that the embed endpoint be used as the `action` of a normal form, not called with `fetch`, because a subscriber may have to complete a CAPTCHA on Buttondown's response page. Do not add a script that submits the form in the background.
+
+---
+
 ## Production Deployment
 
 ### GitHub Pages (Static Site)
@@ -258,6 +311,8 @@ The site deploys automatically to GitHub Pages via GitHub Actions.
    - `SITE_HOST`: your site URL (scheme and domain, no path), e.g. `https://<owner>.github.io` or your custom domain
    - `ELEVENTY_PATH_PREFIX`: `/letstalkcdc` (or blank for root deployment)
    - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (optional): enable assistant feedback storage
+   - `BUTTONDOWN_USERNAME` (optional): opens the newsletter signup (see "Optional Newsletter" above)
+   - `GOATCOUNTER_CODE` (optional): enable GoatCounter visit counts (see "Analytics (GoatCounter)")
 
 4. Push to `main` branch to trigger deployment
 

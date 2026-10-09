@@ -155,7 +155,7 @@ intents:
       committed outbox row from the log and publishes it to a message bus such
       as Kafka. An event is published if and only if the business transaction
       committed. It does not make delivery exactly-once, though. The publish
-      step is still at-least-once, so the sinks still need to be idempotent.
+      step is at-least-once by default, so the sinks still need to be idempotent.
     links:
       - label: The Transactional Outbox Pattern
         url: /exactly-once/
@@ -185,13 +185,14 @@ intents:
       ]
     modules: []
     answer: >
-      CDC delivery is at-least-once, and end-to-end exactly-once across
+      CDC delivery is at-least-once by default, and end-to-end exactly-once across
       systems is not achievable in general, so correctness comes from an
       idempotent sink. Upsert or MERGE on the primary key, and keep one row per
       key by ordering on the source log position (LSN or SCN), not on ts_ms,
       which is only a millisecond commit time and can tie for the same key. Do
-      not rely on arrival order. Apply deletes as tombstones, and record the
-      processed offset so restarts can resume safely.
+      not rely on arrival order. Keep deletes as delete markers that carry
+      their log position, so a late older update cannot bring the row back, and
+      record the processed offset so restarts can resume safely.
     links:
       - label: Build idempotent merge logic
         url: /materialization/
@@ -205,6 +206,80 @@ intents:
         url: /event-envelope/
         anchor: "#delivery-title"
         preview: At-least-once, and the sink-side dedupe key.
+
+  - id: target_ordering
+    triggers:
+      [
+        "which row wins",
+        "_change_sequence_number",
+        "change sequence number",
+        "sequence by",
+        "auto cdc",
+        "ordering field",
+        "precombine",
+        "merge mode",
+        "commit time ordering",
+        "event time ordering",
+        "equality delete",
+        "upsert-dedup-column",
+        "bigquery cdc",
+        "hudi ordering",
+        "iceberg upsert",
+        "delta merge",
+        "snowflake stream",
+      ]
+    modules: ["which-row-wins"]
+    answer: >
+      Each warehouse or lakehouse target decides which version of a row wins in
+      its own way, and several default to arrival or commit order. Name three
+      things per target: the key, the ordering column and the delete marker. Make
+      the ordering column the source log position, for example
+      _CHANGE_SEQUENCE_NUMBER in BigQuery, SEQUENCE BY in Databricks, the
+      ordering field in Hudi, or a position guard in a MERGE for Iceberg, Delta
+      and Snowflake. Check each setting against your version of the vendor
+      documentation.
+    links:
+      - label: Which row wins in your target
+        url: /which-row-wins/
+        anchor: "#at-a-glance-title"
+        preview: Key, ordering and delete handling for six targets.
+      - label: Making Sinks Bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Why the log position, not a timestamp, is the version.
+
+  - id: delete_markers
+    triggers:
+      [
+        "delete marker",
+        "soft delete",
+        "deleted flag",
+        "resurrect",
+        "row came back",
+        "deleted row came back",
+        "zombie row",
+        "apply as delete",
+        "_change_type",
+        "physical delete",
+        "hard delete",
+      ]
+    modules: ["which-row-wins"]
+    answer: >
+      A physical delete removes the version along with the row, so a replayed
+      older update can bring the key back. Keep a delete marker, which is a
+      deleted flag plus the delete's log position, or rely on a target feature
+      that remembers the delete for a stated time (two days by default in
+      BigQuery CDC ingestion and Databricks AUTO CDC) and know that time. Act on
+      the delete change event, not on the Kafka tombstone alone.
+    links:
+      - label: Delete markers
+        url: /which-row-wins/
+        anchor: "#deletes-title"
+        preview: Why a physical delete is not enough.
+      - label: Build idempotent merge logic
+        url: /materialization/
+        anchor: "#merge-title"
+        preview: Delete markers in a MERGE.
 
   - id: exactly_once
     triggers:
@@ -228,16 +303,127 @@ intents:
     answer: >
       Exactly-once semantics (EOS) ensure each change event is applied exactly
       one time at the destination. This requires idempotent writes, transactional
-      coordination, or deduplication. Most CDC pipelines use at-least-once
-      delivery with idempotent sinks as a practical alternative to full EOS.
+      coordination, or deduplication. It depends on the hop. Kafka Connect
+      offers an opt-in exactly-once mode for source connectors (Debezium
+      documents it from 3.3) for the hop into Kafka, with caveats, and it is
+      off by default. Kafka transactions do not reach a database, a warehouse
+      load or an HTTP call, so the hop out of Kafka into a sink, and the
+      pipeline end to end, are not exactly-once delivery. Most CDC pipelines
+      use at-least-once delivery with idempotent sinks (primary key, ordered
+      by source log position) to get exactly-once processing, and that is
+      still needed even when the first hop is exactly-once.
     links:
       - label: Exactly-Once Semantics
         url: /exactly-once/
-        preview: Visual walkthrough of ALO vs EOS plus transactional outbox.
+        anchor: "#per-hop"
+        preview: Which hop can be exactly-once, how, and the caveats.
       - label: Event Envelope and Delivery
         url: /event-envelope/
         anchor: "#delivery-title"
         preview: Keys, payloads, tombstones, and ordering guarantees.
+
+  - id: exactly_once_claims
+    triggers:
+      [
+        "is cdc exactly once",
+        "cdc exactly once",
+        "is change data capture exactly once",
+        "change data capture exactly once",
+        "is debezium exactly once",
+        "debezium exactly once",
+        "does debezium support exactly once",
+        "debezium support exactly once",
+        "kafka connect exactly once",
+        "connect exactly once",
+        "exactly once source connector",
+        "exactly.once.support",
+        "exactly.once.source.support",
+        "transaction.boundary",
+        "vendor says exactly once",
+        "exactly once claim",
+        "exactly once marketing",
+      ]
+    modules: []
+    answer: >
+      Debezium documents at-least-once delivery and says it has no internal
+      deduplication layer. From Debezium 3.3 it also documents an opt-in
+      Kafka Connect mode (exactly.once.source.support=enabled on every worker,
+      exactly.once.support=required on the connector, distributed mode, Connect
+      3.3.0 or later) for the hop from the connector into Kafka only. Its own
+      page says it is unclear whether the implementation is fully correct. So
+      a vendor sentence that says exactly-once needs five questions: which
+      hop, which connector and is the opt-in on, which sink, what happens on
+      failover, and what dedupes. The sink still needs an upsert on the
+      primary key that applies a change only if its source log position is
+      newer.
+    links:
+      - label: Is CDC exactly-once? Per hop
+        url: /is-cdc-exactly-once/
+        anchor: "#claims-title"
+        preview: Five questions that scope any exactly-once claim.
+      - label: The Kafka Connect opt-in
+        url: /is-cdc-exactly-once/
+        anchor: "#connect-eos-title"
+        preview: Settings, what the framework does, and the caveats Debezium lists.
+      - label: Exactly-once, hop by hop
+        url: /exactly-once/
+        anchor: "#per-hop"
+        preview: The summary table of what each hop can guarantee.
+
+  - id: kafka_transactions_sink_offsets
+    triggers:
+      [
+        "sendoffsetstotransaction",
+        "read_committed",
+        "kafka read_committed",
+        "isolation.level read_committed",
+        "transactional.id",
+        "kafka transaction",
+        "exactly_once_v2",
+        "kafka streams exactly once",
+        "streams exactly once",
+        "sendoffsets",
+        "offsets in the database",
+        "offsets in the same transaction",
+        "offsets in the sink",
+        "store offsets in the database",
+        "store the offset in the database",
+        "commit offsets with the data",
+        "exactly once into a database",
+        "exactly once to a database",
+        "exactly once to the sink",
+        "what guarantee do i really have",
+        "verify exactly once",
+        "prove exactly once",
+      ]
+    modules: []
+    answer: >
+      Kafka transactions make writes to topics and the consumer offsets atomic,
+      and a consumer sees only committed records when isolation.level is
+      read_committed (the default, read_uncommitted, also returns records from
+      aborted transactions). Kafka Streams does this with exactly_once_v2. The
+      atomicity stops at Kafka: it does not include a database, so for an
+      external sink the Kafka documentation suggests storing the consumer offset
+      in the same database transaction as the data. That protects against a
+      consumer replaying a record, not against a duplicate that is already in
+      the topic at another offset, so the upsert still compares source log
+      positions and keeps deletes as markers. To check what your pipeline gives,
+      stop the sink, rewind its consumer group (and, if the sink stores offsets
+      itself, reset or delete its stored offset row, otherwise nothing is
+      replayed), replay, and confirm the table is unchanged.
+    links:
+      - label: Offsets in the sink's transaction
+        url: /is-cdc-exactly-once/
+        anchor: "#sink-title"
+        preview: Offsets and data in one transaction, plus the position guard.
+      - label: What guarantee do I really have?
+        url: /is-cdc-exactly-once/
+        anchor: "#decide-title"
+        preview: A short decision flow from topic to sink.
+      - label: Verify what your pipeline gives
+        url: /is-cdc-exactly-once/
+        anchor: "#verify-title"
+        preview: Find duplicates in the topic and replay into the sink.
 
   - id: multi_tenancy
     triggers:
@@ -406,6 +592,135 @@ intents:
         anchor: "#signals-title"
         preview: Golden signals, alerting rules, and dashboard setup.
 
+  - id: pipeline_testing
+    triggers:
+      [
+        "test my cdc pipeline",
+        "test a cdc pipeline",
+        "test cdc pipeline",
+        "testing a cdc pipeline",
+        "testing cdc pipeline",
+        "test my pipeline",
+        "test my debezium",
+        "test debezium",
+        "testing debezium",
+        "cdc testing strategy",
+        "cdc test plan",
+        "how do i test cdc",
+        "how to test cdc",
+        "how do i test debezium",
+        "how to test debezium",
+        "debezium testing",
+        "contract test",
+        "contract tests",
+        "testcontainers",
+        "testcontainers work",
+        "test containers",
+        "test kafka connect",
+        "testing kafka connect",
+        "how to test kafka connect",
+        "how do i test kafka connect",
+      ]
+    modules: []
+    answer: >
+      Test the contract, not the absence of duplicates. A CDC test plan has
+      three parts. Contract tests assert the change-event envelope on a
+      recorded fixture: op codes, before and after images, the key, the source
+      position fields and the tombstone after a delete. Sink tests replay the
+      same batch twice, shuffle events within a key and deliver a delete before
+      an older update, and require the final table to equal in-order
+      application by log position. Reconciliation checks (counts, checksums by
+      key range, max position per key) catch what injected events cannot. The
+      acceptance tests page checks the lab stack; this plan checks your
+      pipeline.
+    links:
+      - label: Testing a CDC Pipeline
+        url: /test-your-pipeline/
+        anchor: "#what-to-test-title"
+        preview: Seven tests, what each catches, and what each needs.
+      - label: Contract tests for the envelope
+        url: /test-your-pipeline/
+        anchor: "#contract-title"
+        preview: What to assert on op, before and after, key and source position.
+      - label: Acceptance Tests (lab stack)
+        url: /tests/
+        preview: Scripts that confirm the lab stack is up and events flow.
+
+  - id: duplicate_replay_tests
+    triggers:
+      [
+        "duplicate delivery test",
+        "test duplicate delivery",
+        "test for duplicate",
+        "test duplicate",
+        "idempotency test",
+        "test idempotency",
+        "test idempotent",
+        "cdc idempotency",
+        "replay test",
+        "test a replay",
+        "test replay",
+        "test for out of order",
+        "test out of order",
+        "test out-of-order",
+        "out of order test",
+        "property based",
+        "property based test",
+        "property-based test",
+        "property-based",
+        "convergence test",
+        "late older update",
+        "delete then late",
+        "kill the connector",
+        "kill the",
+        "kill",
+        "sigkill",
+        "test connector restart",
+        "test connector crash",
+        "test connector",
+        "connector restart test",
+        "crash test",
+        "how do i test for duplicate",
+        "how to test for duplicate",
+        "how do i test out of order",
+        "how to test out of order",
+        "how do i test replay",
+        "how to test replay",
+        "how do i test idempotency",
+        "how to test idempotency",
+      ]
+    modules: []
+    answer: >
+      To test a sink against at-least-once delivery, apply the same batch twice
+      and assert the table is unchanged, then deliver every event twice in a
+      shuffled order many times and assert the result equals in-order
+      application by source log position. Add a case where the delete arrives
+      before an older update for the same key: a sink that keeps the delete as
+      a marker with its position stays deleted, while one that removes the row
+      brings it back. Give the fixture two changes in the same millisecond, or
+      a sink ordered by a timestamp will pass. Do not assert that the topic has
+      no duplicates; Debezium documents that a crash can produce them.
+    links:
+      - label: Duplicate-delivery test
+        url: /test-your-pipeline/
+        anchor: "#duplicates-title"
+        preview: Apply the same batch twice and compare the state.
+      - label: Out-of-order and resurrection tests
+        url: /test-your-pipeline/
+        anchor: "#reorder-title"
+        preview: Shuffle events, deliver a delete before an older update.
+      - label: Property-based sketch
+        url: /test-your-pipeline/
+        anchor: "#property-title"
+        preview: Random logs against a reference model, with shrinking.
+      - label: Crash and restart
+        url: /test-your-pipeline/
+        anchor: "#crash-title"
+        preview: Kill the connector mid-flight and count the duplicates.
+      - label: Offsets and replays
+        url: /ops-offsets/
+        preview: The operational side of the crash test.
+
   - id: event_envelope
     triggers:
       [
@@ -428,8 +743,9 @@ intents:
       primary key is the stable identifier for idempotent upserts, and the log
       position or transaction identifier is where you resume when reprocessing.
       The before image matters for audit pipelines, SCD Type 2 tables and cache
-      invalidation. Soft deletes are stored as explicit tombstones, because
-      compaction depends on them.
+      invalidation. A delete is an event with op d and a log position; Debezium
+      follows it with a tombstone (a record with a null value) so a compacted
+      topic can eventually drop the key. The tombstone has no position.
     links:
       - label: What lives inside the envelope
         url: /event-envelope/
@@ -487,6 +803,154 @@ intents:
       - label: Deletion requests and an append-only log
         url: /security/
         anchor: "#erasure-title"
+        preview: Three ways to honour a right-to-erasure request.
+
+  - id: delete_resurrection
+    triggers:
+      [
+        "resurrect",
+        "resurrection",
+        "row came back",
+        "row comes back",
+        "rows come back",
+        "reappear after",
+        "come back after",
+        "zombie row",
+        "deleted row",
+        "deleted rows",
+        "delete marker",
+        "delete markers",
+        "purge marker",
+        "purge a marker",
+        "purge a delete marker",
+        "update after a delete",
+        "late update after",
+      ]
+    modules: []
+    answer: >
+      A sink that physically removes the row on a delete also removes the
+      stored log position, so a replayed older update finds no row, inserts it
+      again and the deleted row comes back. Keep the delete as a delete marker
+      instead: a deleted flag plus the delete's source log position, with the
+      payload set to null, and a guard that applies a change only when its
+      position is greater than the stored one. Applying the delete twice is
+      then harmless. A Kafka tombstone cannot do this job because it has no
+      value and no position. Purge a marker only after every consumer has seen
+      it and nothing that can be replayed (topic, dead-letter queue, archive,
+      staging) holds an older event for that key.
+    links:
+      - label: Resurrection - the late, older update
+        url: /deletes-stay-deleted/
+        anchor: "#resurrection"
+        preview: One key, five arrivals, two sinks.
+      - label: Purging markers safely
+        url: /deletes-stay-deleted/
+        anchor: "#purge"
+        preview: When a delete marker can finally be removed.
+      - label: Making sinks bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Version guards on the source log position.
+
+  - id: tombstone_retention
+    triggers:
+      [
+        "delete.retention.ms",
+        "delete.retention",
+        "delete retention",
+        "consumer missed",
+        "tombstone retention",
+        "tombstones on delete",
+        "tombstones.on.delete",
+        "missed the tombstone",
+        "miss the tombstone",
+        "missed the delete",
+        "tombstone expire",
+        "tombstone expired",
+        "tombstone removed",
+        "tombstone alone",
+        "does a tombstone delete",
+        "tombstone delete the row",
+      ]
+    modules: []
+    answer: >
+      A Kafka tombstone is a record with a key and a null value. It tells the
+      log cleaner of a compacted topic that older records for the key may be
+      removed, and the tombstone itself is removed after delete.retention.ms
+      (one day by default). A consumer that falls further behind than that can
+      miss the delete. A tombstone does not delete a warehouse row by itself:
+      it has no position, and many sinks ignore it unless configured (the
+      Debezium JDBC sink needs delete.enabled set to true). Debezium follows
+      each delete event with a tombstone while tombstones.on.delete is true,
+      which is the default. If you flatten events, keep the delete event with
+      its position instead of passing on only the bare tombstone.
+    links:
+      - label: Three things people call a delete
+        url: /deletes-stay-deleted/
+        anchor: "#three-deletes"
+        preview: Delete event, tombstone and sink delete marker compared.
+      - label: What a consumer that falls behind misses
+        url: /deletes-stay-deleted/
+        anchor: "#late-consumer"
+        preview: delete.retention.ms and compacted topics.
+      - label: Ordering and compaction
+        url: /event-envelope/
+        anchor: "#ordering"
+        preview: Log position as the version, deletes and compaction.
+
+  - id: erasure_stores
+    triggers:
+      [
+        "delta vacuum",
+        "vacuum retention",
+        "delta time travel retention",
+        "time travel retention and delete",
+        "deleted data",
+        "expire snapshot",
+        "expire snapshots",
+        "expire_snapshots",
+        "snapshot expiry",
+        "fail-safe",
+        "right to be forgotten",
+        "gdpr delete",
+        "article 17",
+        "erase from backups",
+        "erase from the warehouse",
+        "erasure in the warehouse",
+        "data still exists",
+        "after the delete event",
+      ]
+    modules: []
+    answer: >
+      The delete event changes the current table only. Other copies live on
+      under their own settings. Delta keeps old versions for time travel (30
+      days by default) and removes data files only when VACUUM runs, for files
+      unreferenced longer than 7 days by default; with deletion vectors enabled
+      a delete does not rewrite the file until REORG TABLE APPLY PURGE does.
+      Check your version. Iceberg keeps old snapshots
+      until expire snapshots runs. BigQuery has a 7 day time travel window by
+      default and a 7 day fail-safe for the operations it lists. Snowflake has
+      1 day of time travel by default (up to 90 on Enterprise) and a 7 day
+      fail-safe. Dead-letter topics, staging tables, archives and backups are
+      separate copies with their own schedules. This is engineering guidance,
+      not legal advice: whether and when a copy must be erased, and whether an
+      Article 17(3) exception applies, is for your lawyer to decide.
+    links:
+      - label: Trace one deleted row
+        url: /deletes-stay-deleted/
+        anchor: "#trace"
+        preview: Every place a copy can live and the setting that governs it.
+      - label: Erasure requests - the technical question
+        url: /deletes-stay-deleted/
+        anchor: "#erasure"
+        preview: What the official text says and what to ask your lawyer.
+      - label: What to do Monday
+        url: /deletes-stay-deleted/
+        anchor: "#monday"
+        preview: A ten-step checklist.
+      - label: Deletion requests and an append-only log
+        url: /security/
+        anchor: "#erasure"
         preview: Three ways to honour a right-to-erasure request.
 
   - id: non_relational
@@ -555,7 +1019,7 @@ intents:
       window (24 hours by default) and no compaction, and resharding moves keys
       between shards. Google Pub/Sub has no ordering by default, so ordering
       must come from the event's log position, never from arrival. All four are
-      at-least-once and none gives exactly-once into an external sink, so
+      at-least-once by default and none gives exactly-once into an external sink, so
       upsert on the primary key and break ties on log position, not ts_ms.
     links:
       - label: Transports other than Kafka
@@ -627,7 +1091,7 @@ intents:
       ]
     modules: []
     answer: >
-      Every platform compared here delivers at-least-once at the wire, and none
+      Every platform compared here delivers at-least-once at the wire by default, and none
       gives end-to-end exactly-once across systems. Correctness comes from an
       idempotent sink - upsert on the primary key, ordered by the source log
       position, not ts_ms. The comparison matrix covers Debezium with Kafka
@@ -663,6 +1127,93 @@ intents:
         url: /glossary/
         anchor: "#glossary-terms"
         preview: Definitions with aliases and cross-references.
+
+  - id: replication_slot_wal
+    triggers:
+      [
+        "replication slot",
+        "replication slots",
+        "slot growing",
+        "postgres disk",
+        "postgres wal",
+        "wal_keep_size",
+        "pg_replication_slots",
+        "max_slot_wal_keep_size",
+        "restart_lsn",
+        "confirmed_flush_lsn",
+        "wal growth",
+        "wal growing",
+        "wal is growing",
+        "wal disk",
+        "wal accumulat",
+        "disk is filling",
+        "disk filling",
+        "disk full",
+        "pg_wal",
+        "drop the slot",
+        "drop a slot",
+        "abandoned slot",
+        "slot lost",
+        "lost slot",
+      ]
+    modules: []
+    answer: >
+      A Postgres logical replication slot keeps every WAL file from its
+      restart_lsn onward until the consumer confirms it, even when no
+      connector is connected, so a stopped or slow connector fills the disk.
+      Query pg_replication_slots for active, wal_status, restart_lsn and
+      confirmed_flush_lsn, and compare the retained WAL with free space.
+      max_slot_wal_keep_size caps retention (default -1 is unlimited), but a
+      slot that exceeds it is invalidated and the connector must re-snapshot
+      into an idempotent sink. Do not drop a slot until you know who owns it.
+    links:
+      - label: Replication slots and WAL growth
+        url: /postgres-replication-slots/
+        anchor: "#triage"
+        preview: The checks to run when a Postgres disk is filling.
+      - label: What to do, by situation
+        url: /postgres-replication-slots/
+        anchor: "#decision"
+        preview: Lagging, dead, abandoned and invalidated slots.
+      - label: Snapshotting
+        url: /snapshotting/
+        preview: The re-snapshot that follows a lost slot.
+
+  - id: debezium_heartbeat
+    triggers:
+      [
+        "heartbeat",
+        "heartbeat.interval.ms",
+        "heartbeat.action.query",
+        "slot.drop.on.stop",
+        "slot.name",
+        "failover slot",
+        "failover slots",
+        "slot synchronization",
+        "quiet table",
+        "low traffic database",
+        "low-traffic database",
+      ]
+    modules: []
+    answer: >
+      When most writes in a Postgres database are not on the captured tables,
+      the Debezium connector reads the log but rarely emits a change, so it
+      never confirms a new position and WAL piles up. Set
+      heartbeat.interval.ms, and for a quiet database add a heartbeat table,
+      put it in the publication and point heartbeat.action.query at it. Give
+      every connector its own slot.name and publication. On Postgres 17 and
+      later a failover slot can be synchronized to a standby; check your
+      version and verify the slot is ready before relying on it. Heartbeats
+      move the position; they do not make delivery exactly-once.
+    links:
+      - label: Debezium settings that decide slot health
+        url: /postgres-replication-slots/
+        anchor: "#debezium"
+        preview: Heartbeats, slot names, publications and slot.drop.on.stop.
+      - label: Failover and standbys
+        url: /postgres-replication-slots/
+        anchor: "#failover"
+        preview: Failover slots by Postgres version, with caveats.
 
   - id: start_here
     triggers:

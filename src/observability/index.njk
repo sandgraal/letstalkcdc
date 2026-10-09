@@ -42,7 +42,7 @@ scripts:
       <tbody>
         <tr>
           <th scope="row">Latency</th>
-          <td>End-to-end lag (source commit to sink ingest).</td>
+          <td>End-to-end <a href="{{ '/glossary/' | url }}#lag">lag</a> (source commit to sink ingest).</td>
           <td>Shows whether consumers see fresh data.</td>
         </tr>
         <tr>
@@ -78,7 +78,7 @@ scripts:
         restart count, and DLQ volume in one view.
       </li>
       <li>
-        <strong>Source health.</strong> Log retention, replication slot usage,
+        <strong>Source health.</strong> Log retention, <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a> usage,
         and database write rates to understand back pressure risk.
       </li>
       <li>
@@ -102,7 +102,7 @@ scripts:
         <li><strong>Throughput chart</strong> — Source and sink records per second over time</li>
         <li><strong>Error rate graph</strong> — Track failed batches and error logs</li>
         <li><strong>Connector status panel</strong> — At-a-glance health check for all connectors</li>
-        <li><strong>DLQ volume tracker</strong> — Monitor dead letter queue growth</li>
+        <li><strong>DLQ volume tracker</strong> — Monitor dead letter queue growth (triage with the <a href="{{ '/dlq-triage/' | url }}">DLQ Triage Assistant</a>)</li>
         <li><strong>Task running ratio</strong> — Detect saturation before it impacts throughput</li>
         <li><strong>Restart counter</strong> — Identify unstable connectors</li>
         <li><strong>Batch timing</strong> — Track processing performance trends</li>
@@ -256,7 +256,7 @@ scripts:
     <h2 id="monitoring-stack-title">Complete monitoring stack</h2>
     <p>
       Ready to see it all working together? We provide a complete Docker Compose stack
-      that includes Kafka Connect with JMX metrics enabled, Prometheus for collection,
+      that includes <a href="{{ '/glossary/#kafka-connect' | url }}">Kafka Connect</a> with JMX metrics enabled, Prometheus for collection,
       and Grafana with pre-configured dashboards.
     </p>
     <h3>What's in the monitoring stack</h3>
@@ -397,8 +397,10 @@ scripts:
     <h2 id="resources-title">Further resources</h2>
     <ul>
       <li><a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a> for the operational drills your alerts should trigger.</li>
+      <li><a href="{{ '/postgres-replication-slots/' | url }}">Postgres replication slots &amp; WAL growth</a> for the source-health alerts on a Postgres primary.</li>
       <li><a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a> to detect and repair out-of-sync sinks using drift detection and checksum validation.</li>
       <li><a href="{{ '/event-envelope/' | url }}">Event envelope</a> to align telemetry with payload contracts.</li>
+      <li><a href="{{ '/test-your-pipeline/' | url }}">Testing a CDC pipeline</a> for contract, duplicate and replay tests that complement these alerts.</li>
       <li><a href="{{ '/materialization/' | url }}">Materialization 101</a> to ensure observed freshness ties to downstream SLAs.</li>
       <li><a href="{{ '/versions/' | url }}">Changelog &amp; Version Matrix</a> to verify compatible versions for your monitoring stack.</li>
     </ul>

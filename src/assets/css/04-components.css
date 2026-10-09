@@ -20,6 +20,9 @@
    unstyled on all eight pages that use them. Bundling it here is the
    documented pattern for a shared component. */
 @import "components/panels.css";
+/* The code-block wrapper/header/copy-button classes are created by
+   code-blocks.js on every page and had no rules at all (P15-21). */
+@import "components/code-block.css";
 
 /* Buttons - Modern, sophisticated */
 .button {
@@ -352,7 +355,9 @@ a.button:where(:hover, :active, :focus-visible):not(
 
 .badge.recommended {
   background: var(--gradient-accent);
-  color: white;
+  /* The gradient is the same cyan-to-indigo in both themes, so the label is
+     a fixed dark ink (white was 1.96:1). */
+  color: #06131a;
   box-shadow:
     0 0 0 1px rgba(60, 200, 240, 0.3),
     var(--shadow-glow-sm);

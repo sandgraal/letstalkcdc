@@ -28,4 +28,26 @@ describe("MetricsStrip", () => {
     expect(screen.getByText(/Schema: 2/i)).toBeInTheDocument();
     expect(screen.getByText(/Trigger WA: 2\.5x \(~1\.5 extra writes\/change\)/i)).toBeInTheDocument();
   });
+
+  it("explains ordering by log position and keeps timestamps to the lag metric", () => {
+    render(
+      <MetricsStrip
+        lagMs={0}
+        throughput={0}
+        deletesPct={100}
+        orderingOk
+        consistent
+        insertCount={0}
+        updateCount={0}
+        deleteCount={0}
+        schemaChangeCount={0}
+      />,
+    );
+
+    const ordering = screen.getByText(/Ordering: OK/i);
+    expect(ordering.getAttribute("data-tooltip")).toMatch(/log position/i);
+    expect(ordering.getAttribute("data-tooltip")).not.toMatch(/timestamp/i);
+    expect(screen.getByText(/Consistency: OK/i).getAttribute("data-tooltip")).not.toMatch(/timestamp/i);
+    expect(screen.getByText(/Lag: 0ms/i).getAttribute("data-tooltip")).toMatch(/does not decide ordering/i);
+  });
 });
