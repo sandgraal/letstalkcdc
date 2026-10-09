@@ -130,6 +130,52 @@ test.describe("accessibility", () => {
     expect(violations).toEqual([]);
   });
 
+  // The page-level audit above filters `color-contrast` (global known issue:
+  // blue links on white cards), which let the CDC event demo regress twice:
+  // its muted title / badge / comment text sat at 4.36:1 and 4.08:1. The
+  // event panel is a dark surface in BOTH themes, so audit it on its own,
+  // strictly, in dark and light, idle and after an event has rendered.
+  for (const theme of ["dark", "light"]) {
+    for (const state of ["idle", "event emitted"]) {
+      test(`/intro/ event demo panel passes color-contrast (${theme}, ${state})`, async ({
+        page,
+      }) => {
+        await page.addInitScript((t) => {
+          window.localStorage.setItem("theme", t);
+        }, theme);
+        await page.goto("/intro/");
+        await page.waitForLoadState("networkidle");
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+
+        const panel = page.locator("#cdc-event-demo .ced-event-panel");
+        await panel.scrollIntoViewIfNeeded();
+
+        if (state === "event emitted") {
+          await page.locator("#cdc-event-demo [data-ced-insert]").click();
+          await expect(
+            page.locator("#cdc-event-demo [data-ced-op-badge]"),
+          ).not.toHaveText(/waiting/);
+        }
+
+        const results = await new AxeBuilder({ page })
+          .include("#cdc-event-demo .ced-event-panel")
+          .withRules(["color-contrast"])
+          .analyze();
+
+        const failures = results.violations.flatMap((v) =>
+          v.nodes.map(
+            (n) =>
+              `${n.target.join(" ")}: ${n.any[0]?.message ?? v.description}`,
+          ),
+        );
+        expect(
+          failures,
+          `color-contrast failures in the CDC event demo panel (${theme}, ${state}):\n${failures.join("\n")}`,
+        ).toEqual([]);
+      });
+    }
+  }
+
   test("ARIA landmarks are present", async ({ page }) => {
     await page.goto("/");
 

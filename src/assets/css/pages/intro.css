@@ -1032,7 +1032,10 @@
   color: var(--color-accent-primary);
 }
 
-/* Event panel — dark code surface in both themes */
+/* Event panel — dark code surface in both themes.
+   Muted text (#718397) is 4.75:1 on the panel's #0e141d, clearing WCAG AA
+   (4.5:1). Keep the title, badge and comment colours at or above that; the
+   old #6b7d8f was 4.36:1 and failed color-contrast. */
 .ced-event-panel {
   border: 1px solid #1b2531;
   border-radius: var(--radius-md);
@@ -1047,7 +1050,7 @@
   border-bottom: 1px solid #1b2531;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: #6b7d8f;
+  color: #718397;
 }
 .ced-dot {
   width: 9px;
@@ -1062,7 +1065,7 @@
   font-weight: 600;
   padding: 2px 9px;
   border-radius: 20px;
-  color: #6b7d8f;
+  color: #718397;
 }
 .ced-op-badge--c {
   background: rgba(63, 185, 80, 0.16);
@@ -1083,6 +1086,10 @@
   font-size: var(--text-xs);
   line-height: 1.7;
   color: #dbe6f0;
+  /* The global `pre` rule paints --color-bg-elevated, which is pale in the
+     light theme (#eef2f7) and put pale text on a pale background inside the
+     dark panel. Inherit the panel surface instead. */
+  background: transparent;
   white-space: pre;
   overflow-x: auto;
   min-height: 12.5rem;
@@ -1100,7 +1107,7 @@
   color: #f0616d;
 }
 .ced-j-comment {
-  color: #6b7d8f;
+  color: #718397;
 }
 .ced-foot {
   margin: var(--space-lg) 0 0;
