@@ -17,12 +17,36 @@ const PAGES_TO_AUDIT = [
 ];
 
 /**
+ * `color-contrast` is NOT exempted by rule any more (it used to be, globally,
+ * because the light-theme accent blue was 3.77:1 on white). It is audited
+ * for every page in both themes, minus the exact elements below, which have
+ * contrast failures that do not come from the accent token and are tracked
+ * separately. A new failure anywhere else, including a regression of the
+ * accent colour, fails the test.
+ */
+const KNOWN_CONTRAST_ELEMENTS = {
+  // Light theme: hard-coded status colours (#10b981 / #f59e0b / #ef4444 on
+  // the page ground for the three simulator buttons; pale red / cyan /
+  // indigo severity pills at 1.5-2.2:1).
+  "/intro/": [
+    "#sim-insert",
+    "#sim-update",
+    "#sim-delete",
+    ".severity-must",
+    ".severity-should",
+    ".severity-nice",
+  ],
+  // Dark theme: the code-block copy buttons inherit the browser default
+  // black button text (1.1-1.2:1 on the dark code surface).
+  "/troubleshooting/": [".code-copy-button", ".copy-snippet"],
+};
+
+/**
  * Known a11y violation rule IDs per page — pre-existing content issues
  * tracked separately from the E2E test suite. These rules are filtered
  * from results so that new regressions are still caught.
  */
 const KNOWN_VIOLATIONS = {
-  global: ["color-contrast"], // Blue links on white cards/footer
   "/intro/": [
     "aria-prohibited-attr",
     "svg-img-alt",
@@ -46,9 +70,10 @@ test.describe("accessibility", () => {
 
       const results = await axe.analyze();
 
-      // Combine global + page-specific known violation rule IDs
+      // Page-specific known violation rule IDs (color-contrast is audited
+      // separately, per theme, below)
       const knownRules = new Set([
-        ...KNOWN_VIOLATIONS.global,
+        "color-contrast",
         ...(KNOWN_VIOLATIONS[pagePath] || []),
       ]);
 
@@ -72,6 +97,38 @@ test.describe("accessibility", () => {
         ).toEqual([]);
       }
     });
+
+    for (const theme of ["light", "dark"]) {
+      test(`${pagePath} passes color-contrast (${theme} theme)`, async ({
+        page,
+      }) => {
+        await page.addInitScript((t) => {
+          window.localStorage.setItem("theme", t);
+        }, theme);
+        await page.goto(pagePath);
+        await page.waitForLoadState("networkidle");
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+
+        let axe = new AxeBuilder({ page })
+          .withRules(["color-contrast"])
+          .exclude(".mermaid");
+        for (const selector of KNOWN_CONTRAST_ELEMENTS[pagePath] || []) {
+          axe = axe.exclude(selector);
+        }
+        const results = await axe.analyze();
+
+        const failures = results.violations.flatMap((v) =>
+          v.nodes.map(
+            (n) =>
+              `${n.target.join(" ")}: ${n.any[0]?.message ?? v.description}`,
+          ),
+        );
+        expect(
+          failures,
+          `color-contrast failures on ${pagePath} (${theme}):\n${failures.join("\n")}`,
+        ).toEqual([]);
+      });
+    }
   }
 
   test("images have alt text", async ({ page }) => {
@@ -120,8 +177,6 @@ test.describe("accessibility", () => {
 
     const results = await new AxeBuilder({ page })
       .withRules(["color-contrast"])
-      .exclude(".cta-button") // Known: blue CTA links on white cards
-      .exclude(".site-footer a") // Known: footer link contrast
       .analyze();
 
     const violations = results.violations.filter(
@@ -130,11 +185,11 @@ test.describe("accessibility", () => {
     expect(violations).toEqual([]);
   });
 
-  // The page-level audit above filters `color-contrast` (global known issue:
-  // blue links on white cards), which let the CDC event demo regress twice:
-  // its muted title / badge / comment text sat at 4.36:1 and 4.08:1. The
-  // event panel is a dark surface in BOTH themes, so audit it on its own,
-  // strictly, in dark and light, idle and after an event has rendered.
+  // The per-page contrast audit above skips a few known elements on /intro/,
+  // and the event demo regressed twice before it was audited: its muted
+  // title / badge / comment text sat at 4.36:1 and 4.08:1. The event panel
+  // is a dark surface in BOTH themes, so also audit it on its own, strictly,
+  // in dark and light, idle and after an event has rendered.
   for (const theme of ["dark", "light"]) {
     for (const state of ["idle", "event emitted"]) {
       test(`/intro/ event demo panel passes color-contrast (${theme}, ${state})`, async ({

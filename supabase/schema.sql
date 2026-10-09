@@ -58,3 +58,26 @@ $$;
 -- ---------------------------------------------------------------------------
 revoke all on public.assistant_feedback from anon, authenticated;
 grant insert on public.assistant_feedback to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Retention: delete feedback older than 12 months (APPLIED 2026-10-09 UTC)
+--
+-- This is the applied state, not a proposal. It was run against the live
+-- project as the migration `assistant_feedback_retention_12_months`
+-- (version 20261009032147, 2026-10-09 03:21 UTC). The job runs daily at
+-- 03:17 UTC. Re-running this block is safe: the extension create is
+-- guarded and any existing job of the same name is unscheduled first.
+-- Scope: public.assistant_feedback only. The playground tables (events,
+-- scenarios) have no retention job.
+-- ---------------------------------------------------------------------------
+create extension if not exists pg_cron with schema pg_catalog;
+
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'assistant-feedback-retention';
+
+select cron.schedule(
+  'assistant-feedback-retention',
+  '17 3 * * *',
+  $$delete from public.assistant_feedback where ts < now() - interval '12 months'$$
+);

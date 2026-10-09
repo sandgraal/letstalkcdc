@@ -121,7 +121,7 @@ Reading feedback is a maintainer-only action. Open the Supabase Dashboard → **
 
 #### Privacy
 
-When a visitor clicks 👍 or 👎 in the assistant, the site stores their last typed question, the matched topic id (`intent_id`), the vote and a timestamp in the project's Supabase database. The assistant panel shows a notice saying so. Rows are readable only by the maintainer, through the Supabase dashboard. There is no retention policy and no automatic deletion yet: rows stay until someone deletes them by hand in the dashboard (Table Editor → `assistant_feedback` → select the rows → delete). Visitors should not paste secrets or connection strings into the assistant.
+When a visitor clicks 👍 or 👎 in the assistant, the site stores their last typed question, the matched topic id (`intent_id`), the vote and a timestamp in the project's Supabase database. The assistant panel shows a notice saying so. Rows are readable only by the maintainer, through the Supabase dashboard. Rows are kept for 12 months: since 2026-10-09 a scheduled database job (`pg_cron` job `assistant-feedback-retention`, daily at 03:17 UTC) deletes rows older than that (recorded in `supabase/schema.sql`). To remove an entry sooner, delete it by hand in the dashboard (Table Editor → `assistant_feedback` → select the rows → delete). The retention job covers only `assistant_feedback`; the Change Feed Playground tables (`events`, `scenarios`) have no automatic deletion. Visitors should not paste secrets or connection strings into the assistant. The public explanation is the [privacy page](https://sandgraal.github.io/letstalkcdc/privacy/).
 
 #### Troubleshooting
 
