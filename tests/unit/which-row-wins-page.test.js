@@ -149,6 +149,48 @@ describe("/which-row-wins/ content", () => {
   });
 });
 
+describe("/which-row-wins/ review fixes", () => {
+  it("puts every table inside its own horizontal scroll container", () => {
+    const tables = [...page.matchAll(/<table/g)].length;
+    expect(tables).toBeGreaterThanOrEqual(2);
+    const wrapped = [
+      ...page.matchAll(
+        /<div style="overflow-x: auto"[^>]*data-table-scroll>\s*<table[\s\S]*?<\/table>\s*<\/div>/g,
+      ),
+    ];
+    expect(wrapped.length).toBe(tables);
+  });
+
+  it("keeps the at-a-glance table to five columns", () => {
+    const head = /<thead>([\s\S]*?)<\/thead>/.exec(page)[1];
+    expect([...head.matchAll(/<th /g)].length).toBe(5);
+  });
+
+  it("does not endorse a timestamp as an ordering key", () => {
+    expect(text).not.toMatch(/fine when the timestamp/i);
+    expect(text).not.toMatch(/timestamp is unique per key and clocks agree/i);
+    expect(text).toMatch(
+      /do not use one as the ordering key when the source gives you a log position/,
+    );
+  });
+
+  it("states the Iceberg sink dedup column has no default and is per batch", () => {
+    expect(text).toMatch(/has no default/);
+    expect(text).toMatch(/per batch only/);
+    expect(text).toMatch(/no cross-batch protection/);
+    expect(text).toMatch(/delete\.tombstone\.handling\.mode=rewrite/);
+    expect(text).toMatch(/guarded MERGE is the safe configuration/);
+    expect(text).not.toMatch(/default (?:is|as) `?__source_ts_ns/);
+  });
+
+  it("says Hudi equal ordering values resolve by arrival and needs a tie-break", () => {
+    expect(text).toMatch(/shouldKeepNewerRecord/);
+    expect(text).toMatch(/resolve by arrival order/);
+    expect(page).toContain("orderingFields = 'source_lsn,source_ordinal'");
+    expect(text).toMatch(/deltaMergeDeleteRecord/);
+  });
+});
+
 describe("/which-row-wins/ links", () => {
   const internal = [
     ...page.matchAll(/href="\{\{ '([^']+)' \| url \}\}"?(#[\w-]+)?/g),

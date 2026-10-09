@@ -16,9 +16,9 @@ scripts:
     <h2 id="question-title">The question</h2>
     <p>
       Your CDC events arrive twice, or out of order. What does your warehouse or lakehouse do with them, and what do you
-      have to set? CDC delivery is <a href="{{ '/glossary/' | url }}#effectively-once">at-least-once</a>, and
+      have to set? CDC delivery is at-least-once, and
       end-to-end exactly-once across independent systems is not achievable in general. What you can reach is
-      <strong>exactly-once processing</strong>: at-least-once transport into an
+      <strong>exactly-once processing</strong> (see <a href="{{ '/glossary/' | url }}#effectively-once">effectively-once</a>): at-least-once transport into an
       <a href="{{ '/glossary/' | url }}#idempotent-write">idempotent sink</a> keyed on the primary key and ordered by the
       <strong>source log position</strong> (<a href="{{ '/glossary/' | url }}#lsn-scn">LSN, SCN or binlog coordinate</a>),
       with deletes kept as <strong>delete markers</strong>.
@@ -45,15 +45,15 @@ scripts:
 
   <section id="at-a-glance" aria-labelledby="at-a-glance-title">
     <h2 id="at-a-glance-title">The six targets at a glance</h2>
+    <div style="overflow-x: auto" role="region" aria-label="Six targets compared" tabindex="0" data-table-scroll>
     <table>
       <caption>Key, ordering, tie-break and delete handling per target (from vendor documentation)</caption>
       <thead>
         <tr>
           <th scope="col">Target</th>
           <th scope="col">Key</th>
-          <th scope="col">What wins by default</th>
+          <th scope="col">What wins by default, and ties</th>
           <th scope="col">Setting that takes the log position</th>
-          <th scope="col">Tie-break</th>
           <th scope="col">Delete</th>
         </tr>
       </thead>
@@ -61,53 +61,48 @@ scripts:
         <tr>
           <th scope="row">BigQuery CDC ingestion</th>
           <td><code>PRIMARY KEY ... NOT ENFORCED</code> (up to 16 columns)</td>
-          <td>The record BigQuery ingested most recently</td>
+          <td>The record BigQuery ingested most recently. Equal sequence numbers: latest ingestion time.</td>
           <td><code>_CHANGE_SEQUENCE_NUMBER</code>, a hex <code>STRING</code>; the larger value wins</td>
-          <td>Equal sequence numbers: latest ingestion time</td>
           <td><code>_CHANGE_TYPE = 'DELETE'</code>; held 2 days for out-of-order deletes</td>
         </tr>
         <tr>
           <th scope="row">Databricks AUTO CDC</th>
           <td><code>KEYS (...)</code></td>
-          <td>No default: <code>SEQUENCE BY</code> is required</td>
+          <td>No default: <code>SEQUENCE BY</code> is required. Ties: next <code>STRUCT</code> field; otherwise not documented.</td>
           <td><code>SEQUENCE BY</code> a column or a <code>STRUCT(...)</code></td>
-          <td>Next <code>STRUCT</code> field; ties otherwise not documented</td>
           <td><code>APPLY AS DELETE WHEN</code>; tombstone kept 2 days by default</td>
         </tr>
         <tr>
           <th scope="row">Apache Hudi</th>
           <td>Record key</td>
-          <td>No ordering field set: later commit wins (<code>COMMIT_TIME_ORDERING</code>)</td>
+          <td>No ordering field set: later commit wins (<code>COMMIT_TIME_ORDERING</code>). Ties: next ordering field; see the Hudi section.</td>
           <td>Ordering field (<code>hoodie.table.ordering.fields</code>), which switches the default to <code>EVENT_TIME_ORDERING</code></td>
-          <td>Next ordering field; equal values not documented on the page read</td>
           <td>Delete operation or <code>_hoodie_is_deleted</code>: the record is removed</td>
         </tr>
         <tr>
           <th scope="row">Apache Iceberg</th>
           <td>Identifier / equality fields</td>
-          <td>Commit order (sequence numbers), no ordering column</td>
+          <td>Commit order (sequence numbers); no ordering column, so no tie-break.</td>
           <td>Not a table setting: guard in <code>MERGE INTO</code>, or order before the sink</td>
-          <td>Not applicable</td>
           <td>Row-level delete (equality delete in v2/v3), or your own marker column</td>
         </tr>
         <tr>
           <th scope="row">Delta Lake</th>
           <td>The <code>MERGE ... ON</code> predicate</td>
-          <td>Whatever the source side of the <code>MERGE</code> holds; several matching source rows can fail the merge</td>
+          <td>Whatever the source side of the <code>MERGE</code> holds; several matching source rows can fail the merge. Ties are yours to define.</td>
           <td>Your own guard in the <code>MERGE</code>, plus one row per key in the source</td>
-          <td>Yours to define</td>
           <td>Your <code>MERGE</code> decides; the vendor example deletes physically</td>
         </tr>
         <tr>
           <th scope="row">Snowflake</th>
           <td>The <code>MERGE ... ON</code> predicate</td>
-          <td>Duplicates in the source: error by default, otherwise an undefined row</td>
+          <td>Duplicates in the source: error by default, otherwise an undefined row. Ties are yours to define.</td>
           <td>Your own guard in the <code>MERGE</code>; a stream is an offset on the landed table, not the source log</td>
-          <td>Yours to define</td>
           <td>Your <code>MERGE</code> decides; a stream reports table-level <code>DELETE</code> rows</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <p>
       The pattern is the same everywhere: land the source position as a column, make it the ordering input, and keep the
       delete as a row that remembers its position. The rest of this page is the per-target detail.
@@ -122,6 +117,7 @@ scripts:
       <strong>(1)</strong> the 100-batch is replayed after 200 was applied; <strong>(2)</strong> 200 arrives before 100;
       <strong>(3)</strong> 300 was applied, then 200 is replayed.
     </p>
+    <div style="overflow-x: auto" role="region" aria-label="Worked replay results" tabindex="0" data-table-scroll>
     <table>
       <caption>Resulting row per target. Derived by reading the documentation, not by running any product.</caption>
       <thead>
@@ -189,6 +185,7 @@ scripts:
         </tr>
       </tbody>
     </table>
+    </div>
     <p>
       Replaying the <em>same</em> batch twice in order is harmless everywhere, because every row in it has the same
       position the second time. The danger is a replay that puts older content after newer content.
@@ -200,10 +197,11 @@ scripts:
     <p>
       Several vendor pages show a timestamp as the ordering input: BigQuery&rsquo;s single-section example is a
       processing timestamp, Hudi&rsquo;s SQL guide suggests a field &ldquo;that denotes the time of the event&rdquo;,
-      Delta&rsquo;s change-data example orders by a <code>time</code> column and the Debezium Server Iceberg sink
-      documents <code>__source_ts_ns</code> as the upsert deduplication column. Databricks&rsquo; multi-column example uses a
-      timestamp and an ID to break ties. These are fine when the timestamp is unique per key and clocks agree. Where your
-      source gives you a log position, it is the safer key: it says which change committed later, and a replay carries the
+      Delta&rsquo;s change-data example orders by a <code>time</code> column and the Debezium Server page lists
+      <code>__source_ts_ns</code> for its Iceberg sink. Databricks&rsquo; multi-column example uses a
+      timestamp and an ID to break ties. These examples are fine as illustrations of the setting, but a timestamp can tie
+      for one key and can be skewed between hosts, so do not use one as the ordering key when the source gives you a log
+      position. The log position is the safer key: it says which change committed later, and a replay carries the
       position it had the first time. Why, and how to compare positions: see
       <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>. If your source has no total order per
       key (some <a href="{{ '/non-relational/' | url }}">non-relational sources</a>), say so in the design and pick the
@@ -323,15 +321,21 @@ STORED AS SCD TYPE 1;</code></pre>
     <p>
       <strong>Safe configuration.</strong> Make the ordering field the log position. Hudi Streamer&rsquo;s Debezium guide
       already does this: <code>--source-ordering-field _event_lsn</code> for PostgreSQL, and a field derived from the
-      binlog file and position for MySQL. Multiple ordering fields compare first to second. What happens on equal
-      values is not stated on the pages read: check. The guide describes the payload comparison as applying when
+      binlog file and position for MySQL. Multiple ordering fields compare first to second, so list the position first and
+      the ordinal second. The Hudi source (<code>BufferedRecordMergerFactory</code> on the master branch, which may differ
+      from your release) shows why: <code>shouldKeepNewerRecord</code> keeps the newer record when ordering values are
+      equal (<code>compareTo(...) &gt;= 0</code>). With the LSN alone as ordering field, two changes that share an LSN
+      therefore resolve by arrival order. The guide describes the payload comparison as applying when
       deduplicating within a batch, and the payload classes it uses are marked deprecated on the merger page, so check
       your version.
     </p>
     <p>
       <strong>Deletes.</strong> A delete operation, or <code>_hoodie_is_deleted = true</code>, removes the record, and the
-      Debezium payload applies <code>d</code> events as deletes. Whether a later, lower-ordered upsert can bring a removed
-      key back is not stated on the pages read: check, or keep your own <code>deleted</code> flag and position in the row.
+      Debezium payload applies <code>d</code> events as deletes. In the same source,
+      <code>deltaMergeDeleteRecord</code> discards a delete whose ordering value is lower than the stored row&rsquo;s as
+      obsolete. A removed key leaves no marker, so my reasoning from that code is that a late, lower-ordered upsert can
+      insert it again; the documentation pages do not say, so check your version, or keep your own
+      <code>deleted</code> flag and position in the row.
     </p>
     <details>
       <summary>Hudi: table with an ordering field (untested)</summary>
@@ -340,12 +344,13 @@ CREATE TABLE IF NOT EXISTS customers_hudi (
   id BIGINT,
   email STRING,
   deleted BOOLEAN,
-  source_lsn BIGINT
+  source_lsn BIGINT,
+  source_ordinal BIGINT
 ) USING hudi
 TBLPROPERTIES (
   type = 'mor',
   primaryKey = 'id',
-  orderingFields = 'source_lsn',
+  orderingFields = 'source_lsn,source_ordinal',
   recordMergeMode = 'EVENT_TIME_ORDERING'
 );</code></pre>
     </details>
@@ -363,15 +368,24 @@ TBLPROPERTIES (
       errors if more than one source row can update a target row, so deduplicate the source first.
     </p>
     <p>
-      <strong>Safe configuration.</strong> Order before the sink, or merge with a guard on the position column (snippet
-      below). The Debezium Server Iceberg sink has <code>upsert-dedup-column</code> (highest value kept; limited to
-      <code>Long</code>; equal values resolved by operation priority <code>d</code> over <code>u</code> over
-      <code>r</code> over <code>c</code>). The Debezium page lists its default as <code>__source_ts_ns</code>, while the
-      sink project&rsquo;s own docs show an empty default and describe deduplication within a batch: check which applies,
-      set it explicitly, and add the position to the flattened record with the
-      <code>add.fields</code> option of the event-flattening transform (it prefixes names with <code>__</code>, so
-      <code>lsn</code> becomes <code>__lsn</code>). Whether it also guards against an older value in a later batch is not
-      stated: check.
+      <strong>Safe configuration.</strong> Order before the sink, or merge with a guard on the position column and the
+      ordinal, keyed on the primary key (snippet below). That guarded <code>MERGE</code> is the safe configuration.
+    </p>
+    <p>
+      <strong>The Debezium Server Iceberg sink is not a substitute.</strong> Its
+      <code>debezium.sink.iceberg.upsert-dedup-column</code> has no default: it is optional in the sink&rsquo;s
+      <code>IcebergConfig.java</code>, and the documentation table on debezium.io, which lists
+      <code>__source_ts_ns</code>, disagrees with the code and with the project&rsquo;s own docs. In
+      <code>IcebergTableOperator.addToTable</code>, deduplication runs per batch only, when upsert is on and the table has
+      identifier fields. With the column blank, the last event of the batch for a key wins. With it set, the
+      value is compared as a <code>Long</code> (null sorts lowest), and equal values fall back to operation priority
+      <code>d</code> over <code>u</code> over <code>r</code> over <code>c</code>. Nothing in that code compares an event with
+      the stored row, so an older value in a later batch overwrites a newer one: it gives no cross-batch protection. To put
+      the position in the record, use the <code>add.fields</code> option of the event-flattening transform (<code>lsn</code>
+      becomes <code>__lsn</code>), and set <code>delete.tombstone.handling.mode=rewrite</code>: without it a delete event
+      lacks the added fields, so it has no <code>__lsn</code> and loses to any update in the batch. This is my reading of
+      the repository code at master (<a href="https://github.com/memiiso/debezium-server-iceberg" rel="noopener">memiiso/debezium-server-iceberg</a>);
+      check your version.
     </p>
     <p>
       <strong>Deletes.</strong> Equality deletes are a v2/v3 feature; the draft v4 spec, which is not yet formally
