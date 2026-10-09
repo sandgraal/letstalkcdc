@@ -25,29 +25,27 @@ jobs:
           # Building the site needs no browser.
           PUPPETEER_SKIP_DOWNLOAD: "true"
         run: npm ci && npm run build && scripts/publish-playground.sh
-      - name: Resolve this site's public URL (for --remap)
+      - name: Resolve this site's public URL and repository (for --remap)
         id: own-site
         env:
           SITE_HOST: ${{ vars.SITE_HOST || 'https://sandgraal.github.io' }}
           ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '/letstalkcdc' }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           # Same host + prefix the build used, as an anchored regex for
-          # lychee's --remap (a root-served site has an empty prefix).
+          # lychee's --remap (a root-served site has an empty prefix). The
+          # trailing `(/|$)` matches the site URL with or without its final
+          # slash; the remap target ends in `/`, so both land on _site/.
           host="${SITE_HOST%/}"
           prefix="$(printf '%s' "$ELEVENTY_PATH_PREFIX" | sed 's#^/*##; s#/*$##')"
           if [ -n "$prefix" ]; then prefix="/${prefix}"; fi
-          pattern="^$(printf '%s/' "${host}${prefix}" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+          pattern="^$(printf '%s' "${host}${prefix}" | sed 's/[][\.*^$+?(){}|]/\\&/g')(/|\$)"
           echo "pattern=${pattern}" >> "$GITHUB_OUTPUT"
-      - name: Restore lychee cache
-        uses: actions/cache@v4
-        with:
-          path: .lycheecache
-          # actions/cache never overwrites an existing key, so key on the
-          # commit and restore the newest earlier cache by prefix. The cache
-          # is only saved when the job passes, so it holds successes only;
-          # a failed link is never remembered across runs.
-          key: lychee-${{ github.sha }}
-          restore-keys: lychee-
+          # This repository's own github.com URLs: owner/name come from the
+          # run (github.repository), so a rename needs no edit here.
+          repo="$(printf '%s' "$REPOSITORY" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+          echo "repo-files=^https://github\.com/${repo}/(blob|tree|edit)/main/" >> "$GITHUB_OUTPUT"
+          echo "repo-root=^https://github\.com/${repo}/?\$" >> "$GITHUB_OUTPUT"
       - uses: lycheeverse/lychee-action@v2.0.2
         env:
           # Authenticated requests to github.com avoid the rate-limited 404s
@@ -78,14 +76,38 @@ jobs:
           # https://github.com/sandgraal/letstalkcdc/{blob,tree,edit}/main/
           # -> the checkout means a link to a repo file is verified against
           # the PR's own tree instead of the remote main branch; a missing
-          # file still fails. The repo name is `repository` in
-          # src/_data/site.mjs.
+          # file still fails. The owner/name is github.repository (the
+          # `repository` in src/_data/site.mjs is the same value). The repo
+          # root URL (the footer's "GitHub" link, ~54 pages) is remapped to
+          # the checkout root too: lychee resolves a directory to 200, so it
+          # no longer goes over the network.
+          # Not checked, by design: a #fragment (an anchor that does not
+          # exist still passes) and a directory URL with no index.html
+          # (also passes locally).
           # --max-concurrency 8 (default 128) bounds what is left: lychee's
           # in-run cache only answers a URL once a first request for it has
           # finished, so fewer requests in flight means fewer duplicates
           # hit the network.
-          # --cache/--max-cache-age 1d reuse earlier passing results via the
-          # actions/cache step above.
+          # NO --cache here, on purpose. lychee keys its cache on the
+          # original URL, before the remap, and stores the result of the
+          # file:// check as a 200 for it. A later run that restores the
+          # cache then answers "[200] .../intro/ | Cached: OK" for a page
+          # (or repo file) that was deleted or renamed in the meantime, for
+          # up to --max-cache-age, which defeats the remap. Reproduced with
+          # lychee 0.16.1: second run, _site/intro/ and a linked repo file
+          # deleted, 0 errors. lychee 0.16 has no --cache-exclude-status or
+          # way to exclude file:// results, and after the remap only ~13
+          # distinct github.com URLs plus a few external links hit the
+          # network, so the cache bought little. Do not re-add an
+          # actions/cache step for .lycheecache without a separate pass for
+          # external links only.
+          #
+          # What this job does NOT check: the live deployment. The previous
+          # version fetched this site's public URLs over the network, i.e.
+          # the previous deploy, in parallel with the deploy in flight.
+          # Now those URLs are verified against the build in this run.
+          # `npm run verify:deployment` (scripts/deployment-verify.mjs)
+          # checks the live site and is a manual command.
           # --max-retries/--retry-wait-time are kept for timeouts. Note that
           # lychee does NOT retry a 5xx response (checked against the 0.16.1
           # this action bundles: one request, no wait), so retries were never
@@ -94,8 +116,8 @@ jobs:
             --no-progress --verbose --exclude-loopback
             --exclude '^https://www\.youtube-nocookie\.com/embed/'
             --max-concurrency 8
-            --cache --max-cache-age 1d
             --max-retries 5 --retry-wait-time 10
             --remap '${{ steps.own-site.outputs.pattern }} file://${{ github.workspace }}/_site/'
-            --remap '^https://github\.com/sandgraal/letstalkcdc/(blob|tree|edit)/main/ file://${{ github.workspace }}/'
+            --remap '${{ steps.own-site.outputs.repo-files }} file://${{ github.workspace }}/'
+            --remap '${{ steps.own-site.outputs.repo-root }} file://${{ github.workspace }}/'
             "_site/**/*.html"
