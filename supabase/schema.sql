@@ -6,9 +6,10 @@
 -- NOT applied automatically by CI or by the build. Run it by hand in the
 -- Supabase dashboard (SQL editor) if you ever need to recreate the table.
 --
--- Scope: only public.assistant_feedback. The `events` and `scenarios` tables
--- in the same project belong to the playground work and are intentionally
--- not described here.
+-- Scope: public.assistant_feedback, plus the retention jobs for the
+-- playground's `events` and `scenarios` tables in the same project (the
+-- tables themselves belong to the playground work and are intentionally not
+-- described here).
 --
 -- Access model: the browser posts to the PostgREST endpoint with the
 -- PUBLISHABLE key (role `anon`). That role may INSERT and nothing else.
@@ -68,7 +69,7 @@ grant insert on public.assistant_feedback to anon, authenticated;
 -- 03:17 UTC. Re-running this block is safe: the extension create is
 -- guarded and any existing job of the same name is unscheduled first.
 -- Scope: public.assistant_feedback only. The playground tables (events,
--- scenarios) have no retention job.
+-- scenarios) have their own 30-day jobs, recorded in the next block.
 -- ---------------------------------------------------------------------------
 create extension if not exists pg_cron with schema pg_catalog;
 
@@ -80,4 +81,36 @@ select cron.schedule(
   'assistant-feedback-retention',
   '17 3 * * *',
   $$delete from public.assistant_feedback where ts < now() - interval '12 months'$$
+);
+
+-- ---------------------------------------------------------------------------
+-- Retention: delete playground events and saved scenarios older than 30 days
+-- (APPLIED 2026-10-09 UTC; decision D9, plan item P15-24)
+--
+-- This is the applied state, not a proposal. Both jobs exist on the live
+-- project (pg_cron) and run daily in UTC: events at 03:23, scenarios at
+-- 03:29. Because they run once a day, a row can live for up to about 31
+-- days, and a shared scenario link stops working once its row is deleted.
+-- The playground tables are created and governed by the playground's own
+-- setup (playground/docs/supabase-setup.md); only the retention jobs are
+-- recorded here. `events` ages by created_at, `scenarios` by saved_at.
+-- Re-running this block is safe: the extension create is guarded and any
+-- existing job of the same name is unscheduled first.
+-- ---------------------------------------------------------------------------
+create extension if not exists pg_cron with schema pg_catalog;
+
+select cron.unschedule(jobid)
+from cron.job
+where jobname in ('playground-events-retention', 'playground-scenarios-retention');
+
+select cron.schedule(
+  'playground-events-retention',
+  '23 3 * * *',
+  $$delete from public.events where created_at < now() - interval '30 days'$$
+);
+
+select cron.schedule(
+  'playground-scenarios-retention',
+  '29 3 * * *',
+  $$delete from public.scenarios where saved_at < now() - interval '30 days'$$
 );

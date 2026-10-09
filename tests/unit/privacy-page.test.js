@@ -70,10 +70,26 @@ describe("privacy page source", () => {
     );
   });
 
-  it("does not claim the playground tables are deleted automatically", () => {
-    expect(page).toContain("No automatic deletion yet");
+  it("matches the playground retention jobs recorded in schema.sql", () => {
+    expect(schema).toContain("'playground-events-retention'");
+    expect(schema).toContain("'23 3 * * *'");
+    expect(schema).toContain(
+      "delete from public.events where created_at < now() - interval '30 days'",
+    );
+    expect(schema).toContain("'playground-scenarios-retention'");
+    expect(schema).toContain("'29 3 * * *'");
+    expect(schema).toContain(
+      "delete from public.scenarios where saved_at < now() - interval '30 days'",
+    );
+  });
+
+  it("states the 30-day playground retention and never the old claim", () => {
     expect(page).toContain("<code>events</code>");
     expect(page).toContain("<code>scenarios</code>");
+    expect(page).toContain("Deleted after 30 days");
+    expect(page).not.toMatch(/no automatic deletion/i);
+    expect(page).not.toMatch(/not deleted automatically/i);
+    expect(page).not.toMatch(/where it is not deleted yet/i);
   });
 
   it("gives contact routes and warns against pasting the text publicly", () => {
@@ -103,6 +119,21 @@ describe("privacy page, rendered", () => {
     expect(rendered).not.toContain("Last reviewed");
   });
 
+  it("says playground records go within 30 days (about 31), links expire, events are visible", () => {
+    const pg = section(rendered, "playground");
+    expect(pg).toMatch(/older than 30\s+days/);
+    expect(pg).toMatch(/up to about 31\s+days/);
+    expect(pg).toMatch(/share\s+link\s+stops\s+working/);
+    expect(pg).toMatch(/Anyone can read that\s+table/);
+    expect(pg).toMatch(/made-up\s+data/i);
+    const ret = section(rendered, "retention");
+    expect(ret).toMatch(/30\s+days/);
+    expect(ret).toMatch(/about 31\s+days/);
+    expect(ret).toMatch(/12 months/);
+    expect(section(rendered, "who-sees")).toMatch(/see new events live/);
+    expect(rendered).not.toMatch(/no automatic deletion/i);
+  });
+
   it("tells people not to paste private text or share links publicly", () => {
     const del = section(rendered, "delete");
     expect(del).toMatch(/Never paste your question, a playground share\s+link/);
@@ -120,6 +151,14 @@ describe("privacy page, rendered", () => {
     );
   });
 
+  it("names the privacy-enhanced YouTube host for the click-to-play player", () => {
+    const third = section(rendered, "third-parties");
+    const html = third || rendered;
+    expect(html).toContain("<strong>www.youtube-nocookie.com</strong>");
+    expect(html).toContain("<strong>img.youtube.com</strong>");
+    expect(html).not.toContain("<strong>www.youtube.com</strong>");
+  });
+
   it("qualifies the cookie claim and lists the event fields", () => {
     const cookies = section(rendered, "cookies");
     expect(cookies).toContain("site's own code does not set cookies");
@@ -128,6 +167,34 @@ describe("privacy page, rendered", () => {
     );
     expect(section(rendered, "playground")).toContain("<code>ts_ms</code>");
     expect(section(rendered, "playground")).toContain("<code>id</code>");
+  });
+});
+
+describe("playground made-up-data notice", () => {
+  const pgHtml = read("playground/index.html");
+  const pgCss = read("playground/assets/styles.css");
+
+  it("shows the 30-day note beside the row editor and the share controls", () => {
+    const notes = [...pgHtml.matchAll(/<p class="data-notice"[\s\S]*?<\/p>/g)];
+    expect(notes.map((m) => m[0].match(/id="([^"]+)"/)[1])).toEqual([
+      "dataNoticeInput",
+      "dataNoticeShare",
+    ]);
+    for (const [note] of notes) {
+      expect(note).toContain('role="note"');
+      expect(note).toMatch(/Use made-up data only/);
+      expect(note).toMatch(/shared\s+server/);
+      expect(note).toMatch(/other visitors can see\s+the live event stream/);
+      expect(note).toMatch(/deleted after 30 days/);
+      expect(note).toMatch(/share\s+links stop working after about 30 days/);
+    }
+  });
+
+  it("links the share button to its note and styles the note with theme tokens", () => {
+    expect(pgHtml).toMatch(
+      /id="btnShareLink"[^>]*aria-describedby="dataNoticeShare"/,
+    );
+    expect(pgCss).toMatch(/\.data-notice \{[^}]*var\(--muted-strong\)/);
   });
 });
 

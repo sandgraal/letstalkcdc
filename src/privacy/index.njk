@@ -8,7 +8,7 @@ canonicalPath: "/privacy/"
 
 {{ ui.hero({
   title: "Privacy",
-  description: "<p>Short version: reading the module pages stores nothing about you on a server. Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted, including where it is not deleted yet.</p>",
+  description: "<p>Short version: reading the module pages stores nothing about you on a server. Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted.</p>",
   align: "center",
   skillLevel: "About"
 }) | safe }}
@@ -103,11 +103,13 @@ canonicalPath: "/privacy/"
       snapshot.
     </li>
     <li>
-      <strong>No automatic deletion yet.</strong> The 12-month deletion job
-      described below covers only assistant feedback. Playground events and
-      saved scenarios are not deleted automatically today, and visitors
-      cannot delete them. You can still ask for removal (see "Asking about or
-      deleting your entry").
+      <strong>Deleted after 30 days.</strong> A scheduled database job runs
+      every day and deletes playground events and saved scenarios that are
+      older than 30 days. Because the job runs once a day, a record can
+      last up to about 31 days. When a scenario is deleted, its share link
+      stops working, so a link you copy will expire after about 30 days.
+      Visitors cannot delete their own events or scenarios sooner; you can
+      ask for earlier removal (see "Asking about or deleting your entry").
     </li>
     <li>
       <strong>Stays on your device:</strong> your workspace, your onboarding
@@ -174,7 +176,7 @@ canonicalPath: "/privacy/"
       <a href="{{ '/tooling/' | url }}">Tooling</a> page.
     </li>
     <li>
-      <strong>www.youtube.com</strong>: only if you click play on that
+      <strong>www.youtube-nocookie.com</strong>: only if you click play on that
       video, which then loads YouTube's player.
     </li>
     <li>
@@ -200,7 +202,12 @@ canonicalPath: "/privacy/"
   </p>
   <p>
     This applies only to assistant feedback. Change Feed Playground events
-    and saved scenarios currently have no automatic deletion.
+    and saved scenarios are kept for a much shorter time: 30 days. A
+    separate scheduled job runs every day and deletes playground events and
+    saved scenarios older than that, so a record can last up to about 31
+    days before it is removed, and a playground share link stops working
+    once its scenario is deleted. The playground also asks you, on the page,
+    to use made-up data only. This policy took effect on 2026-10-09.
   </p>
 </section>
 
@@ -214,8 +221,10 @@ canonicalPath: "/privacy/"
     the service it runs.
   </p>
   <p>
-    Change Feed Playground: events are readable by anyone, and a saved
-    scenario by anyone who has its link (see above).
+    Change Feed Playground: events are readable by anyone, and other
+    playground visitors see new events live while they are stored. A saved
+    scenario is readable by anyone who has its link (see above) until it is
+    deleted after 30 days.
   </p>
 </section>
 
@@ -239,7 +248,8 @@ canonicalPath: "/privacy/"
     Because nothing identifies you, an entry can only be found if you can
     tell us the exact question you asked and roughly when you asked it.
     Without that we cannot tell which record is yours, and it will be
-    deleted automatically within 12 months anyway. For a saved playground
+    deleted automatically within 12 months anyway (playground records
+    within about 31 days). For a saved playground
     scenario, send the share link privately (LinkedIn message); for
     playground events, tell us roughly when you used it and what you
     entered.
