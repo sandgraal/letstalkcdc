@@ -2,6 +2,14 @@ module.exports = {
   datePublished: "2026-02-06",
   dateModified: "2026-02-06",
   seriesKey: "multi-tenancy",
+  schemaType: "TechArticle",
+  schemaAbout: [
+    "Multi-Tenancy",
+    "Kafka Topics",
+    "Isolation",
+    "Throughput",
+    "RBAC",
+  ],
   heroConfig: {
     title: "Multi-Tenancy: Cost vs Isolation",
     description:
