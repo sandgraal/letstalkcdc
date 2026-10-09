@@ -191,7 +191,7 @@ describe("wording", () => {
   });
 
   it("says what was not run", () => {
-    expect(prose).toMatch(/was not run on PostgreSQL/);
+    expect(prose).toMatch(/not run on PostgreSQL by this repository/);
     expect(prose).toMatch(
       /None of these ran against a live Debezium and Kafka stack/,
     );

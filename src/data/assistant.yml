@@ -300,8 +300,8 @@ intents:
       [
         "sendoffsetstotransaction",
         "read_committed",
-        "read committed",
-        "isolation.level",
+        "kafka read_committed",
+        "isolation.level read_committed",
         "transactional.id",
         "kafka transaction",
         "exactly_once_v2",
@@ -333,8 +333,9 @@ intents:
       consumer replaying a record, not against a duplicate that is already in
       the topic at another offset, so the upsert still compares source log
       positions and keeps deletes as markers. To check what your pipeline gives,
-      stop the sink, rewind its consumer group, replay, and confirm the table is
-      unchanged.
+      stop the sink, rewind its consumer group (and, if the sink stores offsets
+      itself, reset or delete its stored offset row, otherwise nothing is
+      replayed), replay, and confirm the table is unchanged.
     links:
       - label: Offsets in the sink's transaction
         url: /is-cdc-exactly-once/

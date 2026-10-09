@@ -124,8 +124,8 @@ scripts:
           <th scope="row">3. Topic to sink (the consumer side)</th>
           <td>
             At-least-once. Kafka delivers at-least-once unless the writes and the offsets commit together.
-            Kafka Connect has no exactly-once framework for sinks: whether one provides it depends on the
-            connector. Debezium's JDBC sink documents at-least-once delivery.
+            Kafka Connect leaves sink exactly-once to the connector (it supplies hooks and the
+            <code>read_committed</code> setting), so whether a sink provides it depends on the connector. Debezium's JDBC sink documents at-least-once delivery.
           </td>
           <td>
             Inside Kafka: transactions and Kafka Streams <code>exactly_once_v2</code>
@@ -161,9 +161,10 @@ scripts:
 <pre><code># Every Connect worker (distributed mode, Connect 3.3.0 or later)
 exactly.once.source.support=enabled
 
-# The connector configuration, added to your existing Debezium settings
+# The connector configuration, added to your existing Debezium settings.
+# transaction.boundary is "poll" by default, and Debezium requires poll.
 "exactly.once.support": "required",
-"transaction.boundary": "poll"        # the default; Debezium requires poll</code></pre>
+"transaction.boundary": "poll"</code></pre>
     <h3>What the framework does when you switch it on</h3>
     <ul>
       <li>
@@ -223,7 +224,7 @@ exactly.once.source.support=enabled
         <tr>
           <th scope="row"><a href="https://issues.apache.org/jira/browse/KAFKA-17754" target="_blank" rel="noopener">KAFKA-17754</a></th>
           <td>A delayed EndTxn message can cause aborted read, lost writes, atomicity violation</td>
-          <td>Resolved (Fixed) on 2026-08-12. A committer's comment there says it &ldquo;should be resolved by KIP-890 and its related followups&rdquo;; no fix version is recorded, so check your broker release.</td>
+          <td>Resolved (Fixed) on 2026-08-12. A committer's comment there says it &ldquo;should be resolved by KIP-890 and its related followups&rdquo;; no fix version is recorded, so check your broker release and your client versions, including the producer inside Connect (KIP-890 says older clients cannot get the epoch-bump defense).</td>
         </tr>
         <tr>
           <th scope="row"><a href="https://issues.apache.org/jira/browse/KAFKA-17734" target="_blank" rel="noopener">KAFKA-17734</a></th>
@@ -250,7 +251,9 @@ exactly.once.source.support=enabled
     <h2 id="kafka-to-kafka-title">Inside Kafka: transactions, offsets and read_committed</h2>
     <p>
       If a step reads a topic and writes another topic (a filter, an enrichment, a join), Kafka can make
-      that step exactly-once, and Kafka's design documentation is explicit about where it stops.
+      that step exactly-once, and Kafka's design documentation is explicit about where it stops. This hop
+      sits on the same Kafka transactions as the Connect opt-in, so Debezium's reasoning about the open
+      issues above applies to it too.
     </p>
     <ul>
       <li>
@@ -332,7 +335,9 @@ COMMIT;</code></pre>
     <p>
       On start or partition assignment, read <code>next_offset</code> from <code>sink_offsets</code> and
       <code>seek</code> there. Run on one customer key, the same two statements behave like this (the logic was run
-      in SQLite 3.54, which accepts the same <code>ON CONFLICT ... WHERE</code> form; it was not run on PostgreSQL):
+      in SQLite 3.54, which accepts the same <code>ON CONFLICT ... WHERE</code> form, and this repository's test runs
+      them in SQLite; the PostgreSQL statements were not run on PostgreSQL by this repository, but an independent
+      review ran them on PGlite 18.3 and the table below matched):
     </p>
     <table>
       <caption>One key, four Kafka records, and what the two guards each catch</caption>
@@ -371,12 +376,15 @@ COMMIT;</code></pre>
       <li>
         <strong>Is there a step that reads a topic and writes a topic, using a transactional producer or Kafka Streams
         with <code>exactly_once_v2</code>?</strong> Then that step is exactly-once with respect to its input and output
-        topics, as long as every consumer of the output reads <code>read_committed</code>. Claim that, and nothing past
-        the topic.
+        topics, as long as every consumer of the output reads <code>read_committed</code>, and subject to the open
+        Kafka transaction issues listed above. Claim that, and nothing past the topic. If you have no such step
+        (the connector writes a topic and a plain consumer reads it), there is nothing exactly-once to claim
+        between the topic and the consumer; go to 2.
       </li>
       <li>
         <strong>Is the destination an external system (database, warehouse, search index, HTTP call)?</strong>
-        You do not have exactly-once delivery. Go to 3.
+        Yes: you do not have exactly-once delivery. Go to 3. No, the destination is another Kafka topic: you have
+        whatever step 1 gave you and the connector hop in step 4; skip to 4.
       </li>
       <li>
         <strong>Can the destination hold your consumer offsets in the same transaction as the data?</strong> If yes, a
@@ -405,17 +413,21 @@ COMMIT;</code></pre>
     <p>
       A configuration that says &ldquo;required&rdquo; does not prove behaviour. Three checks, in the order of
       cost. None of these ran against a live Debezium and Kafka stack for this page; the commands are written from
-      the Kafka tool documentation, and the <code>jq</code> pipeline was run on a three-line sample only.
+      the Kafka tool documentation, and the <code>jq</code> pipeline was run on a small hand-made sample only.
     </p>
     <ol>
       <li>
         <strong>Look for duplicates in the topic.</strong> Duplicates from the source show up as the same key and the
         same source position at two different offsets. With the JSON converter and schemas enabled the path is
-        <code>.payload</code>; adjust it for your converter.
+        <code>.payload</code>, and <code>.payload.source.lsn</code> is PostgreSQL's position field; substitute your
+        connector's (binlog file and position for MySQL, <code>commit_lsn</code> for SQL Server, <code>scn</code> for
+        Oracle) and adjust the path for your converter. The console consumer prints a tombstone as the literal text
+        <code>null</code>, which the filter skips.
 <pre><code>kafka-console-consumer.sh --bootstrap-server localhost:9092 \
   --topic dbserver1.public.customers --from-beginning --timeout-ms 10000 \
   --isolation-level read_committed \
-| jq -r '[.payload.source.lsn, .payload.op, (.payload.after.id // .payload.before.id)] | @tsv' \
+| jq -R -r 'fromjson? | select(.payload.source.lsn != null)
+    | [.payload.source.lsn, .payload.op, (.payload.after.id // .payload.before.id)] | @tsv' \
 | sort | uniq -d</code></pre>
         Every line printed is a change that appears more than once. Run it again with
         <code>--isolation-level read_uncommitted</code> to see what a default consumer sees: with the opt-in on, the
@@ -425,14 +437,16 @@ COMMIT;</code></pre>
         <strong>Inject the duplicates yourself.</strong> Stop the sink connector, rewind its consumer group, start it
         and compare the table with a copy taken before. The Kafka documentation describes
         <code>kafka-consumer-groups.sh --reset-offsets --to-earliest --execute</code> (the consumer instances must be
-        inactive). If the table changes, the sink is not idempotent. This is the cheapest test of the claim that
-        matters.
+        inactive). If your sink stores offsets itself, as in the pattern above, also reset or delete its
+        <code>sink_offsets</code> row, otherwise the consumer seeks to the stored offset and nothing is replayed. If
+        the table changes, the sink is not idempotent. This is the cheapest test of the claim that matters.
       </li>
       <li>
         <strong>Kill the connector mid-batch.</strong> Send <code>SIGKILL</code> to the Connect worker while changes are
         flowing, restart it, and run check 1. With the opt-in off you expect duplicates if the kill landed between
-        writing records and recording offsets; with it on you expect none visible to a <code>read_committed</code>
-        consumer. Fail the run if you injected no duplicates, since then the sink was never exercised. The
+        writing records and recording offsets; with it on you would expect none in the typical case, but Debezium itself does not claim
+        that holds, so a duplicate here is a finding, not proof the sink may be non-idempotent. In the opt-in-off run,
+        fail the test if you injected no duplicates, since then the sink was never exercised. The
         <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a> gives you a stack to try it on, and the
         <a href="{{ '/ops-offsets/' | url }}">offsets and replays</a> page covers rewinds.
       </li>

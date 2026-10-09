@@ -420,6 +420,13 @@ describe("assistant knowledge base – is CDC exactly-once, per hop (M2)", () =>
     expect(idOf(query)).toBe("kafka_transactions_sink_offsets");
   });
 
+  it("does not capture PostgreSQL isolation-level questions", () => {
+    expect(idOf("what is read committed in postgres")).toBeNull();
+    expect(idOf("what is isolation.level in a database")).not.toBe(
+      "kafka_transactions_sink_offsets",
+    );
+  });
+
   it("leaves the plain delivery questions to exactly_once", () => {
     expect(idOf("exactly once delivery guarantee")).toBe("exactly_once");
     expect(idOf("why do i get duplicate events")).toBe("exactly_once");
