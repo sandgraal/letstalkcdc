@@ -35,7 +35,8 @@ eleventyExcludeFromSitemap: true
     
 <link href="{{ site.host }}{{ page.url }}" rel="canonical"/><meta content="Hands-on, precise guidance for building and operating Change Data Capture pipelines." name="description"/></head>
 <body><a class="skip-link" href="#main">Skip to content</a>
-<div class="wrap" id="main">
+<main class="wrap" id="main">
+<h1>Mermaid Sandbox</h1>
 <div class="mermaid">
         sequenceDiagram autonumber participant App as App Service participant DB
         as OLTP DB participant OB as Outbox Table participant Bus as Event Bus
@@ -43,7 +44,7 @@ eleventyExcludeFromSitemap: true
         rows App-&gt;&gt;OB: INSERT event record DB--&gt;&gt;App: COMMIT OB--&gt;&gt;Bus: Outbox
         relay publishes Bus--&gt;&gt;Sink: Consume and apply (idempotent)
       </div>
-</div>
+</main>
 {# Must go through `viteAsset`: the raw source at /assets/js/app.js is
    passthrough-copied unbundled, so its bare `import Fuse from "fuse.js"`
    specifier fails in the browser and kills the whole module. #}

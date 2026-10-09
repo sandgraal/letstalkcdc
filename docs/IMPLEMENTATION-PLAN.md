@@ -1962,6 +1962,7 @@ production CSS hashes.
       #409. Accept: remove both, with the production CSS hash re-baselined
       (it will change) and recorded in `CLAUDE.md` and
       `.claude/commands/css-byte-check.md`. Size: S. Role: `css-refactor`.
+      _2026-10-09: half done, item stays open. Removed the `.copy-snippet` selectors and rule from `components/code-block.css` (no element carries that class in any template, script or built page; the JS only lists it in `LEGACY_COPY_SELECTOR`), hash re-baselined to `fceb82df…`; the production diff is deletions only. NOT removed: `.copy-btn` in `pages/snapshotting.css` and `button.copy` in `pages/failure-drills.css`, `troubleshooting.css` and friends. The evidence was wrong for them: the static markup is still in `src/snapshotting/index.njk` (6 `<button class="copy-btn">`) and `src/troubleshooting/failure-drills.njk` plus `index.njk` (about 30 `<button class="copy">`); `code-blocks.js` only deletes those at runtime, so the rules style a dead no-JS button. Remaining work: delete the static buttons from those templates, then the page CSS rules (page CSS is outside the bundle hash). `.copy` in `connector-builder.css`, `debezium-decoder.css` and `dlq-triage.css` is for those tools' own controls, a different job._
 - [x] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
       Outcome: the one-copy-button test covers every page with code blocks.
       Evidence (review of #409): the `PAGES` list in
@@ -2234,7 +2235,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       seed rows; the orphan `scenarios.json`; the brand pill. Size: M. Role:
       `implementer`, `reviewer`.
       _2026-10-09: #393 merged (phantom Dedupe/Drop-snapshot copy removed everywhere and guarded by a test; `snapshot-replay` relabelled "Re-insert after Update"; orphan `scenarios.json`, `playground/.eleventy.js` and `ui-index.js` deleted; brand pill fixed). Stays open: seed rows are documented, not fixed (9 of 11 scenarios have a `rows` entry that duplicates an `insert` op, so loading `rows` would be a duplicate-key insert), and `snapshot-to-stream` still says it shows "snapshot catch-up handing off to change feed tails", which is not modelled._
-- [ ] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
+- [x] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
       SEO work has no orphaned remainder. Accept: (a) the CSS hook for the 10
       heading-level skips (the other half of P16-9), routed to `css-refactor`
       after #376 merges; (b) an `<h1>` on `/mermaid-sandbox/` (not indexed, low
@@ -2242,6 +2243,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       re-run after the module batch and the numbers recorded (the measured
       baseline itself stays with P16-12). Size: S. Role: `css-refactor`,
       `implementer`.
+      _2026-10-09: done. (a) by the `.h-as-3`/`.h-as-4` helpers (see P16-9), (b) `/merge-cookbook/` by P16-9 and `/mermaid-sandbox/` now has an `<h1>` and a `<main>` (the audit's last heading problem was "no <main>" once the `<h1>` was in; the `<div id="main">` became `<main class="wrap" id="main">`, same class, no CSS change), so `npm run audit:seo` reports `headings.pagesWithAnyIssue` 0 and the `OUTLINE_EXEMPT` carve-out is gone from `tests/unit/internal-links-headings.test.js`; (c) the post-batch numbers are recorded in `docs/seo-baseline-2026-10-after.md`._
 
 ### Follow-ups found in the autopsy (2026-10-09)
 

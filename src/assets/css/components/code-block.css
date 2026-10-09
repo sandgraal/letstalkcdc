@@ -7,11 +7,10 @@
        .code-block-header > .code-block-language + button.code-copy-button
        pre > code
 
-   and appends a `button.copy-snippet` inside every `pre`. Apart from a
-   few spacing tweaks for narrow screens in 09-mobile-responsive.css,
-   none of these classes had a rule in the production bundle (the
-   stylesheet that carried them was purged in Month 0 without ever
-   having been imported), so the buttons rendered with the browser's
+   Apart from a few spacing tweaks for narrow screens in
+   09-mobile-responsive.css, none of these classes had a rule in the
+   production bundle (the stylesheet that carried them was purged in
+   Month 0 without ever having been imported), so the buttons rendered with the browser's
    default black button text and the language label was unstyled. That
    was 1.1-1.4:1 on every dark code surface.
 
@@ -51,8 +50,7 @@
   color: var(--color-text-secondary);
 }
 
-.code-copy-button,
-.copy-snippet {
+.code-copy-button {
   padding: var(--space-2xs) var(--space-sm);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
@@ -68,22 +66,13 @@
     color var(--transition-fast);
 }
 
-/* The copy button the script appends inside a <pre> sits in its corner. */
-.copy-snippet {
-  position: absolute;
-  top: var(--space-xs);
-  right: var(--space-xs);
-}
-
-.code-copy-button:hover,
-.copy-snippet:hover {
+.code-copy-button:hover {
   background-color: var(--color-bg-primary);
   border-color: var(--color-accent-primary);
   color: var(--color-text-primary);
 }
 
-.code-copy-button:focus-visible,
-.copy-snippet:focus-visible {
+.code-copy-button:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
