@@ -9,6 +9,18 @@ on:
 permissions:
   contents: read
 
+# pa11y / pa11y-ci depend on puppeteer, whose postinstall downloads a
+# Chrome build on every `npm ci` and fails the step when the download
+# providers are unreachable ("Failed to set up chrome-headless-shell ...
+# All providers failed"). No job uses that download: the e2e job uses
+# Playwright's own browser, and smoke/a11y point puppeteer at the
+# runner's google-chrome-stable via PUPPETEER_EXECUTABLE_PATH. (The
+# PUPPETEER_SKIP_CHROMIUM_DOWNLOAD set on those two steps is the
+# pre-v20 name and is ignored by puppeteer 24; it is
+# PUPPETEER_EXECUTABLE_PATH that has been skipping the download there.)
+env:
+  PUPPETEER_SKIP_DOWNLOAD: "true"
+
 jobs:
   # ───────────────────────────────────────────────────
   # Job 1: Build the site and cache the artifact
