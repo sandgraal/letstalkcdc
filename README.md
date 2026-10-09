@@ -6,19 +6,18 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/hero-dark.jpg">
-  <img src="docs/images/readme/hero-light.jpg" alt="The home page: the headline “Why Change Data Capture Still Breaks, and How To Get It Right.” and a one-line introduction, under the site navigation." width="100%">
+  <img src="docs/images/readme/hero-light.jpg" alt="The home page: the headline “Why Change Data Capture Still Breaks, and How To Get It Right.” and a short introduction, under the site navigation." width="100%">
 </picture>
 
 [![CI](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml)
 [![Link check](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml)
 [![License: MIT + CC BY 4.0](https://img.shields.io/badge/license-MIT%20%2B%20CC%20BY%204.0-blue)](LICENSE-CONTENT.md)
-[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](.lighthouserc.json)
 
-This repository, _Let's Talk CDC_, builds the site. It is free to read and has no sign-up. Every page is plain static HTML; JavaScript only adds the interactive parts.
+_CDC: The Missing Manual_ (also called Let's Talk CDC) is a free, no-sign-up guide for engineers who run, or are about to run, change data capture pipelines. If you can read SQL and have seen a message queue, you are ready.
 
 ## What you'll learn
 
-Change data capture (CDC) reads a database's transaction log and turns each committed row change into an event that other systems can consume: a warehouse, a cache, a search index, another service. It replaces nightly batch jobs with a stream. Capturing the changes is the easy part. Applying them correctly downstream is where pipelines go wrong.
+Change data capture (CDC) reads a database's transaction log and turns each committed row change into an event that other systems can consume: a warehouse, a cache, a search index, another service. It often replaces nightly batch jobs with a stream. Capturing the changes is the easy part. Applying them correctly downstream is where pipelines go wrong.
 
 The manual argues one thesis, and every module comes back to it:
 
@@ -26,7 +25,7 @@ The manual argues one thesis, and every module comes back to it:
 2. **Correctness lives in the sink.** Write idempotently, keyed on the primary key and ordered by log position (LSN, SCN, GTID), not by `ts_ms`.
 3. **End-to-end exactly-once across independent systems is not achievable.** What you can build is exactly-once _processing_: at-least-once transport plus an idempotent sink.
 
-Here is a change event, in the shape the [event envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/) module teaches:
+Here is a change event, in the shape the [introduction's event demo](https://sandgraal.github.io/letstalkcdc/intro/#cdc-event-demo) produces (the [event envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/) module explains each field):
 
 ```json
 {
@@ -93,18 +92,18 @@ Take it in this order if you are new to CDC:
 
 ## Try it
 
-Many modules end with a short quiz, and your progress is kept in your browser on the [progress page](https://sandgraal.github.io/letstalkcdc/dashboard/). Press `/` anywhere to search.
+Many modules end with a short quiz, and your progress is kept in your browser on the [progress page](https://sandgraal.github.io/letstalkcdc/dashboard/). Press `/` (or tap Search) on any page to search.
 
-<img src="docs/images/readme/event-demo.jpg" alt="The event demo on the introduction page: an editable customer table on the left and, on the right, the change event that the last insert, update or delete produced, with its op code, before and after images and log position." width="720">
+<img src="docs/images/readme/event-demo.jpg" alt="The event demo on the introduction page: an editable customer table on the left and, on the right, the change event that the last insert, update or delete produced, with its op code, before and after images and log position." width="480">
 
 - **Event demo.** Insert, update and delete rows in a small customer table and watch the [change event](https://sandgraal.github.io/letstalkcdc/intro/#cdc-event-demo) each one emits.
 - **Change Feed Playground.** A browser [simulator](https://sandgraal.github.io/letstalkcdc/playground/). Model a table, insert, update and delete by primary key, emit a snapshot, then inspect the Debezium-style events or copy them as NDJSON.
-- **Debezium tools.** Build a connector config, decode a pasted event, or work through a dead-letter queue with the pages in the module list above.
+- **Debezium tools.** Build a connector config, decode a pasted event, or work through a dead-letter queue with the Connector Config Builder, Debezium Event Decoder and DLQ Triage Assistant (see the full module list above).
 - **Run a real stack.** `docker compose up -d` starts Postgres, MySQL, Kafka, Debezium Connect and Kafka UI on your machine. See the [sandbox guide](docs/SANDBOX.md).
 
 <img src="docs/images/readme/playground.jpg" alt="The Change Feed Playground comparing three capture methods on the same changes: an event log with 7 events produced and consumed, a mix of inserts, updates and deletes, split across a Debezium binlog tail, triggers and polling, each event with Replay and Copy buttons and a Download NDJSON option." width="720">
 
-It reads the same on a phone, in light or dark:
+It works on a phone, and has a light and a dark theme:
 
 <img src="docs/images/readme/mobile.jpg" alt="The top of the home page on a phone in dark theme: logo, menu, theme toggle and search above the same headline." width="260">
 
@@ -118,7 +117,7 @@ It reads the same on a phone, in light or dark:
 
 - **Vendor-neutral first.** Concepts come in general terms, then map to stacks such as Debezium, Kafka, Snowflake and Matillion.
 - **Corrections are public.** See the [errata](https://sandgraal.github.io/letstalkcdc/errata/) and the [methodology](https://sandgraal.github.io/letstalkcdc/methodology/) page on how claims are checked.
-- **Checked by machines.** CI runs [unit, pa11y, axe and Lighthouse checks](.github/workflows/ci.yml) (Lighthouse fails below the badge floor), and a [link check](.github/workflows/linkcheck.yml) crawls the built site.
+- **Checked by machines.** Every change runs [unit, pa11y, axe and Lighthouse checks](.github/workflows/ci.yml), and a [link check](.github/workflows/linkcheck.yml) crawls the built site.
 - **No analytics.** No analytics script and no cookies from the site's own code; a few pages load Mermaid or Chart.js from a CDN, and the playground can use Supabase for saved scenarios and share links (see the [privacy note](https://sandgraal.github.io/letstalkcdc/privacy/)).
 - **The assistant is optional.** A thumbs-up or thumbs-down can store your last typed question with the vote, so don't paste secrets into it ([privacy note](https://sandgraal.github.io/letstalkcdc/privacy/), [SECURITY.md](SECURITY.md)).
 

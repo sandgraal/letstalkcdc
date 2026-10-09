@@ -19,8 +19,14 @@ rules (pull requests, voice, conventions) are in [CONTRIBUTING.md](CONTRIBUTING.
 git clone https://github.com/sandgraal/letstalkcdc.git
 cd letstalkcdc
 npm ci               # use ci, not install, to honour the lockfile
-npm run dev          # Eleventy dev server on http://localhost:8080
+npm run dev          # builds the CSS (npm's `preserve` hook), then serves on http://localhost:8080
 ```
+
+`npm run dev` runs `npm run serve`, and npm runs the `preserve` script first, which
+runs `npm run build:css`. That is what creates `src/assets/css/styles.min.css`,
+which is gitignored. If you start Eleventy any other way (for example
+`npx eleventy --serve`), run `npm run build:css` once first or the pages will
+be unstyled.
 
 In dev there is no Vite manifest, so the `viteAsset` filter falls back to the
 unhashed source paths. Run `npm run build` once for a production-shaped
@@ -168,7 +174,12 @@ Two facts worth knowing:
 `.github/workflows/ci.yml` runs on pushes and pull requests to `main`: build,
 ESLint and Prettier, unit tests, `npm audit --production`, the smoke suite,
 pa11y accessibility tests, Playwright end-to-end tests (including axe checks)
-and Lighthouse CI. `linkcheck.yml` builds the site and crawls it with lychee.
+and Lighthouse CI. The Lighthouse floors apply to `/intro/` only, and this badge
+states them (a unit test fails if it drifts from `.lighthouserc.json`):
+
+[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](../.lighthouserc.json)
+
+`linkcheck.yml` builds the site and crawls it with lychee.
 `deploy.yml` publishes to GitHub Pages. The playground has its own workflows
 (`playground-preflight.yml`, `playground-generated-bundles.yml`,
 `playground-harness-nightly.yml`).
