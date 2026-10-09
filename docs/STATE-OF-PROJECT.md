@@ -21,9 +21,9 @@ page does not repeat it.
 - 1,727 unit tests in 58 files pass locally. The CI run for `bd5a2a4`
   (run 37968897711) finished successfully. This is as of `bd5a2a4`; newer
   commits are not reflected.
-- 9 plan boxes are open, each in exactly one bucket: two need Docker
-  (P15-37, P15-46); four need a maintainer action or decision (P15-13,
-  P15-39, P15-52, P16-30); two wait for data (P16-12, P16-25); one is the
+- 8 plan boxes are open, each in exactly one bucket: two need Docker
+  (P15-37, P15-46); three need a maintainer action or decision (P15-13,
+  P15-39, P15-52); two wait for data (P16-12, P16-25); one is the
   `/intro/` performance box.
 - Newsletter (Buttondown) and visit counts (GoatCounter) went live today.
   Search Console is verified and the sitemap is submitted (maintainer's report).
@@ -210,10 +210,9 @@ ticked. All nine decisions in Phase 14 are answered.
 | P15-52                        | Confirm in the Codacy dashboard that nothing runs `.codacy/cli.sh`, then delete it                                                                                                                                                                                                                         |
 | P16-12                        | SEO baseline: Lighthouse on the 10 key pages, and the 28-day snapshot due 2026-11-06                                                                                                                                                                                                                       |
 | P16-25                        | Re-run the content-gap plan once `assistant_feedback` has 30 rows (2 now) and Search Console has data                                                                                                                                                                                                      |
-| P16-30                        | Put `/playground/` under the contrast check in CI. Awaiting the maintainer's decision: it changes CI                                                                                                                                                                                                       |
 
 **Maintainer action or decision:** P15-13 (the domain name), P15-39 (file the
-issue), P15-52 (Codacy dashboard), P16-30 (approve a CI change).
+issue), P15-52 (Codacy dashboard).
 **Waiting for data:** P16-12 (28-day snapshot, due 2026-11-06) and P16-25
 (30 feedback rows, Search Console data).
 **Docker-only, left for the autopsy team:** P15-37 and P15-46; the

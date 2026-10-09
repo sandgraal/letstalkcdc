@@ -163,7 +163,9 @@ scripts/publish-playground.sh
 
 The deploy workflow runs the second and third steps, so this is what ships.
 CI's build artifact skips the third step, which is why some CI numbers differ
-(see the e2e row).
+(see the e2e row). _Update 2026-10-09 (P16-30): the CI `e2e-tests` job now runs
+the third step itself before Playwright, so the playground contrast tests run in
+CI; the other CI jobs still use the artifact without it._
 
 ### Re-runnable measurements
 
@@ -452,7 +454,7 @@ npm run verify:deployment
 
 ### Open boxes in `IMPLEMENTATION-PLAN.md` at `bd5a2a4`
 
-9 open boxes (`grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`), re-derived
+8 open boxes (`grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`), re-derived
 after the closing PRs of 2026-10-09. At `eb7f95e` there were 21. Size and role
 are the plan's own; none is omitted. Check for newer merges with
 `gh pr list --state all`.
@@ -475,7 +477,6 @@ and P13-9 (the dashboard refresh).
 | P15-39 | File the upstream Debezium docs issue about `wal_keep_size`              | The maintainer decided to file. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md). Stays open until it is filed; the maintainer files it             |
 | P15-52 | Confirm in Codacy that nothing runs `.codacy/cli.sh`, then delete it     | Non-use is unproven without the dashboard                                                                                                                                      |
 | P15-13 | One place for the host (own-domain move)                                 | Code and runbook done (#354); README has `sandgraal.github.io` on 55 lines, 71 occurrences (`grep -c` counts lines). The maintainer plans an own domain; the name is undecided |
-| P16-30 | Put `/playground/` under the contrast check in CI                        | Awaiting the maintainer's decision: it changes CI behaviour                                                                                                                    |
 
 **Needs Docker (cannot be proven in CI as it stands; the maintainer has no Docker, so these are left for the autopsy team)**
 
@@ -493,8 +494,8 @@ and P13-9 (the dashboard refresh).
 **Found while writing this brief, not in the plan**
 
 1. **Fixed:** `/playground/` axe `color-contrast` failure on the tab hint
-   (#419; P16-29 measured 0 violations in the listed states). CI still cannot see
-   the playground (P16-30 is open).
+   (#419; P16-29 measured 0 violations in the listed states). CI now publishes
+   and audits the playground in both themes (P16-30, done).
 2. **Fixed:** the plan named `.lighthouserc.json`; the config is
    `lighthouse-ci.config.json` (P16-29 corrected the plan).
 3. **Still true:** `CLAUDE.md` says `main` is "branch-protected"; the API shows a
@@ -641,7 +642,7 @@ mitigation.
 | 5   | **Third-party scripts at runtime**                        | `/overview/` transfers 936 KB of Mermaid from jsdelivr (floating `mermaid@11`, no integrity); `/intro/` loads Chart.js (68 KB); `/overview/` is 1.19 MB in Lighthouse                                                                                                                                                                                                  | Vendor and pin the files, or lazy-load behind a click; add SRI                                                                                                                            |
 | 6   | **Supabase publishable key in the browser, RLS reliance** | Key is public by design; `anon` holds INSERT on three tables and SELECT on `events` per `schema.sql`; `events` is public and takes visitor-typed data; the schema file is "desired state", never applied by CI, and I could not inspect the live DB                                                                                                                    | Run the section 5 queries and compare grants with `pg_policies`; add a scheduled drift check; keep the made-up-data note                                                                  |
 | 7   | **Performance and layout-shift variability**              | Lighthouse floors are `warn` at 0.9 except `/intro/` (`error`, 0.84 since P15-44); `/intro/` scored 0.91 to 0.92 locally and 0.88 in CI (median); CLS was 0.33 under Slow 4G plus 4x CPU and is 0 since #413 (guard `tests/e2e/cls.spec.js`); 1,040 DOM elements; NO_LCP / NO_FCP flake                                                                                | DOM trim or acceptance; re-check the floor after about 10 more CI runs (raise only if best-of-3 stays at or above 0.90)                                                                   |
-| 8   | **Accessibility coverage gaps**                           | `/playground/` contrast was fixed (#419) but CI still cannot see the playground (P16-30 open); gradient headline text unmeasured (P15-35); no assistive-technology test is recorded anywhere                                                                                                                                                                           | Publish the playground in the CI artifact; real screen-reader pass (section 9)                                                                                                            |
+| 8   | **Accessibility coverage gaps**                           | `/playground/` failed axe contrast on the live site and CI could not see it (fixed by #419; CI's e2e job now publishes and audits it, P16-30); gradient headline text unmeasured (P15-35); no assistive-technology test is recorded anywhere                                                                                                                           | Done for the playground (P16-30); real screen-reader pass (section 9)                                                                                                                     |
 | 9   | **Dependency advisories (dev-only) and Node range**       | `npm audit`: 9 findings (4 moderate, 5 high), `npm audit --omit=dev`: 0; chain is `braces` through `chokidar`/`nunjucks`/`@11ty/eleventy-dev-server`. Playground lockfile: 5 high, 0 with `--omit=dev`. GitHub reports 0 open Dependabot alerts (100 or more fixed). No `dependabot.yml`. `engines` is `^22.22.3 \|\| ^24.15.0 \|\| >=26`; CI and `.nvmrc` use 24 only | Keep `--omit=dev` at 0; add a Node 22 CI job or narrow `engines`                                                                                                                          |
 | 10  | **Licensing and provenance of images**                    | Cover art (`src/static/images/cdc-cover.jpg`, the only `og:image`) is AI-generated and the maintainer's own, per the conductor's notes (**to be confirmed by the maintainer**). Its copyright status is legally unsettled. `LICENSE-CONTENT.md` (lines 8 and 31 to 32) already puts `src/static/images/**` under CC BY 4.0, which includes this file                   | Carve the AI-generated cover out of the CC BY claim in `LICENSE-CONTENT.md` (say it is released by the maintainer, with no claim beyond that); decide the same for other generated images |
 | 11  | **No measured audience yet**                              | GoatCounter live today; Search Console verified (maintainer's report) but empty; assistant feedback about 1 to 2 rows                                                                                                                                                                                                                                                  | Wait for data before choosing the next phase's content; section 9                                                                                                                         |
@@ -651,15 +652,15 @@ mitigation.
 
 ### Questions the autopsy should answer
 
-| #   | Question                                                               | Evidence to use                                                                |
-| --- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | Is the content correct enough to promote? Which pages are not?         | Section 4 sample; executed versus unexecuted SQL; labs run on current versions |
-| 2   | Do readers exist, and which pages do they use?                         | GoatCounter, Search Console, feedback rows (all too young today)               |
-| 3   | Can everyone use it? (keyboard, screen reader, mobile, reduced motion) | Real assistive-technology pass; P16-30 (playground not in the CI axe run)      |
-| 4   | Is it fast enough on real devices and networks?                        | Lighthouse field data is absent; lab only                                      |
-| 5   | Is it findable? Is anything wrongly excluded or duplicated in search?  | Search Console coverage; the audit's headline numbers                          |
-| 6   | Is the build and process safe to hand to a second person?              | Section 7 gates, required checks, secrets, who can deploy                      |
-| 7   | What should the next phase be: depth, growth, demos, or hardening?     | Answers 1 to 6 plus the maintainer's stated priorities                         |
+| #   | Question                                                               | Evidence to use                                                                   |
+| --- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1   | Is the content correct enough to promote? Which pages are not?         | Section 4 sample; executed versus unexecuted SQL; labs run on current versions    |
+| 2   | Do readers exist, and which pages do they use?                         | GoatCounter, Search Console, feedback rows (all too young today)                  |
+| 3   | Can everyone use it? (keyboard, screen reader, mobile, reduced motion) | Real assistive-technology pass (the playground is in the CI axe run since P16-30) |
+| 4   | Is it fast enough on real devices and networks?                        | Lighthouse field data is absent; lab only                                         |
+| 5   | Is it findable? Is anything wrongly excluded or duplicated in search?  | Search Console coverage; the audit's headline numbers                             |
+| 6   | Is the build and process safe to hand to a second person?              | Section 7 gates, required checks, secrets, who can deploy                         |
+| 7   | What should the next phase be: depth, growth, demos, or hardening?     | Answers 1 to 6 plus the maintainer's stated priorities                            |
 
 ### Suggested schedule
 
@@ -697,7 +698,7 @@ mitigation.
    and the maintainer files it.
 7. **Codacy:** is it in use (P15-52)?
 8. **Playground:** P16-26, P16-27 and the contrast fix are done. Who owns it
-   from here (CODEOWNERS records no one), and may P16-30 change CI to audit it?
+   from here (CODEOWNERS records no one)? P16-30 (CI audits it) is done.
 9. **Third-party scripts:** pin and vendor Mermaid and Chart.js, or accept the
    CDN dependency.
 10. **Next phase's theme:** depth, growth, demos or hardening, once the data

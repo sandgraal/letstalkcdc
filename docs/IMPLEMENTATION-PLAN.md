@@ -2285,7 +2285,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       Current-state `.lighthouserc.json` references in this plan now name
       `lighthouse-ci.config.json`. Size: S. Role: `implementer`.
       _2026-10-09: done; historical notes that describe the old file keep its name. The dark `.section-lead` colour moved from #bac8e6 to `--muted-strong` (#c0cee6), a negligible brightening._
-- [ ] **P16-30 · Put `/playground/` under the contrast check in CI.**
+- [x] **P16-30 · Put `/playground/` under the contrast check in CI.**
       Outcome: a contrast regression in the playground fails a PR. Accept:
       CI publishes the playground into the artifact the e2e/axe job audits
       (the root axe test skips `/playground/` because `_site` has no
@@ -2299,4 +2299,12 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       over the playground's gradient background (same class as P15-35).
       **Needs maintainer approval: it changes CI behaviour.** Size: M. Role:
       `implementer`.
-      _2026-10-09: awaiting the maintainer's decision, so no agent should start it. It makes `ci.yml` (or the e2e job) publish the playground and audit it, which lengthens CI and adds a new way for a PR to fail. The one-off measurement that motivated it is in P16-29._
+      _2026-10-09: done (maintainer approved the CI change). The `e2e-tests`
+      job runs `scripts/publish-playground.sh` before Playwright (bundles are
+      committed, so no playground `npm ci`); `accessibility.spec.js` audits
+      onboarding, Feed, Feed after Seed + Emit Snapshot, Compare idle and the
+      three `?try=` labs, in both themes, with reduced motion emulated. The old
+      generic `/playground/` sitemap test only ever audited the dark theme
+      (the playground themes `body[data-theme]` from `cdc_theme_preference_v1`),
+      so it is excluded from that loop. Not covered: the 230 to 380 gradient
+      "incomplete" nodes per state remain P15-35 (axe cannot score them)._
