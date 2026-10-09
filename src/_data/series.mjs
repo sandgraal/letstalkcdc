@@ -63,6 +63,15 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "which-row-wins",
+    title: "Which Row Wins in Your Target",
+    description:
+      "Ordering and delete markers in BigQuery, Databricks, Hudi, Iceberg, Delta and Snowflake: what decides the winner and what to set.",
+    href: "which-row-wins/",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "schema-evolution",
     title: "Schema Evolution",
     description:

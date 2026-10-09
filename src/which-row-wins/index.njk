@@ -1,0 +1,561 @@
+---
+layout: base.njk
+title: "Which Row Wins in Your Target"
+description: "Ordering and delete markers in BigQuery, Databricks, Hudi, Iceberg, Delta and Snowflake: what each target does by default and what to set instead."
+canonicalPath: "/which-row-wins/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section id="question" aria-labelledby="question-title">
+    <h2 id="question-title">The question</h2>
+    <p>
+      Your CDC events arrive twice, or out of order. What does your warehouse or lakehouse do with them, and what do you
+      have to set? CDC delivery is <a href="{{ '/glossary/' | url }}#effectively-once">at-least-once</a>, and
+      end-to-end exactly-once across independent systems is not achievable in general. What you can reach is
+      <strong>exactly-once processing</strong>: at-least-once transport into an
+      <a href="{{ '/glossary/' | url }}#idempotent-write">idempotent sink</a> keyed on the primary key and ordered by the
+      <strong>source log position</strong> (<a href="{{ '/glossary/' | url }}#lsn-scn">LSN, SCN or binlog coordinate</a>),
+      with deletes kept as <strong>delete markers</strong>.
+    </p>
+    <p class="callout">
+      Every target below has a way to say &ldquo;this column decides which version wins&rdquo;. Several default to
+      something else: arrival order, commit order or a timestamp. The job is to name three things for your target: the
+      <strong>key</strong>, the <strong>ordering column</strong> (the log position) and the <strong>delete marker</strong>.
+    </p>
+    <p>
+      Prerequisites:
+      <a href="{{ '/event-envelope/' | url }}#ordering-title">Event envelope</a>,
+      <a href="{{ '/materialization/' | url }}#merge-title">Materialization 101</a> and
+      <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>, which explains why a timestamp, a
+      Kafka offset or <code>ts_ms</code> is the wrong version and how to compare positions. This page does not repeat
+      that argument; it maps it onto six products.
+    </p>
+    <p class="muted">
+      Everything here was checked by reading each vendor&rsquo;s documentation on 2026-10-09 (links at the end). Nothing
+      was run against a live product. Where a behaviour is not stated in the pages read, the text says
+      &ldquo;check your version&rdquo; instead of guessing.
+    </p>
+  </section>
+
+  <section id="at-a-glance" aria-labelledby="at-a-glance-title">
+    <h2 id="at-a-glance-title">The six targets at a glance</h2>
+    <table>
+      <caption>Key, ordering, tie-break and delete handling per target (from vendor documentation)</caption>
+      <thead>
+        <tr>
+          <th scope="col">Target</th>
+          <th scope="col">Key</th>
+          <th scope="col">What wins by default</th>
+          <th scope="col">Setting that takes the log position</th>
+          <th scope="col">Tie-break</th>
+          <th scope="col">Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">BigQuery CDC ingestion</th>
+          <td><code>PRIMARY KEY ... NOT ENFORCED</code> (up to 16 columns)</td>
+          <td>The record BigQuery ingested most recently</td>
+          <td><code>_CHANGE_SEQUENCE_NUMBER</code>, a hex <code>STRING</code>; the larger value wins</td>
+          <td>Equal sequence numbers: latest ingestion time</td>
+          <td><code>_CHANGE_TYPE = 'DELETE'</code>; held 2 days for out-of-order deletes</td>
+        </tr>
+        <tr>
+          <th scope="row">Databricks AUTO CDC</th>
+          <td><code>KEYS (...)</code></td>
+          <td>No default: <code>SEQUENCE BY</code> is required</td>
+          <td><code>SEQUENCE BY</code> a column or a <code>STRUCT(...)</code></td>
+          <td>Next <code>STRUCT</code> field; ties otherwise not documented</td>
+          <td><code>APPLY AS DELETE WHEN</code>; tombstone kept 2 days by default</td>
+        </tr>
+        <tr>
+          <th scope="row">Apache Hudi</th>
+          <td>Record key</td>
+          <td>No ordering field set: later commit wins (<code>COMMIT_TIME_ORDERING</code>)</td>
+          <td>Ordering field (<code>hoodie.table.ordering.fields</code>), which switches the default to <code>EVENT_TIME_ORDERING</code></td>
+          <td>Next ordering field; equal values not documented on the page read</td>
+          <td>Delete operation or <code>_hoodie_is_deleted</code>: the record is removed</td>
+        </tr>
+        <tr>
+          <th scope="row">Apache Iceberg</th>
+          <td>Identifier / equality fields</td>
+          <td>Commit order (sequence numbers), no ordering column</td>
+          <td>Not a table setting: guard in <code>MERGE INTO</code>, or order before the sink</td>
+          <td>Not applicable</td>
+          <td>Row-level delete (equality delete in v2/v3), or your own marker column</td>
+        </tr>
+        <tr>
+          <th scope="row">Delta Lake</th>
+          <td>The <code>MERGE ... ON</code> predicate</td>
+          <td>Whatever the source side of the <code>MERGE</code> holds; several matching source rows can fail the merge</td>
+          <td>Your own guard in the <code>MERGE</code>, plus one row per key in the source</td>
+          <td>Yours to define</td>
+          <td>Your <code>MERGE</code> decides; the vendor example deletes physically</td>
+        </tr>
+        <tr>
+          <th scope="row">Snowflake</th>
+          <td>The <code>MERGE ... ON</code> predicate</td>
+          <td>Duplicates in the source: error by default, otherwise an undefined row</td>
+          <td>Your own guard in the <code>MERGE</code>; a stream is an offset on the landed table, not the source log</td>
+          <td>Yours to define</td>
+          <td>Your <code>MERGE</code> decides; a stream reports table-level <code>DELETE</code> rows</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The pattern is the same everywhere: land the source position as a column, make it the ordering input, and keep the
+      delete as a row that remembers its position. The rest of this page is the per-target detail.
+    </p>
+  </section>
+
+  <section id="replay" aria-labelledby="replay-title">
+    <h2 id="replay-title">A worked replay</h2>
+    <p>
+      One key, three source changes: position 100 sets <code>name = 'a'</code>, position 200 sets
+      <code>name = 'b'</code>, position 300 deletes the key. Three things go wrong in practice:
+      <strong>(1)</strong> the 100-batch is replayed after 200 was applied; <strong>(2)</strong> 200 arrives before 100;
+      <strong>(3)</strong> 300 was applied, then 200 is replayed.
+    </p>
+    <table>
+      <caption>Resulting row per target. Derived by reading the documentation, not by running any product.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Target and ordering input</th>
+          <th scope="col">(1) Old batch replayed</th>
+          <th scope="col">(2) Swapped arrival</th>
+          <th scope="col">(3) Update after delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">BigQuery, no sequence number</th>
+          <td><code>a</code> (stale)</td>
+          <td><code>a</code> (stale)</td>
+          <td>Row returns</td>
+        </tr>
+        <tr>
+          <th scope="row">BigQuery, position as sequence number</th>
+          <td><code>b</code></td>
+          <td><code>b</code></td>
+          <td>Stays deleted; beyond the 2-day delete window: check</td>
+        </tr>
+        <tr>
+          <th scope="row">Databricks, <code>SEQUENCE BY</code> position</th>
+          <td><code>b</code></td>
+          <td><code>b</code></td>
+          <td>Stays deleted while the tombstone is kept (2 days by default)</td>
+        </tr>
+        <tr>
+          <th scope="row">Hudi, no ordering field</th>
+          <td><code>a</code> (stale)</td>
+          <td><code>a</code> (stale)</td>
+          <td>Row returns</td>
+        </tr>
+        <tr>
+          <th scope="row">Hudi, ordering field = position</th>
+          <td><code>b</code></td>
+          <td><code>b</code></td>
+          <td>Check your version; use a marker column to be safe</td>
+        </tr>
+        <tr>
+          <th scope="row">Iceberg Flink upsert (no guard)</th>
+          <td><code>a</code> (stale)</td>
+          <td><code>a</code> (stale)</td>
+          <td>Row returns</td>
+        </tr>
+        <tr>
+          <th scope="row">Iceberg <code>MERGE INTO</code> with position guard and marker</th>
+          <td><code>b</code></td>
+          <td><code>b</code></td>
+          <td>Stays deleted</td>
+        </tr>
+        <tr>
+          <th scope="row">Delta or Snowflake <code>MERGE</code>, no guard</th>
+          <td><code>a</code> (stale)</td>
+          <td><code>a</code> (stale)</td>
+          <td>Row returns (no match, so it is inserted)</td>
+        </tr>
+        <tr>
+          <th scope="row">Delta or Snowflake <code>MERGE</code> with position guard and marker</th>
+          <td><code>b</code></td>
+          <td><code>b</code></td>
+          <td>Stays deleted</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Replaying the <em>same</em> batch twice in order is harmless everywhere, because every row in it has the same
+      position the second time. The danger is a replay that puts older content after newer content.
+    </p>
+  </section>
+
+  <section id="why-not-timestamp" aria-labelledby="why-not-timestamp-title">
+    <h2 id="why-not-timestamp-title">Why the vendors&rsquo; own examples are not the whole answer</h2>
+    <p>
+      Several vendor pages show a timestamp as the ordering input: BigQuery&rsquo;s single-section example is a
+      processing timestamp, Hudi&rsquo;s SQL guide suggests a field &ldquo;that denotes the time of the event&rdquo;,
+      Delta&rsquo;s change-data example orders by a <code>time</code> column and the Debezium Server Iceberg sink
+      documents <code>__source_ts_ns</code> as the upsert deduplication column. Databricks&rsquo; multi-column example uses a
+      timestamp and an ID to break ties. These are fine when the timestamp is unique per key and clocks agree. Where your
+      source gives you a log position, it is the safer key: it says which change committed later, and a replay carries the
+      position it had the first time. Why, and how to compare positions: see
+      <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>. If your source has no total order per
+      key (some <a href="{{ '/non-relational/' | url }}">non-relational sources</a>), say so in the design and pick the
+      best monotonic field it does give you.
+    </p>
+  </section>
+
+  <section id="targets" aria-labelledby="targets-title">
+    <h2 id="targets-title">Target by target</h2>
+    <p>
+      The snippets assume a staging table with <code>id</code>, <code>op</code>, a numeric <code>source_lsn</code> and an
+      ordinal <code>source_ordinal</code> that separates changes sharing a position. All are marked untested.
+    </p>
+
+    <h3 id="bigquery">BigQuery CDC ingestion</h3>
+    <p>
+      <strong>Default.</strong> You stream rows through the Storage Write API default stream with
+      <code>_CHANGE_TYPE</code> set to <code>UPSERT</code> or <code>DELETE</code>. With identical primary keys the record
+      most recently ingested by BigQuery wins. The default stream is documented as at-least-once, so duplicates are
+      expected.
+    </p>
+    <p>
+      <strong>Failure with arrival order.</strong> A replayed old <code>UPSERT</code> is ingested later than the new one
+      and overwrites it.
+    </p>
+    <p>
+      <strong>Safe configuration.</strong> Declare the primary key, then always set
+      <code>_CHANGE_SEQUENCE_NUMBER</code>. It is a <code>STRING</code> of up to four hexadecimal sections separated by
+      <code>/</code>, up to 16 hex characters each, compared section by section as unsigned numbers; the larger wins, and
+      equal values fall back to ingestion time. Mixing rows with and without it gives unpredictable ordering. Put the log
+      position first and the ordinal second, for example <code>&lt;lsn hex&gt;/&lt;ordinal hex&gt;</code>. A Postgres LSN
+      printed as <code>16/B374D848</code> is already in that shape; that it compares in LSN order is my reading of the two
+      pages, so test it.
+    </p>
+    <p>
+      <strong>Deletes.</strong> <code>DELETE</code> removes the row; BigQuery keeps delete operations for a two-day window
+      so that out-of-order ones apply. A delete counts as applied only once
+      <code>upsert_stream_apply_watermark</code> passes it. The page does not say what happens to an older
+      <code>UPSERT</code> that arrives after that window: check. If you need the delete to be permanent, send an
+      <code>UPSERT</code> with a <code>deleted</code> flag and the delete&rsquo;s sequence number instead (a design choice,
+      not a vendor feature). Tables with active CDC do not allow DML <code>UPDATE</code>, <code>DELETE</code> or
+      <code>MERGE</code>, and key uniqueness is not enforced.
+    </p>
+    <details open>
+      <summary>BigQuery: table and sequence string (untested)</summary>
+      <pre><code class="language-sql">-- Untested: not run against a live BigQuery project.
+CREATE TABLE analytics.customers (
+  id INT64 PRIMARY KEY NOT ENFORCED,
+  email STRING,
+  deleted BOOL
+)
+CLUSTER BY id
+OPTIONS (max_staleness = INTERVAL 10 MINUTE);</code></pre>
+      <pre><code class="language-python"># Untested. Build the pseudocolumn values for each Storage Write API row.
+def change_sequence_number(source_lsn: int, ordinal: int) -&gt; str:
+    # Two hex sections: the log position first, then the ordinal.
+    return f"{source_lsn:X}/{ordinal:X}"
+
+row = {
+    "id": 7,
+    "email": "a@example.com",
+    "_CHANGE_TYPE": "UPSERT",  # "DELETE" for op = 'd'
+    "_CHANGE_SEQUENCE_NUMBER": change_sequence_number(200, 0),
+}</code></pre>
+    </details>
+
+    <h3 id="databricks">Databricks AUTO CDC</h3>
+    <p>
+      <strong>Default.</strong> There is none: <code>KEYS</code> and <code>SEQUENCE BY</code> are required, and the
+      pipeline orders events by the sequencing column. The documentation asks for a column that is a monotonically
+      increasing representation of the correct event order, with one distinct update per key at each value, and does not
+      support <code>NULL</code> sequencing values. Its own sample drops an update at sequence 5 that arrives after one at 6.
+    </p>
+    <p>
+      <strong>Failure with a timestamp.</strong> Two changes to a key with the same timestamp break the &ldquo;one distinct
+      update per key at each value&rdquo; requirement; what happens then is not documented: check. A skewed timestamp
+      orders changes wrongly without any error.
+    </p>
+    <p>
+      <strong>Safe configuration.</strong> Sequence by the position, with the ordinal as the second field of a
+      <code>STRUCT</code> (ordering is by the first field, then the second).
+    </p>
+    <p>
+      <strong>Deletes.</strong> <code>APPLY AS DELETE WHEN</code> treats an event as a delete. To handle out-of-order data
+      the deleted row is retained as a tombstone for two days by default, configurable with
+      <code>pipelines.cdc.tombstoneGCThresholdInSeconds</code>; the documentation says to set it above the longest delay
+      between event arrival and pipeline execution. The SQL reference words this for SCD type 2 targets, so confirm it
+      for SCD type 1 on your runtime. A replay older than the tombstone retention is not covered.
+    </p>
+    <details>
+      <summary>Databricks: AUTO CDC flow (untested)</summary>
+      <pre><code class="language-sql">-- Untested: not run in a Lakeflow pipeline.
+CREATE OR REFRESH STREAMING TABLE customers_current;
+
+CREATE FLOW customers_apply AS AUTO CDC INTO customers_current
+FROM stream(cdc.customers_changes)
+KEYS (id)
+APPLY AS DELETE WHEN op = 'd'
+SEQUENCE BY STRUCT(source_lsn, source_ordinal)
+COLUMNS * EXCEPT (op, source_lsn, source_ordinal)
+STORED AS SCD TYPE 1;</code></pre>
+    </details>
+
+    <h3 id="hudi">Apache Hudi</h3>
+    <p>
+      <strong>Default.</strong> The merge mode is inferred. With no ordering field it is
+      <code>COMMIT_TIME_ORDERING</code>: the record from the latest write wins, and the documentation says this expects
+      input in strict order, with a database change log ordered by LSN as its example. With one or more ordering fields
+      it is <code>EVENT_TIME_ORDERING</code>: the larger value wins, regardless of commit time. The table-level setting is
+      <code>hoodie.table.ordering.fields</code> (the older <code>precombine</code> names are deprecated on the pages
+      read; Flink uses <code>ordering.fields</code>). Do not change the merge mode after the table exists.
+    </p>
+    <p>
+      <strong>Failure with arrival order.</strong> A late old change overwrites a newer one under
+      <code>COMMIT_TIME_ORDERING</code>. With an event-time field, a field that is a timestamp has the problems above.
+    </p>
+    <p>
+      <strong>Safe configuration.</strong> Make the ordering field the log position. Hudi Streamer&rsquo;s Debezium guide
+      already does this: <code>--source-ordering-field _event_lsn</code> for PostgreSQL, and a field derived from the
+      binlog file and position for MySQL. Multiple ordering fields compare first to second. What happens on equal
+      values is not stated on the pages read: check. The guide describes the payload comparison as applying when
+      deduplicating within a batch, and the payload classes it uses are marked deprecated on the merger page, so check
+      your version.
+    </p>
+    <p>
+      <strong>Deletes.</strong> A delete operation, or <code>_hoodie_is_deleted = true</code>, removes the record, and the
+      Debezium payload applies <code>d</code> events as deletes. Whether a later, lower-ordered upsert can bring a removed
+      key back is not stated on the pages read: check, or keep your own <code>deleted</code> flag and position in the row.
+    </p>
+    <details>
+      <summary>Hudi: table with an ordering field (untested)</summary>
+      <pre><code class="language-sql">-- Untested: not run on Spark with Hudi.
+CREATE TABLE IF NOT EXISTS customers_hudi (
+  id BIGINT,
+  email STRING,
+  deleted BOOLEAN,
+  source_lsn BIGINT
+) USING hudi
+TBLPROPERTIES (
+  type = 'mor',
+  primaryKey = 'id',
+  orderingFields = 'source_lsn',
+  recordMergeMode = 'EVENT_TIME_ORDERING'
+);</code></pre>
+    </details>
+
+    <h3 id="iceberg">Apache Iceberg</h3>
+    <p>
+      <strong>Default.</strong> An Iceberg table has no ordering column. Flink&rsquo;s upsert mode (v2 table format, a
+      primary key, <code>write.upsert.enabled</code> or <code>upsert-enabled</code>) writes row-level deletes by equality
+      fields plus the new row. Under the spec, an equality delete applies only to data files with a strictly lower data
+      sequence number, and sequence numbers are assigned per commit. My reading: the later commit wins, whatever position
+      the data carried. The upsert section documents no version column.
+    </p>
+    <p>
+      <strong>Failure.</strong> A replay that commits after the newer change replaces it. In Spark, <code>MERGE INTO</code>
+      errors if more than one source row can update a target row, so deduplicate the source first.
+    </p>
+    <p>
+      <strong>Safe configuration.</strong> Order before the sink, or merge with a guard on the position column (snippet
+      below). The Debezium Server Iceberg sink has <code>upsert-dedup-column</code> (highest value kept; limited to
+      <code>Long</code>; equal values resolved by operation priority <code>d</code> over <code>u</code> over
+      <code>r</code> over <code>c</code>). The Debezium page lists its default as <code>__source_ts_ns</code>, while the
+      sink project&rsquo;s own docs show an empty default and describe deduplication within a batch: check which applies,
+      set it explicitly, and add the position to the flattened record with the
+      <code>add.fields</code> option of the event-flattening transform (it prefixes names with <code>__</code>, so
+      <code>lsn</code> becomes <code>__lsn</code>). Whether it also guards against an older value in a later batch is not
+      stated: check.
+    </p>
+    <p>
+      <strong>Deletes.</strong> Equality deletes are a v2/v3 feature; the draft v4 spec, which is not yet formally
+      adopted, prohibits writing new ones, so check your format version and engine. The Debezium sink keeps deletes as
+      <code>__deleted = true</code> rows by default (<code>upsert-keep-deletes</code>), which is the marker pattern.
+    </p>
+    <details>
+      <summary>Iceberg: guarded MERGE INTO with a marker (untested)</summary>
+      <pre><code class="language-sql">-- Untested: not run on Spark with Iceberg.
+-- stg is already one row per id (latest by source_lsn, source_ordinal).
+MERGE INTO prod.db.customers t
+USING stg s
+ON t.id = s.id
+WHEN MATCHED AND (t.source_lsn &lt; s.source_lsn
+     OR (t.source_lsn = s.source_lsn AND t.source_ordinal &lt; s.source_ordinal)) THEN
+  UPDATE SET t.email = s.email, t.deleted = (s.op = 'd'),
+             t.source_lsn = s.source_lsn, t.source_ordinal = s.source_ordinal
+WHEN NOT MATCHED THEN
+  INSERT (id, email, deleted, source_lsn, source_ordinal)
+  VALUES (s.id, s.email, (s.op = 'd'), s.source_lsn, s.source_ordinal);</code></pre>
+    </details>
+
+    <h3 id="delta">Delta Lake: MERGE and change data feed</h3>
+    <p>
+      <strong>Default.</strong> Delta has no ordering setting; <code>MERGE</code> applies the source rows you give it. A
+      merge can fail when several source rows match one target row, and the documentation tells you to reduce the source to
+      the latest change per key first. Its change-data example does that with a <code>time</code> column
+      (&ldquo;can be replaced by other ordering id&rdquo;), then applies deletes with
+      <code>whenMatchedDelete</code> and inserts only rows that are not deleted. Nothing compares against the stored row.
+    </p>
+    <p>
+      <strong>Failure.</strong> With that example, a replayed older batch overwrites the newer row, and an older update
+      after a delete finds no match and is inserted: the row is back.
+    </p>
+    <p>
+      <strong>Safe configuration.</strong> Dedupe the source by position, add a guard on the stored position, and keep the
+      delete as a marker. In <code>foreachBatch</code> the documentation says the merge must be idempotent, because a restart
+      can apply the same batch again.
+    </p>
+    <p>
+      <strong>Change data feed.</strong> The feed records row-level changes <em>of a Delta table</em>, with
+      <code>_change_type</code>, <code>_commit_version</code> and <code>_commit_timestamp</code>. It is off by default, only
+      captures changes after you enable it, and its files follow table retention, so <code>VACUUM</code> removes them. Its
+      version is the Delta table&rsquo;s own commit version, not a source position: a source of changes for tables
+      downstream of this one, not a substitute for the source log.
+    </p>
+    <details>
+      <summary>Delta: guarded MERGE with a marker (untested)</summary>
+      <pre><code class="language-sql">-- Untested: not run on Delta Lake. stg is one row per id.
+MERGE INTO customers t
+USING stg s
+ON t.id = s.id
+WHEN MATCHED AND (t.source_lsn &lt; s.source_lsn
+     OR (t.source_lsn = s.source_lsn AND t.source_ordinal &lt; s.source_ordinal)) THEN
+  UPDATE SET t.email = s.email, t.deleted = (s.op = 'd'),
+             t.source_lsn = s.source_lsn, t.source_ordinal = s.source_ordinal
+WHEN NOT MATCHED THEN
+  INSERT (id, email, deleted, source_lsn, source_ordinal)
+  VALUES (s.id, s.email, (s.op = 'd'), s.source_lsn, s.source_ordinal);</code></pre>
+    </details>
+
+    <h3 id="snowflake">Snowflake: MERGE and streams</h3>
+    <p>
+      <strong>Default.</strong> <code>MERGE</code> has no ordering. If one target row matches several source rows for an
+      <code>UPDATE</code> or <code>DELETE</code>, the result is nondeterministic: with
+      <code>ERROR_ON_NONDETERMINISTIC_MERGE</code> at its default of TRUE the merge errors; with FALSE one row is chosen
+      and which one is not defined. A stream is a bookmark (an offset) on a table&rsquo;s transactional versions that
+      returns the changes since then, with <code>METADATA$ACTION</code>, <code>METADATA$ISUPDATE</code> and
+      <code>METADATA$ROW_ID</code>. Put one over the table your loader lands CDC rows in and it orders by the landing
+      table&rsquo;s versions, not by the source log. Querying a stream does not advance it; consuming it in a DML
+      statement does.
+    </p>
+    <p>
+      <strong>Failure.</strong> A stream over the landing table faithfully hands you the replayed duplicates and the
+      swapped pair. An unguarded <code>MERGE</code> from it resurrects stale rows exactly as in the table above. The
+      transactional stream consumption makes the landing-to-target hop safe to retry; it does nothing for the hop before it.
+    </p>
+    <p>
+      <strong>Safe configuration.</strong> Land the position as a column, read an append-only stream or the landing table,
+      reduce to one row per key with <code>QUALIFY ROW_NUMBER()</code> by position, and merge with the guard and marker. The
+      <a href="{{ '/cloud-labs/snowflake-cdc/' | url }}">Snowflake lab</a> shows the loading side.
+    </p>
+    <details>
+      <summary>Snowflake: guarded MERGE from a stream (untested)</summary>
+      <pre><code class="language-sql">-- Untested: not run on Snowflake. cdc_stream is an append-only stream
+-- on the landing table cdc_landing(id, email, op, source_lsn, source_ordinal).
+MERGE INTO customers t
+USING (
+  SELECT id, email, op, source_lsn, source_ordinal
+  FROM cdc_stream
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY id ORDER BY source_lsn DESC, source_ordinal DESC) = 1
+) s
+ON t.id = s.id
+WHEN MATCHED AND (t.source_lsn &lt; s.source_lsn
+     OR (t.source_lsn = s.source_lsn AND t.source_ordinal &lt; s.source_ordinal)) THEN
+  UPDATE SET email = s.email, deleted = (s.op = 'd'),
+             source_lsn = s.source_lsn, source_ordinal = s.source_ordinal
+WHEN NOT MATCHED THEN
+  INSERT (id, email, deleted, source_lsn, source_ordinal)
+  VALUES (s.id, s.email, (s.op = 'd'), s.source_lsn, s.source_ordinal);</code></pre>
+    </details>
+    <p class="muted">
+      A <code>NULL</code> stored position makes the guard <code>NULL</code> and the row is never updated: backfill it, or
+      compare <code>COALESCE(t.source_lsn, -1)</code>. Positions are comparable only within one source log lineage
+      (see the lineage note in <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>).
+    </p>
+  </section>
+
+  <section id="deletes" aria-labelledby="deletes-title">
+    <h2 id="deletes-title">Delete markers, not physical deletes or tombstones alone</h2>
+    <p>
+      A delete in the log is a normal change event (<code>op = 'd'</code>). The Kafka
+      <a href="{{ '/glossary/' | url }}#tombstone">tombstone</a> that may follow is a compaction hint for the topic; sinks
+      should act on the event, not wait for the tombstone. Whatever the target, a physical delete takes the version with
+      it, so a replayed older update finds nothing to lose to. Either keep a marker row (a
+      <code>deleted</code> flag plus the delete&rsquo;s position) or rely on a target feature that keeps the delete for a
+      stated time, and know the time: two days in BigQuery and Databricks by default. When the marker may finally go is
+      the subject of a later module on deletes that stay deleted.
+    </p>
+  </section>
+
+  <section id="eos" aria-labelledby="eos-title">
+    <h2 id="eos-title">Where exactly-once stops</h2>
+    <p>
+      Say it per hop. <strong>Database to Kafka:</strong> Debezium provides at-least-once delivery and has no
+      deduplication layer of its own. Its documentation (from 3.3) describes an opt-in exactly-once mode for source
+      connectors on Kafka Connect, built on KIP-618: Kafka Connect 3.3.0 or later in distributed mode,
+      <code>exactly.once.source.support=enabled</code> on the workers and <code>exactly.once.support=required</code> on the
+      connector. It covers that one hop, and the same page says it is unclear whether the underlying transaction
+      implementation is fully correct, citing open Kafka issues. <strong>Kafka to your target:</strong> a separate system
+      with no shared transaction. BigQuery CDC ingestion needs the default stream, which Google documents as at-least-once.
+      The correctness you can claim at the target is exactly-once <em>processing</em>: duplicates and reordering
+      happen, and the position-ordered idempotent write makes them harmless. See
+      <a href="{{ '/exactly-once/' | url }}#idempotency">Exactly-once semantics</a>.
+    </p>
+  </section>
+
+  <section id="try-it" aria-labelledby="try-it-title">
+    <h2 id="try-it-title">Try it</h2>
+    <p>
+      Open the <a href="{{ '/playground/' | url }}">Change Feed Playground</a> and pick the
+      <strong>Snapshot Replay</strong> scenario (<code>snapshot-replay</code>). In its event list the ledger row
+      <code>LED-100</code> is updated to version <code>v2</code>, then an older <code>v1</code> image arrives again, then
+      <code>v3</code> follows. Write down which version each target above would hold after the <code>v1</code> image under
+      its default, then under the position-based setting. The playground compares capture methods; it does not simulate
+      these six targets, so the exercise is on paper.
+    </p>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="monday" aria-labelledby="monday-title">
+    <h2 id="monday-title">What to do Monday</h2>
+    <ol>
+      <li>For each target you load, write down the key, the ordering input and the delete representation. If the ordering input is arrival, commit order or a timestamp, that is your finding.</li>
+      <li>Carry the source position (and an ordinal for changes that share one) into the landing data. Compare it numerically, never as text.</li>
+      <li>Set it as the ordering input: <code>_CHANGE_SEQUENCE_NUMBER</code>, <code>SEQUENCE BY</code>, the Hudi ordering field, or the <code>MERGE</code> guard.</li>
+      <li>Keep deletes as markers with a position. Find out how long your target remembers a delete and compare it with how far back you can replay.</li>
+      <li>Replay one old batch and one swapped pair in staging and check the final rows against the table above.</li>
+      <li>Mark every &ldquo;check your version&rdquo; item above as an owner and a test, not an assumption.</li>
+    </ol>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <h3>On this site</h3>
+    <ul>
+      <li><a href="{{ '/materialization/' | url }}">Materialization 101</a>: the same rule in generic SQL.</li>
+      <li><a href="{{ '/merge-cookbook/' | url }}">Merge cookbook</a>: merge templates for more engines.</li>
+      <li><a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a>: how replays happen.</li>
+      <li><a href="{{ '/cloud-labs/snowflake-cdc/' | url }}">Snowflake CDC lab</a>.</li>
+      <li><a href="{{ '/glossary/' | url }}#lsn-scn">Glossary: LSN / SCN</a>, <a href="{{ '/glossary/' | url }}#tombstone">tombstone</a>, <a href="{{ '/glossary/' | url }}#idempotent-write">idempotent write</a>.</li>
+    </ul>
+    <h3>Vendor documentation (read 2026-10-09)</h3>
+    <ul>
+      <li><a href="https://docs.cloud.google.com/bigquery/docs/change-data-capture" rel="noopener">BigQuery: stream table updates with CDC</a> and the <a href="https://docs.cloud.google.com/bigquery/docs/write-api" rel="noopener">Storage Write API overview</a>.</li>
+      <li><a href="https://docs.databricks.com/aws/en/ldp/cdc" rel="noopener">Databricks: the AUTO CDC APIs</a>, <a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-sql-ref-apply-changes-into" rel="noopener">AUTO CDC INTO</a>, <a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-python-ref-apply-changes" rel="noopener">create_auto_cdc_flow</a>, <a href="https://docs.databricks.com/aws/en/ldp/what-is-change-data-capture" rel="noopener">change data capture and snapshots</a>.</li>
+      <li><a href="https://hudi.apache.org/docs/record_merger/" rel="noopener">Hudi: record merger</a> (1.2.1), <a href="https://hudi.apache.org/docs/sql_ddl" rel="noopener">SQL DDL</a>, <a href="https://hudi.apache.org/docs/writing_data" rel="noopener">writing data</a>, <a href="https://hudi.apache.org/docs/hoodie_streaming_ingestion/" rel="noopener">Hudi Streamer (Debezium)</a>.</li>
+      <li><a href="https://iceberg.apache.org/docs/latest/flink-writes/" rel="noopener">Iceberg: Flink writes</a>, <a href="https://iceberg.apache.org/docs/latest/spark-writes/" rel="noopener">Spark writes</a>, <a href="https://iceberg.apache.org/spec/" rel="noopener">table spec</a>.</li>
+      <li><a href="https://docs.delta.io/delta-update/" rel="noopener">Delta: update and merge</a>, <a href="https://docs.delta.io/delta-change-data-feed/" rel="noopener">change data feed</a>.</li>
+      <li><a href="https://docs.snowflake.com/en/user-guide/streams-intro" rel="noopener">Snowflake: streams</a>, <a href="https://docs.snowflake.com/en/sql-reference/sql/merge" rel="noopener">MERGE</a>.</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/configuration/eos.html" rel="noopener">Debezium: exactly-once delivery</a>, <a href="https://debezium.io/documentation/reference/stable/operations/debezium-server.html" rel="noopener">Debezium Server (Iceberg sink)</a>, <a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" rel="noopener">event flattening</a>, and the <a href="https://github.com/memiiso/debezium-server-iceberg/blob/master/docs/iceberg.md" rel="noopener">Iceberg sink project docs</a>.</li>
+      <li><a href="https://www.postgresql.org/docs/current/datatype-pg-lsn.html" rel="noopener">PostgreSQL: pg_lsn type</a>.</li>
+    </ul>
+  </section>
+</div>

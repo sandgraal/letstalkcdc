@@ -222,6 +222,7 @@ const expectedModules = [
   "exactly-once",
   "multi-tenancy",
   "partitioning",
+  "which-row-wins",
   "schema-evolution",
   "ops-offsets",
   "observability",
