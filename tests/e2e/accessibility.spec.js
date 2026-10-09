@@ -450,7 +450,7 @@ test.describe("buttons keep 4.5:1 on hover, active and focus-visible", () => {
 // status colours with white hover text) and the three tool apps' buttons.
 const CONTROL_STATES = [
   ["/event-envelope/", ".code-copy-button"],
-  ["/troubleshooting/failure-drills/", ".copy-snippet"],
+  ["/troubleshooting/failure-drills/", ".code-copy-button"],
   ["/intro/", ".sim-btn"],
   ["/connector-builder/", ".builder-app .btn, .builder-app .tabs button"],
   ["/debezium-decoder/", ".decoder-app .btn, .decoder-app .tabs button"],
