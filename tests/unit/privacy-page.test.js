@@ -35,6 +35,21 @@ const rendered = env.renderString(body, {
   author,
   site: { repository: "sandgraal/letstalkcdc" },
 });
+// The same body with visit counting configured (GOATCOUNTER_CODE set).
+const renderedWithAnalytics = env.renderString(body, {
+  ...data,
+  author,
+  site: { repository: "sandgraal/letstalkcdc" },
+  analytics: { goatcounterCode: "letstalkcdc" },
+});
+// The hero description, rendered with a stub macro so its conditional runs.
+const renderHero = (analytics) =>
+  new nunjucks.Environment(null, { autoescape: true }).renderString(
+    page
+      .slice(0, page.indexOf("}) | safe }}") + "}) | safe }}".length)
+      .replace('{% import "components/ui.njk" as ui %}', ""),
+    { analytics, ui: { hero: (c) => c.description } },
+  );
 const section = (html, id) =>
   html.match(
     new RegExp(`<section[^>]*aria-labelledby="${id}"[\\s\\S]*?</section>`),
@@ -232,6 +247,52 @@ describe("privacy page, rendered", () => {
     );
     expect(section(rendered, "playground")).toContain("<code>ts_ms</code>");
     expect(section(rendered, "playground")).toContain("<code>id</code>");
+  });
+});
+
+describe("privacy page, analytics (P15-10)", () => {
+  it("unset: says no analytics and no cookies, and has no visit-count section", () => {
+    expect(section(rendered, "cookies")).toContain(
+      "does not set cookies or use analytics",
+    );
+    expect(section(rendered, "visit-counts")).toBe("");
+    expect(rendered).not.toMatch(/goatcounter|gc\.zgo\.at/i);
+  });
+
+  it("unset: the hero makes no analytics claim", () => {
+    const hero = renderHero({});
+    expect(hero).toContain(
+      "stores nothing about you on a server. Two optional",
+    );
+    expect(hero).not.toMatch(/GoatCounter|visit count/i);
+  });
+
+  it("set: the hero mentions the aggregate count", () => {
+    const hero = renderHero({ goatcounterCode: "letstalkcdc" });
+    expect(hero).toMatch(/apart from an anonymous visit count/);
+    expect(hero).toMatch(/Do Not Track/);
+  });
+
+  it("set: discloses GoatCounter, what it counts and where it goes", () => {
+    const v = section(renderedWithAnalytics, "visit-counts");
+    expect(v).toContain("GoatCounter");
+    expect(v).toMatch(/page path\s+and title/);
+    expect(v).toMatch(/referrer/);
+    expect(v).toMatch(/screen width/);
+    expect(v).toMatch(/country/);
+    expect(v).toMatch(/sets no cookies/);
+    expect(v).toMatch(/no cross-site tracking/);
+    expect(v).toMatch(/personal profile/);
+    expect(v).toContain("gc.zgo.at");
+    expect(v).toMatch(/processes the counts on the maintainer's\s+behalf/);
+    expect(v).toMatch(/Do Not Track is respected/);
+  });
+
+  it("set: the cookies section no longer says there is no analytics", () => {
+    const c = section(renderedWithAnalytics, "cookies");
+    expect(c).toContain("does not set cookies");
+    expect(c).toContain("GoatCounter");
+    expect(renderedWithAnalytics).not.toMatch(/use analytics/);
   });
 });
 
