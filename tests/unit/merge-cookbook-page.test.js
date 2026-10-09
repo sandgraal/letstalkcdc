@@ -309,10 +309,19 @@ describe("merge cookbook: every dialect applies the log-position rule", () => {
     );
   });
 
+  it("redshift and mysql insert only keys the target has never seen", () => {
+    expect(flat("redshift")).toContain(
+      "LEFT JOIN target_customers t ON t.id = s.id WHERE t.id IS NULL;",
+    );
+    expect(flat("mysql")).toContain(
+      "FROM tmp_latest s WHERE NOT EXISTS (SELECT 1 FROM target_customers t WHERE t.id = s.id);",
+    );
+  });
+
   it("states the NULL-ordering and no-tie-break caveats, and the commit-date window pitfall", () => {
     expect(prose).toMatch(/NOT NULL on staging too/);
     expect(prose).toMatch(
-      /NULL sorts first under DESC in Postgres, Snowflake and Oracle/,
+      /NULL sorts first under DESC in Postgres, Redshift, Snowflake and Oracle/,
     );
     expect(prose).toMatch(/no final tie-break/);
     expect(prose).toMatch(/committed on day 1 that reaches staging on day 5/);

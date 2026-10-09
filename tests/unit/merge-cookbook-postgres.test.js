@@ -130,6 +130,26 @@ describe("postgres card: executed behaviour", () => {
     expect((await row(2)).is_deleted).toBe(false);
   });
 
+  it("dedupes one batch by position then ordinal: seq 1 beats seq 0 at the same position", async () => {
+    await stage([
+      [1, "seq0", "c", 120, 0],
+      [1, "seq1", "u", 120, 1],
+    ]);
+    expect(await apply()).toBe(1);
+    expect((await row(1)).email).toBe("seq1");
+  });
+
+  it("compares the position before the ordinal: a higher position wins over a higher stored ordinal", async () => {
+    await db.exec("INSERT INTO target_customers VALUES (2,'old',false,100,5)");
+    await stage([[2, "new", "u", 120, 0]]);
+    expect(await apply()).toBe(1);
+    expect((await row(2)).email).toBe("new");
+    // and the reverse: a lower position with a higher ordinal loses
+    await stage([[2, "older", "u", 110, 9]]);
+    expect(await apply()).toBe(0);
+    expect((await row(2)).email).toBe("new");
+  });
+
   it("tolerates identical duplicate rows in staging", async () => {
     await stage([
       [3, "x", "c", 500, 0],
