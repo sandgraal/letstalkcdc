@@ -12,7 +12,7 @@ For prerequisites, every command and the project layout, see
 ```bash
 git clone https://github.com/sandgraal/letstalkcdc.git
 cd letstalkcdc
-npm install
+npm ci
 npm run dev          # http://localhost:8080
 ```
 
