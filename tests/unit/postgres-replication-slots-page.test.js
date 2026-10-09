@@ -86,7 +86,7 @@ describe("/postgres-replication-slots/ front matter", () => {
 
   it("renders exactly one h1 (the hero) and names the page in it", () => {
     expect(source).toContain(HERO_CALL);
-    expect(source.match(HERO_CALL.replace(/[|{}()]/g, "\\$&"))).toHaveLength(1);
+    expect(source.split(HERO_CALL)).toHaveLength(2);
     expect(data.heroConfig.title).toMatch(/^Postgres Replication Slots/);
     expect(source).not.toMatch(/<h1[\s>]/);
     expect(html).not.toMatch(/<h1[\s>]/);
