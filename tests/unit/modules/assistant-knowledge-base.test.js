@@ -39,10 +39,13 @@ describe("assistant knowledge base – beginner questions", () => {
     "beginner guide",
     "I'm new to CDC",
     "new to change data capture",
-    "getting started",
+    "how do I get started with cdc",
+    "I am new to this",
     "is there a roadmap?",
     "learning path",
     "what is the best order to read the modules",
+    "what order should I read the pages in",
+    "is there a curriculum",
   ];
 
   it.each(BEGINNER)("%j answers with the start-here intent", (query) => {
@@ -68,6 +71,100 @@ describe("assistant knowledge base – beginner questions", () => {
     expect(idOf("how do I start a snapshot")).toBe("snapshot_strategy");
     expect(idOf("getting started with debezium")).toBe("connector_setup");
     expect(idOf("quickstart for postgres")).toBe("connector_setup");
+  });
+
+  it("leaves bare 'getting started' with the quickstarts, as before", () => {
+    // Deliberate trade-off: connector_setup has owned this trigger since
+    // before start_here existed, and ties go to the earlier intent.
+    expect(idOf("getting started")).toBe("connector_setup");
+  });
+});
+
+describe("assistant knowledge base – beginner prefixes never steal a topic", () => {
+  // One natural question per original intent. Whatever beginner-style prefix
+  // is put in front, the topic intent must still answer (this is what the new,
+  // broad start_here triggers used to break).
+  const TOPICS = [
+    ["what does cdc do", "cdc_basics"],
+    ["why is there lag in my pipeline", "lag_handling"],
+    ["bootstrap a new table", "snapshot_strategy"],
+    ["rewind the connector", "offset_management"],
+    ["how are schema changes handled", "schema_changes"],
+    ["how do I avoid duplicates", "exactly_once"],
+    ["multi-tenant cdc isolation", "multi_tenancy"],
+    ["how do I choose a partition key", "partitioning"],
+    ["set up a postgres connector", "connector_setup"],
+    ["cache invalidation with cdc", "use_cases"],
+    ["the pipeline is not working", "troubleshooting"],
+    ["how do I upsert into the target table", "materialization"],
+    ["which alerts should I set", "observability"],
+  ];
+  const PREFIXES = [
+    "where do I start with ",
+    "beginner guide to ",
+    "roadmap for ",
+    "from scratch: ",
+    "I am new to cdc, how do I handle ",
+  ];
+  const CASES = TOPICS.flatMap(([q, id]) => PREFIXES.map((p) => [p + q, id]));
+
+  it.each(CASES)("%j -> %s", (query, expected) => {
+    expect(idOf(query)).toBe(expected);
+  });
+
+  it.each([
+    ["where do I start with debugging", "troubleshooting"],
+    ["explain from scratch how to set up debezium", "connector_setup"],
+    ["roadmap for exactly once", "exactly_once"],
+    ["beginner guide to schema evolution", "schema_changes"],
+    ["mysql binlog is not enabled, connector error", "connector_setup"],
+    ["monitor kinesis lag", "lag_handling"],
+    ["how do I snapshot with pii columns", "snapshot_strategy"],
+  ])("%j -> %s (reviewer's cases)", (query, expected) => {
+    expect(idOf(query)).toBe(expected);
+  });
+});
+
+describe("docs/SETUP.md – the knowledge-base example", () => {
+  const setup = fs.readFileSync(
+    path.resolve(here, "../../../docs/SETUP.md"),
+    "utf8",
+  );
+  const section = setup.slice(
+    setup.indexOf("#### Extending the Knowledge Base"),
+  );
+  const example = /```yaml\n([\s\S]*?)```/.exec(section)?.[1];
+
+  it("has a yaml example", () => {
+    expect(example).toBeTruthy();
+  });
+
+  it("parses with the build's parser into a usable intent", () => {
+    const { intents } = parseAssistantYaml(example);
+    expect(intents).toHaveLength(1);
+    const [intent] = intents;
+    expect(intent.id).toBe("your_intent_id");
+    expect(intent.triggers).toEqual([
+      "your trigger phrase",
+      "alternative phrase",
+    ]);
+    expect(intent.modules).toEqual(["page-key"]);
+    expect(intent.answer).toBe("Your answer text here.");
+    expect(intent.links).toEqual([
+      {
+        label: "Related Doc",
+        url: "/path/to/doc/",
+        anchor: "#heading-id",
+        preview: "One-line hover text.",
+      },
+    ]);
+  });
+
+  it("warns about trailing comments, which really do break the parser", () => {
+    expect(setup).toContain("No trailing comments after a value");
+    expect(() =>
+      parseAssistantYaml('- id: x\n  modules: ["a"] # note\n'),
+    ).toThrow();
   });
 });
 
