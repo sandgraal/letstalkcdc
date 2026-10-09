@@ -38,38 +38,47 @@ Layers 3 and 4 are guardrails, not locks: project `availableModels` is
 concatenated with the user's own `~/.claude/settings.json`, so a personal
 setting can add models back, and `/model` is the user's to use. A true lock
 needs organisation-managed settings (`deniedModels`,
-`enforceAvailableModels`). `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is
-deliberately **not** set — it would flatten the Haiku roles up to Sonnet.
+`enforceAvailableModels`). No subagent-model environment override
+(`CLAUDE_CODE_SUBAGENT_MODEL` or its `_FORCE` variant) is set, on purpose:
+each role's own pin must win, and an override could flatten the Haiku roles
+up to Sonnet.
 
 ## Roster
 
-Defined in `.claude/agents/`. Least privilege: read-only roles have no edit
-tools.
+Defined in `.claude/agents/`. Least privilege: the conductor and the
+read-only roles (`scout`, `verifier`, `reviewer`) are given no edit tools.
+They do keep Bash, which the pre-approved commands in `settings.json` could
+still use to write files (`node -e`, redirects, `npm run format`), so
+"read-only" is **an instruction plus a missing tool, not a sandbox**. The
+reviewer and the Definition of Done are what catch a violation.
 
-| Role           | Model  | Tools                   | Does                                          | Never                                  |
-| -------------- | ------ | ----------------------- | --------------------------------------------- | -------------------------------------- |
-| `conductor`    | sonnet | read, Bash, spawn roles | picks work, briefs roles, integrates, commits | edit files, merge, push to `main`      |
-| `scout`        | haiku  | read, Bash              | find, inventory, measure, report              | modify anything                        |
-| `verifier`     | haiku  | read, Bash              | run checks, report pass / fail verbatim       | fix failures                           |
-| `scribe`       | haiku  | read, edit, Bash        | checkboxes, changelog, docs, one-line config  | logic, CSS, anything needing judgement |
-| `implementer`  | sonnet | read, edit, Bash        | code, templates, tests, workflows, deps       | CSS under `src/assets/css/`            |
-| `reviewer`     | sonnet | read, Bash              | independent review of a diff                  | fix what it finds                      |
-| `css-refactor` | sonnet | read, edit, Bash        | all CSS, with byte-identity proof             | claim "identical" without both hashes  |
+| Role           | Model  | Tools                   | Does                                          | Never                                      |
+| -------------- | ------ | ----------------------- | --------------------------------------------- | ------------------------------------------ |
+| `conductor`    | sonnet | read, Bash, spawn roles | picks work, briefs roles, integrates, commits | edit files via Bash, merge, push to `main` |
+| `scout`        | haiku  | read, Bash              | find, inventory, measure, report              | modify anything                            |
+| `verifier`     | haiku  | read, Bash              | run checks, report pass / fail verbatim       | fix failures                               |
+| `scribe`       | haiku  | read, edit, Bash        | checkboxes, changelog, docs, one-line config  | logic, CSS, anything needing judgement     |
+| `implementer`  | sonnet | read, edit, Bash        | code, templates, tests, workflows, deps       | CSS under `src/assets/css/`                |
+| `reviewer`     | sonnet | read, Bash              | independent review of a diff                  | fix what it finds                          |
+| `css-refactor` | sonnet | read, edit, Bash        | all CSS, with byte-identity proof             | claim "identical" without both hashes      |
 
 Separation of duties is deliberate: the role that writes a change never
 verifies or approves it.
 
 ## The loop
 
-1. **Select** the next agent-executable item from the plan. Phase 14 items
-   are the maintainer's; do not start them.
+1. **Select** the next agent-executable item: work the Phase 13 queue in
+   order, then the lowest-numbered open box an agent can do. Where a Phase
+   13 item overlaps an older box, it closes that box in the same commit.
+   Phase 14 items are the maintainer's; do not start them.
 2. **Check Ready** (below). If not ready, a `scout` closes the gap first.
 3. **Branch** `claude/<short-name>` from fresh `main`.
 4. **Brief** the role (template below).
 5. **Verify** with `verifier`; **review** with `reviewer` for anything that
    changes logic, templates or CSS.
 6. **Close**: flip the plan checkbox and update `CHANGELOG.md` in the same
-   commit as the work, push the branch, open a PR into `main`.
+   commit as the work. Then push the branch and open a PR into
+   `main`.
 7. **Stop at the PR.** Merging, repo settings and secrets are the
    maintainer's.
 
@@ -134,6 +143,16 @@ An item is done only when all of these hold:
       would notice.
 - [ ] The PR description states what changed, how it was verified, and what
       was deliberately left out.
+
+## Permissions
+
+`.claude/settings.json` pre-approves local, reversible work: reads, the
+npm scripts, `git switch`, `git checkout -b`, `git add`, `git commit`,
+`git pull --ff-only`, and read-only `gh`. Everything outward-facing prompts
+the maintainer by design: `git push`, `gh pr create`, `npm install` /
+`npm update`, and `curl`. Force-push and `reset --hard` are denied. A
+background role that needs a prompted command cannot answer the prompt, so
+the conductor runs those steps itself and asks.
 
 ## Trust boundaries
 

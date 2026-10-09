@@ -8,6 +8,11 @@
 // holds to the same allowlist.
 //
 // Exit 0 = allow, exit 2 = deny (stderr is shown to the model).
+//
+// Limits: this guards only the per-call `model` argument. Claude Code treats
+// any exit code other than 2 (a crash, a missing `node`) as non-blocking, so
+// this is a guardrail, not a lock. The enforcement that cannot be skipped
+// locally is tests/unit/agent-roster.test.js in CI.
 
 import { fileURLToPath } from "node:url";
 
@@ -44,6 +49,10 @@ async function main() {
   } catch {
     // Fail closed: an unparseable payload is not something to wave through.
     process.stderr.write("guard-agent-model: could not parse hook input\n");
+    process.exit(2);
+  }
+  if (input === null || typeof input !== "object") {
+    process.stderr.write("guard-agent-model: hook input was not an object\n");
     process.exit(2);
   }
   const result = checkAgentCall(input);

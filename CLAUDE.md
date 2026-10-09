@@ -233,7 +233,8 @@ phase it logically belongs to, or append a new `## Phase N` heading.
 
 This repo's main session runs as the **`conductor`** agent
 (`"agent": "conductor"` in `.claude/settings.json`): it plans, delegates,
-integrates and verifies, and does not edit files itself. Work is done by
+integrates and verifies, and is given no edit tools (all file changes go
+through a role). Work is done by
 single-purpose roles in `.claude/agents/` — `scout`, `verifier`, `scribe`
 (Haiku 5.5) and `implementer`, `reviewer`, `css-refactor` (Sonnet 5.5).
 **Only those two models are permitted**; nothing above Sonnet is

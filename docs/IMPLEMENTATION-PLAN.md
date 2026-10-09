@@ -996,7 +996,9 @@ maintainer decision; everything that cannot is in Phase 14.
 **Working agreement.** The conductor protocol, role → model routing,
 Definition of Ready and Definition of Done live in
 [`CONDUCTOR.md`](CONDUCTOR.md). Items are ordered by value ÷ effort
-within each tier, one PR per item, no item left half-done.
+within each tier, one PR per item, no item left half-done. **Work this
+queue before the older open boxes.** Where an item overlaps an older box it
+says so, and flips that box in the same commit.
 
 Item fields: **Outcome** (what is true afterwards) · **Accept** (testable
 criteria — an item is not done until each holds) · **Verify** (the
@@ -1031,12 +1033,16 @@ dependencies).
       hidden. Verify: `npm run build`, `rg -i "coming soon" _site`,
       `npm test`. Size: S. Role: `implementer`.
 - [ ] **P13-4 · Take the in-range dependency updates as one batch.**
-      Ten packages (`@11ty/eleventy` 3.1.2→3.1.6, `@axe-core/playwright`,
-      `@playwright/test`, `autoprefixer`, `eslint`, `fuse.js`, `globals`,
-      `postcss`, `prettier`, `vite`) plus an `engines` field
-      (`node >=20`, matching `.nvmrc` and CI). Accept: `verify-all`,
-      `smoke:core` and the Playwright suite pass; if
-      `autoprefixer` / `postcss` move the production CSS hash, the diff
+      Every package whose `wanted` version (the newest inside its current
+      semver range, per `npm outdated`) is ahead of `current` — on
+      2026-10-08 that included `@11ty/eleventy` 3.1.2→3.1.6, `vite`,
+      `eslint`, `prettier`, `postcss`, `autoprefixer`, `cssnano`,
+      `postcss-import`, `vitest`, `jsdom`, `dotenv` and the Playwright /
+      axe packages — plus an `engines` field (`node >=20`, matching
+      `.nvmrc` and CI). Majors are _not_ in this batch (see P13-8).
+      Accept: `verify-all`, `smoke:core` and the Playwright suite pass; if
+      any of `autoprefixer`, `postcss`, `postcss-import` or `cssnano` move
+      the production CSS hash, the diff
       of `_site/assets/css/styles.css` is walked and the new baseline is
       recorded in `CLAUDE.md`. Verify: `/verify-all`, `/css-byte-check`,
       `npm run smoke:core`, `npm run test:e2e`. Size: M. Role:
@@ -1044,19 +1050,21 @@ dependencies).
 
 ### Tier B — measured performance work
 
-- [ ] **P13-5 · Measure `/intro/` before touching it.** The Phase 5 and
-      Phase 7 perf items are open but the numbers are months old and
+- [ ] **P13-5 · Measure `/intro/` before touching it.** Supersedes (and
+      closes, in the same commit, as far as the numbers justify) the open
+      Phase 5 "`/intro/` perf debt" box and the Phase 7 "Identify
+      remaining CLS culprits" box. Those perf items are open but the numbers are months old and
       several suspects were fixed since (render-blocking, unsized
       images, vendor cards). Outcome: a current table — LHCI perf score,
       CLS and its culprit elements from `cls-culprits-insight`,
       main-thread breakdown, DOM element count — recorded in this plan.
       Accept: numbers come from `npm run build:lhci` followed by
       `npm run lighthouse`, three runs, median reported, with the
-      command and date; items whose audit already scores 1.0 are ticked. Verify: the
-      recorded numbers reproduce within ±0.03 perf. Size: M. Role:
+      command and date; sub-items whose audit already scores 1.0 are
+      ticked in the Phase 5 / Phase 7 boxes. Verify: the recorded numbers reproduce within ±0.03 perf. Size: M. Role:
       `implementer`.
 - [ ] **P13-6 · Fix the dominant `/intro/` CLS culprit(s).** Needs
-      P13-5. Outcome: CLS under 0.1 (Core Web Vitals "good"). Accept: the
+      P13-5; completes the Phase 5 / Phase 7 CLS boxes it left open. Outcome: CLS under 0.1 (Core Web Vitals "good"). Accept: the
       culprit named by P13-5 is fixed at source (reserved space, font
       metrics override, or deferred reveal — not a Lighthouse-only
       workaround); `.lighthouserc.json` perf threshold ratcheted to the
@@ -1066,7 +1074,8 @@ dependencies).
       `reviewer` on the diff.
 - [ ] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
-      mobile-chrome for a "pointer-intercept flake" with no tracking.
+      mobile-chrome for a "pointer-intercept flake" with no tracking (the
+      Phase 11 e2e-coverage note explains the skip but sets no deadline).
       Outcome: the skip is either gone or has a written, dated reason
       and an owner. Accept: time-boxed to 2 h — either the tests pass 10
       consecutive local runs un-skipped, or the skip comment records the

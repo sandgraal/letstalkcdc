@@ -118,10 +118,11 @@ describe("model policy in settings.json", () => {
     }
   });
 
-  it("does not force one model onto every subagent", () => {
-    // FORCE would override each role's pinned model and flatten Haiku to Sonnet.
+  it("sets no subagent-model env override", () => {
+    // Each role pins its own model. An env-level override (or its FORCE
+    // variant) could flatten the Haiku roles up to Sonnet, so none is set.
+    expect(settings.env.CLAUDE_CODE_SUBAGENT_MODEL).toBeUndefined();
     expect(settings.env.CLAUDE_CODE_SUBAGENT_MODEL_FORCE).toBeUndefined();
-    expect(PINNED).toContain(settings.env.CLAUDE_CODE_SUBAGENT_MODEL);
   });
 
   it("wires the guard hook to the Agent tool", () => {
