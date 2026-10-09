@@ -88,8 +88,13 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 7ba70b5050df87cee4b5d9c7c2b4ca195d0b0861c0fe707b236100e3cda904a3
-# (re-baselined 2026-10-09 (P13-8): cssnano 7 -> 9 tool upgrade, no source
+# baseline at HEAD of main is: 83943ab39baf798fdd5cfd1dc726035d030b0bd3d0dc4dc6bb322934d2d060b6
+# (re-baselined 2026-10-09 (P13-6): deterministic font loading, the only
+#  CSS difference is in 01-variables.css: six metric-matched local()
+#  fallback `@font-face` rules (IBM Plex Sans/Mono Fallback, with
+#  size-adjust/ascent/descent/line-gap overrides) and the three
+#  `--font-sans/-display/-mono` tokens listing them right after the Plex
+#  family. Previously 7ba70b50… from the same day (P13-8): cssnano 7 -> 9 tool upgrade, no source
 #  CSS change; output proven computed-style/pixel equivalent (declaration
 #  order is no longer alphabetised, `transition ... ease` and similar
 #  default tokens dropped, calc() rewritten). Previously c32d01ac… from
@@ -328,7 +333,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`7ba70b5050df…`).
+3. **`/css-byte-check` baseline is in this file** (`83943ab39baf…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.

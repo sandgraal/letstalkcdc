@@ -195,10 +195,17 @@
        this pattern should clear it. #}
     <link rel="preload" href="{{ '/assets/css/styles.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}"></noscript>
-    {# Preload the key self-hosted IBM Plex faces (body + heading + mono)
-       so the first paint uses the real type rather than the fallback. #}
+    {# Preload every self-hosted IBM Plex face that paints above the fold
+       (P13-6): sans 400 body, 500 nav chips, 600 emphasis, 700 headings and
+       the logo (h1 asks for 800, which resolves to 700), plus mono 400.
+       Without 500 and 700 they were discovered only after styles.css
+       applied, so the h1 and nav re-flowed on swap. Mono 500/600 are never
+       above the fold and stay lazy; their swap is covered by the
+       metric-matched "IBM Plex * Fallback" faces in 01-variables.css. #}
     <link rel="preload" href="{{ '/fonts/ibm-plex-sans-400.woff2' | url }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ '/fonts/ibm-plex-sans-500.woff2' | url }}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{{ '/fonts/ibm-plex-sans-600.woff2' | url }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ '/fonts/ibm-plex-sans-700.woff2' | url }}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{{ '/fonts/ibm-plex-mono-400.woff2' | url }}" as="font" type="font/woff2" crossorigin>
     {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js' | vitePreloads | safe }}
     {% include "components/analytics.njk" %}
