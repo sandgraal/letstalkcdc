@@ -135,7 +135,9 @@ head_extra: |
             lightweight transformer that denormalizes documents and ships them
             to Elasticsearch/OpenSearch/Solr. <em>Upsert</em> on create/update;
             <em>delete</em> on the delete event. Use a deterministic
-            <code>doc_id</code> to make replays idempotent.
+            <code>doc_id</code> to make replays idempotent. To also refuse a
+            stale replay, use the source log position as an external version
+            (<a href="{{ '/non-kafka-cdc/#search' | url }}">how, and the delete window</a>).
           </p>
           <div class="seq" role="group" aria-label="Search indexing flow">
             <div class="seq-head">Source/CDC</div>

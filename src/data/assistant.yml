@@ -996,6 +996,101 @@ intents:
         anchor: "#cassandra-title"
         preview: No cluster-wide ordered log.
 
+  - id: debezium_server_engine
+    triggers:
+      [
+        "debezium server",
+        "debezium embedded engine",
+        "embedded engine",
+        "debezium engine",
+        "run debezium without kafka",
+        "debezium without kafka",
+        "debezium standalone",
+        "debezium.sink.type",
+        "debezium.source.offset.storage",
+        "recordcommitter",
+        "markprocessed",
+        "handlebatch",
+        "markbatchfinished",
+        "offset flush interval",
+        "offset.flush.interval.ms",
+        "debezium offset storage",
+        "managed cdc delivery guarantee",
+        "datastream duplicates",
+      ]
+    modules: []
+    answer: >
+      Without Kafka the guarantee is still at-least-once. Debezium Server runs
+      one connector and one sink and you set the offset store yourself (a file
+      by default, or JDBC, Redis, or Kafka where your version allows). A crash
+      repeats whatever was delivered after the last flushed offset. In the
+      embedded engine, call markProcessed only after the record's effect is
+      durable and markBatchFinished at the end of the batch; marking early
+      loses changes on a crash. Debezium documents an exactly-once opt-in only
+      for connectors on Kafka Connect. Datastream documents at-least-once with
+      no ordering guarantee, and the other managed services state less. Keep
+      the destination write an upsert ordered by the source log position.
+    links:
+      - label: Debezium Server and its sinks
+        url: /non-kafka-cdc/
+        anchor: "#server-title"
+        preview: Offset stores, crash behaviour and what each sink states.
+      - label: The embedded engine
+        url: /non-kafka-cdc/
+        anchor: "#engine-title"
+        preview: The commit-after-process contract.
+      - label: Which path for which need
+        url: /non-kafka-cdc/
+        anchor: "#decide-title"
+        preview: Server, engine, managed service or your own consumer.
+
+  - id: search_index_sync
+    triggers:
+      [
+        "sync elasticsearch",
+        "elasticsearch from cdc",
+        "elasticsearch cdc",
+        "opensearch cdc",
+        "sync a search index",
+        "search index from cdc",
+        "keep a search index in sync",
+        "version_type=external",
+        "version_type external",
+        "external versioning",
+        "index.gc_deletes",
+        "gc_deletes",
+        "elasticsearch version conflict",
+        "elasticsearch delete resurrect",
+        "redis cache from cdc",
+        "sync redis cache",
+        "redis version guard",
+      ]
+    modules: []
+    answer: >
+      Index by primary key with the source log position as the version and
+      version_type=external. Elasticsearch then refuses a stale replay or a
+      duplicate with a 409, which your consumer should treat as already
+      applied. The version must be a non-negative 64-bit integer, so a text
+      position such as an LSN string is rejected and a multi-part position must
+      be packed into one integer. A delete takes a version too, but the store
+      remembers it only for index.gc_deletes (60 seconds by default); after
+      that an older replay can bring the document back. Raise the setting past
+      your longest replay, or index a delete-marker document. For a Redis cache
+      either invalidate on change, or use a script that writes only if the
+      version is higher.
+    links:
+      - label: Search index and cache sync
+        url: /non-kafka-cdc/
+        anchor: "#search-title"
+        preview: External versions, the delete window and a Redis guard.
+      - label: The delete window
+        url: /non-kafka-cdc/
+        anchor: "#search-title"
+        preview: What the probe saw at 1, 6, 56 and 61 seconds.
+      - label: Delete markers
+        url: /deletes-stay-deleted/
+        preview: Why a delete must outlive the longest replay.
+
   - id: transports
     triggers:
       [

@@ -267,7 +267,8 @@ scripts:
       Practical consequence: on Pub/Sub, and on Kinesis across a reshard, treat
       arrival order as unordered and rely entirely on the envelope&rsquo;s source
       metadata. That is a good habit on Kafka too — it just costs you nothing
-      there.
+      there. Running Debezium itself without Kafka is covered in
+      <a href="{{ '/non-kafka-cdc/' | url }}">CDC without Kafka</a>.
     </p>
   </section>
 

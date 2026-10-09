@@ -1,0 +1,489 @@
+---
+layout: base.njk
+title: "CDC Without Kafka: Server, Engine, Search"
+description: "Run Debezium without Kafka: what Debezium Server sinks and the embedded engine guarantee, what managed services state, and how to sync a search index."
+canonicalPath: "/non-kafka-cdc/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section id="question" aria-labelledby="question-title">
+    <h2 id="question-title">Taking Kafka away changes less than you think</h2>
+    <p>
+      Kafka gives a CDC pipeline a replayable log, partitions that keep a key in order, a place to store connector
+      offsets and, with an opt-in, a documented exactly-once hop. Run Debezium without it and you lose those, but the
+      delivery guarantee does not get better: it is <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a>,
+      duplicates follow every crash, and the destination still has to decide which version of a row wins. End-to-end
+      exactly-once across independent systems is not achievable in general. What you can reach is
+      <a href="{{ '/glossary/#effectively-once' | url }}">effectively-once</a> processing: an
+      <a href="{{ '/glossary/#idempotent-write' | url }}">idempotent write</a> keyed on the primary key and ordered by
+      the <a href="{{ '/glossary/#lsn-scn' | url }}">source log position</a>, with deletes kept as markers.
+    </p>
+    <p>
+      This page covers four non-Kafka paths: <a href="#server">Debezium Server</a>, the
+      <a href="#engine">embedded engine</a>, <a href="#managed">managed CDC services</a>, and a consumer you write
+      yourself that keeps a <a href="#search">search index or cache</a> in sync. For the Kafka-side claims see
+      <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once?</a>; for the per-target ordering rules see
+      <a href="{{ '/which-row-wins/' | url }}">Which row wins</a>. Transport semantics (Pulsar, Kinesis, Pub/Sub) are in
+      <a href="{{ '/event-envelope/#transports' | url }}">Transports other than Kafka</a>; the tool landscape is in
+      <a href="{{ '/tooling/' | url }}">Tooling</a> and <a href="{{ '/compare/' | url }}">Compare</a>.
+    </p>
+    <p class="callout">
+      <strong>As of 2026-10-09.</strong> Read against the Debezium 3.7 documentation. The Elasticsearch and Redis
+      behaviour in the <a href="#search">search section</a> was run on Elasticsearch 9.5.5 and Redis 8.10.2, single
+      local nodes. Nothing else on this page was run against a live product, and where a fact comes from source code
+      it says so and says &ldquo;check your version&rdquo;.
+    </p>
+  </section>
+
+  <section id="decide" aria-labelledby="decide-title">
+    <h2 id="decide-title">Which path for which need</h2>
+    <div style="overflow-x: auto" role="region" aria-label="Which path for which need" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Non-Kafka paths, the delivery each documents, and what you still build</caption>
+      <thead>
+        <tr>
+          <th scope="col">You need</th>
+          <th scope="col">Path</th>
+          <th scope="col">Delivery the documentation states</th>
+          <th scope="col">You still build</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Changes in a messaging service you already run (Kinesis, Pub/Sub, Pulsar, Redis, an HTTP endpoint)</th>
+          <td><a href="#server">Debezium Server</a></td>
+          <td>Debezium: at-least-once. Per-sink statements are in the sink table.</td>
+          <td>A consumer that is idempotent on the key and ordered by the source position carried in the event.</td>
+        </tr>
+        <tr>
+          <th scope="row">CDC inside your own JVM service (cache eviction, an in-process projection)</th>
+          <td><a href="#engine">Embedded engine</a></td>
+          <td>Each record once in normal operation, duplicates possible after a crash.</td>
+          <td>A handler that marks a record processed only after its effect is durable, and tolerates repeats.</td>
+        </tr>
+        <tr>
+          <th scope="row">A warehouse or bucket, with no infrastructure to run</th>
+          <td><a href="#managed">Managed service</a></td>
+          <td>Vendor-specific. Datastream: at-least-once, no ordering guarantee.</td>
+          <td>A destination merge guarded by the position the service exposes.</td>
+        </tr>
+        <tr>
+          <th scope="row">A search index or cache that mirrors a table</th>
+          <td>Your consumer plus <a href="#search">external versions</a></td>
+          <td>Whatever feeds it: at-least-once.</td>
+          <td>Index by primary key with the log position as the version; keep deletes as markers or raise <code>index.gc_deletes</code>.</td>
+        </tr>
+        <tr>
+          <th scope="row">A documented exactly-once hop into Kafka</th>
+          <td>Debezium on Kafka Connect</td>
+          <td>Opt-in for the connector-to-topic hop only, with Debezium&rsquo;s own caveats.</td>
+          <td>An idempotent sink; see <a href="{{ '/is-cdc-exactly-once/#connect-eos' | url }}">the Kafka Connect opt-in</a>.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="server" aria-labelledby="server-title">
+    <h2 id="server-title">Debezium Server: one connector, one sink, offsets in a store you pick</h2>
+    <p>
+      Debezium&rsquo;s documentation describes Debezium Server as a ready-to-use application that streams change events
+      from a source database directly to messaging and storage systems without requiring Apache Kafka. Each instance
+      runs exactly one connector. You choose the destination with <code>debezium.sink.type</code>, prefix connector
+      settings with <code>debezium.source.</code>, and set the offset store yourself, because the Kafka Connect runtime
+      that normally does it is not there. The excerpt below is the documentation&rsquo;s own Kinesis example (not run by
+      this site):
+    </p>
+<pre><code>debezium.sink.type=kinesis
+debezium.sink.kinesis.region=eu-central-1
+debezium.source.connector.class=io.debezium.connector.postgresql.PostgresConnector
+debezium.source.offset.storage.file.filename=data/offsets.dat
+debezium.source.offset.flush.interval.ms=0
+debezium.source.database.hostname=localhost
+debezium.source.topic.prefix=tutorial</code></pre>
+    <h3>Where the offset lives, and what a crash does</h3>
+    <p>
+      Debezium&rsquo;s state-storage page says that if you run a connector in Debezium Server or the embedded engine you
+      must configure the offset store explicitly. The options it documents:
+    </p>
+    <ul>
+      <li><strong>File</strong> (<code>FileOffsetBackingStore</code>, the Server default): a local file; the page calls it ideal for single-node applications or testing.</li>
+      <li><strong>JDBC</strong> (<code>JdbcOffsetBackingStore</code>): a table, <code>debezium_offset_storage</code> by default, in the source database or another one.</li>
+      <li><strong>Redis</strong> (<code>RedisOffsetBackingStore</code>): a hash key, <code>metadata:debezium:offsets</code> by default on the Server page.</li>
+      <li><strong>Kafka</strong> (<code>KafkaOffsetBackingStore</code>): a compacted topic. It is documented on the storage page; the Server page lists only file, memory, JDBC and Redis, so check that your Server version accepts it.</li>
+      <li><strong>Memory</strong>: volatile, lost on a crash, for tests only.</li>
+    </ul>
+    <p>
+      In every case the store is written by the engine on its own schedule. Nothing in these pages puts the offset in the
+      same transaction as your destination write. The embedded engine documentation states the consequence for a
+      crash: the application &ldquo;will likely receive some source records after restart that it had already
+      processed&rdquo;, up to <em>n</em> duplicates with a flush interval of 0 (<em>n</em> being the batch size) and up to
+      <em>n &times; m</em> with a longer interval. Set <code>offset.flush.interval.ms</code> explicitly: the engine page
+      says its default is one minute while the storage page lists 6000 ms, so check your version.
+    </p>
+    <h3>Per-sink facts that matter for duplicates and order</h3>
+    <div style="overflow-x: auto" role="region" aria-label="Debezium Server sinks" tabindex="0" data-table-scroll>
+    <table>
+      <caption>What the Debezium Server page and each destination&rsquo;s documentation say (read 2026-10-09)</caption>
+      <thead>
+        <tr>
+          <th scope="col">Sink</th>
+          <th scope="col">What is stated</th>
+          <th scope="col">What it means for the consumer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Kinesis</th>
+          <td>The Kinesis documentation says producer retries can store a record twice with different sequence numbers, and that applications needing strict guarantees should embed a primary key to remove duplicates. AWS DMS&rsquo;s page says Kinesis Data Streams does not support deduplication. <code>PutRecords</code> &ldquo;doesn&rsquo;t guarantee the ordering of records&rdquo; because one failed record does not stop the rest.</td>
+          <td>Never rely on arrival order. In the sink source on <code>main</code> (may differ from your release) failed entries of a batch are retried in a later request, which can put them after later changes.</td>
+        </tr>
+        <tr>
+          <th scope="row">Google Pub/Sub</th>
+          <td>Debezium: <code>ordering.enabled</code> defaults to true and uses the message key. Google: Pub/Sub delivers each message at least once; ordering is per ordering key, and a redelivery re-delivers later messages for that key. Exactly-once delivery is a pull-subscription feature based on a Pub/Sub-assigned message ID.</td>
+          <td>My reading, not stated by either page: a change re-published after a Server crash gets a new message ID, so subscription-side exactly-once would not recognise it as a duplicate.</td>
+        </tr>
+        <tr>
+          <th scope="row">Apache Pulsar</th>
+          <td>Pulsar deduplication is off by default, enabled per broker, namespace or topic, and uses the producer name to filter duplicates. Debezium passes <code>debezium.sink.pulsar.producer.*</code> through to the producer.</td>
+<td>I did not verify how the sink names its producer or whether a restarted Server presents the same identity, so do not count on broker deduplication across a Server restart. Check your version.</td>
+        </tr>
+        <tr>
+          <th scope="row">Redis Streams</th>
+          <td>The sink writes with <code>XADD</code>; its client interface takes no entry ID (source on <code>main</code>), and Redis documents <code>*</code> as auto-generating a unique ID.</td>
+          <td>A re-sent change is a second stream entry. The reader dedupes on the position in the payload.</td>
+        </tr>
+        <tr>
+          <th scope="row">HTTP client</th>
+          <td>Retries 5 times by default, then raises an error; optional batching into a JSON array.</td>
+          <td>A retry after a lost response posts the same event again: the receiver must be idempotent.</td>
+        </tr>
+        <tr>
+          <th scope="row">JDBC</th>
+          <td>The page says Debezium Server &ldquo;does not currently provide the same delivery guarantees&rdquo; as the connector on Kafka Connect, naming offset management, exactly-once and retries as features that may behave differently.</td>
+          <td>Do not carry over assumptions from the <a href="{{ '/is-cdc-exactly-once/#sink' | url }}">Kafka Connect JDBC sink</a>. Keep <code>insert.mode=upsert</code> and add your own position guard.</td>
+        </tr>
+        <tr>
+          <th scope="row">Iceberg</th>
+          <td>Community sink in a separate repository. Its deduplication is per batch only and <code>upsert-dedup-column</code> has no default; the full finding is on <a href="{{ '/which-row-wins/#iceberg' | url }}">Which row wins</a>.</td>
+          <td>No protection across batches: guard with a <code>MERGE</code> on the position.</td>
+        </tr>
+        <tr>
+          <th scope="row">Databricks Zerobus</th>
+          <td>&ldquo;Delivery uses an at-least-once guarantee. As a result, the sink might deliver the same record more than once.&rdquo; The page tells you to deduplicate, for example by the source LSN, and offers <code>idempotency.mode</code>.</td>
+          <td>This is the thesis in Debezium&rsquo;s own words: deduplicate on the source position.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      Debezium&rsquo;s Kafka Connect exactly-once opt-in is documented for connectors deployed in Kafka Connect. These
+      pages do not document an equivalent for Debezium Server. There is no Elasticsearch or OpenSearch sink in the
+      Server sink list I read, so the search path below is a consumer you write.
+    </p>
+  </section>
+
+  <section id="engine" aria-labelledby="engine-title">
+    <h2 id="engine-title">The embedded engine: you own the commit</h2>
+    <p>
+      The engine is a library (<code>debezium-api</code> plus <code>debezium-embedded</code>) that runs a connector
+      inside your application. From Debezium 3.2 the default implementation is the asynchronous engine, which Debezium
+      Server also uses. When you need batching or an async API, the documentation points to
+      <code>DebeziumEngine.ChangeConsumer</code>, whose single method is
+      <code>handleBatch(List&lt;R&gt; records, RecordCommitter&lt;R&gt; committer)</code>. Per its Javadoc you call
+      <code>markProcessed</code> for each record and <code>markBatchFinished</code> when the batch is done.
+    </p>
+    <h3>The commit-after-process contract</h3>
+    <ol>
+      <li>Write the record&rsquo;s effect to your destination.</li>
+      <li>Only then call <code>markProcessed(record)</code>. It registers that record&rsquo;s source offset to be flushed; in the engine source on <code>main</code> it does that and <code>markBatchFinished</code> asks the commit policy whether to flush now.</li>
+      <li>Call <code>markBatchFinished()</code> at the end of the batch.</li>
+      <li>If a write fails, do not mark that record or any later one, and stop the engine. My reading, untested: the connector&rsquo;s in-memory position has already moved on, so only a restart re-reads from the last stored offset.</li>
+      <li>Stop the engine with <code>close()</code>, not by shutting down the executor. The documentation says an interrupt can leave it unclean and the restarted application may see records it had already processed.</li>
+    </ol>
+    <p>
+      Marking a record <em>before</em> its write is durable turns a crash into data loss, because the stored offset has
+      moved past a change the destination never got. Marking <em>after</em> turns a crash into a repeat, which an
+      idempotent write absorbs. The simple <code>notifying(record -&gt; ...)</code> form has a documented hazard: the page
+      says the handler should not throw, and that an exception is logged and the engine moves on to the next record, so
+      your application might become inconsistent with the database. The default wrapper in the source on
+      <code>main</code> appears to propagate other exceptions instead, so docs and code may disagree; I did not run
+      either. Catch inside the handler and decide.
+    </p>
+<pre><code class="language-java">// Untested sketch. Types follow the engine documentation.
+class IdempotentSink implements DebeziumEngine.ChangeConsumer&lt;ChangeEvent&lt;String, String&gt;&gt; {
+  @Override
+  public void handleBatch(List&lt;ChangeEvent&lt;String, String&gt;&gt; records,
+      RecordCommitter&lt;ChangeEvent&lt;String, String&gt;&gt; committer) throws InterruptedException {
+    for (ChangeEvent&lt;String, String&gt; r : records) {
+      applyIfNewer(r);               // upsert on the key, only if source position is higher
+      committer.markProcessed(r);    // after the effect is durable, never before
+    }
+    committer.markBatchFinished();
+  }
+}</code></pre>
+    <p>
+      The documentation also says: &ldquo;applications will receive each source record exactly once during normal operation
+      (including restart after a graceful shutdown), but do need to be tolerant of receiving duplicate events
+      immediately following a restart after a crash&rdquo;. It then says applications needing more rigorous
+      exactly-once behaviour should use &ldquo;the full Debezium platform&rdquo;. Read that against the Debezium
+      exactly-once page, which documents only an opt-in with caveats for connectors on Kafka Connect. For the engine the
+      safe design is the first sentence: expect duplicates after a crash and make the write idempotent.
+    </p>
+  </section>
+
+  <section id="managed" aria-labelledby="managed-title">
+    <h2 id="managed-title">Managed CDC services: only what their pages state</h2>
+    <div style="overflow-x: auto" role="region" aria-label="Managed services" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Delivery and ordering statements found in each service&rsquo;s documentation (read 2026-10-09)</caption>
+      <thead>
+        <tr>
+          <th scope="col">Service</th>
+          <th scope="col">Delivery</th>
+          <th scope="col">Ordering and position</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Google Cloud Datastream</th>
+          <td>Data is &ldquo;delivered to the destination at least once. No event is missed, but there&rsquo;s a possibility of duplicate events in the stream&rdquo;; the duplicate window &ldquo;should be on the order of minutes&rdquo; and the event UUID detects duplicates.</td>
+          <td>&ldquo;Doesn&rsquo;t guarantee ordering&rdquo;. In BigQuery, out-of-order events are merged in sequence using event metadata and an internal change sequence number. For PostgreSQL the page says order can be inferred from <code>source_timestamp</code> together with <code>lsn</code>; use the <code>lsn</code> as your guard.</td>
+        </tr>
+        <tr>
+          <th scope="row">AWS DMS</th>
+          <td>The pages read state no overall guarantee. They do say Kinesis Data Streams does not support deduplication, so consumers must handle duplicates, and that the S3 target may write duplicates during full load in two cases.</td>
+          <td>By default CDC row changes on S3 are stored per table &ldquo;without regard to transaction order&rdquo;; transaction order needs an endpoint setting (<code>PreserveTransactions</code>, CSV only).</td>
+        </tr>
+        <tr>
+          <th scope="row">Airbyte</th>
+          <td>Incremental sync documentation: &ldquo;Airbyte provides an at-least-once delivery guarantee&rdquo;. The CDC page states no delivery guarantee of its own.</td>
+          <td>CDC records carry <code>_ab_cdc_lsn</code> (or log file and position for MySQL), <code>_ab_cdc_updated_at</code> and <code>_ab_cdc_deleted_at</code>. The deduped mode sorts by a cursor field; the pages do not say which column that is for CDC, so check your destination connector.</td>
+        </tr>
+        <tr>
+          <th scope="row">Fivetran</th>
+          <td>The core-concepts and PostgreSQL connector pages read state no delivery guarantee.</td>
+          <td>Deletes appear as <code>_fivetran_deleted = TRUE</code> on the destination row. No ordering statement was found in the pages read.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      Absence from a page is not a guarantee either way; ask the vendor, in writing, which position orders the
+      destination and what happens on a restart. If you run your own merge on top of a landing table, the rule from
+      <a href="{{ '/which-row-wins/' | url }}">Which row wins</a> applies unchanged. The vendor labs are
+      <a href="{{ '/cloud-labs/aws-dms/' | url }}">AWS DMS</a>, <a href="{{ '/cloud-labs/fivetran/' | url }}">Fivetran</a>
+      and <a href="{{ '/cloud-labs/snowflake-cdc/' | url }}">Snowflake</a>.
+    </p>
+  </section>
+
+  <section id="search" aria-labelledby="search-title">
+    <h2 id="search-title">Syncing a search index or cache: the log position is the version</h2>
+    <p>
+      Elasticsearch&rsquo;s own index API documentation makes the point this site makes: with external versioning
+      &ldquo;there is no need to maintain strict ordering of async indexing operations run as a result of changes to a
+      source database, as long as version numbers from the source database are used&rdquo;. AWS says the same about
+      Kinesis consumers: with OpenSearch &ldquo;you can use a combination of versioning and unique IDs to prevent
+      duplicated processing&rdquo;. The recipe: document ID = primary key, document body = the full <code>after</code>
+      image, <code>version</code> = the source log position, <code>version_type=external</code>.
+    </p>
+    <h3>What was run on Elasticsearch 9.5.5</h3>
+    <div style="overflow-x: auto" role="region" aria-label="Elasticsearch probe results" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Probe on a single local node, security off, 2026-10-09. HTTP status in brackets.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Request</th>
+          <th scope="col">Result</th>
+          <th scope="col">Reading</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">index v100, then v200</th><td>created (201), updated (200)</td><td>Higher version wins.</td></tr>
+        <tr><th scope="row">replay v100 after v200</th><td>version_conflict_engine_exception (409)</td><td>A stale replay is refused.</td></tr>
+        <tr><th scope="row">replay v200 after v200</th><td>409</td><td>A duplicate is refused too: strictly higher is required. Treat 409 as success.</td></tr>
+        <tr><th scope="row">delete v300 (<code>DELETE ...?version=300&amp;version_type=external</code>)</th><td>deleted (200), later GET 404</td><td>A delete takes a version like any write.</td></tr>
+        <tr><th scope="row">late v200 and v100 after the delete</th><td>409 and 409</td><td>The delete is remembered, for now.</td></tr>
+        <tr><th scope="row">same replay with default <code>index.gc_deletes</code></th><td>409 at every check up to 56 s; accepted (201) at 61 s</td><td>The delete&rsquo;s version was forgotten after about 60 s and the document came back.</td></tr>
+        <tr><th scope="row">same replay with <code>index.gc_deletes</code> = 2s</th><td>409 at 1 s; accepted at 6 s</td><td>The setting is the window.</td></tr>
+        <tr><th scope="row">same replay with <code>index.gc_deletes</code> = 10m</th><td>409 at 61 s</td><td>A longer window holds.</td></tr>
+        <tr><th scope="row">marker document: index v300 with <code>deleted: true</code>, then late v200</th><td>409; a filtered search returns no hit</td><td>A live document has no expiry; nothing resurrects.</td></tr>
+        <tr><th scope="row">version 0; 2<sup>63</sup>&minus;1; 2<sup>63</sup>; &minus;1; 1.5; <code>16/B374D848</code>; a SQL Server LSN</th><td>accepted; accepted; 400; 400; 400; 400; 400</td><td>The version must be a non-negative 64-bit integer. Text positions are rejected.</td></tr>
+        <tr><th scope="row"><code>_update</code> with <code>version_type=external</code></th><td>400</td><td>Send the whole image as an index request.</td></tr>
+        <tr><th scope="row">tie: <code>external</code> v100 over v100, then <code>external_gte</code></th><td>409, then accepted</td><td><code>external_gte</code> resolves a tie by arrival; the documentation says to use it with care.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      The setting is documented as dynamic: <code>index.gc_deletes</code> is &ldquo;the length of time that a deleted
+      document&rsquo;s version number remains available for further versioned operations. Defaults to 60s&rdquo;. The
+      cost of a long window (the pages read do not document it) needs your own measurement. OpenSearch documents the same
+      <code>version_type</code> values and a dynamic <code>index.gc_deletes</code> with a 60 s default; I did not run
+      OpenSearch.
+    </p>
+    <h3>Three consequences</h3>
+    <ul>
+      <li>
+        <strong>The version has to be one integer.</strong> A PostgreSQL <code>lsn</code> in a Debezium event is already an
+        integer (it fits while it stays below 2<sup>53</sup> in JavaScript, about 9 PB of WAL). A SQL Server LSN has three
+        parts (for example <code>0000003a:00002f50:0005</code>) and a MySQL position is a file and an offset: you must
+        pack them into one monotonic integer yourself, which is a design, not a feature, and positions from different log
+        lineages are not comparable.
+      </li>
+      <li>
+        <strong>A tie is silently dropped.</strong> If two changes to one key could share a version, plain
+        <code>external</code> keeps the first and refuses the second. Debezium&rsquo;s PostgreSQL page does not say whether
+        events in one transaction can share an <code>lsn</code>, so fold an ordinal into the integer or test your source.
+      </li>
+      <li>
+        <strong>Deletes need a plan.</strong> Either delete with the version and set
+        <code>index.gc_deletes</code> above the longest replay you can suffer, or index a marker document
+        (<code>deleted: true</code>) and filter it out of queries, purging it only once no replay can reach back that
+        far. The first is what the page measured at 60 s by default; the second matches the
+        <a href="{{ '/deletes-stay-deleted/' | url }}">deletes that stay deleted</a> lesson.
+      </li>
+    </ul>
+    <h3>A consumer sketch (request shapes run; the Debezium side untested)</h3>
+<pre><code class="language-js">// Node 20+. Debezium JSON events with the PostgreSQL source block.
+export function toBulkLines(events, { index, idField = "id", softDelete = false }) {
+  const lines = [];
+  for (const e of events) {
+    if (e == null || e.op == null) continue; // a Kafka-style tombstone or a non-change record
+    const row = e.op === "d" ? e.before : e.after;
+    const version = e.source.lsn;
+    if (!Number.isSafeInteger(version) || version &lt; 0) {
+      throw new Error(`position ${version} is not a safe non-negative integer`);
+    }
+    const meta = { _index: index, _id: String(row[idField]), version, version_type: "external" };
+    if (e.op === "d" &amp;&amp; !softDelete) {
+      lines.push(JSON.stringify({ delete: meta }));
+    } else {
+      lines.push(JSON.stringify({ index: meta }));
+      lines.push(JSON.stringify({ ...row, deleted: e.op === "d" }));
+    }
+  }
+  return lines.length ? lines.join("\n") + "\n" : "";
+}
+
+// Returns indexes to retry (429, 5xx) and indexes that were rejected (everything else).
+export function classifyBulk(response) {
+  const retry = [];
+  const rejected = [];
+  response.items.forEach((item, i) =&gt; {
+    const r = Object.values(item)[0];
+    if (r.status &lt; 300) return; // applied
+    if (r.status === 409 &amp;&amp; r.error?.type === "version_conflict_engine_exception") return; // stale or duplicate
+    if (r.status === 429 || r.status &gt;= 500) retry.push(i);
+    else rejected.push(i);
+  });
+  return { retry, rejected };
+}</code></pre>
+    <p>
+      Send the lines to <code>POST /_bulk</code> with <code>Content-Type: application/x-ndjson</code>. Commit the source
+      offset only after every item is applied, a 409, or sent to a dead-letter store; a batch with a retry item is
+      re-sent whole, which is safe because the write is idempotent. The two functions above were run against
+      Elasticsearch 9.5.5 with hand-made events: a create and an update returned 201 and 200, a replayed older change and
+      a duplicate returned 409 and 409, a delete returned 200, a late update after it returned 409, and the marker mode
+      kept <code>{"id":2,"deleted":true}</code> at version 300 against a late update. No real Debezium event was
+      used; this repository&rsquo;s unit test also runs them on hand-made events.
+    </p>
+    <h3>Redis as a cache</h3>
+    <p>
+      Two honest options. <strong>Invalidate, do not write:</strong> on every change event delete the cache key and let
+      the reader reload from the database. A duplicate or a reordered event can only cause an extra miss. Debezium
+      documents this pattern for Hibernate&rsquo;s second-level cache (an incubating Quarkus extension that evicts on
+      update and delete). Race: a reader that loaded the old row before the change can still write it back after the
+      eviction, which is why populating needs a guard. <strong>Guarded write:</strong> Redis has no compare-and-set on a
+      numeric version, so use a script, which Redis documents as atomic. A plain <code>SET</code> has no guard: on Redis
+      8.10.2, <code>SET b</code> then <code>SET a</code> left <code>a</code>.
+    </p>
+<pre><code class="language-lua">-- KEYS[1] cache key; ARGV[1] version (log position, integer below 2^53);
+-- ARGV[2] 'd' for delete; ARGV[3] document; ARGV[4] tombstone TTL in seconds.
+-- Returns 1 when applied, 0 when stale or duplicate.
+local current = redis.call('HGET', KEYS[1], 'v')
+if current and tonumber(current) &gt;= tonumber(ARGV[1]) then return 0 end
+if ARGV[2] == 'd' then
+  redis.call('HSET', KEYS[1], 'v', ARGV[1], 'deleted', '1', 'doc', '')
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[4]))
+else
+  redis.call('HSET', KEYS[1], 'v', ARGV[1], 'deleted', '0', 'doc', ARGV[3])
+  redis.call('PERSIST', KEYS[1])
+end
+return 1</code></pre>
+    <p>
+      Run on Redis 8.10.2 with <code>redis-cli --eval</code>: v100 then v200 applied (1, 1); replay v100 and a duplicate
+      v200 returned 0 and left v200 in place; a delete at v300 with a 3 s tombstone TTL made a late v200 return 0, and
+      after the TTL expired the same late v200 returned 1 and the key came back. Redis lets you choose the tombstone TTL,
+      so the window is yours, but it has the same shape as <code>gc_deletes</code>. Lua has one numeric type; the probe
+      showed 2<sup>53</sup>+1 refused as &ldquo;not newer&rdquo; than 2<sup>53</sup>, so keep versions below 2<sup>53</sup>.
+      Readers must treat <code>deleted = 1</code> as a miss.
+    </p>
+  </section>
+
+  <section id="eos" aria-labelledby="eos-title">
+    <h2 id="eos-title">Where exactly-once stops, again</h2>
+    <p>
+      None of these paths adds a shared transaction between the source and the destination. Debezium documents
+      at-least-once delivery and no internal deduplication layer; the engine page tells you to expect duplicates after
+      a crash; Datastream documents at-least-once; Zerobus tells you to deduplicate by source LSN. The achievable claim
+      is exactly-once <em>processing</em>: a position-ordered idempotent write makes the duplicates harmless. See
+      <a href="{{ '/exactly-once/#idempotency' | url }}">Exactly-once semantics</a> and
+      <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once?</a>.
+    </p>
+  </section>
+
+  <section id="try-it" aria-labelledby="try-it-title">
+    <h2 id="try-it-title">Try it: reproduce the probe</h2>
+    <p>
+      With a throwaway Elasticsearch on <code>localhost:9200</code> (security off), this reproduces the central rows of the
+      table. The commands match what was run, on port 19200 instead of 9200.
+    </p>
+<pre><code class="language-bash">curl -s -XPUT 'localhost:9200/probe' -H 'content-type: application/json' -d '{"settings":{"number_of_replicas":0}}'
+curl -s -XPUT 'localhost:9200/probe/_doc/7?version=100&amp;version_type=external' -H 'content-type: application/json' -d '{"name":"a"}'
+curl -s -XPUT 'localhost:9200/probe/_doc/7?version=200&amp;version_type=external' -H 'content-type: application/json' -d '{"name":"b"}'
+curl -s -XPUT 'localhost:9200/probe/_doc/7?version=100&amp;version_type=external' -H 'content-type: application/json' -d '{"name":"a"}'   # expect 409
+curl -s -XDELETE 'localhost:9200/probe/_doc/7?version=300&amp;version_type=external'
+curl -s -XPUT 'localhost:9200/probe/_doc/7?version=200&amp;version_type=external' -H 'content-type: application/json' -d '{"name":"b"}'   # 409 now, accepted after about 60 s</code></pre>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="monday" aria-labelledby="monday-title">
+    <h2 id="monday-title">What to do Monday</h2>
+    <ol>
+      <li>Write down, per path in use, where the offset is stored and what a crash repeats. If you cannot say, that is the finding.</li>
+      <li>Carry the source log position into every destination write and make it the version or the merge guard.</li>
+      <li>In an embedded-engine handler, move <code>markProcessed</code> after the durable write.</li>
+      <li>For a search index, decide the delete plan (marker document, or <code>index.gc_deletes</code> above your longest replay) and test it with the curl commands above.</li>
+      <li>For each managed service, record what its page says about delivery and ordering, and what you could not find.</li>
+      <li>Replay a batch, swap a pair, and kill the consumer mid-batch in staging (<a href="{{ '/test-your-pipeline/' | url }}">test your pipeline</a>).</li>
+    </ol>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <h3>On this site</h3>
+    <ul>
+      <li><a href="{{ '/which-row-wins/' | url }}">Which row wins in your target</a> and <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once?</a></li>
+      <li><a href="{{ '/event-envelope/#transports' | url }}">Transports other than Kafka</a>, <a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a>, <a href="{{ '/use-cases/#search-indexing' | url }}">Search indexing use case</a>.</li>
+      <li><a href="{{ '/tooling/' | url }}">Tooling</a>, <a href="{{ '/compare/' | url }}">Compare</a>, <a href="{{ '/non-relational/' | url }}">Non-relational sources</a>.</li>
+      <li>Glossary: <a href="{{ '/glossary/#debezium-server' | url }}">Debezium Server</a>, <a href="{{ '/glossary/#embedded-engine' | url }}">embedded engine</a>, <a href="{{ '/glossary/#external-versioning' | url }}">external versioning</a>, <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a>, <a href="{{ '/glossary/#deduplication' | url }}">deduplication</a>, <a href="{{ '/glossary/#tombstone' | url }}">tombstone</a>.</li>
+    </ul>
+    <h3>Primary documentation (read 2026-10-09)</h3>
+    <ul>
+      <li><a href="https://debezium.io/documentation/reference/stable/operations/debezium-server.html" rel="noopener">Debezium Server</a>, <a href="https://debezium.io/documentation/reference/stable/development/engine.html" rel="noopener">Debezium Engine</a>, <a href="https://debezium.io/documentation/reference/stable/configuration/storage.html" rel="noopener">storing connector state</a>, <a href="https://debezium.io/documentation/reference/stable/configuration/eos.html" rel="noopener">exactly-once delivery</a>, <a href="https://debezium.io/documentation/reference/stable/connectors/postgresql.html" rel="noopener">PostgreSQL connector</a>, <a href="https://debezium.io/documentation/reference/stable/integrations/hibernate-cache.html" rel="noopener">Hibernate cache invalidation</a>.</li>
+      <li>Source code read on the default branch: <a href="https://github.com/debezium/debezium-server" rel="noopener">debezium-server</a> sinks and <a href="https://github.com/debezium/debezium" rel="noopener">AsyncEmbeddedEngine</a>.</li>
+      <li><a href="https://docs.aws.amazon.com/streams/latest/dev/kinesis-record-processor-duplicates.html" rel="noopener">Kinesis: handle duplicate records</a>, <a href="https://docs.aws.amazon.com/kinesis/latest/APIReference/API_PutRecords.html" rel="noopener">PutRecords</a>.</li>
+      <li><a href="https://cloud.google.com/pubsub/docs/ordering" rel="noopener">Pub/Sub ordering</a>, <a href="https://cloud.google.com/pubsub/docs/exactly-once-delivery" rel="noopener">exactly-once delivery</a>.</li>
+      <li><a href="https://pulsar.apache.org/docs/next/concepts-messaging/" rel="noopener">Pulsar messaging concepts</a>, <a href="https://pulsar.apache.org/docs/next/cookbooks-deduplication/" rel="noopener">deduplication cookbook</a>; <a href="https://redis.io/docs/latest/commands/xadd/" rel="noopener">Redis XADD</a>, <a href="https://redis.io/docs/latest/develop/programmability/eval-intro/" rel="noopener">Redis scripting</a>, <a href="https://redis.io/docs/latest/develop/programmability/lua-api/" rel="noopener">Lua API</a>.</li>
+      <li><a href="https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-index" rel="noopener">Elasticsearch index API</a> (versioning), <a href="https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-delete" rel="noopener">delete API</a>, <a href="https://www.elastic.co/docs/reference/elasticsearch/index-settings/index-modules" rel="noopener">index settings</a> (<code>index.gc_deletes</code>); <a href="https://docs.opensearch.org/latest/api-reference/document-apis/index-document/" rel="noopener">OpenSearch index document</a>, <a href="https://docs.opensearch.org/latest/install-and-configure/configuring-opensearch/index-settings/" rel="noopener">index settings</a>.</li>
+      <li><a href="https://cloud.google.com/datastream/docs/events-and-streams" rel="noopener">Datastream events and streams</a>, <a href="https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.Kinesis.html" rel="noopener">DMS Kinesis target</a>, <a href="https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.S3.html" rel="noopener">DMS S3 target</a>, <a href="https://docs.airbyte.com/platform/understanding-airbyte/cdc" rel="noopener">Airbyte CDC</a>, <a href="https://docs.airbyte.com/platform/using-airbyte/core-concepts/sync-modes/incremental-append-deduped" rel="noopener">Airbyte incremental append + deduped</a>, <a href="https://fivetran.com/docs/connectors/databases/postgresql" rel="noopener">Fivetran PostgreSQL</a>.</li>
+    </ul>
+  </section>
+</div>
