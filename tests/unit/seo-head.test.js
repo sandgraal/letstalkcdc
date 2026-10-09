@@ -170,13 +170,20 @@ describe("social cards and structured data in the built site", () => {
     });
 
     it("no page rendered by base.njk has silently become noindex", () => {
-      // None are expected today. If one is added on purpose, list it here.
-      const expectedNoindex = [];
+      // Only pages that are noindex on purpose. /dashboard/ is a per-reader
+      // progress UI, made noindex deliberately in P16-5. If another page is
+      // added here it should be a decision, not an accident.
+      const expectedNoindex = ["/dashboard/"];
       const actual = allFiles
         .filter((f) => f.usesBaseLayout && f.noindex)
         .map((f) => f.url)
         .sort();
       expect(actual).toEqual(expectedNoindex);
+      // Noindex pages are excluded from the card sample, so the expected
+      // ones must not be sampled.
+      for (const url of expectedNoindex) {
+        expect(sampled().has(url), `${url} must not be sampled`).toBe(false);
+      }
     });
 
     it("keeps 404, the styleguide and the retired teaser noindex and out of the sample", () => {
