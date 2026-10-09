@@ -173,9 +173,13 @@ describe("/postgres-replication-slots/ monitoring query", () => {
     );
   });
 
-  it("does not hide invalidated slots behind a NULL sort", () => {
+  it("never ranks a lost slot as a WAL pin, and says restart_lsn is not always NULL for one", () => {
+    expect(sql).toMatch(/CASE WHEN wal_status <> 'lost'/);
     expect(sql).toMatch(/DESC NULLS LAST/);
-    expect(text).toMatch(/lost.{0,40}NULL\s+restart_lsn/);
+    expect(text).toMatch(/lost slot pins nothing/);
+    expect(text).toMatch(/wal_removed.{0,40}restart_lsn\s+is NULL/);
+    expect(text).toMatch(/idle_timeout.{0,80}can stay set/);
+    expect(text).toMatch(/invalidation_reason IS NOT NULL/);
   });
 
   it("offers the other checks: WAL directory, catalog xmin, PG17 columns, failover readiness", () => {

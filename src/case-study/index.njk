@@ -561,7 +561,7 @@ revenueByCategory.toStream()
           of WAL files, causing disk space alerts.
         </p>
         <p>
-          <strong>Solution:</strong> Set <code>wal_keep_size = 10GB</code> on RDS to limit retention. 
+          <strong>Solution:</strong> Set <code>max_slot_wal_keep_size</code> (for example 10GB; on RDS via the parameter group) to cap what the slot retains; a cap below the outage's WAL means an invalidated slot and a re-snapshot (see the <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a>).
           Implemented monitoring to alert if slot lag exceeds 5GB. Created a runbook for safely 
           dropping and recreating slots when lag is unrecoverable.
         </p>

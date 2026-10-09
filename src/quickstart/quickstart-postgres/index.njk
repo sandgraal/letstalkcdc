@@ -29,7 +29,13 @@ head_extra: |
     <pre><code>SHOW wal_level;
 SHOW max_replication_slots;
 SHOW max_wal_senders;
-SELECT current_setting('wal_keep_size');</code></pre>
+SELECT current_setting('max_slot_wal_keep_size');  -- -1 = unlimited (the default)</code></pre>
+    <p class="muted small">
+      Debezium's own reference suggests <code>wal_keep_size</code> in places, but per the
+      <a href="https://www.postgresql.org/docs/current/runtime-config-replication.html">PostgreSQL docs</a>
+      that setting is a minimum kept for standbys; the cap on what a replication slot retains is
+      <code>max_slot_wal_keep_size</code>.
+    </p>
   </section>
 
   <section class="grid">

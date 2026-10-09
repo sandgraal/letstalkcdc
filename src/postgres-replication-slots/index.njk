@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "Postgres Replication Slots & WAL Growth"
+title: "Postgres Slots & WAL Growth"
 description: "Runbook for a Postgres disk filling behind a CDC slot: the pg_replication_slots checks, max_slot_wal_keep_size, Debezium heartbeats, and safe recovery."
 canonicalPath: "/postgres-replication-slots/"
 scripts:
@@ -52,6 +52,7 @@ scripts:
       on a standby use <code>pg_last_wal_replay_lsn()</code> in its place.
     </p>
     <pre><code>-- Every slot, biggest WAL pin first. Needs PostgreSQL 13+ (wal_status, safe_wal_size).
+-- A lost slot pins nothing, so its restart_lag is shown as NULL and it sorts last.
 SELECT slot_name,
        slot_type,
        plugin,
@@ -59,13 +60,15 @@ SELECT slot_name,
        active,
        active_pid,
        wal_status,
-       pg_size_pretty(safe_wal_size)                                       AS safe_wal_size,
-       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn))  AS restart_lag,
+       pg_size_pretty(safe_wal_size) AS safe_wal_size,
+       pg_size_pretty(CASE WHEN wal_status &lt;&gt; 'lost'
+                           THEN pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) END) AS restart_lag,
        pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS unconfirmed,
        restart_lsn,
        confirmed_flush_lsn
 FROM pg_replication_slots
-ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC NULLS LAST;</code></pre>
+ORDER BY CASE WHEN wal_status &lt;&gt; 'lost'
+              THEN pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) END DESC NULLS LAST;</code></pre>
     <table>
       <caption>How to read the columns</caption>
       <thead>
@@ -96,17 +99,22 @@ ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC NULLS LAST;</co
         <tr>
           <th scope="row"><code>confirmed_flush_lsn</code></th>
           <td>
-            How far the consumer has confirmed receiving. Changes from
-            transactions that committed before it are not sent again. (Logical
-            slots only; NULL for physical slots.)
+            How far the consumer has confirmed receiving. Data from
+            transactions that committed before it is not available anymore from
+            the slot. (Logical slots only; NULL for physical slots.) After a
+            server crash the slot can still go back to an earlier position (see
+            below).
           </td>
         </tr>
         <tr>
           <th scope="row"><code>restart_lag</code></th>
           <td>
-            Current WAL position minus <code>restart_lsn</code>, in bytes. This is
-            the WAL this slot makes the server keep. It is an estimate of what
-            the slot pins, not the size of <code>pg_wal</code>.
+            Current WAL position minus <code>restart_lsn</code> (a byte count,
+            shown with <code>pg_size_pretty</code> in the query). For a slot that
+            is not <code>lost</code>, this is the WAL it makes the server keep:
+            an estimate of what the slot pins, not the size of
+            <code>pg_wal</code>. A <code>lost</code> slot pins nothing, whatever
+            this column would show, so the query returns NULL for it.
           </td>
         </tr>
         <tr>
@@ -122,7 +130,9 @@ ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC NULLS LAST;</co
           <td>
             <code>reserved</code>: the WAL the slot needs is within
             <code>max_wal_size</code>. <code>extended</code>: beyond
-            <code>max_wal_size</code> but still retained. <code>unreserved</code>:
+            <code>max_wal_size</code> but still retained, either by the slot or
+            by <code>wal_keep_size</code> (so it is not proof of a slot problem
+            on its own). <code>unreserved</code>:
             the slot no longer retains the WAL it needs and some will be removed
             at the next checkpoint (it can return to <code>reserved</code> or
             <code>extended</code>). <code>lost</code>: the slot is no longer
@@ -142,11 +152,15 @@ ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC NULLS LAST;</co
       </tbody>
     </table>
     <p class="muted small">
-      Careful with NULLs: a <code>lost</code> slot has a NULL
-      <code>restart_lsn</code> (observed, see the last section), so its
-      <code>restart_lag</code> is NULL too. It does not mean &ldquo;nothing is
-      retained&rdquo;. It means the slot has already failed. Always read
-      <code>wal_status</code> next to the lag columns.
+      Careful with <code>lost</code> slots: a lost slot pins nothing, whatever
+      <code>restart_lag</code> would show. With
+      <code>invalidation_reason = 'wal_removed'</code> its
+      <code>restart_lsn</code> is NULL (observed, see the last section), but
+      with other reasons (for example <code>idle_timeout</code> on PostgreSQL
+      18) it can stay set. A NULL lag therefore means &ldquo;this slot has
+      already failed&rdquo;, not &ldquo;nothing is retained by design&rdquo;.
+      Read <code>wal_status</code> (and, on 17+, <code>invalidation_reason</code>)
+      before the lag columns.
     </p>
     <p>
       Next, confirm the disk is really WAL, and look for the other thing a slot
@@ -195,7 +209,10 @@ FROM pg_replication_slots;</code></pre>
         the WAL position it has flushed. That is how
         <code>confirmed_flush_lsn</code> moves forward. <code>restart_lsn</code>
         follows, possibly a little behind it, and that is what lets the server
-        recycle older WAL.
+        recycle older WAL. (From PostgreSQL internals rather than a docs
+        sentence I can cite: in practice a long-running open transaction can
+        hold <code>restart_lsn</code> back, because decoding must be able to
+        restart from the start of every transaction not yet decoded.)
       </li>
       <li>
         If the consumer stops confirming, nothing else moves. Both positions
@@ -218,7 +235,11 @@ FROM pg_replication_slots;</code></pre>
         the <em>minimum</em> amount of past WAL kept in case a standby needs to
         fetch it for streaming replication. The setting that limits what
         replication slots may retain is <code>max_slot_wal_keep_size</code>,
-        covered below. Glossary:
+        covered below. (Debezium's PostgreSQL reference says you can set
+        <code>wal_keep_size</code> &ldquo;to limit the maximum WAL size of a
+        replication slot&rdquo;. That does not match the PostgreSQL
+        documentation for <code>wal_keep_size</code>, which I follow here.)
+        Glossary:
         <a href="{{ '/glossary/#log-retention' | url }}">log retention</a>,
         <a href="{{ '/glossary/#lsn-scn' | url }}">LSN</a>.
       </p>
@@ -434,7 +455,16 @@ FROM pg_replication_slots;</code></pre>
             changes are sent. <strong>The heartbeat table must be in the
             publication</strong> or the connector never sees the heartbeat
             writes. If the publication predates your deployment and is not
-            <code>FOR ALL TABLES</code>, add it explicitly.
+            <code>FOR ALL TABLES</code>, add it explicitly. <strong>In
+            <code>filtered</code> mode the connector rewrites the publication
+            from your include and exclude lists</strong>: Debezium documents
+            that it runs <code>ALTER PUBLICATION &lt;name&gt; SET TABLE</code>
+            for the tables matching those lists. So add
+            <code>cdc_heartbeat</code> to <code>table.include.list</code>, not
+            only to the publication. (That the manual
+            <code>ADD TABLE</code> would be undone at the next start is my
+            inference from the documented <code>SET TABLE</code>; I did not run
+            it.)
           </td>
         </tr>
         <tr>
@@ -453,7 +483,8 @@ FROM pg_replication_slots;</code></pre>
     </table>
     <pre><code>-- Heartbeat table for a quiet database (the connector user needs rights on it)
 CREATE TABLE IF NOT EXISTS cdc_heartbeat (id int PRIMARY KEY, beat timestamptz);
-ALTER PUBLICATION dbz_publication ADD TABLE cdc_heartbeat;  -- only for a publication that is not FOR ALL TABLES</code></pre>
+ALTER PUBLICATION dbz_publication ADD TABLE cdc_heartbeat;  -- only for a publication that is not FOR ALL TABLES
+-- With publication.autocreate.mode=filtered, also list public.cdc_heartbeat in table.include.list</code></pre>
     <pre><code>{
   "heartbeat.interval.ms": "10000",
   "heartbeat.action.query": "INSERT INTO cdc_heartbeat (id, beat) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET beat = EXCLUDED.beat"
@@ -594,7 +625,8 @@ WHERE synced;</code></pre>
   <section id="decision" aria-labelledby="decision-title">
     <h2 id="decision-title">Decision table: what is wrong, and what to do</h2>
     <p>
-      Take two samples of the triage query a minute or more apart, and read them
+      Take two samples of the triage query, far enough apart that
+      <code>pg_current_wal_lsn()</code> has clearly advanced, and read them
       against this table. Dropping a slot is the last row you should reach for,
       not the first.
     </p>
@@ -637,9 +669,11 @@ WHERE synced;</code></pre>
             Restart the connector. It resumes from the slot, and some changes
             will be delivered again, so the sink must already be idempotent
             (<a href="#replay">below</a>). If it cannot come back before the
-            disk fills, buy time (extend the volume, set or lower
-            <code>max_slot_wal_keep_size</code>) knowing a limit may turn this
-            row into the last one.
+            disk fills, extend the volume. Do not lower
+            <code>max_slot_wal_keep_size</code> to &ldquo;buy time&rdquo;: a
+            limit below the slot's current <code>restart_lag</code> makes the
+            slot <code>unreserved</code>, and it is invalidated at the next
+            checkpoint, which moves you to the invalidated-slot row.
           </td>
         </tr>
         <tr>
@@ -657,8 +691,9 @@ WHERE synced;</code></pre>
         <tr>
           <th scope="row">Invalidated slot</th>
           <td>
-            <code>wal_status = 'lost'</code> (and, on 17+,
-            <code>invalidation_reason = 'wal_removed'</code>).
+            <code>wal_status = 'lost'</code> or, on 17+,
+            <code>invalidation_reason IS NOT NULL</code> (for example
+            <code>wal_removed</code>, or <code>idle_timeout</code> on 18).
           </td>
           <td>
             The position is gone. Stop the connector, drop the slot, discard the
@@ -895,7 +930,13 @@ SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), :'t0')) AS written_s
         <code>safe_wal_size</code> and <code>invalidation_reason =
         'wal_removed'</code>. Peeking at the lost slot failed with &ldquo;can no
         longer access replication slot&rdquo;, and
-        <code>pg_drop_replication_slot</code> removed it.
+        <code>pg_drop_replication_slot</code> removed it. With
+        <code>idle_replication_slot_timeout = 1s</code> an unused slot became
+        <code>lost</code> with <code>invalidation_reason = 'idle_timeout'</code>
+        after a <code>CHECKPOINT</code>, and its <code>restart_lsn</code> stayed
+        set; the triage query shows a NULL <code>restart_lag</code> for it. The
+        heartbeat table DDL, the action query and
+        <code>ALTER PUBLICATION ... ADD TABLE</code> also ran.
       </li>
       <li>
         <strong>Not run:</strong> an actively streaming consumer. Decoding
@@ -904,8 +945,9 @@ SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), :'t0')) AS written_s
         stopped returning rows, so <code>active</code> and
         <code>active_pid</code> were only checked as columns and never seen as
         <code>true</code>; PostgreSQL 14 to 17 behaviour (docs only), failover
-        slots and synchronisation, <code>idle_replication_slot_timeout</code>,
-        the Debezium JSON, and any managed service (RDS, Cloud SQL) or the
+        slots and synchronisation, the Debezium JSON, whether Debezium's
+        <code>filtered</code> mode really removes a manually added heartbeat
+        table, and any managed service (RDS, Cloud SQL) or the
         Fivetran product. Settings that depend on your Debezium release
         (<code>lsn.flush.mode</code>, <code>slot.failover</code>) are marked
         &ldquo;check your version&rdquo; for that reason.

@@ -45,8 +45,7 @@ const DESCRIPTION_MAX = 160;
 //    tagline, and is not a page title with a suffix.
 //  - "/merge-cookbook/": 65 chars; the page is covered by another open PR.
 const TITLE_OVER_TARGET_OK = new Set(["/", "/merge-cookbook/"]);
-//  - "/compare/": 186 chars; the page is covered by another open PR.
-const DESCRIPTION_OVER_MAX_OK = new Set(["/compare/"]);
+const DESCRIPTION_OVER_MAX_OK = new Set([]);
 
 function walk(dir) {
   const files = [];
