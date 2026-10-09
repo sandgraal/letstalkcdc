@@ -37,3 +37,11 @@
 # Same precedent as the LinkedIn entry above: a link we control that is
 # valid in a browser.
 ^https://github\.com/sandgraal/?$
+
+# File-history pages of this repo (github.com/sandgraal/letstalkcdc/commits/
+# main/...), linked from the privacy page. Same reason as the profile entry
+# above: history pages are heavy for GitHub's gateway and answer [504] to CI
+# runner IPs, which lychee does not retry. A link we control that is valid
+# in a browser. /blob/, /tree/ and /discussions stay checked (blob/tree/edit
+# are remapped to the checkout; the rest are light).
+^https://github\.com/sandgraal/letstalkcdc/commits/
