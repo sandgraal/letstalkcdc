@@ -342,6 +342,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO debezium_use
     "transforms.unwrap.delete.handling.mode": "rewrite"
   }
 }</code></pre>
+      <p><strong>Check your version:</strong> <code>drop.tombstones</code> and <code>delete.handling.mode</code> are marked deprecated in the Debezium 2.7 and 3.0 documentation, which names <code>delete.tombstone.handling.mode</code> as the replacement. The 3.3 and 3.7 pages document only the new option. If you run a newer Debezium than this config targets, check the <a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" target="_blank" rel="noopener">ExtractNewRecordState reference</a> for your version before copying these two lines.</p>
       <p>
         <strong>Key Decisions:</strong>
       </p>
@@ -783,8 +784,8 @@ revenueByCategory.toStream()
         <h3>🔧 Right Tool for the Job</h3>
         <p>
           They chose Debezium despite higher complexity because it aligned with their strategic 
-          direction. For teams without Kafka skills or different constraints, <a href="{{ '/cloud-labs/fivetran/' | url }}">Fivetran</a> or <a href="{{ '/cloud-labs/aws-dms/' | url }}">DMS</a> 
-          might be the better choice; <a href="{{ '/compare/' | url }}">Compare CDC Platforms</a> lays out the trade-offs.
+          direction. For teams without Kafka skills or different constraints, <a href="{{ '/cloud-labs/fivetran/' | url }}">Fivetran</a> or <a href="{{ '/cloud-labs/aws-dms/' | url }}">AWS DMS</a>
+          might be the better choice; the <a href="{{ '/compare/' | url }}">CDC platform comparison</a> lays out the trade-offs.
         </p>
       </div>
 
@@ -867,6 +868,3 @@ revenueByCategory.toStream()
 
   {{ quizMacro.quiz(quizConfig) | safe }}
 </article>
-
-{% set seriesKey = 'case-study' %}
-{% include "components/series-nav.njk" %}

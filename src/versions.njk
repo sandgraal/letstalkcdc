@@ -10,15 +10,17 @@ canonicalPath: "/versions/"
   <header class="page-header">
     <h1>Changelog &amp; Version Support Matrix</h1>
     <p class="text-xl">
-      This page tracks the current versions of CDC tools and platforms covered in our guides.
-      Last updated: <strong>{{ toolVersions.lastUpdated }}</strong>
+      This page lists the latest stable release of each CDC tool and platform covered in our guides,
+      and separately the versions our lab files pin.
+      Release data last checked against the vendors&rsquo; own pages: <strong>{{ toolVersions.lastUpdated }}</strong>
     </p>
   </header>
 
   <section id="version-matrix" aria-labelledby="version-matrix-title">
-    <h2 id="version-matrix-title">Supported Tool Versions</h2>
+    <h2 id="version-matrix-title">Latest Stable Versions</h2>
     <p>
-      All guides and labs are tested against these versions. While CDC concepts remain consistent,
+      This table says what the vendors have released, not what our labs run (see
+      <a href="#lab-pins">what the labs pin</a>). While CDC concepts remain consistent,
       specific configuration syntax and features may vary between versions.
     </p>
 
@@ -27,7 +29,7 @@ canonicalPath: "/versions/"
       <thead>
         <tr>
           <th scope="col">Tool/Platform</th>
-          <th scope="col">Version</th>
+          <th scope="col">Latest stable</th>
           <th scope="col">Release Date</th>
           <th scope="col">Status</th>
           <th scope="col">Release Notes</th>
@@ -94,13 +96,72 @@ canonicalPath: "/versions/"
     </table>
   </section>
 
+  <section id="lab-pins" aria-labelledby="lab-pins-title">
+    <h2 id="lab-pins-title">What the Labs Pin</h2>
+    <p>
+      The <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a> and the
+      <a href="https://github.com/{{ site.repository }}/blob/main/compose.yaml" target="_blank" rel="noopener">repository sandbox</a>
+      use older images than the table above. A unit test fails if these values stop matching the
+      compose files. No automated job starts the labs, so this is what they are configured with,
+      not a record of a test run.
+    </p>
+    <table class="version-table">
+      <caption class="sr-only">Versions pinned by the lab compose files</caption>
+      <thead>
+        <tr>
+          <th scope="col">Component</th>
+          <th scope="col">Pinned in the labs</th>
+          <th scope="col">Image</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Confluent Platform (Apache Kafka)</th>
+          <td><code>{{ toolVersions.tested.confluentPlatform }}</code> (Kafka {{ toolVersions.tested.apacheKafka }})</td>
+          <td><code>confluentinc/cp-kafka:{{ toolVersions.tested.confluentPlatform }}</code></td>
+        </tr>
+        <tr>
+          <th scope="row">Debezium and Kafka Connect</th>
+          <td><code>{{ toolVersions.tested.debeziumConnect }}</code></td>
+          <td><code>quay.io/debezium/connect:{{ toolVersions.tested.debeziumConnect }}</code></td>
+        </tr>
+        <tr>
+          <th scope="row">PostgreSQL (lab page)</th>
+          <td><code>{{ toolVersions.tested.postgresMajor }}</code></td>
+          <td><code>debezium/postgres:{{ toolVersions.tested.postgresMajor }}</code></td>
+        </tr>
+        <tr>
+          <th scope="row">PostgreSQL (repository sandbox and observability compose)</th>
+          <td><code>{{ toolVersions.tested.examplePostgresMajor }}</code></td>
+          <td><code>quay.io/debezium/example-postgres:{{ toolVersions.tested.debeziumConnect }}</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The labs pull the Debezium images from <code>quay.io/debezium</code> by their full release tag. The floating
+      <code>2.7</code> tag exists only on Quay, not on Docker Hub, so <code>debezium/connect:2.7</code> does not pull; and
+      the Docker Hub <code>debezium/connect</code> repository has no tag newer than <code>3.0.0.Final</code>. Debezium
+      {{ toolVersions.tools.debezium.version }} images are on Quay as well, so moving the labs to a current Debezium
+      means changing the tag, and checking the Quay repository for it.
+    </p>
+    <p>
+      The two PostgreSQL rows differ: the lab page runs <code>debezium/postgres:{{ toolVersions.tested.postgresMajor }}</code>, while the
+      <code>example-postgres</code> image used by the repository sandbox is built upstream <code>FROM quay.io/debezium/postgres:{{ toolVersions.tested.examplePostgresMajor }}</code>.
+    </p>
+    <p>
+      Confluent Platform {{ toolVersions.tested.confluentPlatform }} is past standard support: Confluent&rsquo;s
+      <a href="https://docs.confluent.io/platform/current/installation/versions-interoperability.html" target="_blank" rel="noopener">versions and interoperability page</a>
+      lists standard support for the 7.7.x line as ending on July 26, 2026. The labs are a teaching sandbox, not a deployment recommendation.
+    </p>
+  </section>
+
   <section id="support-policy" aria-labelledby="support-policy-title">
     <h2 id="support-policy-title">Support Policy</h2>
     <dl class="status-legend">
       <dt><span class="status-badge status-stable">stable</span></dt>
       <dd>
         Production-ready release with stable APIs and comprehensive documentation.
-        Our guides are actively maintained for these versions.
+        This is the vendor&rsquo;s status for the latest release, not a statement about what our labs run.
       </dd>
       
       <dt><span class="status-badge status-saas">saas</span></dt>
@@ -121,22 +182,23 @@ canonicalPath: "/versions/"
     
     <h3>Debezium + Kafka</h3>
     <p>
-      Debezium {{ toolVersions.tools.debezium.version }} is tested with Kafka {{ toolVersions.tools.kafka.version }}.
-      For other combinations, consult the 
-      <a href="https://debezium.io/documentation/reference/stable/operations/debezium-server.html#_supported_versions" target="_blank" rel="noopener">
-        Debezium version compatibility matrix
-      </a>.
+      The labs pin Debezium {{ toolVersions.tested.debeziumConnect }} with Confluent Platform {{ toolVersions.tested.confluentPlatform }}
+      (Kafka {{ toolVersions.tested.apacheKafka }}). For which Kafka Connect, Java and database versions a Debezium release was
+      tested against, consult the tested-versions table on the
+      <a href="https://debezium.io/releases/" target="_blank" rel="noopener">Debezium releases page</a>.
     </p>
 
     <h3>Kafka Connect</h3>
     <p>
-      Kafka Connect is bundled with Apache Kafka. The version numbers align, so Kafka {{ toolVersions.tools.kafka.version }}
-      includes Kafka Connect {{ toolVersions.tools.kafkaConnect.version }}.
+      Kafka Connect is bundled with Apache Kafka, and its version numbers align: the latest, Kafka {{ toolVersions.tools.kafka.version }},
+      includes Kafka Connect {{ toolVersions.tools.kafkaConnect.version }}. The Debezium Connect image
+      carries its own Connect worker.
     </p>
 
     <h3>PostgreSQL (Source Database)</h3>
     <p>
-      Hands-on labs use PostgreSQL {{ toolVersions.tools.postgres.version }} via the Debezium-tuned container image.
+      The lab page runs PostgreSQL {{ toolVersions.tested.postgresMajor }} via the Debezium-tuned container image; the latest
+      release is {{ toolVersions.tools.postgres.version }}.
       Logical replication is enabled out of the box so you can register the connector without extra Postgres configuration.
     </p>
 

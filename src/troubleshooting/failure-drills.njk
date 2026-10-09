@@ -4,7 +4,7 @@ title: "CDC Failure Scenario Drills"
 canonicalPath: "/troubleshooting/failure-drills/"
 description: "Failure drills to build CDC troubleshooting fluency: practice backpressure, DLQ handling, schema drift, and offset replays in a safe lab."
 datePublished: "2026-02-06"
-dateModified: "2026-08-25"
+dateModified: "2026-10-09"
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/failure-drills.css' | url }}">
 ---
@@ -577,6 +577,9 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
             Note: The sink connector now consumes from <code>server2.public.app_customer</code> 
             (matching the new source connector's topic). The <code>insert.mode=upsert</code> 
             ensures idempotent writes during replay validation.
+          </p>
+          <p class="muted">
+            <strong>Check your version:</strong> <code>drop.tombstones</code> and <code>delete.handling.mode</code> are marked deprecated in the Debezium 2.7 and 3.0 documentation, which names <code>delete.tombstone.handling.mode</code> as the replacement. The 3.3 and 3.7 pages document only the new option. If you run a newer Debezium than this config targets, check the <a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" target="_blank" rel="noopener">ExtractNewRecordState reference</a> for your version before copying these two lines.
           </p>
         </li>
       </ol>

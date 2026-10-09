@@ -25,7 +25,7 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
   connect:
-    image: debezium/connect:2.7
+    image: quay.io/debezium/connect:2.7.4.Final
     depends_on: [kafka]
     ports: ["8083:8083"]
     environment:
@@ -42,7 +42,7 @@ services:
       REST_PORT: 8083
 
   postgres:
-    image: debezium/example-postgres:2.7
+    image: quay.io/debezium/example-postgres:2.7.4.Final
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -52,7 +52,7 @@ services:
       - ./sandbox/init/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql:
-    image: debezium/example-mysql:2.7
+    image: quay.io/debezium/example-mysql:2.7.4.Final
     environment:
       MYSQL_ROOT_PASSWORD: debezium
       MYSQL_USER: mysqluser

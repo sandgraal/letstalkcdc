@@ -59,5 +59,21 @@
         Progress is stored locally in this browser.
       </div>
     </div>
+    {# Related lessons: curated `related` keys in src/_data/series.mjs, rendered in that order. #}
+    {% if current.related and current.related | length %}
+      <section class="prose" aria-labelledby="related-lessons-heading">
+        <h2 id="related-lessons-heading">Related lessons</h2>
+        <ul>
+          {%- for relatedKey in current.related -%}
+            {%- for candidate in navModules -%}
+              {%- if candidate.key == relatedKey and candidate.key != current.key -%}
+                {%- set relatedHref = ui.resolve_href(candidate.href) %}
+          <li><a href="{{ relatedHref | trim }}">{{ candidate.title }}</a></li>
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endfor %}
+        </ul>
+      </section>
+    {% endif %}
   </div>
 {% endif %}

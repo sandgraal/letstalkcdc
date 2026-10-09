@@ -762,9 +762,11 @@ first-class page, no RSS, no email capture.
       revisit when individual errata get their own per-entry
       pages.
 
-- [ ] **Newsletter capture.** Static-first: a Buttondown / Kit /
+- [x] **Newsletter capture.** Static-first: a Buttondown / Kit /
       ConvertKit embed in the base layout footer + a dedicated
       `/newsletter/` page. Pick provider before building.
+
+  _2026-10-09: built as P15-9 (#395); stays off until `BUTTONDOWN_USERNAME` is set._
 
   ⚠️ **Deferred (revamp phase 4d):** the only open item from the
   August 2026 design revamp. Blocked on a maintainer decision —
@@ -1274,6 +1276,7 @@ dependencies).
       diff. Needs: the Phase 15 Tier 1 PRs merged first (they also edit
       `base.njk`).
       _2026-10-09 status: the contrast half shipped in #340 (event-demo text now 4.75:1, and the pale-on-pale body in the light theme fixed, with an e2e guard). Still open: (1) make the four late font weights deterministic and add a metric-matched fallback, (2) ratchet the `/intro/` performance floor and bump the README badge in the same PR. The light-theme accent colour is split out as P15-16 / D8._
+      _2026-10-09 status: fonts shipped in #404 (Plex 400/500/600/700 sans and mono 400 preloaded, metric-matched `IBM Plex Sans Fallback` / `IBM Plex Mono Fallback` faces, e2e layout-shift bound under 0.01; production CSS hash re-baselined). Still open: the Lighthouse floor ratchet, which needs measured CI runs (tracked as P15-44), so this box stays open._
 - [x] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
       mobile-chrome for a "pointer-intercept flake" with no tracking (the
@@ -1327,7 +1330,7 @@ dependencies).
 
 ### Tier C — larger upgrades (one PR each, never batched)
 
-- [ ] **P13-8 · Major dependency upgrades.** Eight majors are pending (`dotenv` leaves with P13-10):
+- [x] **P13-8 · Major dependency upgrades.** Eight majors are pending (`dotenv` leaves with P13-10):
       `vitest` + `@vitest/coverage-v8` 4→5 (together), `jsdom` 28→30,
       `cssnano` 7→9 (**will likely move the production CSS hash —
       treat as a CSS change**), `rimraf` 5→6,
@@ -1337,7 +1340,7 @@ dependencies).
       `/css-byte-check`, `npm run smoke`. Size: L → one sub-PR per
       package group. Role: `implementer`; `css-refactor` for the
       `cssnano` / `postcss-*` group.
-      _2026-10-09 status (partial, do not flip): merged: vitest + `@vitest/coverage-v8` 5 (#381), jsdom 30 (#382), rimraf 6 (#380). Open: pa11y-ci 5 (#386; needs Node ≥ 22.13, which the Node 24 move in P15-30 satisfies; it does **not** clear the `extract-zip` advisories by itself). Remaining: `cssnano` 9, `postcss-cli` 12, `postcss-import` 17 (CSS hash risk; do these after the P15-21 CSS PR #378 merges)._
+      _2026-10-09: all seven upgrades merged: vitest + `@vitest/coverage-v8` 5 (#381), jsdom 30 (#382), rimraf 6 (#380), pa11y-ci 5 (#386), and `postcss-import` 17, `postcss-cli` 12, `cssnano` 9 (#397). `engines.node` is now `^22.22.3 || ^24.15.0 || >=26`, and the `extract-zip` chain left with `@lhci/cli` (#390). Root `npm audit --omit=dev` = 0 (re-run 2026-10-09)._
 
 ### Tier D — documentation hygiene
 
@@ -1402,6 +1405,7 @@ where the work now lives:
 | —   | Next push                | **Content depth, SEO/growth and more interactive demos.**                                                                        | Phase 16              |
 | —   | Order                    | **Housekeeping bundle first**, then privacy page + retention, then newsletter and analytics, then perf fixes and major upgrades. | see Phase 15 ordering |
 | —   | Appwrite                 | **Deleted by the maintainer** (project and key).                                                                                 | P15-4 records it      |
+| —   | Content sign-off         | **"For all so far"** (2026-10-09): the rewritten merge cookbook and the content modules merged up to that point are approved.    | P15-22, Phase 16      |
 
 ### New decision D9 (2026-10-09)
 
@@ -1538,7 +1542,7 @@ production CSS hashes.
 
 ### Tier 3 — growth plumbing (placeholders, off until configured)
 
-- [ ] **P15-9 · Newsletter (Buttondown).** Outcome: an accessible,
+- [x] **P15-9 · Newsletter (Buttondown).** Outcome: an accessible,
       static-first signup that cannot ship half-configured. Accept: a
       `/newsletter/` page and a compact footer form posting to Buttondown's
       embed endpoint; the username comes from a `BUTTONDOWN_USERNAME` build
@@ -1551,7 +1555,8 @@ production CSS hashes.
       variable is unset and present when set. **Maintainer step:** create the
       Buttondown account and set `BUTTONDOWN_USERNAME`. Size: M. Role:
       `implementer`, `css-refactor`, then `reviewer`.
-- [ ] **P15-10 · Analytics (GoatCounter).** Outcome: cookie-less visit counts,
+      _2026-10-09: code complete in #395; maintainer step pending (create the Buttondown account and set `BUTTONDOWN_USERNAME`; until then the form and footer link are not rendered, `/newsletter/` says it is not open yet, is `noindex` and is out of the sitemap). Proof: `verify-all` (1075 tests, build), `smoke:core`, Chromium accessibility e2e 184 passed with the variable set and 193 layout/accessibility passed unset, a unit test for both branches._
+- [x] **P15-10 · Analytics (GoatCounter).** Outcome: cookie-less visit counts,
       off until configured. Accept: a `GOATCOUNTER_CODE` build variable
       renders the single async GoatCounter script (no cookies, no consent
       banner) and nothing when unset; it is added to the performance
@@ -1560,6 +1565,7 @@ production CSS hashes.
       branch, LHCI-style check that the script does not move the `/intro/`
       score, `/verify-all`. **Maintainer step:** create the GoatCounter
       site and set `GOATCOUNTER_CODE`. Size: S. Role: `implementer`.
+      _2026-10-09: code complete in #394; maintainer step pending (create the GoatCounter site and set `GOATCOUNTER_CODE`; until then no script is rendered). Proof: `verify-all` (1109 tests), `smoke:core`, built twice: unset gave 0 matches for `gc.zgo.at` in `/intro/` and `/privacy/`, set gave exactly 1 loader. The "does not move the `/intro/` score" check is a deliberate substitute: `scripts/perf-budget.mjs` caps the inline loader at 1 KB and exactly one, because the offline Lighthouse run cannot fetch the third-party script._
 - [x] **P15-11 · Assistant beginner intents and gap review.** Outcome: the
       question that scored the first real 👎 ("help me learn cdc") gets a
       useful answer. Accept: new intents for "where do I start", "learn
@@ -1592,14 +1598,18 @@ production CSS hashes.
       then `reviewer`.
       _2026-10-09: mostly shipped in #354, kept open. Met: code derives the host from `SITE_HOST` (`lib/site-host.mjs`; `grep -rn "sandgraal.github.io" src scripts lib` finds only its `DEFAULT_SITE_HOST` fallback), `docs/DOMAIN-MIGRATION.md` exists, and `tests/unit/site-host.test.js` builds production with another `SITE_HOST` (root and sub-directory) and asserts the old host appears nowhere. Remaining gap: "docs say your site URL" is not true yet. Occurrences of `sandgraal.github.io` today: `README.md` 44; `docs/` excluding `docs/archive` and this plan: `SETUP.md` 1, `DEVELOPMENT.md` 3, `STATE-OF-PROJECT.md` 1, `seo-audit-2026-10.md` 3. That remainder counts as covered by the runbook's hand-edited checklist only if the maintainer says so._
 
+      _2026-10-09 re-check after #354: still open. `README.md` still has 44 occurrences of `sandgraal.github.io`; `docs/` (excluding `archive` and this plan): `SETUP.md` 2, `DEVELOPMENT.md` 3, `STATE-OF-PROJECT.md` 1, `seo-audit-2026-10.md` 3._
+
 ### Tier 5 — found along the way (2026-10-09)
 
-- [ ] **P15-14 · Check the phone fixes on a real iPhone.** Outcome: the two
+- [x] **P15-14 · Check the phone fixes on a real iPhone.** Outcome: the two
       assistant-panel fixes (#332, #339) are proven on WebKit, not only in
       Chromium. Accept: on a real iPhone (or BrowserStack Safari), with the
       toolbars showing, the open panel's header, close button and Send are all
       reachable on a module page; short landscape is noted. **Maintainer
       step** (needs a device). Size: S.
+      _2026-10-09: maintainer reported "site looks good on iPhone"; closed on
+      that report._
 - [ ] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
       defects found in reviews are fixed. Accept: (a) the desktop close button
       measures at least 44×44 (it is about 22×30); (b) closing the panel
@@ -1619,7 +1629,7 @@ production CSS hashes.
       is re-baselined. Verify: axe in both themes, `/css-byte-check`, e2e,
       screenshots. Size: M. Role: `css-refactor`, `reviewer`.
       _2026-10-09: shipped in #349 (`#0c8dbd` → `#0a7299`, light theme only; the global `color-contrast` exemption is removed and the e2e audit runs both themes). Production CSS hash is now `424e77a0…`. The contrast failures that are not the accent are P15-21._
-- [ ] **P15-17 · Tighten `/partitioning/#recon` to the site's thesis.**
+- [x] **P15-17 · Tighten `/partitioning/#recon` to the site's thesis.**
       Outcome: no page contradicts the standing rule. Accept: the section
       says a sink's version guard orders by **log position**, not a timestamp
       (it currently says "a transaction ID or a precise timestamp"); every
@@ -1628,6 +1638,7 @@ production CSS hashes.
       `ts_ms`; no end-to-end exactly-once). Then the assistant's
       `idempotent_sink` intent may link there. Size: S. Role: `implementer`,
       `reviewer`.
+      _2026-10-09: shipped in #352 (`/partitioning/#recon`) and #357 (the pages that still taught a timestamp as the ordering key). The section now says the version guard compares the source log position per database, not a timestamp and not a Kafka offset; two independent technical reviews re-read every statement against the thesis (the first caught an unsafe offset guard in the first fix). The optional link from the assistant's `idempotent_sink` intent was not added._
 - [x] **P15-18 · Give the reviewing roles room to finish.** Outcome: a
       thorough review is not cut off mid-experiment. Accept: `maxTurns` on
       `reviewer` and `implementer` is raised (60 → 100 and 30 → 60 are the
@@ -1635,7 +1646,7 @@ production CSS hashes.
       `docs/CONDUCTOR.md` says "write findings first, then run extra
       experiments", and the roster test still passes. Size: S. Role: `scribe`.
       _2026-10-09: shipped in #350 (reviewer and implementer now 100 turns; the reviewer is told to write findings first; CONDUCTOR.md says a capped role is resumed, never inferred from a partial report)._
-- [ ] **P15-19 · Triage `npm audit` for the dev tooling.** Outcome: known
+- [x] **P15-19 · Triage `npm audit` for the dev tooling.** Outcome: known
       advisories are either fixed or consciously accepted. Accept: `npm audit`
       currently reports 27 vulnerabilities (2 low, 5 moderate, 20 high) in the
       full tree while `npm audit --omit=dev` reports 0 for what ships; list
@@ -1644,6 +1655,7 @@ production CSS hashes.
       fix what is cheap and record the rest as accepted with the reason.
       Size: M. Role: `scout` (inventory), `implementer`.
       _2026-10-09: inventory done (27 root entries = 8 distinct advisories; 0 in prod deps; non-breaking `npm audit fix` changes nothing at root; only pa11y-ci 4→5 in P13-8 clears any; Dependabot shows 8 open alerts, 6 root + 2 playground). Stays open until the triage doc and the dismissals exist (see P15-26, P15-27)._
+      _2026-10-09: triage recorded here (no separate doc). After #380 to #397 and #390 the root tree has 9 audit entries (4 moderate, 5 high) that are **2 distinct advisories**; `npm audit --omit=dev` = 0, so nothing that ships is affected. (1) `braces` stack exhaustion on deeply nested patterns (GHSA-vfj7-8cjw-p6xm; no fixed release) reaches us through `chokidar` 3 in `@11ty/eleventy-dev-server` and `nunjucks`: only the dev server and file watching, never the production build. (2) `sprintf-js` unbounded precision (GHSA-hp3w-g68c-fv3c; no fixed release) reaches us through `gray-matter` -> `js-yaml` 3 -> `argparse` 1, a CLI helper that is not on the library path. Both come in through `@11ty/eleventy` 3.1.x; no remaining P13-8 upgrade clears either, and `npm audit fix` changes nothing at root. Accepted, revisit when Eleventy or `gray-matter` move._
 
 ### Tier 6 — found in review (2026-10-09)
 
@@ -1665,7 +1677,7 @@ production CSS hashes.
       at 393 and 1280 in both themes, CSS hashes recorded. Size: M. Role:
       `css-refactor`, `reviewer`.
       _2026-10-09: shipped in #359 (button contrast, the community box, the orphaned dashboard chip); production CSS hash is now `163231e6…`._
-- [ ] **P15-21 · Remaining colour-contrast debt.** Outcome: the e2e contrast
+- [x] **P15-21 · Remaining colour-contrast debt.** Outcome: the e2e contrast
       audit can cover every sitemap page. The accent fix (#349) removed the
       exemption and exposed what remains: about 151 light-theme and 532
       dark-theme nodes. Biggest first: code-block "copy" buttons that render
@@ -1678,7 +1690,8 @@ production CSS hashes.
       group fixed at its shared cause, then the audit's narrow exemption list
       shrinks to zero and every sitemap page is checked in both themes. Size:
       L → one PR per group. Role: `css-refactor`, `reviewer`.
-- [ ] **P15-22 · Rewrite `/merge-cookbook/` to the log-position rule.** The
+      _2026-10-09: shipped in #378. axe failing `color-contrast` nodes at rest across all 49 built pages: light 206 -> 0, dark 587 -> 0; the `KNOWN_CONTRAST_ELEMENTS` exemption list is deleted, and the e2e audit covers every page in `sitemap.xml` (45) plus the noindex `/dashboard/`, `/styleguide/` and `/mermaid-sandbox/`, in both themes; the repaired controls are also measured on hover and focus-visible. Production CSS hash re-baselined (see `CLAUDE.md`). Not covered: gradient-clipped headline text, which axe cannot score (P15-35, open); `/playground/` is built separately and skipped._
+- [x] **P15-22 · Rewrite `/merge-cookbook/` to the log-position rule.** The
       most copyable page on the site is timestamp-ordered throughout: about 20
       statements across Snowflake, BigQuery, Oracle, Postgres, MySQL and SQL
       Server use `ORDER BY OP_TS DESC` or `s.OP_TS >= t.OP_TS` (the `>=` also
@@ -1693,6 +1706,7 @@ production CSS hashes.
       page agrees with `/partitioning/#recon` and `/materialization/`.
       Size: L. Role: `implementer`, then `reviewer` (technical), then the
       maintainer signs off.
+      _2026-10-09: shipped in #366 after the SME re-reviews approved it. Eight dialect cards (Snowflake, BigQuery, Databricks, Oracle, SQL Server, Postgres, MySQL, Redshift); timestamps are no longer an ordering key anywhere. Only the Postgres card is executed (PGlite, 9 tests in `tests/unit/merge-cookbook-postgres.test.js`, new devDependency `@electric-sql/pglite`); every other dialect is checked against vendor docs only and labelled untested on the page, and 40 page tests pin the exact guard per dialect. Maintainer sign-off: "for all so far", 2026-10-09._
 - [x] **P15-23 · The remaining unguarded or timestamp-ordered examples.**
       `/snapshotting/` ≈ line 499: the "Warehouse MERGE example" has no guard
       at all (`UPDATE SET … updated_at = s.updated_at`), so any replay or
@@ -1740,7 +1754,7 @@ production CSS hashes.
       maintainer's agreement; `npm audit` before and after is recorded.
       Size: M. Role: `implementer`.
       _2026-10-09: shipped in #367 (playground koa advisory fixed with `npm audit fix`) and #390 (`@lhci/cli` replaced by `scripts/lighthouse-ci.mjs`; the floors in `.lighthouserc.json` are preserved and aggregation is optimistic). Root `npm audit` went from 27 to 21 findings._
-- [ ] **P15-27 · Dependabot hygiene.** Outcome: the alert list shows only
+- [x] **P15-27 · Dependabot hygiene.** Outcome: the alert list shows only
       what needs action. Accept: after P13-8's pa11y-ci 5 lands (it clears the
       two `extract-zip` advisories), dismiss with a written reason each
       accepted dev-only advisory that has no fixed release (`braces`,
@@ -1748,6 +1762,7 @@ production CSS hashes.
       the P15-19 triage doc. Size: S. Role: `scout` (list), maintainer
       (dismissals).
       _2026-10-09: correction: pa11y-ci 5 (#386, still open) does not clear the `extract-zip` advisories by itself; re-check the alert list after it merges._
+      _2026-10-09: done. pa11y-ci 5 merged (#386) and `@lhci/cli` was replaced (#390); root `npm audit --omit=dev` = 0 and Dependabot has 0 open alerts. The one remaining accepted advisory, `sprintf-js` (alert 192), is dismissed as "tolerable risk" with a written reason (dev-only, no patched release, reached only via `gray-matter` -> `js-yaml` 3 -> `argparse` 1); the playground esbuild alert was closed by #398 (P15-43). Reasons are in the P15-19 note._
 - [x] **P15-29 · Scope the exactly-once claim per hop.** Outcome: the site
       says exactly what is and is not possible at each hop, without giving up
       its thesis. Found in the P16-2 work: Debezium 3.3+ documents an opt-in
@@ -1786,7 +1801,7 @@ production CSS hashes.
       backlog shows lag; lane events are no longer appended twice. Size: M.
       Role: `implementer`, `reviewer`.
       _2026-10-09: shipped in #384. Slice B is P16-27._
-- [ ] **P15-33 · Design question: `.cta-button`, `.btn-primary` and
+- [x] **P15-33 · Design question: `.cta-button`, `.btn-primary` and
       `.btn-secondary` have no CSS.** Outcome: a decision on whether those
       calls to action should look like buttons. Evidence (review): the classes
       are used on `/` and `/observability/` and match no rule, so they render
@@ -1795,20 +1810,22 @@ production CSS hashes.
       re-baselined) or "change the markup to the existing button classes".
       Size: S. Role: maintainer decision, then `css-refactor` or
       `implementer`.
-- [ ] **P15-34 · Duplicate "Copy" buttons on code blocks.** Outcome: each code
+      _2026-10-09: shipped in #407 on the maintainer's "go with the defaults": the markup now uses the existing `.button primary` / `.button secondary` classes (6 module cards on `/`, 7 links on `/observability/`); no CSS changed, so the production CSS hash stayed at `83943ab3…`. `tests/unit/button-classes.test.js` fails if the three class names return, and the e2e button-contrast audit now covers `/observability/`. Left over: the adjacent primary and secondary buttons on `/observability/` sit close together at desktop widths (a gap rule would need `css-refactor`)._
+- [x] **P15-34 · Duplicate "Copy" buttons on code blocks.** Outcome: each code
       block has one Copy button. Evidence (review): `initLegacyCopyButtons`
       runs before `enhanceCodeBlocks`, so both add a button. Accept: the
       legacy path is removed or skipped when the enhanced one applies; the
       `code-blocks` unit tests cover it; the failure-drills e2e selector is
       updated; no console output added. Size: S. Role: `implementer`,
       `reviewer`.
+      _2026-10-09: shipped in #409. `initLegacyCopyButtons` is gone; `enhanceCodeBlocks` removes any in-`pre` `button.copy`, `.copy-btn` or `.copy-snippet`, so there is one header Copy button per block (counted on the built site: 33 blocks on failure-drills went from 3 controls each to 1). Proof: 26 unit tests in `tests/unit/modules/code-blocks.test.js`, new `tests/e2e/code-blocks.spec.js` on six pages (one visible, hit-testable, keyboard-focusable button per block; copied text equals the code), the failure-drills contrast selector updated, no console output added. Follow-ups: P15-49 to P15-51._
 - [ ] **P15-35 · Contrast of gradient-clipped headline text is unmeasured.**
       Outcome: a measured answer for `h1.type-display` and `span.accent`,
       whose text is clipped to a gradient, so axe cannot compute their
       contrast. Accept: measure by hand against the real backgrounds in both
       themes and record the ratios here; open a `css-refactor` item for any
       below 4.5:1 (3:1 for large text). Size: S. Role: `scout`, `reviewer`.
-- [ ] **P15-36 · Refresh `src/_data/toolVersions.mjs`.** Outcome: the
+- [x] **P15-36 · Refresh `src/_data/toolVersions.mjs`.** Outcome: the
       versions match what is current. Evidence: the file has Debezium
       `3.6.1.Final` while 3.7.0.Final exists, and Kafka `4.3.0` while 4.3.1
       exists. These feed the "Tested with" notes on the pages, so re-verify
@@ -1816,6 +1833,7 @@ production CSS hashes.
       versions are bumped only where the page's claim was re-checked against
       that release; `dateModified` bumped on the pages touched. Size: M.
       Role: `scout`, `implementer`, `reviewer`.
+      _2026-10-09: shipped in #408. `src/_data/toolVersions.mjs` has Debezium 3.7.0.Final and Kafka 4.3.1 under `tools` (latest stable) and separates `tested` (what the lab compose files pin, tied by `tests/unit/tool-versions.test.js`); it found the old "Tested with" note was false, so the note now reads `tested`. `dateModified` is 2026-10-09 on `/lab-kafka-debezium/`, `/case-study/` and `/tooling/` (their `.11tydata.cjs`); `/troubleshooting/failure-drills/` was edited by #408 but still said 2026-08-25, bumped in the P15-47..51 batch. The lab images themselves are P15-46._
 - [ ] **P15-37 · Playground Docker images are still `node:20-alpine`.**
       Outcome: the playground runs on Node 24. Accept: the two Dockerfiles
       under `playground/harness/`, its compose file, and
@@ -1823,12 +1841,16 @@ production CSS hashes.
       README table) name a Node 24 image; the harness builds and the scenario
       starts. **Needs Docker to test**, and the playground owner coordinates
       the change under `playground/`. Size: S. Role: `implementer`.
-- [ ] **P15-38 · README module count and module list are stale.** Outcome:
+- [x] **P15-38 · README module count and module list are stale.** Outcome:
       the README matches the site. Evidence: it says "All 26 modules", and
-      `src/_data/series.mjs` has 29 entries on `main` today (31 once the
-      pending modules P16-15 and P16-19 merge). Accept: the count and the list are correct,
+      `src/_data/series.mjs` has 36 entries on `main` (counted 2026-10-09
+      after the Phase 16 module batches merged). Accept: the count and the list are correct,
       ideally generated or checked by a test so they cannot drift again.
       Size: S. Role: `scribe`.
+      Done 2026-10-09: README now says "All 36 modules" with all 36
+      `series.mjs` entries in the table (`merge-cookbook` is noted as an
+      uncounted reference page); `tests/unit/readme-modules.test.js` fails
+      if the count or a table link drifts.
 - [ ] **P15-39 · Debezium docs on `wal_keep_size` contradict the PostgreSQL
       docs.** Outcome: a decision on telling upstream. Evidence: the
       Debezium docs say `wal_keep_size` limits how much WAL a slot retains,
@@ -1837,6 +1859,123 @@ production CSS hashes.
       page carries a note on this. Accept: the maintainer decides whether to
       file an upstream docs issue; if yes, a `scribe` drafts it with both
       citations. **Maintainer decision.** Size: S. Role: `scribe`.
+
+- [x] **P15-40 · Lighthouse gate tolerates `NO_LCP` runs.** Outcome: a page
+      whose Lighthouse run cannot record an LCP no longer fails the gate by
+      itself. Accept: best-of-three aggregation, up to three attempts per run
+      with a short backoff, invalid runs saved and never counted, a warning
+      when some runs are invalid, exit 2 only when a URL has zero valid runs
+      (at least two for the `error`-floor `/intro/`); the `/overview/` diagram
+      image (the LCP element, previously `loading="lazy"`) is eager with
+      `fetchpriority`. Size: M. Role: `implementer`, `reviewer`.
+      _2026-10-09: shipped in #396 (policy in `checkRunCoverage`, `lib/lighthouse-ci.mjs`, unit-tested; `verify-all` 1101 tests, `smoke:core`)._
+- [x] **P15-41 · CI: the lychee cache hole.** Outcome: the link check cannot
+      report a deleted local page as fine. Accept: the `--cache` flag and the
+      cache-restore step are removed (lychee keyed the cache on the pre-remap
+      URL and stored the `file://` result as 200); the site remap also matches
+      the URL without a trailing slash; the repo root URL is remapped to the
+      checkout; the repository slug comes from `github.repository`. Size: S.
+      Role: `implementer`.
+      _2026-10-09: shipped in #405 (`.github/workflows/linkcheck.yml` only). Proof: local lychee 0.16.1 `--offline` over the real `_site` HTML, 884 links, 303 OK, 0 errors; a deleted page and a deleted blob file now fail with "Cannot find file"._
+- [x] **P15-42 · PGlite tests: one shared instance, real timeouts.** Outcome:
+      the unit suite does not time out under load. Accept: one PGlite per
+      block created in `beforeAll` with a 60 s timeout, tests with explicit 60 s
+      timeouts, assertions unchanged. Size: S. Role: `implementer`.
+      _2026-10-09: shipped in #406; it fixed the red CI on `main` after the module F merge (four cold PGlite instances inside one 5 s test). Proof: full `vitest run` three times with a second suite running, 45 files / 1501 tests passed each time._
+- [x] **P15-43 · Playground on Vite 8.** Outcome: the esbuild Dependabot alert
+      (#197, low, GHSA-g7r4-m6w7-qqqr) is closed. Accept: `playground/package.json`
+      moves `vite` to 8 and `@vitejs/plugin-react` to 6 and the playground
+      builds and tests pass. Size: S. Role: `implementer`.
+      _2026-10-09: shipped in #398 (only `playground/` changed)._
+- [ ] **P15-44 · Lighthouse `/intro/` performance floor ratchet after the font
+      work.** Outcome: the enforced floor reflects what the page now scores.
+      Accept: from at least three measured CI runs after #404, set the
+      `/intro/` performance floor in `.lighthouserc.json` to the median minus
+      0.04 (it is 0.82 today) and bump the README badge in the same PR. Needs
+      measured CI runs, not local ones. Split from P13-6. Size: S. Role:
+      `implementer`.
+- [ ] **P15-45 · Large layout shift when the async preloaded stylesheet
+      applies.** Outcome: no big shift when styles arrive late. Evidence (found
+      in the #404 review): `/intro/` CLS is 0.25 under Slow 4G plus 4x CPU
+      throttling, about 0.227 of it from one shift on `.page-wrap` at about
+      1.06 s, when the stylesheet loaded as a preload and applied
+      asynchronously takes effect. The unthrottled e2e bound (under 0.01)
+      cannot see it. Accept: fix the critical-CSS / async-stylesheet strategy
+      in the `<head>` of `src/_includes/layouts/base.njk`; measure `/intro/`
+      under the same throttling and record before and after; add a throttled
+      e2e bound. Likely routes to `css-refactor` for the CSS part. Size: M.
+      Role: `implementer`, `css-refactor`, `reviewer`.
+- [ ] **P15-46 · Labs pin old tool versions while the pages teach Debezium
+      3.x.** Outcome: the labs run what the lessons describe. Evidence (from
+      the review of PR #408, still open when this was written): the lab
+      compose files and configs pin Debezium 2.7 (`debezium/connect:2.7`),
+      Confluent Platform 7.7 (Kafka 3.7, end of support 2026-07-26 per
+      Confluent) and PostgreSQL 15, while the pages teach Debezium 3.x
+      behaviour (`no_data` snapshot mode, exactly-once support from 3.3, the
+      outbox router). Debezium images past 3.0.0.Final are on quay.io, not
+      Docker Hub, and the `2.7` tag the labs use does not exist on Docker Hub
+      either (quay.io only; a fix for the lab note is in progress in #408). Accept: upgrade the sandbox compose files and the
+      quickstart / lab connector configs to Debezium 3.x (and say so in
+      `toolVersions.mjs` `tested`, which a unit test ties to the compose
+      files), then re-run each lab; until then every page that depends on a 3.x
+      feature must say "check your version". **Needs Docker.** Size: L. Role:
+      `implementer`, `reviewer`.
+- [x] **P15-47 · Dead scripts and config found by the script audit.**
+      Outcome: nothing in the repo that nothing calls. Accept: remove
+      `playground/scenarios/01-canonical-reference/scripts/logging.sh` (no
+      caller; coordinate under `playground/`); `.pa11yci.json` appears dead
+      (CI reads `pa11y-ci.config.cjs`): verify, then remove; the
+      `package.json` scripts `test:watch`, `test:e2e:debug`, `preview:sim`,
+      `preview:web` and `sim:seed-reset` are never referenced: document each
+      in `docs/DEVELOPMENT.md` or remove it. Size: S. Role: `scout` (verify
+      each), `implementer`.
+      _2026-10-09: done, with two corrections to the item's premises. (1) `.pa11yci.json` is NOT dead: `npm run a11y` is bare `pa11y-ci`, whose default config is `.pa11yci` resolved to `.pa11yci.json` (`node_modules/pa11y-ci/bin/pa11y-ci.js` `resolveConfigPath`), and the CI job `a11y-tests` runs `npm run a11y`; kept. `pa11y-ci.config.cjs` is the dead one (no reference anywhere, never auto-discovered): removed. (2) `.codacy/cli.sh` was part of the original Accept but is NOT removed; that sub-point moved to P15-52. It was kept: it is the launcher Codacy's own tooling invokes (`.github/instructions/codacy.instructions.md` tells agents to run `codacy_cli_analyze`) and sits beside `.codacy/codacy.yaml`; no repo file calls it, but nothing proves the Codacy integration does not, so it stays. Removed after a repo-wide grep found no caller: `playground/scenarios/01-canonical-reference/scripts/logging.sh` (only its own usage comment), `playground/package.json` scripts `preview:sim`, `preview:web`, `sim:seed-reset` and the file only that script ran, `playground/sim/tests/reset-seeds.mjs`. Root `test:e2e:debug` is documented in `docs/DEVELOPMENT.md` already (kept); `test:watch` is now documented there too (kept)._
+- [x] **P15-48 · Post-merge nit batch.** Outcome: the small review remarks on
+      merged work are fixed or consciously dropped. Accept: from the #376
+      review: the caption class on `/overview/`, the link text on
+      `/case-study/`, and the `/mermaid-sandbox/` skip link, which hides the
+      `#main` fix; from #366, #393 and #404 any remark not already fixed (the
+      `snapshot-to-stream` description is also listed under P16-27). The
+      review texts were not recorded in the PRs: re-read each review, fix what
+      still applies, and delete the rest. Size: S. Role: `scout`,
+      `implementer`.
+      _2026-10-09: done for what could be reproduced. The #376 review text is not retrievable (`gh pr view 376` returns no review or comment bodies), so each named remark was checked against the diff. Fixed: `/overview/` put `diagram-section__caption` on a paragraph of links that is not a caption (now a plain `<p>`); `/case-study/` link text "DMS" is now "AWS DMS" and the sentence that began with the page title after a semicolon now reads "the CDC platform comparison lays out the trade-offs"; `tests/unit/internal-links-headings.test.js` skipped `/mermaid-sandbox/` entirely, so nothing guarded the `id="main"` skip target (the page already has the id): the skip is removed and the test fails with `/mermaid-sandbox/ -> #main` if the id is dropped (checked by removing it). Not reproduced: remarks from #366, #393 and #404, because their review text is not recorded anywhere; no change made for them._
+
+- [x] **P15-49 · Copy confirmation is not announced to screen readers.**
+      Outcome: a keyboard or screen-reader user learns that the copy worked.
+      Evidence (review of #409): the copy-button toast has no `role` or
+      `aria-live`, and the header button's `aria-label` hides its visible
+      "Copied!" text from screen readers. Accept: the toast is a polite live
+      region (or the button label changes with `aria-live`) in
+      `src/assets/js/modules/toast.js` and `code-blocks.js`; a unit test
+      asserts the announcement and `tests/e2e/code-blocks.spec.js` checks it
+      on one page. Size: S. Role: `implementer`, `reviewer`.
+      _2026-10-09: done. `showToast` now announces the title and message (joined with a space after terminal punctuation, else ". ") through one visually hidden polite live region (`.toast-live-region.sr-only`, `role="status"`, `aria-live="polite"`) created when the module loads and reused, with the text set 50 ms later so the first message is not dropped; each message replaces the child node so a repeat is read again. The visible toast is unchanged (it holds buttons and is not a live region), the copy button's `aria-label` is unchanged, and no CSS was touched (`.sr-only` already exists). Unit tests: 7 in `toast.test.js` (fake timers) and 1 in `code-blocks.test.js` (real toast, region text contains "SQL code copied to clipboard", label still "Copy SQL code"). E2E: the clipboard test in `tests/e2e/code-blocks.spec.js` asserts the live region after each copy._
+- [ ] **P15-50 · Dead copy-button CSS.** Outcome: no rule for markup that no
+      longer exists. Evidence (review of #409): the `.copy-snippet` rules in
+      `src/assets/css/components/code-block.css` and `.copy-btn` in
+      `src/assets/css/pages/snapshotting.css` have no matching element after
+      #409. Accept: remove both, with the production CSS hash re-baselined
+      (it will change) and recorded in `CLAUDE.md` and
+      `.claude/commands/css-byte-check.md`. Size: S. Role: `css-refactor`.
+- [x] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
+      Outcome: the one-copy-button test covers every page with code blocks.
+      Evidence (review of #409): the `PAGES` list in
+      `tests/e2e/code-blocks.spec.js` omits `/troubleshooting/`, which has the
+      same markup as `/troubleshooting/failure-drills/`. Accept: add it (or
+      derive the list from the sitemap) and the spec passes. Size: S. Role:
+      `implementer`.
+      _2026-10-09: `/troubleshooting/` added to `PAGES`; the spec passes on chromium (9 tests)._
+- [ ] **P15-52 · Confirm Codacy does not call `.codacy/cli.sh`, then remove it.**
+      Outcome: no launcher script that nothing runs. Evidence: split from
+      P15-47. No repo file calls `.codacy/cli.sh`, but it is the launcher the
+      Codacy tooling itself uses (`.github/instructions/codacy.instructions.md`
+      tells agents to run `codacy_cli_analyze`) and it sits beside
+      `.codacy/codacy.yaml`, so non-use is unproven. Accept: the maintainer
+      confirms in the Codacy dashboard (or by disabling the integration) that
+      nothing runs it; then remove `.codacy/cli.sh` and re-check the build.
+      **Maintainer step** for the confirmation. Size: S. Role: maintainer,
+      `implementer`.
 
 ### Ordering
 
@@ -1902,6 +2041,11 @@ ready to start; the first job is to turn it into measured, specific items.
       Size: S. Role: `implementer`, `reviewer`. Depends on domain: yes for
       the robots host (re-check after P15-13).
       _2026-10-09: shipped in #363. Approved by the maintainer 2026-10-09._
+      _2026-10-09: the Search Console HTML-file verification file
+      (`googleeb5f2ebb27afc761.html`) is added in the PR
+      `claude/search-console-verification` and must never be removed. Still
+      the maintainer's: click Verify in Search Console after it deploys, then
+      submit `https://sandgraal.github.io/letstalkcdc/sitemap.xml`._
 - [x] **P16-6 · Titles and descriptions pass.** Outcome: snippets say what
       each lesson is. Accept: `/partitioning/` title has one brand suffix;
       `/schema-evolution/`, `/strategy/`, `/tooling/` and `/use-cases/` have
@@ -1939,7 +2083,20 @@ ready to start; the first job is to turn it into measured, specific items.
       and 0 broken fragments. Size: M. Role: `scout` (confirm each
       opportunity reads naturally), `implementer`, `reviewer`.
       _Approved by the maintainer 2026-10-09._
-      _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
+      _Status 2026-10-09, still open: the audit numbers are met (0 broken
+      fragments, 2 pages under 3 content inbound links: `/` and `/privacy/`,
+      minimum 4 for every cloud lab and quickstart page). A data-driven
+      "Related lessons" list now ends 34 of 36 module pages (`related` keys
+      in `src/_data/series.mjs`, rendered by `series-nav.njk`; `cloud-labs`
+      and `failure-drills` have no `seriesKey`, so no series navigation).
+      Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
+      does not yet link out to the owning lesson; that needs a curated
+      `lesson` field on the 33 entries._
+  - [ ] Related-lessons list has no styling (bullets/indent: `.series-nav*`
+        classes have no rules in the shipped stylesheet); needs a
+        `css-refactor` pass.
+        _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
+        _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
 - [ ] **P16-9 · Heading and fragment fixes.** Outcome: every content page has
       one `<h1>` and no skipped levels. Accept: `/merge-cookbook/` has an
       `<h1>`; the 10 pages with skips are corrected; the `#setup` link on
@@ -1949,6 +2106,7 @@ ready to start; the first job is to turn it into measured, specific items.
       `implementer`, `reviewer`.
       _Approved by the maintainer 2026-10-09._
       _2026-10-09: PR #376 (open) covers the fragment half. Still open after it: 10 heading-level skips need a CSS hook (route to `css-refactor`), and 2 pages still lack an `<h1>`: `/merge-cookbook/` (#366 pending) and `/mermaid-sandbox/`. Tracked with the SEO leftovers in P16-28._
+      _2026-10-09: #376 merged; the fragment half is done (`#setup` resolves). Still open: 10 heading-level skips (CSS hook), and `/merge-cookbook/` still has no `<h1>` after #366 (it is on `KNOWN_NO_H1` in the new test), as does `/mermaid-sandbox/`._
 - [x] **P16-10 · Honest modification dates and a fuller feed.** Outcome:
       "updated" dates reflect real edits and the feed does not drop modules.
       Accept: the 21 pages in script [05] are reviewed and `dateModified`
@@ -1959,7 +2117,7 @@ ready to start; the first job is to turn it into measured, specific items.
       is explained; script [04] shows 0 items without description. Size: S.
       Role: `scribe`, `reviewer`.
       _2026-10-09: shipped in #363. Approved by the maintainer 2026-10-09._
-- [ ] **P16-11 · SEO head for the playground.** Outcome: `/playground/` is a
+- [x] **P16-11 · SEO head for the playground.** Outcome: `/playground/` is a
       described, canonical, listed page. Accept: coordinated with the
       playground owner first; `playground/index.html` gets a description,
       canonical (built from `SITE_HOST`) and the brand spelling used on the
@@ -1967,6 +2125,7 @@ ready to start; the first job is to turn it into measured, specific items.
       check of the live page; `npm run smoke:core`. Size: S. Role:
       `implementer`. Depends on domain: yes (canonical host).
       _Approved by the maintainer 2026-10-09._
+      _2026-10-09: shipped in #371. Post-deploy check of the live page: `<link rel="canonical" href="https://sandgraal.github.io/letstalkcdc/playground/">`, a meta description and `og:title` "CDC Change Feed Playground | Let’s Talk CDC" are present, and `/sitemap.xml` lists `/playground/` (1 match)._
 - [ ] **P16-12 · Baseline measurement.** Outcome: from now on SEO claims are
       measured. Accept: GoatCounter installed per the plan; Search Console
       property verified and the sitemap submitted; Lighthouse run for the 10
@@ -1976,6 +2135,7 @@ ready to start; the first job is to turn it into measured, specific items.
       (Lighthouse), maintainer. Depends on domain: yes (re-verify after a
       move).
       _Approved by the maintainer 2026-10-09._
+      _2026-10-09: left open. #410 shipped the maintained audit script and `docs/seo-baseline-2026-10-after.md` (the before/after numbers), which is the measurable part; the Accept also needs GoatCounter installed, Search Console verified with the sitemap submitted, the 10-page Lighthouse run, and a 28-day snapshot, none of which exist yet (`docs/seo-baseline-2026-10-after.md` section 4 says so)._
 - [x] **P16-13 · Differentiate `/tooling/` and `/compare/`.** Outcome: two
       pages with two jobs. Accept: a one-paragraph decision (consolidate,
       or re-scope: `/compare/` = decision matrix, `/tooling/` = tool
@@ -2002,10 +2162,10 @@ cross-system exactly-once). The common accept criteria are in section 6 of the
 plan. Accept for each: the module page exists, is reviewed by the SME, has
 tests, and is in the series. Role: `implementer`, `reviewer`.
 
-- [ ] **P16-15 · Module M1: `/which-row-wins/`.** Which row wins in your
+- [x] **P16-15 · Module M1: `/which-row-wins/`.** Which row wins in your
       target: the ordering column, key declaration and delete marker for
       BigQuery, Databricks, Snowflake, Hudi, Iceberg and Delta. Size: M.
-      _2026-10-09: PR #377 open (not merged)._
+      _2026-10-09: shipped in #377 (SME-reviewed)._
 - [x] **P16-16 · Module M2: `/is-cdc-exactly-once/`.** Exactly-once, hop by
       hop. Size: M.
       _2026-10-09: shipped in #389._
@@ -2015,9 +2175,9 @@ tests, and is in the series. Role: `implementer`, `reviewer`.
 - [x] **P16-18 · Module M4: `/deletes-stay-deleted/`.** Tombstones,
       compaction and time travel. Size: M.
       _2026-10-09: shipped in #383; the GDPR section says "not legal advice"; Delta deletion vectors are covered._
-- [ ] **P16-19 · Module M5: `/test-your-pipeline/`.** Contract, duplicate and
+- [x] **P16-19 · Module M5: `/test-your-pipeline/`.** Contract, duplicate and
       replay tests for a CDC pipeline. Size: M.
-      _2026-10-09: PR #385 open (not merged)._
+      _2026-10-09: shipped in #385 (SME-reviewed); the contract test runs in CI, the PostgreSQL SQL was run once on PGlite, `crash.sh` is labelled untested._
 
 ### Content modules, second batch (open)
 
@@ -2025,21 +2185,26 @@ Specs are the short entries in section 7 of `docs/content-gap-plan-2026-10.md`;
 each needs a full spec like section 6 before work starts. Same accept
 criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
 
-- [ ] **P16-20 · Module F: backfill and re-snapshot as a task.** The word is
+- [x] **P16-20 · Module F: backfill and re-snapshot as a task.** The word is
       on 12 pages; M3 and M1 create the need for a procedure.
-- [ ] **P16-21 · Module G: contracts for database-originated events.** Builds
+      _2026-10-09: shipped in #399 (`/backfill-resnapshot/`, SME-reviewed; page test 64 cases incl. executed SQL)._
+- [x] **P16-21 · Module G: contracts for database-originated events.** Builds
       on `/schema-evolution/`.
-- [ ] **P16-22 · Module H: outbox router and relay.** Public sources already
+      _2026-10-09: shipped in #401 (`/cdc-data-contracts/`, SME-reviewed)._
+- [x] **P16-22 · Module H: outbox router and relay.** Public sources already
       warn about duplicates and tell consumers to dedupe by event id; the
       module adds dedupe tied to log position, and replay after an offset
       reset.
-- [ ] **P16-23 · Module I: SQL Server and MySQL specifics.** The SQL Server
+      _2026-10-09: shipped in #400 (`/transactional-outbox/`, SME-reviewed; 86 page tests)._
+- [x] **P16-23 · Module I: SQL Server and MySQL specifics.** The SQL Server
       search results sampled are setup-oriented.
-- [ ] **P16-24 · Module J: non-Kafka paths.** Debezium Server and the
+      _2026-10-09: shipped in #403 (`/sql-server-mysql-cdc/`, SME-reviewed; T-SQL and MySQL statements parse-checked only and labelled untested)._
+- [x] **P16-24 · Module J: non-Kafka paths.** Debezium Server and the
       embedded engine (the Debezium Server Zerobus sink section tells
       consumers to dedupe, for example by source LSN). Search-index sync was
       parked as "not now" in the plan (no authoritative source fetched); add
       it only if feedback or Search Console data asks for it.
+      _2026-10-09: shipped in #402 (`/non-kafka-cdc/`, SME-reviewed, including the search-index sync section)._
 - [ ] **P16-25 · Re-run the content-gap plan when feedback has data.**
       Outcome: priorities rest on measured questions. Accept: when
       `assistant_feedback` has at least 30 rows (and, later, Search Console has
@@ -2057,12 +2222,13 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       offset, sink guard modes, and `?try=<id>` deep links, and the lessons
       link to them with `| url`. The playground owner coordinates every change
       under `playground/`. Size: L. Role: `implementer`, `reviewer`.
+      _2026-10-09: still nothing built. #393 relabelled the old duplicate-insert scenario and did not add a `redeliver` op; the three labs, the `?try=<id>` deep link and the redeliver op remain this item._
 - [ ] **P16-27 · Playground fixes, slice B.** Outcome: the remaining
       playground defects found in review are fixed. Accept: the phantom Dedupe
       on the PK and Drop snapshot rows copy; honesty about snapshot replay;
       seed rows; the orphan `scenarios.json`; the brand pill. Size: M. Role:
       `implementer`, `reviewer`.
-      _2026-10-09: a PR is in flight (open); the number is not recorded here._
+      _2026-10-09: #393 merged (phantom Dedupe/Drop-snapshot copy removed everywhere and guarded by a test; `snapshot-replay` relabelled "Re-insert after Update"; orphan `scenarios.json`, `playground/.eleventy.js` and `ui-index.js` deleted; brand pill fixed). Stays open: seed rows are documented, not fixed (9 of 11 scenarios have a `rows` entry that duplicates an `insert` op, so loading `rows` would be a duplicate-key insert), and `snapshot-to-stream` still says it shows "snapshot catch-up handing off to change feed tails", which is not modelled._
 - [ ] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
       SEO work has no orphaned remainder. Accept: (a) the CSS hook for the 10
       heading-level skips (the other half of P16-9), routed to `css-refactor`
