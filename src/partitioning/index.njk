@@ -311,16 +311,19 @@ head_extra: |
                 version).
               </li>
               <li>
-                <strong>SQL Server:</strong> <code>change_lsn</code>, not
-                <code>commit_lsn</code>, which every change in a transaction
-                shares; optionally with the event's index within the
+                <strong>SQL Server:</strong> compare
+                (<code>commit_lsn</code>, <code>change_lsn</code>,
+                <code>event_serial_no</code>) as a tuple.
+                <code>commit_lsn</code> alone is shared by every change in a
                 transaction.
               </li>
               <li>
-                <strong>Oracle:</strong> <code>scn</code> plus the event's
-                position in the transaction, not <code>commit_scn</code>
-                (shared), because <code>scn</code> can repeat across changes in
-                one transaction.
+                <strong>Oracle:</strong> <code>scn</code>, with
+                <code>rs_id</code> and <code>ssn</code> to separate changes
+                that share an SCN (verify the ordering semantics for your
+                Debezium version). <code>commit_scn</code> is shared by the
+                whole transaction, and <code>scn</code> can repeat across
+                changes in it.
               </li>
               <li>
                 <strong>MySQL:</strong> binlog file, <code>pos</code> and the
@@ -336,22 +339,26 @@ head_extra: |
           BigQuery example does with <code>seq</code>). If an INSERT and an
           UPDATE of one key in one transaction share a position, a strict
           <code>&lt;</code> skips the UPDATE and the row stays stale. An equal
-          position is skipped as a replay only when it is the same change.
+          position is always skipped; that is correct only when it is the same
+          change.
         </p>
         <p>
           <strong>Comparing.</strong> Compare positions numerically or as a
           typed tuple, never as free text: the text LSNs
           <code>0/9</code> and <code>0/10</code> sort the wrong way round,
           SQL Server LSNs and Oracle SCNs arrive as strings in Debezium, and
-          MySQL needs a (file, pos[, row]) comparison.
+          MySQL needs a (file, pos[, row]) comparison. Fixed-width hex strings
+          (SQL Server) compare correctly as text only if all values are the
+          same width.
         </p>
         <p>
           <strong>Lineage.</strong> Positions are comparable only within one
-          source log lineage. After a failover to a promoted replica, a
-          restore, a new replication slot, or a changed binlog file or server,
-          they can restart or jump, and a guard that compares the old stored
-          value silently skips every new change (a known risk after a MySQL
-          failover). Version the lineage, for example a
+          source log lineage. After a failover that loses the old
+          primary's tail, a point-in-time restore, a move to a different server
+          or cluster, or a binlog reset (not a normal rotation or a new
+          replication slot on the same cluster), positions can restart lower,
+          and the guard skips every change until the new position passes the
+          stored one. Version the lineage, for example a
           <code>source_epoch</code> column that you compare first, then the
           position. A GTID is not listed above because GTIDs are comparable
           only within one server UUID, and file plus position is likewise not
@@ -392,11 +399,15 @@ head_extra: |
           <strong>Deletes.</strong> A physical <code>DELETE</code> removes the
           version column along with the row, so a late, replayed older update
           would match nothing, hit <code>WHEN NOT MATCHED</code> and resurrect
-          the row. Retain a tombstone version instead: a deleted flag plus the
-          delete's position on the row, or a separate tombstone table keyed on
-          the primary key. This is the same &ldquo;tombstones that remove or
-          flag&rdquo; rule as on
-          <a href="{{ '/materialization/' | url }}">Materialization</a>.
+          the row. Retain a delete marker instead: a <code>deleted</code> flag
+          plus the delete's position on the row, or a separate table of
+          deleted keys and their positions. The cost is that delete markers
+          need a retention and cleanup policy, and reads must filter
+          <code>deleted = false</code>. This is the &ldquo;remove or
+          flag&rdquo; choice described on
+          <a href="{{ '/materialization/' | url }}">Materialization</a>. Ignore
+          Kafka null-value tombstone records here: they follow a delete event
+          for log compaction and carry no position.
         </p>
         <p>
           <strong>Watermark (aggregates only):</strong> event time is the right
@@ -422,23 +433,23 @@ head_extra: |
 MERGE INTO target_table T
 USING (
   SELECT
-    :entity_id AS id,
-    :payload AS payload,  -- NULL for a delete
-    :op AS op,
-    :source_lsn AS lsn
+    :entity_id::bigint AS id,      -- use your key's type
+    :payload::jsonb AS payload,    -- NULL for a delete: column must be nullable
+    :op::text AS op,
+    :source_lsn::bigint AS lsn
 ) AS S
 ON (T.id = S.id)
 WHEN MATCHED AND T.source_lsn < S.lsn THEN
   -- Only update if the incoming event is later in the log;
   -- a replay of the same change (same lsn) matches nothing.
-  -- A delete is kept as a tombstone (deleted = true + its lsn), so a late
-  -- older update cannot resurrect the row.
+  -- A delete is kept as a delete marker (deleted = true + its lsn), so a
+  -- late older update cannot resurrect the row. Reads filter deleted = false.
   UPDATE SET
     payload = S.payload,
     deleted = (S.op = 'd'),
     source_lsn = S.lsn
 WHEN NOT MATCHED THEN
-  -- If the record doesn't exist, create it (a delete creates a tombstone)
+  -- If the record doesn't exist, create it (a delete creates a delete marker)
   INSERT (id, payload, deleted, source_lsn)
   VALUES (S.id, S.payload, (S.op = 'd'), S.lsn);</code></pre>
         </div>
@@ -448,6 +459,8 @@ WHEN NOT MATCHED THEN
 -- position, e.g. the event's index within its transaction (Debezium
 -- `transaction.total_order`, where the connector provides one; it needs
 -- transaction metadata enabled).
+-- Not shown: the delete marker (see Deletes above). `@lsn` is INT64, so SQL
+-- Server / Oracle string positions need a typed comparison first.
 MERGE `dw.target` T
 USING (SELECT @id AS id, @lsn AS lsn, @seq AS seq, @payload AS p) S
 ON T.id = S.id
@@ -459,8 +472,8 @@ WHEN NOT MATCHED THEN
         <p class="muted">
           A primary-key upsert with a log-position guard makes the sink
           idempotent for updates: transport stays at-least-once, and duplicates
-          and late arrivals become no-ops (deletes need the retained tombstone
-          version described above). That is exactly-once
+          and late arrivals become no-ops (deletes need the retained delete
+          marker described above). That is exactly-once
           <em>processing</em>.
           End-to-end exactly-once across independent systems is not achievable;
           see
