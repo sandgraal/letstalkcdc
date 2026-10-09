@@ -19,6 +19,8 @@
  *                  canonical of the home page, minus its trailing slash)
  *   --json <file>  where to write the JSON (default seo-audit.json)
  *   --repo <dir>   git checkout used for the dateModified check (default .)
+ *   --rev <rev>    commit-ish the history check looks back from (default
+ *                  HEAD); use it to audit an older build against its own past
  *   --no-git       skip the dateModified-versus-git check
  *   --verbose      also print the pages behind each count
  *   --quiet        print nothing but the JSON path
@@ -127,7 +129,13 @@ function parsePage(siteDir, file) {
     urlPath,
     title: doc.querySelector("title")?.textContent ?? "",
     description: attr('meta[name="description"]', "content"),
-    robots: attr('meta[name="robots"]', "content"),
+    // Every robots meta, joined: a crawler combines them, and the most
+    // restrictive directive wins, so "noindex" anywhere means noindex.
+    robots:
+      q('meta[name="robots"]')
+        .map((el) => el.getAttribute("content"))
+        .join(", ") || null,
+    robotsMetaCount: q('meta[name="robots"]').length,
     canonical: attr('link[rel="canonical"]', "href"),
     refresh: attr('meta[http-equiv="refresh"]', "content"),
     og,
@@ -163,12 +171,12 @@ const flattenLd = (blocks) =>
     );
 const typesOf = (node) => [].concat(node?.["@type"] ?? []);
 
-function lastCommitDate(repo, relPath) {
+function lastCommitDate(repo, relPath, rev) {
   try {
     return (
       execFileSync(
         "git",
-        ["-C", repo, "log", "-1", "--format=%cs", "--", relPath],
+        ["-C", repo, "log", "-1", "--format=%cs", rev, "--", relPath],
         {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "ignore"],
@@ -227,6 +235,12 @@ export function auditSite(siteDir, options = {}) {
     "inventory.noindexContentPages",
     noindexPages.length,
     noindexPages.map((p) => p.urlPath),
+  );
+  const multiRobots = pages.filter((p) => p.robotsMetaCount > 1);
+  m(
+    "inventory.pagesWithMoreThanOneRobotsMeta",
+    multiRobots.length,
+    multiRobots.map((p) => `${p.urlPath} :: ${p.robots}`),
   );
 
   // ---- titles
@@ -812,8 +826,8 @@ export function auditSite(siteDir, options = {}) {
     const rows = [];
     for (const p of articlePages) {
       const slug = p.urlPath.replace(/^\/|\/$/g, "");
-      if (!slug || !existsSync(path.join(repo, "src", slug))) continue;
-      const last = lastCommitDate(repo, `src/${slug}`);
+      if (!slug) continue;
+      const last = lastCommitDate(repo, `src/${slug}`, options.rev || "HEAD");
       if (!last) continue;
       const dm = String(articleOf(p).dateModified).slice(0, 10);
       const lag = Math.round((new Date(last) - new Date(dm)) / 86_400_000);
@@ -904,6 +918,7 @@ function parseArgs(argv) {
     else if (a === "--host") opts.host = argv[++i];
     else if (a === "--json") opts.json = argv[++i];
     else if (a === "--repo") opts.repo = argv[++i];
+    else if (a === "--rev") opts.rev = argv[++i];
     else if (a === "--no-git") opts.git = false;
     else if (a === "--verbose") opts.verbose = true;
     else if (a === "--quiet") opts.quiet = true;
@@ -920,6 +935,7 @@ function main() {
     result = auditSite(path.resolve(opts.site), {
       host: opts.host,
       repo: opts.repo,
+      rev: opts.rev,
       git: opts.git,
     });
   } catch (err) {

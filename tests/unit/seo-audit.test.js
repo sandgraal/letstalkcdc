@@ -117,7 +117,7 @@ function writeFixture(dir) {
       description:
         "A third, clean page with its own description of decent length.",
       canonical: `${HOST}/c/`,
-      extra: og(`${HOST}/c/`),
+      extra: `${og(`${HOST}/c/`)}<meta name="robots" content="index,follow"><meta name="robots" content="noarchive">`,
     })}<body><main><h1>C</h1></main></body></html>`,
   );
   put(
@@ -165,6 +165,25 @@ describe("seo-audit on a fixture site with known defects", () => {
     expect(metrics["inventory.contentPages"]).toBe(4);
     expect(metrics["inventory.redirectStubs"]).toBe(1);
     expect(metrics["canonical.stubsNotPointingAtLiveTarget"]).toBe(0);
+  });
+
+  it("reports a page that carries two robots metas, and honours noindex in either", () => {
+    expect(metrics["inventory.pagesWithMoreThanOneRobotsMeta"]).toBe(1);
+    expect(metrics["inventory.noindexContentPages"]).toBe(0);
+    const dir2 = mkdtempSync(path.join(os.tmpdir(), "ltcdc-seo-audit-ni-"));
+    try {
+      writeFixture(dir2);
+      const file = path.join(dir2, "c/index.html");
+      writeFileSync(
+        file,
+        readFileSync(file, "utf8").replace("noarchive", "noindex"),
+      );
+      const r = auditSite(dir2, { host: HOST, git: false });
+      expect(r.details["inventory.noindexContentPages"]).toEqual(["/c/"]);
+      expect(r.details["sitemap.indexablePagesMissing"]).toEqual([]);
+    } finally {
+      rmSync(dir2, { recursive: true, force: true });
+    }
   });
 
   it("counts long titles and duplicate descriptions", () => {
