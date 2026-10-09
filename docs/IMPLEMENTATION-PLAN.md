@@ -1610,7 +1610,7 @@ production CSS hashes.
       step** (needs a device). Size: S.
       _2026-10-09: maintainer reported "site looks good on iPhone"; closed on
       that report._
-- [ ] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
+- [x] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
       defects found in reviews are fixed. Accept: (a) the desktop close button
       measures at least 44×44 (it is about 22×30); (b) closing the panel
       returns focus to the floating button (`closePanel()` does not today —
@@ -1619,6 +1619,7 @@ production CSS hashes.
       and input row stay on screen. Verify: the hit-test e2e on every project,
       the reviewer's viewport matrix. Size: M. Role: `css-refactor` for (a)
       and (c), `implementer` for (b), `reviewer`.
+      _2026-10-09: shipped in this PR. Close button 22×30 → 44×44 (header 53px); `closePanel()` now returns focus to `#askBtn` on every close path; panel `max-height: min(520px, calc(100dvh - 6.5rem))` and the message area's `min-height` drops to 0 at ≤ 480px tall. Panel top at 667×375 −17 → 147, header at 640×300 −99 → 65, at 568×320 −79 → 85. Proven by the six-viewport matrix in `tests/e2e/assistant.spec.js` (chromium + mobile-chrome; WebKit is not installed locally, CI runs it) and `tests/unit/modules/assistant-focus-return.test.js`. `src/css/assistant.css` ships on its own, so the production CSS hash is unchanged (`f59f964f…`)._
 - [x] **P15-16 · Light-theme accent contrast.** Needs D8. Outcome: the
       light theme meets WCAG AA for accent-coloured text and controls.
       Accept: `--color-accent-primary` (or its light-theme value) reaches

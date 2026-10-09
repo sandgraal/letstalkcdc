@@ -85,6 +85,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Assistant panel polish (P15-15).** The close button is now a 44×44
+  target (it was about 22×30), closing the panel by any route returns focus
+  to the floating button, and on short landscape viewports (667×375,
+  568×320, 640×300) the header and the input row with Send stay on screen
+  instead of being clipped by the panel.
 - **On phones, the assistant's Send button is no longer covered by the
   floating button.** At 640px and narrower the open assistant panel ran
   down to the bottom of the screen, underneath the round chat button, so a
