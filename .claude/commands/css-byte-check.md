@@ -22,8 +22,10 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   b1478af0fa083db3e64607f5ec39b76fcdab24e04eb47f00b448f32d8a70226e
+   e54f418279ea274845b0afc788042d3f7008a096c6212e43d64bac55d6baa5f4
    ```
+   (re-baselined 2026-10-08 for the `.page-meta__author > .author-photo`
+   headshot rule; previously `b1478af0…`.)
 4. **Identical** → the refactor is visually safe; commit it.
 5. **Different** → either you intentionally changed a rule (note it in the
    commit message and update the baseline in `CLAUDE.md`), or you introduced

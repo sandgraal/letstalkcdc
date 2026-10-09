@@ -10,6 +10,7 @@
  * CLAUDE.md, package-lock.json (history notes), and this file.
  */
 import { describe, it, expect } from "vitest";
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,22 +61,63 @@ function rootFiles() {
   );
 }
 
+/**
+ * Files git knows about: tracked, plus new files that are not ignored (so a
+ * stray reference is caught before it is committed). Git-ignored files are
+ * local machine state, not part of the repo: e.g. .claude/.merge-watcher-state.json
+ * stores recent PR titles and would otherwise trip this guard locally while CI,
+ * which never has it, stays green. Returns null if git is unavailable.
+ */
+function gitFiles() {
+  try {
+    const out = execFileSync(
+      "git",
+      ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+      { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+    );
+    return out
+      .split("\0")
+      .filter(Boolean)
+      .map((rel) => path.join(ROOT, rel));
+  } catch {
+    return null;
+  }
+}
+
+function candidateFiles() {
+  const tracked = gitFiles();
+  if (tracked) {
+    const roots = SCAN_DIRS.map((d) => path.join(ROOT, d) + path.sep);
+    return tracked.filter((f) => {
+      const inScanDir = roots.some((r) => f.startsWith(r));
+      const isRootFile = path.dirname(f) === ROOT;
+      if (!inScanDir && !isRootFile) return false;
+      const rel = path.relative(ROOT, f).split(path.sep);
+      if (rel.some((part) => SKIP_DIRS.has(part))) return false;
+      if (isRootFile && SKIP_FILES.has(path.basename(f))) return false;
+      return true;
+    });
+  }
+  // No git (e.g. an exported tarball): fall back to walking the tree.
+  return [
+    ...SCAN_DIRS.flatMap((d) => {
+      try {
+        return [...walk(path.join(ROOT, d))];
+      } catch {
+        return [];
+      }
+    }),
+    ...rootFiles(),
+  ];
+}
+
 function isText(buf) {
   return !buf.subarray(0, 4096).includes(0);
 }
 
 describe("no leftover references to the retired backend", () => {
   it("does not appear in src, scripts, tests, .github, lib, .claude, supabase or root config", () => {
-    const files = [
-      ...SCAN_DIRS.flatMap((d) => {
-        try {
-          return [...walk(path.join(ROOT, d))];
-        } catch {
-          return [];
-        }
-      }),
-      ...rootFiles(),
-    ].filter((f) => path.resolve(f) !== SELF);
+    const files = candidateFiles().filter((f) => path.resolve(f) !== SELF);
 
     const hits = [];
     for (const file of files) {
