@@ -1,11 +1,11 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-10-09",
   seriesKey: "partitioning",
   heroConfig: {
     title: "Partitioning & Reconciliation",
     description:
-      "<p>Design Kafka topics that preserve per-entity ordering, tame skew, and make late arrivals safe with watermarks and versioning.</p>",
+      "<p>Design Kafka topics that preserve per-entity ordering, tame skew, and make late arrivals safe with log-position version guards.</p>",
     align: "center",
     skillLevel: "Advanced",
     actions: [
@@ -29,7 +29,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "The partition key determines which partition an event is written to. Since Kafka only guarantees ordering within a partition, using the entity's primary key (e.g., order_id, user_id) as the partition key ensures all changes for that entity are ordered correctly, preventing race conditions in downstream consumers.",
+          "The partition key determines which partition an event is written to. Since Kafka only guarantees ordering within a partition, using the entity's primary key (e.g., order_id, user_id) as the partition key keeps all changes for that entity in one partition, in order. That removes most reordering, but delivery is still at-least-once, so the sink must also guard on the source's log position.",
       },
       {
         question: "What is partition skew, and why is it a problem?",
@@ -47,13 +47,13 @@ module.exports = {
         question: "What is a 'late-arriving' event in CDC?",
         options: [
           "An event that arrives after the topic is deleted",
-          "An event that arrives out of chronological order due to delays or retries",
+          "An event that arrives after a later change to the same row, due to delays, retries or replays",
           "An event that is always corrupted",
           "Events can never arrive late in CDC",
         ],
         correct: "2",
         explanation:
-          "Late-arriving events occur when network delays, retries, multi-partition reads, or replays cause an older event to arrive after a newer one. Without proper handling (timestamps, watermarks, or versioning), consumers might apply changes out of order, corrupting state (e.g., overwriting new data with old).",
+          "Late-arriving events occur when network delays, retries, multi-partition reads, or replays cause an older event to arrive after a newer one. Without a version guard that compares the source's log position (LSN/SCN/binlog position, not a timestamp), consumers might apply changes out of order, corrupting state (e.g., overwriting new data with old). Watermarks are for closing time windows on aggregates, not for choosing which row version wins.",
       },
       {
         question:
@@ -66,7 +66,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "If a single entity generates massive traffic (e.g., a celebrity user_id), you can use a composite key that adds entropy (user_id + session_id) or implement key salting (appending a hash suffix). This spreads load across partitions while maintaining ordering within the composite key or requiring consumers to reassemble order.",
+          "If a single entity generates massive traffic (e.g., a celebrity user_id), you can use a composite key that adds entropy (user_id + session_id) or implement key salting (appending a hash suffix). This spreads load across partitions, but per-entity order then holds only within each sub-stream; consumers that need the entity's full order must rebuild it from the source log position, which the event carries.",
       },
       {
         question: "What is an audit loop in the context of CDC partitioning?",

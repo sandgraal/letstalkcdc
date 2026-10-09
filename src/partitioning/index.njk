@@ -2,7 +2,7 @@
 layout: base.njk
 title: "Partitioning & Reconciliation — Keys, Skew, Late Arrivals | CDC: The
       Missing Manual"
-description: "Learn partitioning and reconciliation for CDC: choosing keys, handling skew, preserving per-key order, and making late arrivals safe with version and watermarks."
+description: "CDC partitioning and reconciliation: choose keys, handle skew, preserve per-key order, and make late arrivals safe with log-position version guards."
 canonicalPath: "/partitioning/"
 scripts:
   - "/assets/js/pages/partitioning.js"
@@ -10,7 +10,7 @@ scripts:
 head_extra: |
   <meta
         name="description"
-        content="Learn partitioning and reconciliation for CDC: choosing keys, handling skew, preserving per-key order, and making late arrivals safe with version and watermarks."
+        content="CDC partitioning and reconciliation: choose keys, handle skew, preserve per-key order, and make late arrivals safe with log-position version guards."
       />
       <link rel="stylesheet" href="{{ '/assets/css/pages/partitioning.css' | url }}">
 
@@ -34,6 +34,14 @@ head_extra: |
           >
           This is the fundamental purpose of a partition key.
         </p>
+        <p>
+          That ordering is the order in which records were appended to the
+          partition, and delivery is still at-least-once: a restart or replay
+          hands the consumer records it has already seen. Partitioning narrows
+          how much reordering a sink must absorb; it does not remove the need
+          for the sink to be idempotent (see
+          <a href="#recon">Making Sinks Bulletproof</a>).
+        </p>
       </section>
       <section aria-labelledby="sizing">
         <h2 id="sizing">Partition sizing (rule-of-thumb)</h2>
@@ -55,8 +63,12 @@ head_extra: |
           </li>
           <li>
             <strong>Changing partitions later:</strong> adding partitions
-            <em>does not</em> rehash existing keys; plan key strategy up front
-            or use topic splits.
+            <em>does not</em> move existing records, but it changes which
+            partition a key maps to (the default partitioner uses
+            <code>hash(key) mod partition_count</code>). New events for a key
+            can land on a different partition than its older ones, so per-key
+            order is no longer guaranteed across that change. Plan the
+            partition count up front, or cut over to a new topic.
           </li>
         </ul>
       </section>
@@ -272,39 +284,62 @@ head_extra: |
           Making Sinks Bulletproof: Version Guards &amp; Watermarks
         </h2>
         <p>
-          Even with perfect partitioning, network retries or broker failures can
-          cause events to arrive out of order. To protect against late-arriving
-          events and guarantee correctness, your target table needs two key
-          columns:
+          Even with perfect partitioning, delivery is at-least-once: retries,
+          consumer restarts and replays deliver the same event again, and a
+          rewind, a repartition or a re-snapshot can show your sink an older
+          change after a newer one. Correctness comes from an idempotent sink
+          keyed on the primary key and ordered by the source's log position,
+          so your target table needs two key columns:
         </p>
         <ol>
           <li>
             <strong><code>id</code>:</strong> The primary key of the entity.
           </li>
           <li>
-            <strong><code>event_timestamp</code> (or version number):</strong> A
-            strictly increasing value from the source (a transaction ID or a
-            precise timestamp) that indicates when the change occurred.
+            <strong><code>source_lsn</code> (the log position):</strong> The
+            position of the change in the source's transaction log, copied
+            from the event as-is: the LSN (PostgreSQL, SQL Server), the SCN
+            (Oracle) or the binlog file and position (MySQL, compared as a
+            pair). It increases in commit order for a given key, so it says
+            which change is newer. A Kafka offset is also a position, but it
+            only orders records within one partition of one topic, so use it
+            only when every event for a key is read from that same partition
+            and the topic is never rebuilt.
           </li>
         </ol>
+        <p>
+          Do <em>not</em> use a timestamp such as <code>ts_ms</code> as the
+          version. Clocks on different hosts disagree (clock skew); several
+          changes to one row can share the same millisecond, so the comparison
+          ties; and a replayed or re-snapshotted event can carry a later time
+          than changes already applied, so a stale value would win. A log
+          position has none of those problems. Keep <code>ts_ms</code> for
+          lag metrics and, at most, as a secondary tie-break.
+        </p>
         <p>
           The consumer then uses a <code>MERGE</code> (or
           <code>INSERT...ON CONFLICT</code>) statement with a crucial
           <code>WHERE</code> clause:
           <strong
-            >only update the target row if the incoming event's timestamp is
-            newer than the timestamp already stored.</strong
+            >only update the target row if the incoming event's log position is
+            greater than the position already stored.</strong
           >
+          A replayed event carries the same position it had the first time, so
+          the strict comparison skips it: the replay changes nothing.
         </p>
         <p>
-          <strong>Watermark:</strong> if your source timestamps can arrive late,
-          advance a per-table watermark (“safe up to T-Δ”) before finalizing
-          aggregates. Late events ≤ Δ update rows; older ones are quarantined or
-          appended to a corrections table.
+          <strong>Watermark (aggregates only):</strong> event time is the right
+          axis for closing time windows, but never for deciding which version
+          of a row wins. If events can arrive late, advance a per-table
+          watermark (“safe up to T-Δ”) before finalizing aggregates. Late
+          events ≤ Δ update rows; older ones are quarantined or appended to a
+          corrections table.
         </p>
         <div class="codebox">
           <h3>Production-Ready Idempotent Sink Pattern (Postgres)</h3>
-          <pre><code>-- Assumes target table has a primary key `id` and a column `event_timestamp`
+          <pre><code>-- Assumes target table has a primary key `id` and a column `source_lsn`
+-- (BIGINT) holding the log position carried in the event, e.g. Debezium
+-- `source.lsn`. It is a log position, not a clock time.
 -- MERGE applies as a single atomic statement, but it is NOT immune to
 -- concurrency: under READ COMMITTED a racing INSERT of the same `id` can
 -- still raise a unique_violation. For high-contention upserts prefer
@@ -315,32 +350,39 @@ USING (
   SELECT
     :entity_id AS id,
     :payload AS payload,
-    :event_timestamp AS ts
+    :source_lsn AS lsn
 ) AS S
 ON (T.id = S.id)
-WHEN MATCHED AND T.event_timestamp < S.ts THEN
-  -- Only update if the incoming event is newer
+WHEN MATCHED AND T.source_lsn < S.lsn THEN
+  -- Only update if the incoming event is later in the log;
+  -- a replay (same lsn) matches nothing and changes nothing
   UPDATE SET
     payload = S.payload,
-    event_timestamp = S.ts
+    source_lsn = S.lsn
 WHEN NOT MATCHED THEN
   -- If the record doesn't exist, create it
-  INSERT (id, payload, event_timestamp)
-  VALUES (S.id, S.payload, S.ts);</code></pre>
+  INSERT (id, payload, source_lsn)
+  VALUES (S.id, S.payload, S.lsn);</code></pre>
         </div>
         <div class="codebox">
-          <h3>Tie-break equal timestamps (sequence) — BigQuery example</h3>
-          <pre><code>MERGE `dw.target` T
-USING (SELECT @id AS id, @ts AS ts, @seq AS seq, @payload AS p) S
+          <h3>Tie-break within one log position (sequence) — BigQuery example</h3>
+          <pre><code>-- `lsn` is the source log position. `seq` orders events that share one
+-- position, e.g. the event's index within its transaction.
+MERGE `dw.target` T
+USING (SELECT @id AS id, @lsn AS lsn, @seq AS seq, @payload AS p) S
 ON T.id = S.id
-WHEN MATCHED AND (T.ts &lt; S.ts OR (T.ts = S.ts AND T.seq &lt; S.seq)) THEN
-  UPDATE SET payload = S.p, ts = S.ts, seq = S.seq
+WHEN MATCHED AND (T.lsn &lt; S.lsn OR (T.lsn = S.lsn AND T.seq &lt; S.seq)) THEN
+  UPDATE SET payload = S.p, lsn = S.lsn, seq = S.seq
 WHEN NOT MATCHED THEN
-  INSERT (id, ts, seq, payload) VALUES (S.id, S.ts, S.seq, S.p);</code></pre>
+  INSERT (id, lsn, seq, payload) VALUES (S.id, S.lsn, S.seq, S.p);</code></pre>
         </div>
         <p class="muted">
-          Version guards + watermarks make consumers idempotent and resilient to
-          duplicates and late arrivals.
+          A primary-key upsert with a log-position guard makes the sink
+          idempotent: transport stays at-least-once, and duplicates and late
+          arrivals become no-ops. That is exactly-once <em>processing</em>.
+          End-to-end exactly-once across independent systems is not achievable;
+          see
+          <a href="{{ '/exactly-once/' | url }}">Exactly-Once Semantics</a>.
         </p>
       </section>
 
@@ -349,7 +391,7 @@ WHEN NOT MATCHED THEN
         <ul>
           <li>
             <strong>Windowed row-counts:</strong> compare source vs sink counts
-            over event-time windows ( -minute buckets).
+            over event-time windows (for example 5-minute buckets).
           </li>
           <li>
             <strong>Windowed checksums:</strong> compute hash aggregates (<code
@@ -359,8 +401,9 @@ WHEN NOT MATCHED THEN
           </li>
           <li>
             <strong>Automatic rewind:</strong> on mismatch, rewind the consumer
-            for the affected keys/windows and re-process (idempotent sinks make
-            this safe).
+            to an offset before the affected window and re-process. Kafka
+            rewinds per partition, so unaffected keys are re-read too; the
+            idempotent, log-position-guarded sink makes that safe.
           </li>
           <li>
             <strong>Quarantine queue:</strong> route irreconcilable records to a
