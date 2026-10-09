@@ -125,7 +125,7 @@ head_extra: |
     </p>
     <ul>
       <li><strong>Log-based capture:</strong> Must read from PostgreSQL WAL, not polling</li>
-      <li><strong>Exactly-once delivery:</strong> No duplicate rows in Snowflake from replays</li>
+      <li><strong>Exactly-once effect at the sink:</strong> no duplicate rows in Snowflake from replays</li>
       <li><strong>Schema evolution support:</strong> Handle ADD COLUMN, data type changes gracefully</li>
       <li><strong>Snapshot capability:</strong> Backfill historical data without impacting production</li>
       <li><strong>Operational maturity:</strong> Monitoring, alerting, and runbooks available</li>

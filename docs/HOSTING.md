@@ -31,8 +31,9 @@ The interactive Change Feed Playground lives in `playground/` (imported with its
 history from `sandgraal/Lets-Talk-CDC-Change-Feed-Playground`) and has its own
 toolchain (Vite 7, React, TypeScript). It is a static app whose bundles in
 `playground/assets/generated/` are committed, so `scripts/publish-playground.sh`
-simply copies `index.html`, `CDC_logo.png`, and `assets/` into `_site/playground/`
-after the Eleventy build (used by `deploy.yml` and `linkcheck.yml`). Its CI
+copies `index.html` (with the `__SITE_URL__` placeholder in its `<head>` filled
+from `SITE_HOST` and `ELEVENTY_PATH_PREFIX`), `CDC_logo.png`, and `assets/` into
+`_site/playground/` after the Eleventy build (used by `deploy.yml` and `linkcheck.yml`). Its CI
 (`playground-preflight`, `playground-generated-bundles`, `playground-harness-nightly`)
 runs with `working-directory: playground`. Root ESLint/Prettier ignore `playground/`.
 

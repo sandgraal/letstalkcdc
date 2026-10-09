@@ -12,5 +12,5 @@
 3. Update `ai/site-config.json` and `.chatgpt-context.yml` whenever commands or documentation links change so downstream agents stay in sync.
 
 ## Maintenance
-- Keep the Node.js version in the workflows aligned with the version used for the simulator (currently Node 20).
+- Keep the Node.js version in the workflows aligned with the version used for the simulator (currently Node 24).
 - Clean out historical logs in `ai/logs/` periodically if you run the scripts locally, as they are ignored by Git.
