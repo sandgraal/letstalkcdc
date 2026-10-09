@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "scripts": {
     "clean": "rimraf dist _site src/assets/css/styles.min.css",

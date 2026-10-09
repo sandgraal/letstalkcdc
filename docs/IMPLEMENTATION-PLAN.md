@@ -1093,7 +1093,7 @@ dependencies).
       2026-10-08 that included `@11ty/eleventy` 3.1.2→3.1.6, `vite`,
       `eslint`, `prettier`, `postcss`, `autoprefixer`, `cssnano`,
       `postcss-import`, `vitest`, `jsdom` and the Playwright /
-      axe packages — plus an `engines` field (`node >=20`, matching
+      axe packages — plus an `engines` field (`node >=20.19`, the floor Vite 8, ESLint 10 and jsdom need; matching
       `.nvmrc` and CI). Majors are _not_ in this batch (see P13-8).
       Accept: `verify-all`, `smoke:core` and the Playwright suite pass; if
       any of `autoprefixer`, `postcss`, `postcss-import` or `cssnano` move
@@ -1109,7 +1109,7 @@ dependencies).
       7.1.2→7.1.9, postcss-import 16.1.1→16.2.0, vitest and
       coverage-v8 4.1.10→4.1.11, jsdom 28.0.0→28.1.0, @playwright/test
       1.58.1→1.64.0, @axe-core/playwright 4.11.1→4.13.0, globals
-      17.3.0→17.13.0, fuse.js 7.1.0→7.5.0; `engines.node` is `>=20`. The
+      17.3.0→17.13.0, fuse.js 7.1.0→7.5.0; `engines.node` is `>=20.19` (the floor Vite 8, ESLint 10 and jsdom already required). The
       CSS hash moved `eebaa34a…`→`b1478af0…`: the only difference is
       two declarations in `scorecard.css` where cssnano 7.1.9 now emits
       the authored `rgba(248,113,113,.22)` instead of a lossy `hsla()`
