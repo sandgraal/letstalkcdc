@@ -338,9 +338,16 @@
   --color-text-muted: #52606d;
 
   /* Brand/Accent Colors */
-  --color-accent-primary: #0c8dbd;
-  --color-accent-hover: #0a7ba5;
-  --color-accent-active: #086a90;
+  /* Contrast: #0a7299 is 5.41:1 on white, 5.04:1 on the page ground,
+     4.81:1 on the inline-code chip (#eef2f7) and 4.55:1 on the table-cell
+     ground (#e6ecf3), so accent-coloured text clears WCAG AA everywhere
+     it sits; white text on an accent fill is 5.41:1. The previous #0c8dbd
+     was 3.77:1 on white and 3.35:1 on the code chip. Hover and active
+     step darker still (6.33:1 / 7.69:1) and also clear AA on the pale
+     accent-tinted surfaces. The dark theme keeps its own light cyan. */
+  --color-accent-primary: #0a7299;
+  --color-accent-hover: #08678a;
+  --color-accent-active: #065a76;
   --color-accent-subtle: rgba(12, 141, 189, 0.1);
   --color-accent-light: #3aa9d0;
 
@@ -362,9 +369,9 @@
   --color-error-subtle: rgba(210, 59, 72, 0.1);
   --color-error-hover: #b8303c;
 
-  --color-info: #0c8dbd;
+  --color-info: #0a7299;
   --color-info-subtle: rgba(12, 141, 189, 0.1);
-  --color-info-hover: #0a7ba5;
+  --color-info-hover: #08678a;
 
   /* Interactive States */
   --color-focus: #0c8dbd;
