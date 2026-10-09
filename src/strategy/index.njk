@@ -108,7 +108,10 @@ scripts:
         <ul>
           <li>
             <strong>Producers own contracts:</strong> source teams publish
-            <em>data contracts</em> (schema + SLAs + PII policy).
+            <em>data contracts</em> (schema + SLAs + PII policy). When the
+            producer is a database,
+            <a href="{{ '/cdc-data-contracts/' | url }}">the schema is a side effect of DDL</a>
+            and ownership needs a process.
           </li>
           <li>
             <strong>Platform team</strong> runs CDC connectors, schema registry,

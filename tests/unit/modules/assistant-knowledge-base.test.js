@@ -582,6 +582,95 @@ describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
   });
 });
 
+describe("assistant knowledge base – data contracts for database events (module G)", () => {
+  const MINE = ["cdc_data_contract", "ddl_breaks_consumers"];
+
+  it.each([
+    "what is a data contract for cdc",
+    "do I need a data contract for database events",
+    "who approves ddl on a captured table",
+    "what is a breaking schema change in a change event",
+    "cdc schema contract",
+  ])("%j reaches the data contract answer", (query) => {
+    expect(idOf(query)).toBe("cdc_data_contract");
+  });
+
+  it.each([
+    "what happens when I rename a column in the source table",
+    "what happens when i drop a column",
+    "is a type widening backward compatible",
+    "which compatibility mode should a cdc topic use",
+    "what is backward_transitive",
+    "does column.include.list stop new columns",
+    "where does debezium keep the schema history topic",
+  ])("%j reaches the DDL-breaks answer", (query) => {
+    expect(idOf(query)).toBe("ddl_breaks_consumers");
+  });
+
+  it("leaves the plain schema questions to the older intent", () => {
+    expect(idOf("how do I handle a schema change")).toBe("schema_changes");
+    expect(idOf("what is schema evolution")).toBe("schema_changes");
+    expect(idOf("alter table add column")).toBe("schema_changes");
+  });
+
+  it("does not hijack other rename or breaking-change questions", () => {
+    for (const q of [
+      "how do i rename a connector",
+      "can i rename a replication slot",
+      "how do i rename a table",
+      "rename a kafka topic",
+      "is there a breaking change in the debezium upgrade",
+    ]) {
+      expect(idOf(q), q).not.toBe("ddl_breaks_consumers");
+      expect(idOf(q), q).not.toBe("cdc_data_contract");
+    }
+  });
+
+  it("does not steal the testing questions", () => {
+    expect(idOf("cdc contract test")).toBe("pipeline_testing");
+    expect(idOf("how do i test debezium")).toBe("pipeline_testing");
+  });
+
+  it("is the answer on its own page for a question about contracts", () => {
+    expect(idOf("rename a column", "cdc-data-contracts")).toBe(
+      "ddl_breaks_consumers",
+    );
+    expect(idOf("what is a data contract", "cdc-data-contracts")).toBe(
+      "cdc_data_contract",
+    );
+  });
+
+  it("does not share a trigger with another intent, so no ambiguous ties", () => {
+    const others = kb.intents.filter((i) => !MINE.includes(i.id));
+    for (const id of MINE) {
+      for (const t of byId(id).triggers) {
+        for (const o of others) {
+          expect(o.triggers, `${t} is also in ${o.id}`).not.toContain(t);
+        }
+      }
+    }
+  });
+
+  it("both intents have enough triggers and a link to the page", () => {
+    for (const id of MINE) {
+      expect(byId(id).triggers.length).toBeGreaterThanOrEqual(5);
+      expect(byId(id).links.map((l) => l.url)).toContain(
+        "/cdc-data-contracts/",
+      );
+    }
+  });
+
+  it("neither answer promises exactly-once or timestamp ordering", () => {
+    for (const id of MINE) {
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).not.toMatch(/order(ed)? by (ts_ms|timestamp)/);
+      expect(a).not.toMatch(/(always|never) (safe|breaks)/);
+    }
+    expect(byId("cdc_data_contract").answer).toMatch(/at-least-once/);
+  });
+});
+
 describe("assistant knowledge base – SQL Server and MySQL specifics", () => {
   const CASES = [
     ["my mysql binlog was purged", "mysql_binlog_purged"],
