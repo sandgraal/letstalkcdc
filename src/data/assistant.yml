@@ -221,7 +221,8 @@ intents:
         "dedupe",
         "effectively once",
         "same event twice",
-        "what guarantees",
+        "what guarantees does cdc",
+        "delivery guarantees",
       ]
     modules: ["exactly-once", "event-envelope"]
     answer: >
