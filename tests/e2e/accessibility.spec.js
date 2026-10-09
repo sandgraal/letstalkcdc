@@ -373,7 +373,9 @@ test.describe("buttons keep 4.5:1 on hover, active and focus-visible", () => {
           document.addEventListener("click", (e) => e.preventDefault(), true),
         );
 
-        const buttons = page.locator("main a.button:visible");
+        const buttons = page.locator(
+          "main :is(a.button, button.button, .btn):visible",
+        );
         const count = await buttons.count();
         const failures = [];
         const check = async (state, button) => {

@@ -99,7 +99,7 @@
   background: linear-gradient(
     135deg,
     var(--accent, #00ff88) 0%,
-    var(--accent-dark, #00cc6a) 100%
+    var(--accent-hover, #22b3e0) 100%
   );
   border-radius: 12px;
   color: #fff;
@@ -223,7 +223,7 @@
 }
 
 .filter-btn:hover {
-  background: var(--hover-bg, #f9fafb);
+  background: var(--color-bg-tertiary, #f9fafb);
 }
 
 .filter-btn.active {
@@ -440,7 +440,7 @@
   }
 
   .filter-btn:hover {
-    background: var(--hover-bg, #252525);
+    background: var(--color-bg-tertiary, #252525);
   }
 
   .button-secondary {

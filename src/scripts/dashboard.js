@@ -5,30 +5,6 @@ const LOG_STORAGE_KEY = "cdcAgentLogs";
 const DOC_STORAGE_KEY = "lastProgressDocs";
 const MAX_LOG_ENTRIES = 200;
 
-const FILTERS = [
-  {
-    id: "all",
-    label: "all",
-    predicate: () => true,
-  },
-  {
-    id: "errors",
-    label: "errors",
-    predicate: (entry) => entry.type === "error" || entry.type === "warn",
-  },
-  {
-    id: "sync",
-    label: "sync",
-    predicate: (entry) => entry.source === "SYNC",
-  },
-  {
-    id: "agent",
-    label: "agent",
-    predicate: (entry) => entry.source === "CDC_AGENT",
-  },
-];
-
-const currentFilterIndex = 0;
 let chartModulePromise = null;
 let chartInstances = [];
 
@@ -116,22 +92,6 @@ const writeLogs = (logs) => {
   safeStorage.set(LOG_STORAGE_KEY, JSON.stringify(logs));
 };
 
-const getFilter = (id) =>
-  FILTERS.find((filter) => filter.id === id) ?? FILTERS[0];
-
-const applyLogFilter = (filterId) => {
-  const filter = getFilter(filterId);
-  const lines = doc?.querySelectorAll("#agentConsole .agent-line");
-  if (!lines) return;
-  lines.forEach((line) => {
-    const source = (line.dataset.source ?? "").toUpperCase();
-    const type = (line.dataset.type ?? "").toLowerCase();
-    const entry = { source, type };
-    const visible = filter.predicate(entry);
-    line.style.display = visible ? "" : "none";
-  });
-};
-
 const renderLogEntry = (entry) => {
   const container = doc?.querySelector("#agentConsole .agent-scroll");
   if (!container) return;
@@ -155,7 +115,6 @@ const restoreLogConsole = () => {
   container.innerHTML = "";
   const logs = readLogs();
   logs.forEach((entry) => renderLogEntry(entry));
-  applyLogFilter(FILTERS[currentFilterIndex].id);
 };
 
 const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
@@ -174,7 +133,6 @@ const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
   writeLogs(logs);
 
   renderLogEntry(normalized);
-  applyLogFilter(FILTERS[currentFilterIndex].id);
 };
 
 const loadChartModule = async () => {
@@ -448,7 +406,6 @@ const initialize = () => {
   }
 
   restoreLogConsole();
-  applyLogFilter(FILTERS[currentFilterIndex].id);
 };
 
 if (doc) {
@@ -459,4 +416,4 @@ if (doc) {
   }
 }
 
-export { appendAgentLog, applyLogFilter, renderProgressDashboard };
+export { appendAgentLog, renderProgressDashboard };
