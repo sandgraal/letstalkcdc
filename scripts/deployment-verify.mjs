@@ -5,23 +5,37 @@
 
 import https from "https";
 import http from "http";
+import { getPathPrefix, getPathPrefixForHost } from "../lib/path-prefix.mjs";
+import { getSiteHost } from "../lib/site-host.mjs";
+
+// The host and prefix come from the same sources the build uses
+// (SITE_HOST / ELEVENTY_PATH_PREFIX, see lib/site-host.mjs), so pointing
+// this at a new domain is a variable change.
+const siteHost = getSiteHost();
+const sitePrefix = getPathPrefixForHost(getPathPrefix());
+
+const deployments = [
+  {
+    name: sitePrefix ? "Configured site (subdirectory)" : "Configured site",
+    baseUrl: siteHost,
+    pathPrefix: sitePrefix,
+    timeout: 10000,
+  },
+];
+
+// When the site is served from a subdirectory, also check the bare host
+// root. When it is already served from the root this would be a repeat.
+if (sitePrefix) {
+  deployments.push({
+    name: "Host root",
+    baseUrl: siteHost,
+    pathPrefix: "",
+    timeout: 10000,
+  });
+}
 
 const CONFIG = {
-  // Test both deployment scenarios
-  deployments: [
-    {
-      name: "GitHub Pages (Project)",
-      baseUrl: process.env.SITE_HOST || "https://letstalkcdc.github.io",
-      pathPrefix: process.env.ELEVENTY_PATH_PREFIX || "/letstalkcdc",
-      timeout: 10000,
-    },
-    {
-      name: "GitHub Pages (Root)",
-      baseUrl: "https://sandgraal.github.io",
-      pathPrefix: "",
-      timeout: 10000,
-    },
-  ],
+  deployments,
 
   // Critical pages to verify
   criticalPaths: [

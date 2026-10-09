@@ -278,7 +278,7 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 
 - **Production**: GitHub Pages via `.github/workflows/deploy.yml` (auto-deploy on push to `main`)
 - **Environment variables** (set in repo settings):
-  - `SITE_HOST`: Full domain (e.g., `https://letstalkcdc.github.io`)
+  - `SITE_HOST`: Your site URL (e.g., `https://<owner>.github.io` or a custom domain)
   - `ELEVENTY_PATH_PREFIX`: Leave blank for root, or `/<repo-name>` for project pages
 
 ## When in Doubt
