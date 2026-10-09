@@ -154,7 +154,7 @@ scripts:
   <section id="ordering" aria-labelledby="ordering-title">
     <h2 id="ordering-title">Ordering and compaction</h2>
     <p>
-      Per-key ordering is preserved within a partition, but cross-partition
+      Per-key ordering is preserved within a partition (<a href="{{ '/partitioning/' | url }}">Partitioning &amp; Reconciliation</a> covers key choice), but cross-partition
       sequencing is best-effort. Design your envelope so downstream jobs can
       stitch history back together.
     </p>
@@ -164,10 +164,10 @@ scripts:
         per-key version, not a timestamp.
       </li>
       <li>
-        Store soft deletes as explicit tombstones; compaction depends on it.
+        Store soft deletes as explicit <a href="{{ '/glossary/' | url }}#tombstone">tombstones</a>; <a href="{{ '/glossary/' | url }}#compaction">compaction</a> depends on it.
       </li>
       <li>
-        Make idempotent materialization the default so out-of-order updates
+        Make idempotent materialization the default (see the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a>) so out-of-order updates
         resolve deterministically.
       </li>
     </ol>

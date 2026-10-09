@@ -14,11 +14,11 @@ head_extra: |
 {{ ui.hero(heroConfig) | safe }}
       <p class="lede">
         A living list of precise clarifications, corrections, and “gotchas”.
-        Treat this as pre‑flight checks before promising
+        Corrections follow the process in the <a href="{{ '/methodology/' | url }}#corrections">methodology</a>; for a live incident start with the <a href="{{ '/troubleshooting/' | url }}">first-15-minutes playbook</a>. Treat this as pre‑flight checks before promising
         <em>exactly‑once</em> or “zero data loss.”
       </p>
 
-      {% call ui.panel({ id: 'exactly-once', titleId: 'exactly-once', title: 'End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em>' }) %}
+      {% call ui.panel({ id: 'exactly-once', titleId: 'exactly-once-title', title: 'End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em>' }) %}
         <ul>
           <li>
             <strong>Source connectors are at‑least‑once</strong> in practice.
@@ -39,7 +39,7 @@ head_extra: |
         </ul>
       {% endcall %}
 
-      {% call ui.panel({ id: 'snapshots', titleId: 'snapshots', title: 'Snapshots, backfills, and replays' }) %}
+      {% call ui.panel({ id: 'snapshots', titleId: 'snapshots-title', title: 'Snapshots, backfills, and replays' }) %}
         <ul>
           <li>
             <strong>Initial snapshots</strong> can interleave with live changes;

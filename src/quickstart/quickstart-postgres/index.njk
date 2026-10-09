@@ -122,4 +122,14 @@ SELECT pg_drop_replication_slot('cdc_slot');</code></pre>
       Dropping a live slot can force WAL recycling and data loss for downstream readers. Pause, plan a snapshot, then drop.
     </p>
   </section>
+
+  <section class="box">
+    <h2>Next steps</h2>
+    <ul>
+      <li>Understand the initial load behind <code>snapshot.mode=initial</code> in <a href="{{ '/snapshotting/' | url }}">Snapshotting (Initial Load)</a>.</li>
+      <li>Route and fix poison messages with the <a href="{{ '/dlq-triage/' | url }}">DLQ Triage Assistant</a>, and keep the <a href="{{ '/troubleshooting/' | url }}">first-15-minutes playbook</a> handy.</li>
+      <li>Run the full pipeline in the <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a> and check it with the <a href="{{ '/tests/' | url }}">acceptance tests</a>.</li>
+      <li>Other databases: <a href="{{ '/quickstarts/quickstart-mysql/' | url }}">MySQL quickstart</a>, <a href="{{ '/quickstarts/quickstart-mssql/' | url }}">SQL Server quickstart</a>, <a href="{{ '/quickstarts/quickstart-oracle/' | url }}">Oracle quickstart</a>.</li>
+    </ul>
+  </section>
 </div>

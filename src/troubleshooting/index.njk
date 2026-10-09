@@ -175,6 +175,7 @@ SHOW GLOBAL STATUS LIKE 'Binlog_cache_disk_use';</code></pre>
         </div>
         <div class="box">
           <h2>Oracle Quick Checks</h2>
+          <p>Background and tuning: <a href="{{ '/oracle-notes/' | url }}">Vendor Nuances — Oracle CDC</a>.</p>
           <details open="">
             <summary><strong>Configuration + Health</strong></summary>
             <pre><button class="copy">copy</button><code>-- supplemental logging
@@ -274,7 +275,7 @@ WHERE t.source_lsn &lt; l.last_lsn;   -- expect 0</code></pre>
         <ul class="checklist">
           <li>
             Source log gap detected (WAL/binlog/redo missing) and you can’t
-            reconstruct from another source → plan a clean resnapshot.
+            reconstruct from another source → plan a clean <a href="{{ '/snapshotting/' | url }}">resnapshot</a>.
           </li>
           <li>
             Schema/key change incompatible with current sink merge logic →
@@ -296,7 +297,7 @@ WHERE t.source_lsn &lt; l.last_lsn;   -- expect 0</code></pre>
         <ul>
           <li><strong>Backpressure simulation:</strong> Shut down sink, observe lag metrics</li>
           <li><strong>DLQ exercise:</strong> Inject bad data, trigger serialization errors</li>
-          <li><strong>Schema drift:</strong> Test incompatible column changes</li>
+          <li><strong>Schema drift:</strong> Test incompatible column changes (<a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a>)</li>
           <li><strong>Offset replay:</strong> Wipe offsets, observe snapshot + stream behavior</li>
         </ul>
         <p class="muted">

@@ -36,7 +36,7 @@ ai-generated: true
     <h2>Prerequisites</h2>
     <ul class="checklist">
       <li><strong>Oracle GoldenGate License:</strong> Commercial license or Oracle Cloud GoldenGate service subscription</li>
-      <li><strong>Source Database:</strong> Oracle Database 11g or later (XE edition works for testing)</li>
+      <li><strong>Source Database:</strong> Oracle Database 11g or later (XE edition works for testing); <a href="{{ '/oracle-notes/' | url }}">Oracle CDC notes</a> covers prerequisites and version caveats, and the <a href="{{ '/quickstarts/quickstart-oracle/' | url }}">Oracle quickstart</a> shows the Debezium route</li>
       <li><strong>Target Database:</strong> Oracle, PostgreSQL, MySQL, SQL Server, or any supported target</li>
       <li><strong>Operating System:</strong> Linux (RHEL/OEL/Ubuntu), Windows, or Solaris</li>
       <li><strong>Disk Space:</strong> Minimum 10GB for trail files and GoldenGate binaries</li>
@@ -788,6 +788,9 @@ https://goldengate.us-ashburn-1.oci.oraclecloud.com/deployments/<deployment-id><
         </tr>
       </tbody>
     </table>
+    <p>
+      The <a href="{{ '/compare/' | url }}">platform comparison</a> puts GoldenGate next to Fivetran, Airbyte and Qlik Replicate. For a managed AWS option, try the <a href="{{ '/cloud-labs/aws-dms/' | url }}">AWS DMS lab</a>.
+    </p>
 
     <h3>When to Choose GoldenGate</h3>
     <ul>

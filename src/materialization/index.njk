@@ -69,7 +69,7 @@ scripts:
         <code>source.sequence</code>, or the row index) as the secondary key. If a position can
         repeat for a key (Oracle SCN, MySQL multi-row events), compare the (position, ordinal)
         pair. Keep <code>ts_ms</code> out of ordering entirely.</li>
-      <li>Merge updates and inserts using the latest event per key.</li>
+      <li>Merge updates and inserts using the latest event per key (the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a> has per-warehouse templates).</li>
       <li>Apply deletes as delete markers (a <code>deleted</code> flag plus the delete&rsquo;s log position)
         so a late, older update cannot bring the row back. Physically removing the row is safe only when
         nothing can replay older events.</li>
