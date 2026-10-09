@@ -42,7 +42,7 @@ export default [
     related: ["lsn-scn", "log-retention"],
     lessons: [
       { slug: "postgres-replication-slots", anchor: "how-slots-work-title" },
-      { slug: "sql-server-mysql-cdc", anchor: "positions-title" },
+      { slug: "sql-server-mysql-cdc", anchor: "mysql-title" },
     ],
   },
   {
@@ -289,7 +289,10 @@ export default [
         the connector either drops the event (data loss) or stalls
         the whole partition (head-of-line blocking). With one, the
         bad records are visible and triageable.</p>`,
-    lessons: [{ slug: "dlq-triage" }],
+    lessons: [
+      { slug: "failure-drills", anchor: "drill-2-title" },
+      { slug: "dlq-triage" },
+    ],
   },
 
   // ---- Added from usage (P16-14) ----
@@ -325,8 +328,8 @@ export default [
         and a restart resumes from the last committed one.</p>`,
     related: ["smt", "dead-letter-queue", "checkpoint", "at-least-once"],
     lessons: [
-      { slug: "is-cdc-exactly-once", anchor: "connect-eos-title" },
       { slug: "lab-kafka-debezium" },
+      { slug: "is-cdc-exactly-once", anchor: "connect-eos-title" },
     ],
   },
   {
