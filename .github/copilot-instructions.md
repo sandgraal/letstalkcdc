@@ -296,7 +296,8 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 
 - **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Supabase feedback, tracing, all features)
 - **[docs/HOSTING.md](../docs/HOSTING.md)** — Hosting platforms and deployment
-- **[README.md](../README.md)** — Project overview and quick start
+- **[docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)** — Running, building and checking the site locally
+- **[README.md](../README.md)** — Project overview for readers
 
 **Features:**
 

@@ -1,186 +1,136 @@
-# Let's Talk CDC — README
+# CDC: The Missing Manual
+
+**A practitioner's guide to change data capture: what the events mean, what breaks in production, and how to build sinks that stay correct.**
+
+[Read the manual](https://sandgraal.github.io/letstalkcdc/) · [Start with the introduction](https://sandgraal.github.io/letstalkcdc/intro/) · [Try the playground](https://sandgraal.github.io/letstalkcdc/playground/)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/hero-dark.jpg">
+  <img src="docs/images/readme/hero-light.jpg" alt="The home page: the headline “Why Change Data Capture Still Breaks, and How To Get It Right.” and a short introduction, under the site navigation." width="100%">
+</picture>
 
 [![CI](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml)
-[![Deploy](https://github.com/sandgraal/letstalkcdc/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/deploy.yml)
 [![Link check](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml)
 [![License: MIT + CC BY 4.0](https://img.shields.io/badge/license-MIT%20%2B%20CC%20BY%204.0-blue)](LICENSE-CONTENT.md)
-[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](.lighthouserc.json)
 
-_A lightweight, open learning project for Change Data Capture (CDC) and streaming. Built with Eleventy as a static site (all HTML/CSS/JS generated at build time) so anyone can clone, run locally, and contribute._
+_CDC: The Missing Manual_ (also called Let's Talk CDC) is a free, no-sign-up guide for engineers who run, or are about to run, change data capture pipelines. If you can read SQL and have seen a message queue, you are ready.
 
-Status: **beta** · Scope: **education + hands-on labs** · Stack: **HTML/CSS/JS + CSV/JSON content**
+## What you'll learn
 
-**Live Site**: https://sandgraal.github.io/letstalkcdc/
+Change data capture (CDC) reads a database's transaction log and turns each committed row change into an event that other systems can consume: a warehouse, a cache, a search index, another service. It often replaces nightly batch jobs with a stream. Capturing the changes is the easy part. Applying them correctly downstream is where pipelines go wrong.
 
----
+The manual argues one thesis, and every module comes back to it:
 
-## Why this exists
+1. **Delivery is at-least-once.** Expect duplicates, replays and connector restarts.
+2. **Correctness lives in the sink.** Write idempotently, keyed on the primary key and ordered by log position (LSN, SCN, GTID), not by `ts_ms`.
+3. **End-to-end exactly-once across independent systems is not achievable.** What you can build is exactly-once _processing_: at-least-once transport plus an idempotent sink.
 
-- Make CDC approachable for beginners **without** dumbing it down for practitioners.
-- Teach core concepts (snapshots, streaming, ordering, schema change, backfills) with **interactive** examples.
-- Provide **vendor-agnostic** explanations first, then **practical mappings** to common stacks (Debezium, Kafka, Matillion CDC/Streaming, Snowflake/S3/GCS, etc.).
+Here is a change event, in the shape the [introduction's event demo](https://sandgraal.github.io/letstalkcdc/intro/#cdc-event-demo) produces (the [event envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/) module explains each field):
 
----
-
-## Project structure
-
-```text
-letstalkcdc/
-├── src/                        # Eleventy source files (layouts, data, content sections)
-│   ├── _data/                   # Dataset files exposed to templates
-│   ├── _includes/               # Layouts and shared partials
-│   ├── assets/                  # CSS/JS copied straight through to the build
-│   ├── resources/               # Downloadable helpers (connector configs, scripts) → `/downloads/`
-│   ├── sitemap.11ty.cjs         # Dynamic sitemap generator
-│   ├── search-index.11ty.cjs    # JSON feed used by local search
-│   ├── index.njk                # Home page template
-│   └── …                        # Content directories (quickstarts, labs, guides, etc.)
-├── _site/                      # Generated site output (`npm run build`)
-├── dist/                       # Vite-bundled JS (`npm run build:js`)
-├── scripts/                    # Build / smoke / verify helpers
-├── src/assets/js/app.js        # Client-side entry, bundled by Vite
-├── src/assets/css/main.css     # Production CSS entry; postcss bundles the 00-09 layers
-├── eleventy.config.mjs         # Eleventy configuration
-├── vite.config.mjs             # Vite configuration
-├── postcss.config.mjs          # PostCSS configuration
-├── package.json                # Project metadata, scripts, tooling deps
-├── package-lock.json
-├── CLAUDE.md                   # AI-agent quick reference (commands, conventions, anti-patterns)
-└── README.md
+```json
+{
+  "op": "u",
+  "ts_ms": 1724130000137,
+  "source": { "db": "shop", "table": "customer", "lsn": "0/1A2B498" },
+  "before": { "id": 1, "name": "Ada", "tier": "free" },
+  "after": { "id": 1, "name": "Ada", "tier": "pro" }
+}
 ```
 
-## Hosting and Deployment
+`ts_ms` is a wall-clock time. Clocks drift, and two commits can share a millisecond. The `lsn` is the change's position in the source's log, and that is what you order by.
 
-This project is hosted on **GitHub Pages** with automatic deployment via GitHub Actions.
+## Start here
 
-### Quick Start
+Take it in this order if you are new to CDC:
 
-For complete setup instructions including optional features (Supabase assistant-feedback storage, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
+1. [Interactive Introduction](https://sandgraal.github.io/letstalkcdc/intro/): the core ideas, with a live event demo.
+2. [Event Envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/): what is inside an event and what delivery guarantees mean.
+3. [Exactly-Once Semantics](https://sandgraal.github.io/letstalkcdc/exactly-once/): why the sink has to be idempotent.
+4. [Snapshotting](https://sandgraal.github.io/letstalkcdc/snapshotting/) and [Materialization 101](https://sandgraal.github.io/letstalkcdc/materialization/): the first sync, then applying changes.
+5. A [Quickstart](https://sandgraal.github.io/letstalkcdc/quickstarts/) for Postgres, MySQL, Oracle or SQL Server.
+6. [Failure Drills](https://sandgraal.github.io/letstalkcdc/troubleshooting/failure-drills/): break it on purpose and recover.
 
-### CDC Sandbox for Hands-On Practice
+<details>
+<summary>All 26 modules, by stage</summary>
 
-Get started with CDC in minutes using our pre-configured Docker Compose sandbox:
+| Module                                                                                             | Level        | What it covers                                             |
+| -------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
+| **Core concepts**                                                                                  |              |                                                            |
+| [Interactive Introduction](https://sandgraal.github.io/letstalkcdc/intro/)                         | Beginner     | The core ideas, methods, architectures and tooling         |
+| [Event Envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/)                          | Beginner     | Keys, before/after images, tombstones, delivery guarantees |
+| [Materialization 101](https://sandgraal.github.io/letstalkcdc/materialization/)                    | Intermediate | MERGE patterns for upserts and deletes                     |
+| [Snapshotting](https://sandgraal.github.io/letstalkcdc/snapshotting/)                              | Intermediate | The initial consistent snapshot before live changes        |
+| [CDC Beyond Relational Databases](https://sandgraal.github.io/letstalkcdc/non-relational/)         | Intermediate | MongoDB, DynamoDB Streams and Cassandra                    |
+| **Advanced patterns**                                                                              |              |                                                            |
+| [Exactly-Once Semantics](https://sandgraal.github.io/letstalkcdc/exactly-once/)                    | Advanced     | At-least-once versus exactly-once, the outbox              |
+| [Partitioning](https://sandgraal.github.io/letstalkcdc/partitioning/)                              | Advanced     | Partition keys, skew, late arrivals                        |
+| [Schema Evolution](https://sandgraal.github.io/letstalkcdc/schema-evolution/)                      | Advanced     | Compatibility rules and schema registries                  |
+| [Multi-Tenancy](https://sandgraal.github.io/letstalkcdc/multi-tenancy/)                            | Advanced     | Isolation patterns, topic math, egress estimates           |
+| [Reconciliation & Offset Surgery](https://sandgraal.github.io/letstalkcdc/reconciliation-surgery/) | Advanced     | Repairing sinks, resetting offsets safely                  |
+| **Running it**                                                                                     |              |                                                            |
+| [Offsets & Replays](https://sandgraal.github.io/letstalkcdc/ops-offsets/)                          | Intermediate | Offset stores, safe rewind, resync drills                  |
+| [Observability](https://sandgraal.github.io/letstalkcdc/observability/)                            | Intermediate | Lag, throughput, error rate, minimal dashboards            |
+| [Security, PII & Access Control](https://sandgraal.github.io/letstalkcdc/security/)                | Intermediate | Masking, least privilege, logs that outlive rows           |
+| **Context**                                                                                        |              |                                                            |
+| [Use Cases](https://sandgraal.github.io/letstalkcdc/use-cases/)                                    | Beginner     | Real-time analytics to cache invalidation                  |
+| [The Strategic Value of CDC](https://sandgraal.github.io/letstalkcdc/strategy/)                    | Beginner     | The business case                                          |
+| [The CDC Ecosystem](https://sandgraal.github.io/letstalkcdc/tooling/)                              | Beginner     | Open-source and commercial tools                           |
+| [Real-World Case Study](https://sandgraal.github.io/letstalkcdc/case-study/)                       | Intermediate | From batch ETL to CDC, with the trade-offs                 |
+| **Hands-on**                                                                                       |              |                                                            |
+| [Quickstarts](https://sandgraal.github.io/letstalkcdc/quickstarts/)                                | Beginner     | Pick a source database, 10 to 20 minutes                   |
+| [Kafka + Debezium Lab](https://sandgraal.github.io/letstalkcdc/lab-kafka-debezium/)                | Intermediate | Kafka, Connect, a Postgres source and sink                 |
+| [Cloud CDC Labs](https://sandgraal.github.io/letstalkcdc/cloud-labs/)                              | Intermediate | AWS DMS, Snowflake and Matillion end to end                |
+| [Acceptance Tests](https://sandgraal.github.io/letstalkcdc/tests/)                                 | Intermediate | Scripts that check your lab survives restarts              |
+| [Failure Scenario Drills](https://sandgraal.github.io/letstalkcdc/troubleshooting/failure-drills/) | Advanced     | Backpressure, DLQs, schema drift, offset replays           |
+| **Tools and errata**                                                                               |              |                                                            |
+| [Connector Config Builder](https://sandgraal.github.io/letstalkcdc/connector-builder/)             | Intermediate | Debezium configs for Postgres, MySQL or Oracle             |
+| [Debezium Event Decoder](https://sandgraal.github.io/letstalkcdc/debezium-decoder/)                | Intermediate | Before/after diffs and MERGE-ready SQL                     |
+| [DLQ Triage Assistant](https://sandgraal.github.io/letstalkcdc/dlq-triage/)                        | Advanced     | Commands and playbooks for re-driving DLQ events           |
+| [Nuances & Errata](https://sandgraal.github.io/letstalkcdc/errata/)                                | Advanced     | Corrections and sharp edges                                |
 
-```bash
-# Start the complete CDC stack (Postgres, MySQL, Kafka, Debezium)
-docker compose up -d
+</details>
 
-# Register a connector and start capturing changes
-./sandbox/register-postgres-connector.sh
+## Try it
 
-# View change events in Kafka UI
-open http://localhost:8080
-```
+Many modules end with a short quiz, and your progress is kept in your browser on the [progress page](https://sandgraal.github.io/letstalkcdc/dashboard/). Press `/` (or tap Search) on any page to search.
 
-**Includes:**
+<img src="docs/images/readme/event-demo.jpg" alt="The event demo on the introduction page: an editable customer table on the left and, on the right, the change event that the last insert, update or delete produced, with its op code, before and after images and log position." width="480">
 
-- Pre-loaded sample data (products, customers, orders)
-- Postgres & MySQL configured for CDC
-- Kafka, Zookeeper, Debezium Connect
-- Kafka UI for visual message inspection
+- **Event demo.** Insert, update and delete rows in a small customer table and watch the [change event](https://sandgraal.github.io/letstalkcdc/intro/#cdc-event-demo) each one emits.
+- **Change Feed Playground.** A browser [simulator](https://sandgraal.github.io/letstalkcdc/playground/). Model a table, insert, update and delete by primary key, emit a snapshot, then inspect the Debezium-style events or copy them as NDJSON.
+- **Debezium tools.** Build a connector config, decode a pasted event, or work through a dead-letter queue with the Connector Config Builder, Debezium Event Decoder and DLQ Triage Assistant (see the full module list above).
+- **Run a real stack.** `docker compose up -d` starts Postgres, MySQL, Kafka, Debezium Connect and Kafka UI on your machine. See the [sandbox guide](docs/SANDBOX.md).
 
-📖 **Full guide:** [docs/SANDBOX.md](docs/SANDBOX.md) | [Quick reference](sandbox/README.md)
+<img src="docs/images/readme/playground.jpg" alt="The Change Feed Playground comparing three capture methods on the same changes: an event log with 7 events produced and consumed, a mix of inserts, updates and deletes, split across a Debezium binlog tail, triggers and polling, each event with Replay and Copy buttons and a Download NDJSON option." width="720">
 
-### New Features ✨
+It works on a phone, and has a light and a dark theme:
 
-Recent additions to the platform:
+<img src="docs/images/readme/mobile.jpg" alt="The top of the home page on a phone in dark theme: logo, menu, theme toggle and search above the same headline." width="260">
 
-- **Docker Compose CDC Sandbox** — Complete CDC environment with one command
-- **Client-side search** — Press `/` to search all content instantly
-- **Web Vitals monitoring** — Real-time LCP/FID/CLS tracking (add `?vitals=1`)
-- **Enhanced testing** — Comprehensive smoke tests validate all 20 modules
-- **Deployment verification** — Post-deploy checks with `npm run verify:deployment`
+## Reading paths
 
-### Basic Deployment
+- **I have ten minutes.** Play with the [event demo](https://sandgraal.github.io/letstalkcdc/intro/#cdc-event-demo), read [Exactly-Once Semantics](https://sandgraal.github.io/letstalkcdc/exactly-once/), and keep the [glossary](https://sandgraal.github.io/letstalkcdc/glossary/) open.
+- **I run Debezium in production.** Start with the [first 15 minutes of an incident](https://sandgraal.github.io/letstalkcdc/troubleshooting/), then [snapshotting](https://sandgraal.github.io/letstalkcdc/snapshotting/), [schema evolution](https://sandgraal.github.io/letstalkcdc/schema-evolution/), [offsets and replays](https://sandgraal.github.io/letstalkcdc/ops-offsets/), [security](https://sandgraal.github.io/letstalkcdc/security/) and the [errata](https://sandgraal.github.io/letstalkcdc/errata/). The [merge cookbook](https://sandgraal.github.io/letstalkcdc/merge-cookbook/) has sink templates.
+- **I'm choosing a tool.** Read the [platform comparison](https://sandgraal.github.io/letstalkcdc/compare/) (read the delivery-semantics row first), then the [ecosystem overview](https://sandgraal.github.io/letstalkcdc/tooling/), the [strategy](https://sandgraal.github.io/letstalkcdc/strategy/) module and the [case study](https://sandgraal.github.io/letstalkcdc/case-study/).
 
-1. Enable GitHub Pages for the repository and select **GitHub Actions** as the source
-2. Configure repository variables (Settings → Secrets and variables → Actions → Variables):
-   - `SITE_HOST`: Full domain where the site is served (e.g., `https://letstalkcdc.github.io` or your custom domain)
-   - `ELEVENTY_PATH_PREFIX`: Leave blank for root deployment or set to `/<repository-name>` for project pages
-3. Push to `main` or manually trigger the workflow to deploy
+## Why trust it
 
-The site automatically rebuilds and deploys on every push to `main`.
+- **Vendor-neutral first.** Concepts come in general terms, then map to stacks such as Debezium, Kafka, Snowflake and Matillion.
+- **Corrections are public.** See the [errata](https://sandgraal.github.io/letstalkcdc/errata/) and the [methodology](https://sandgraal.github.io/letstalkcdc/methodology/) page on how claims are checked.
+- **Checked by machines.** Every change runs [unit, pa11y, axe and Lighthouse checks](.github/workflows/ci.yml), and a [link check](.github/workflows/linkcheck.yml) crawls the built site.
+- **No analytics.** No analytics script and no cookies from the site's own code; a few pages load Mermaid or Chart.js from a CDN, and the playground can use Supabase for saved scenarios and share links (see the [privacy note](https://sandgraal.github.io/letstalkcdc/privacy/)).
+- **The assistant is optional.** A thumbs-up or thumbs-down can store your last typed question with the vote, so don't paste secrets into it ([privacy note](https://sandgraal.github.io/letstalkcdc/privacy/), [SECURITY.md](SECURITY.md)).
 
-### Optional Features
+## Found a mistake? Want to help?
 
-The site is built with progressive enhancement — core features work immediately:
+If something is wrong, unclear or out of date, please [open an issue](https://github.com/sandgraal/letstalkcdc/issues) or start a [discussion](https://github.com/sandgraal/letstalkcdc/discussions). Corrections with a source are the most useful kind.
 
-| Feature                               | Status      | Documentation                      |
-| ------------------------------------- | ----------- | ---------------------------------- |
-| **Static site** (educational content) | ✅ Ready    | This README                        |
-| **Local progress tracking**           | ✅ Ready    | None needed — uses browser storage |
-| **Client-side tracing**               | ❌ Removed  | [docs/TRACING.md](docs/TRACING.md) |
-| **User authentication**               | ❌ Removed  | [docs/SETUP.md](docs/SETUP.md)     |
-| **Cloud progress sync**               | ❌ Removed  | [docs/SETUP.md](docs/SETUP.md)     |
-| **Assistant feedback (Supabase)**     | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
-| **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+**Developers and contributors: start with [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** for running the site locally, then [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-### Serverless Function Hosting
+## Author and license
 
-- Progress is now stored locally in the browser—no serverless function is required for core site features.
+Written and maintained by [Christopher Ennis](https://www.linkedin.com/in/cennis/) ([GitHub](https://github.com/sandgraal)).
 
-- Detailed deployment instructions
-- **Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify) are only needed for advanced integrations or legacy features. Most users do not need to deploy a serverless function.**
-- Environment variable configuration
-- Custom domain setup
-- Migration guides
+Code is MIT ([LICENSE](LICENSE)). Written lessons, diagrams and images are CC BY 4.0 ([LICENSE-CC-BY-4.0.txt](LICENSE-CC-BY-4.0.txt)). Which files fall under which licence is in [LICENSE-CONTENT.md](LICENSE-CONTENT.md). To reuse the content, attribute it like this:
 
-For full hosting documentation and platform decision rationale, see **[docs/HOSTING.md](docs/HOSTING.md)**.
-
-## Developer Commands
-
-```bash
-# Development
-npm run dev              # Start dev server at http://localhost:8080
-npm run build            # Build production site → _site/
-
-# Testing & Quality
-npm run smoke            # Run all tests (core + a11y + perf)
-npm run smoke:core       # HTML validation + link checking
-npm run smoke:a11y       # Accessibility tests (requires Chromium)
-npm run smoke:perf       # Performance budget checks
-
-# Community Management
-# Provide a token via your shell (or `gh auth token`) — don't paste
-# real PATs into the command line. See docs/DISCUSSIONS_SEED.md.
-GITHUB_TOKEN="$(gh auth token)" npm run seed:discussions
-
-# Deployment
-npm run verify:deployment # Verify production deployment
-```
-
-### Search Functionality
-
-**Keyboard Shortcuts:**
-
-- Press `/` — Open search modal
-- `↑` `↓` — Navigate results
-- `Enter` — Open selected result
-- `Escape` — Close search
-
-**Programmatic Usage:**
-
-```javascript
-// Search is auto-initialized
-// Trigger via button: <button data-search-trigger>Search</button>
-```
-
-### Web Vitals Monitoring
-
-**Enable in development:**
-
-- Automatically shown on `localhost`
-- Force show: Add `?vitals=1` to any URL
-
-**Metrics tracked:**
-
-- **LCP** (Largest Contentful Paint) — Target: < 2.5s
-- **FID** (First Input Delay) — Target: < 100ms
-- **CLS** (Cumulative Layout Shift) — Target: < 0.1
-
-## License
-
-Code is MIT ([LICENSE](LICENSE)). Written lessons, diagrams and images are
-CC BY 4.0 ([LICENSE-CC-BY-4.0.txt](LICENSE-CC-BY-4.0.txt)). Which files fall
-under which licence, and the attribution wording to use, is in
-[LICENSE-CONTENT.md](LICENSE-CONTENT.md).
+> CDC: The Missing Manual by Christopher Ennis (Let's Talk CDC), https://sandgraal.github.io/letstalkcdc/, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
