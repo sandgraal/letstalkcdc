@@ -1240,8 +1240,225 @@ column; do not duplicate it here.
 
 ---
 
+### Resolved 2026-10-09 (maintainer interview)
+
+Every decision above was answered in a one-by-one interview. Outcomes, and
+where the work now lives:
+
+| #   | Decision                 | Answer                                                                                                                           | Work item             |
+| --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| D1  | License                  | **MIT for code, CC BY 4.0 for written content.** Copyright holder Christopher Ennis.                                             | P15-1                 |
+| D2  | Newsletter provider      | **Buttondown**, no account yet: build with a placeholder username, form disabled in production until the real one is set.        | P15-9                 |
+| D3  | Author photo             | **Yes.** Supplied as `~/Downloads/1783647301211.jpeg` (400×400 JPEG).                                                            | P15-2                 |
+| D4  | Author identity links    | **LinkedIn** `https://www.linkedin.com/in/cennis/`; footer "Get in touch" CTA (`advisoryUrl`) points at it.                      | P15-2                 |
+| D5  | CSS `@layer`             | **Won't do.** Closed, reopen only if a real specificity bug appears.                                                             | P15-7                 |
+| D6  | Lighthouse badge         | **Static badge** stating the enforced floor, bumped whenever `.lighthouserc.json` is raised.                                     | P15-6                 |
+| D7  | Dependabot PRs           | Resolved: #319 and #331 merged, #328 closed.                                                                                     | —                     |
+| —   | DB least privilege       | **Applied** 2026-10-09 (`assistant_feedback_least_privilege`): browser roles keep INSERT only.                                   | P15-4                 |
+| —   | Vote fallback            | **Keep as is** (no direct send when local storage fails).                                                                        | —                     |
+| —   | Feedback privacy         | **Privacy page + 12-month auto-delete** of feedback rows.                                                                        | P15-8                 |
+| —   | Assistant gaps           | **Add beginner intents + a gap review.**                                                                                         | P15-11                |
+| —   | Other agent / playground | **Finished.** Its docs under `playground/**` are open to the conductor for wording and link fixes only (no code changes).        | P15-5                 |
+| —   | Domain                   | **Move to an own domain, name not decided.** Keep every host reference in one place so the move is a variable change.            | P15-13                |
+| —   | Analytics                | **GoatCounter** (cookie-less), no account yet: placeholder, off until the site code is set.                                      | P15-10                |
+| —   | Next push                | **Content depth, SEO/growth and more interactive demos.**                                                                        | Phase 16              |
+| —   | Order                    | **Housekeeping bundle first**, then privacy page + retention, then newsletter and analytics, then perf fixes and major upgrades. | see Phase 15 ordering |
+| —   | Appwrite                 | **Deleted by the maintainer** (project and key).                                                                                 | P15-4 records it      |
+
+---
+
 ## Adding new phases
 
 Append below this line. Keep phases narrow; if a phase grows past ~10
 items, split it. Don't reorder existing phases — agents may have stale
 links.
+
+---
+
+## Phase 15 — Maintainer-directed work (decided 2026-10-09)
+
+Everything here follows from the interview recorded under Phase 14. Work
+the tiers in order. Item fields are as defined in Phase 13. Items that put
+text or links on the public site go through `reviewer`; anything under
+`src/assets/css/` goes through `css-refactor` and carries before / after
+production CSS hashes.
+
+### Tier 1 — housekeeping bundle (do first)
+
+- [ ] **P15-1 · License.** Outcome: the repo states what others may do with
+      it. Accept: `LICENSE` (MIT, copyright Christopher Ennis, current
+      year); `LICENSE-CONTENT.md` carrying CC BY 4.0 (summary, link, and
+      the attribution wording to use) and a precise statement of which paths
+      are content (lesson prose, diagrams and images under `src/`) and which
+      are code (everything else); `package.json` `license` field; a README
+      "License" section and a license badge (this closes the Phase 11
+      "README badge: license" box); the site footer links both and the
+      Article JSON-LD gains `license`. Verify: `/verify-all`,
+      `npm run smoke:core`, and `rg -n "license" _site/index.html`. Size: M.
+      Role: `implementer`, then `reviewer` (legal wording is copied from the
+      canonical CC text, not paraphrased).
+- [ ] **P15-2 · Author identity.** Outcome: the byline shows a photo and
+      verifiable profiles. Accept: the supplied image
+      (`~/Downloads/1783647301211.jpeg`, 400×400) is copied to
+      `src/static/author/christopher.jpg` and checked in; `author.mjs` sets
+      `image`, `sameAs` gains
+      `https://www.linkedin.com/in/cennis/`, and `advisoryUrl` is the
+      LinkedIn URL so the footer shows a soft "Get in touch" CTA; the
+      page-meta byline renders an `<img>` with explicit `width` / `height`,
+      meaningful `alt` and `loading="lazy"`; the Article JSON-LD author
+      block emits `image` and every `sameAs`; the styling is added through
+      `css-refactor` (circular crop, no layout shift) with hashes recorded.
+      Closes the two open Phase 8 author boxes. Verify: `/verify-all`,
+      `smoke:core`, e2e, an LHCI-style check that `unsized-images` and CLS do
+      not regress, JSON-LD validated. Size: M. Role: `implementer` (data,
+      templates), then `css-refactor`, then `reviewer`.
+- [ ] **P15-3 · iPhone Safari panel height.** Outcome: the open assistant
+      panel header stays on screen on short iPhones with the toolbars
+      showing. Accept: in `src/css/assistant.css`'s `max-width: 640px` block,
+      add the `svh` form after the existing `vh` declaration
+      (`max-height: min(75svh, calc(100svh - 6rem))`) so older browsers keep
+      the fallback; emulated large-viewport measurements from the #332
+      review (iPhone SE-class, 375×553 visible / 667 large) now give a panel
+      top ≥ 0. Production CSS hash is unchanged (the file ships on its own).
+      Verify: the review's measurement script, `npm run test:e2e`. Size: S.
+      Role: `css-refactor`.
+- [ ] **P15-4 · Docs match reality.** Outcome: no document describes a state
+      that no longer exists. Accept: `supabase/schema.sql` lists the
+      insert-only grants as applied (the revoke is no longer commented out,
+      and a note records the 2026-10-09 migration
+      `assistant_feedback_least_privilege`); `SECURITY.md` records that the
+      Appwrite project was deleted and its key rotated by the maintainer,
+      and drops the "maintainer should…" instruction; the plan's P13-10 note
+      records that production delivery was verified with a real vote
+      (2026-10-09 02:29 UTC). Verify: `rg -in appwrite SECURITY.md supabase`
+      shows only the history note. Size: S. Role: `scribe`.
+- [ ] **P15-5 · `playground/**` documentation cleanup.** Outcome: the
+      playground docs no longer instruct anyone to use Appwrite. Accept:
+      only wording and links in the Markdown files under `playground/docs/`
+      (about 20 mentions in 7 files, including
+      `playground/docs/issues/appwrite-persistence.md`) change, to say the
+      project uses the shared Supabase project documented in
+      `playground/docs/supabase-setup.md`; no code, config, test or
+      workflow file under `playground/` is edited. Verify:
+      `rg -il appwrite playground` lists nothing but intentional history
+      notes, and `git diff --stat` shows only `.md` files. Size: S. Role:
+      `scribe`, then `reviewer`.
+- [ ] **P15-6 · Lighthouse badge.** Outcome: the README shows the enforced
+      performance floor, honestly. Accept: a static shields.io badge whose
+      text states the floor CI enforces for `/intro/` (0.82 now) and that
+      links to `.lighthouserc.json`; a one-line comment in
+      `.lighthouserc.json`'s neighbour doc, or in CONTRIBUTING, says to bump
+      the badge whenever the threshold is raised. Closes the Phase 11
+      "README badge: Lighthouse perf" box. Verify: render check of the
+      README. Size: S. Role: `scribe`.
+- [ ] **P15-7 · Close the `@layer` boxes as "won't do".** Accept: the Phase 4
+      and Phase 11 `@layer` boxes are ticked with a dated "won't do — reopen
+      only if a real specificity bug appears" note. Size: S. Role: `scribe`.
+
+### Tier 2 — feedback data privacy
+
+- [ ] **P15-8 · Privacy page and 12-month retention.** Outcome: visitors can
+      see what the assistant stores, and old rows go away on their own.
+      Accept: a `/privacy/` page (what is stored — typed question, topic id,
+      vote, time; why; who can read it; how to request deletion; the
+      analytics disclosure from P15-10 once it exists) linked from the
+      footer and from the assistant's existing notice; a scheduled database
+      job deletes `public.assistant_feedback` rows older than 12 months,
+      defined in `supabase/schema.sql` and **applied only after the
+      maintainer approves the migration**; docs updated to state the
+      retention period. Verify: the job's definition is read back from the
+      database, a dry-run `select count(*)` of the rows it would delete,
+      `/verify-all`, `smoke:core`. Size: M. Role: `implementer` (page, copy,
+      SQL), `css-refactor` if the page needs styles, then `reviewer`.
+
+### Tier 3 — growth plumbing (placeholders, off until configured)
+
+- [ ] **P15-9 · Newsletter (Buttondown).** Outcome: an accessible,
+      static-first signup that cannot ship half-configured. Accept: a
+      `/newsletter/` page and a compact footer form posting to Buttondown's
+      embed endpoint; the username comes from a `BUTTONDOWN_USERNAME` build
+      variable, and while it is unset the form is not rendered and the page
+      says the newsletter is not open yet (nothing broken in production);
+      works with JavaScript off; labelled inputs, visible focus, no
+      third-party script; no secret anywhere. Closes the Phase 9
+      "Newsletter capture" box. Verify: `/verify-all`, `smoke:core`,
+      axe via `npm run smoke:a11y`, a test that the form is absent when the
+      variable is unset and present when set. **Maintainer step:** create the
+      Buttondown account and set `BUTTONDOWN_USERNAME`. Size: M. Role:
+      `implementer`, `css-refactor`, then `reviewer`.
+- [ ] **P15-10 · Analytics (GoatCounter).** Outcome: cookie-less visit counts,
+      off until configured. Accept: a `GOATCOUNTER_CODE` build variable
+      renders the single async GoatCounter script (no cookies, no consent
+      banner) and nothing when unset; it is added to the performance
+      budget check, disclosed on `/privacy/`, and excluded when
+      `navigator.doNotTrack` is on. Verify: unit test for the template
+      branch, LHCI-style check that the script does not move the `/intro/`
+      score, `/verify-all`. **Maintainer step:** create the GoatCounter
+      site and set `GOATCOUNTER_CODE`. Size: S. Role: `implementer`.
+- [ ] **P15-11 · Assistant beginner intents and gap review.** Outcome: the
+      question that scored the first real 👎 ("help me learn cdc") gets a
+      useful answer. Accept: new intents for "where do I start", "learn
+      CDC", "what should I read first" and close variants, answering with
+      the intro and the learning path, each with a unit test through the
+      real matcher; a `scout` reviews `src/` module titles against the
+      knowledge base and lists the top unanswered basics, of which the
+      clear ones are added in the same PR; no code change to the matcher
+      unless a test proves it is needed. Verify: `npm test`,
+      `npm run test:e2e -- assistant`, and after deploy a read-only
+      `select intent_id, helpful, count(*) from assistant_feedback group by 1,2`
+      to watch the effect. Size: M. Role: `implementer` (data, tests),
+      `scout` (gap list), `reviewer`.
+
+### Tier 4 — structural
+
+- [ ] **P15-13 · One place for the host.** Outcome: moving to an own domain
+      is a variable change, not a search-and-replace. Accept: an audit of
+      every hardcoded `sandgraal.github.io` outside history and tests
+      (`src/_data/site.mjs`, `src/feed.11ty.cjs`,
+      `scripts/deployment-verify.mjs`, README and docs) — code derives the
+      host from `SITE_HOST`, docs say "your site URL"; a short runbook
+      `docs/DOMAIN-MIGRATION.md` (GitHub Pages custom domain, `CNAME`,
+      `SITE_HOST` and path prefix, 301 plan for the old URLs, sitemap / RSS /
+      canonical / OG checks, `lychee` expectations); a test that a production
+      build with a different `SITE_HOST` emits no `sandgraal.github.io`.
+      Verify: that test plus `/verify-all`. Size: M. Role: `implementer`,
+      then `reviewer`.
+
+### Ordering
+
+Tier 1 → Tier 2 → Tier 3 → Tier 4, while the Phase 13 performance items
+(P13-5, P13-6) and the major upgrades (P13-8) run in parallel only when no
+browser-heavy job is measuring (Lighthouse needs a quiet machine). P15-12
+is intentionally unused so the IDs stay aligned with the interview notes.
+
+---
+
+## Phase 16 — Growth, content depth and interactive demos (to be scoped)
+
+The maintainer's next big push: **more CDC content depth**, **growth and
+discoverability (SEO)** and **more interactive demos**. Nothing here is
+ready to start; the first job is to turn it into measured, specific items.
+
+- [ ] **P16-1 · SEO baseline audit.** Outcome: a ranked list of the
+      technical and on-page SEO problems that matter. Accept: a written
+      audit (titles, descriptions, headings, internal links, structured
+      data, sitemap, canonical, Core Web Vitals) with each finding carrying
+      evidence and a proposed fix sized S / M; findings that are quick wins
+      become Phase 16 items. Role: `scout` gathers, `reviewer` checks the
+      claims.
+- [ ] **P16-2 · Content-gap and keyword plan.** Outcome: a prioritised
+      list of new modules / sections with the question each one answers.
+      Accept: a gap analysis against what readers search for and what the
+      assistant failed to answer (use the feedback table once it has data),
+      grouped into topic clusters, with a first batch of ≤ 5 modules
+      specified like the Phase 12 items (the thesis they must hold:
+      at-least-once delivery, idempotent sinks, ordering by log position,
+      no cross-system exactly-once). Candidate topics to evaluate, not
+      commitments: CDC into lakehouse table formats, testing and
+      observability of CDC pipelines, cost modelling, schema contracts.
+- [ ] **P16-3 · Interactive demos linked into the lessons.** Outcome: the
+      playground is part of the learning path, not a separate site. Accept:
+      an inventory of the lessons that should have a "try it" link into
+      `/playground/` with a named scenario, the gaps where no scenario
+      exists yet, and a proposal for the first three labs; coordinated with
+      the playground code owner before any change under `playground/`.
