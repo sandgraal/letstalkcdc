@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "CDC Tool Profiles: What Each Platform Does"
+title: "CDC Tool Profiles"
 canonicalPath: "/tooling/"
 description: "What each CDC tool is and does: profiles of open-source, managed cloud and commercial platforms, from Debezium to GoldenGate. To choose between them, compare."
 scripts:
@@ -13,6 +13,7 @@ scripts:
 
 {{ ui.hero(heroConfig) | safe }}
 
+      <div class="container">
       <article class="prose">
         <p>
           This page is a set of <strong>tool profiles</strong>: what each CDC
@@ -108,9 +109,9 @@ scripts:
         </p>
         <h3 id="aws-dms">AWS Database Migration Service (DMS)</h3>
         <p>
-          AWS DMS is a fully managed service, built on AWS's own replication
-          technology rather than an open-source project, that supports a wide
-          variety of migrations and replications. It can capture changes from sources like
+          AWS DMS is a fully managed service, a proprietary AWS service and not
+          an open-source project, that supports a wide variety of migrations
+          and replications. It can capture changes from sources like
           Oracle, PostgreSQL, and SQL Server and deliver them to targets across
           the AWS ecosystem, such as Amazon S3 and Redshift.
         </p>
@@ -118,9 +119,9 @@ scripts:
           <li>
             <strong>Pros:</strong> Its main advantages are simplicity and deep
             integration with the AWS ecosystem. It has a pay-as-you-go pricing
-            model (per hour for the replication instance, plus log storage)
-            and eliminates the need for users to manage any underlying servers
-            or software.
+            model (per hour for an on-demand replication instance, or per
+            DCU-hour with DMS Serverless) and eliminates the need for users to
+            manage any underlying servers or software.
           </li>
           <li>
             <strong>Cons:</strong> Performance can be variable, and it is
@@ -156,7 +157,9 @@ scripts:
           Azure Data Factory and Synapse pipelines have a built-in change data
           capture resource for sources such as SQL Server, Azure SQL Database,
           and Azure SQL Managed Instance, so you can set up capture without
-          designing a pipeline.
+          designing a pipeline. Microsoft documents that factory CDC resource
+          as in public preview, and it does not support a self-hosted
+          integration runtime.
         </p>
         <ul>
           <li>
@@ -262,8 +265,8 @@ scripts:
           </li>
           <li>
             <strong>Idempotent sinks:</strong> MERGE/UPSERT on the primary key,
-            ordered by log position (LSN, SCN, or binlog file and position),
-            staging+MERGE, dedupe tables.
+            ordered by log position (LSN, SCN, or binlog file and position);
+            implement it with staging plus MERGE or dedupe tables.
           </li>
           <li>
             <strong>Ops &amp; observability:</strong> lag/backlog metrics, DLQs,
@@ -350,3 +353,4 @@ scripts:
 
         {{ quizMacro.quiz(quizConfig) | safe }}
       </article>
+      </div>

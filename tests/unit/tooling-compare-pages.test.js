@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { platforms } from "../../src/_data/cdcCompare.mjs";
+import site from "../../src/_data/site.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -53,7 +54,15 @@ describe("/tooling/ and /compare/ have two jobs", () => {
     expect(compare.title).toBeTruthy();
     expect(tooling.title).not.toBe(compare.title);
     expect(tooling.title).toMatch(/profiles?/i);
-    expect(compare.title).toMatch(/fits your situation/i);
+    expect(compare.title).toMatch(/which fits/i);
+    // Hero h1 matches the page's job, not an older editorial name.
+    expect(tooling.data.heroConfig.title).toMatch(/profiles/i);
+  });
+
+  it("keep the rendered <title> (with the brand suffix) within 60 characters", () => {
+    for (const p of [tooling, compare]) {
+      expect(`${p.title} | ${site.title}`.length).toBeLessThanOrEqual(60);
+    }
   });
 
   it("have distinct descriptions, one tag each, at most 160 characters", () => {
@@ -150,9 +159,20 @@ describe("/tooling/ and /compare/ have two jobs", () => {
     expect(compare.body).toMatch(/log position/i);
   });
 
-  it("bumps dateModified past the audit date on both pages", () => {
+  it("keeps dateModified at or after the day the pages were re-scoped", () => {
     for (const p of [tooling, compare]) {
-      expect(p.data.dateModified).toBe("2026-10-09");
+      expect(p.data.dateModified >= "2026-10-09").toBe(true);
     }
+  });
+
+  it("compare data states the verified DMS, Airbyte and Debezium facts", () => {
+    const by = Object.fromEntries(platforms.map((p) => [p.slug, p]));
+    expect(by["aws-dms"].targets).toMatch(/on-premises/);
+    expect(by["aws-dms"].targets).toMatch(/Kafka/);
+    expect(by["aws-dms"].tradeoffs.join(" ")).not.toMatch(/AWS targets only/);
+    expect(by.airbyte.license).toMatch(/Elastic License 2\.0/);
+    expect(by.airbyte.license).not.toMatch(/^Open source/);
+    expect(by.debezium.delivery).toMatch(/^At-least-once by default/);
+    expect(by.debezium.delivery).toMatch(/Kafka Connect exactly-once/);
   });
 });

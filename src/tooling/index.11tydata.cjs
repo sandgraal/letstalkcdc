@@ -3,7 +3,7 @@ module.exports = {
   dateModified: "2026-10-09",
   seriesKey: "tooling",
   heroConfig: {
-    title: "The Modern CDC Toolkit",
+    title: "CDC Tool Profiles: What Each One Does",
     description:
       "<p>Profiles of the open-source, managed, and enterprise tools that capture changes: what each one does, how it works, and where it fits. Ready to choose? The Compare page has the decision matrix.</p>",
     align: "center",
