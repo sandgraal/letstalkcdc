@@ -1087,9 +1087,10 @@ intents:
         url: /non-kafka-cdc/
         anchor: "#search-title"
         preview: What the probe saw at 1, 6, 56 and 61 seconds.
-      - label: Delete markers
-        url: /deletes-stay-deleted/
-        preview: Why a delete must outlive the longest replay.
+      - label: Reproduce the probe
+        url: /non-kafka-cdc/
+        anchor: "#try-it-title"
+        preview: Six curl commands to see the delete window yourself.
 
   - id: transports
     triggers:

@@ -50,7 +50,7 @@ describe("front matter and registration", () => {
 
   it("fits title and description limits", () => {
     expect(title.length).toBeLessThanOrEqual(50);
-    expect(`${title} | Let's Talk CDC`.length).toBeLessThanOrEqual(60);
+    expect(`${title} | CDC: The Missing Manual`.length).toBeLessThanOrEqual(60);
     expect(description.length).toBeGreaterThanOrEqual(120);
     expect(description.length).toBeLessThanOrEqual(160);
   });
