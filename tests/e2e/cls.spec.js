@@ -20,9 +20,13 @@ test.describe("cumulative layout shift", () => {
 
   test("/intro/ stays under 0.1 CLS on Slow 4G + 4x CPU", async ({
     page,
-    browserName,
-  }) => {
-    test.skip(browserName !== "chromium", "CDP throttling is chromium-only");
+  }, testInfo) => {
+    // mobile-chrome is also chromium, but it overrides the desktop viewport
+    // this guard is tuned for; run on the desktop chromium project only.
+    test.skip(
+      testInfo.project.name !== "chromium",
+      "CDP throttling guard is tuned for the desktop chromium project",
+    );
 
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Network.enable");

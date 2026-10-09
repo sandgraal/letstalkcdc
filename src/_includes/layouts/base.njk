@@ -164,8 +164,8 @@
     {% endif %}
     {% if head_extra %}{{ head_extra | renderHeadExtra | safe }}{% endif %}
     {# Minimal inline critical CSS — sets page background and font defaults
-       so the brief window before the main stylesheet applies (and the deferred page sheets) doesn't
-       flash white. Dark theme is the default; the theme-toggle script
+       so the brief window before the deferred page-level stylesheets apply
+       (head_extra links still use the preload swap) doesn't flash white. Dark theme is the default; the theme-toggle script
        (loaded as part of app.js) flips to light if the user previously
        chose it. ~250 bytes uncompressed. #}
     <style>
@@ -175,7 +175,7 @@
       body { font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; }
       /* Inline an a11y-passing link color so headless inspectors
          (pa11y) that catch the page between the page-load event and
-         the deferred-CSS onload-swap don't measure browser-default
+         a deferred page-level sheet's onload-swap don't measure browser-default
          blue (#0000EE). #6fd6f5 on #0a0e14 is ~9:1; #0a6d8f on the
          light ground #f4f7fb is ~4.7:1 — both clear WCAG AA and match
          the design system's --color-link in each theme. The light rule
