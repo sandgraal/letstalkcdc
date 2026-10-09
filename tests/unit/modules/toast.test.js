@@ -146,4 +146,44 @@ describe("toast module", () => {
       expect(container.children.length).toBe(2);
     });
   });
+
+  describe("screen reader announcement", () => {
+    it("creates one polite status live region, reused across toasts", () => {
+      showToast({ title: "One", duration: 0 });
+      showToast({ title: "Two", duration: 0 });
+      const regions = document.querySelectorAll('[role="status"]');
+      expect(regions.length).toBe(1);
+      expect(regions[0].getAttribute("aria-live")).toBe("polite");
+      expect(regions[0].classList.contains("sr-only")).toBe(true);
+    });
+
+    it("puts the title and message in the live region", () => {
+      showToast({
+        title: "Code copied!",
+        message: "SQL code copied to clipboard",
+        duration: 0,
+      });
+      const region = document.querySelector('[role="status"]');
+      expect(region.textContent).toBe(
+        "Code copied!. SQL code copied to clipboard",
+      );
+    });
+
+    it("announces the latest message, even when it repeats", () => {
+      showToast({ title: "Copied", duration: 0 });
+      const first = document.querySelector('[role="status"] p');
+      showToast({ title: "Copied", duration: 0 });
+      const region = document.querySelector('[role="status"]');
+      expect(region.children.length).toBe(1);
+      expect(region.firstElementChild).not.toBe(first);
+      expect(region.textContent).toBe("Copied");
+    });
+
+    it("keeps the live region out of the visible toast stack", () => {
+      showToast({ title: "Visible", duration: 0 });
+      const container = document.querySelector(".toast-container");
+      expect(container.querySelector('[role="status"]')).toBeNull();
+      expect(container.getAttribute("aria-live")).toBeNull();
+    });
+  });
 });

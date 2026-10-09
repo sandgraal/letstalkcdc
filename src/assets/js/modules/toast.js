@@ -25,6 +25,38 @@ const createToastContainer = () => {
 };
 
 /**
+ * Get or create the visually hidden polite live region that announces toasts.
+ * It must exist before its text changes, so it is created once and reused;
+ * the visible toast itself is not a live region (it holds buttons).
+ * @returns {HTMLElement} The live region
+ */
+const getLiveRegion = () => {
+  let region = doc.querySelector(".toast-live-region");
+  if (!region) {
+    region = doc.createElement("div");
+    region.className = "toast-live-region sr-only";
+    region.setAttribute("role", "status");
+    region.setAttribute("aria-live", "polite");
+    region.setAttribute("aria-atomic", "true");
+    doc.body.appendChild(region);
+  }
+  return region;
+};
+
+/**
+ * Announce a message to assistive technology. A fresh child node replaces
+ * the previous one so an identical message (a second "Copied!") is read again.
+ * @param {string} text - The message to announce
+ */
+const announce = (text) => {
+  if (!text) return;
+  const region = getLiveRegion();
+  const line = doc.createElement("p");
+  line.textContent = text;
+  region.replaceChildren(line);
+};
+
+/**
  * Display a toast notification.
  * @param {object} options - Toast configuration
  * @param {string} [options.title=""] - Toast title text
@@ -45,6 +77,7 @@ const showToast = (options = {}) => {
   } = options;
 
   const container = createToastContainer();
+  getLiveRegion();
 
   const toast = doc.createElement("div");
   toast.className = `toast toast-${type}`;
@@ -106,6 +139,7 @@ const showToast = (options = {}) => {
   }
 
   container.appendChild(toast);
+  announce([title, message].filter(Boolean).join(". "));
 
   // Auto-dismiss
   if (duration > 0 && type !== "loading") {
