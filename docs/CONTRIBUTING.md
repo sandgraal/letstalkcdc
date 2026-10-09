@@ -30,7 +30,7 @@ npm run test         # unit tests
 - Match the surrounding code style. Prettier and ESLint run via `npm run lint`.
 - For new content modules, follow **[docs/adding-modules.md](./adding-modules.md)**.
 - For visual changes, attach before/after screenshots in light and dark mode.
-- When you raise a threshold in `.lighthouserc.json`, update the Lighthouse
+- When you raise a threshold in `lighthouse-ci.config.json`, update the Lighthouse
   badge in `README.md` in the same PR. The badge states the floor CI enforces
   for `/intro/` (performance and accessibility `error` assertions), not a
   measured score.
