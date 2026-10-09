@@ -2054,6 +2054,15 @@ ready to start; the first job is to turn it into measured, specific items.
       and 0 broken fragments. Size: M. Role: `scout` (confirm each
       opportunity reads naturally), `implementer`, `reviewer`.
       _Approved by the maintainer 2026-10-09._
+      _Status 2026-10-09, still open: the audit numbers are met (0 broken
+      fragments, 2 pages under 3 content inbound links: `/` and `/privacy/`,
+      minimum 4 for every cloud lab and quickstart page). A data-driven
+      "Related lessons" list now ends 34 of 36 module pages (`related` keys
+      in `src/_data/series.mjs`, rendered by `series-nav.njk`; `cloud-labs`
+      and `failure-drills` have no `seriesKey`, so no series navigation).
+      Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
+      does not yet link out to the owning lesson; that needs a curated
+      `lesson` field on the 33 entries._
       _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
       _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
 - [ ] **P16-9 · Heading and fragment fixes.** Outcome: every content page has
