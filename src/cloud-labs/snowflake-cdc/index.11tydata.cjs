@@ -13,7 +13,7 @@ module.exports = {
     align: "center",
     actions: [
       { href: "#prereqs", label: "Check Prerequisites" },
-      { href: "#setup", label: "Start Building", variant: "ghost" },
+      { href: "#setup-kafka", label: "Start Building", variant: "ghost" },
     ],
   },
   head_extra: `<link rel="stylesheet" href="${pathPrefix}/assets/css/pages/cloud-labs.css">`,

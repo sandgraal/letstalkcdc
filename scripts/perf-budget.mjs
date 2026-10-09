@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { statSync, readdirSync } from "fs";
+import { statSync, readdirSync, readFileSync, existsSync } from "fs";
 import { join, resolve } from "path";
 
 const root = resolve(".");
@@ -47,10 +47,36 @@ const check = ({ label, path, max }) => {
   return { label, filePath, size, max, ok: size <= max };
 };
 
+// Analytics (GoatCounter, P15-10) is off unless GOATCOUNTER_CODE was set for
+// the build. When it is on, the only thing added to a page is one tiny inline
+// loader that injects an async third-party script, so budget its size and
+// insist there is exactly one. (Lighthouse cannot measure the third-party
+// file offline; keeping the loader async and tiny is what protects /intro/.)
+const analyticsChecks = () => {
+  const introPath = join(outputDir, "intro", "index.html");
+  if (!existsSync(introPath)) return [];
+  const html = readFileSync(introPath, "utf8");
+  const loaders =
+    html.match(
+      /<script>(?:(?!<\/script>)[\s\S])*gc\.zgo\.at(?:(?!<\/script>)[\s\S])*<\/script>/g,
+    ) ?? [];
+  if (loaders.length === 0) return [];
+  return [
+    {
+      label: "Analytics loader (inline, Intro)",
+      filePath: introPath,
+      size: Buffer.byteLength(loaders[0]),
+      max: 1024,
+      ok: loaders.length === 1 && Buffer.byteLength(loaders[0]) <= 1024,
+    },
+  ];
+};
+
 const results = [
   ...budgets.map(check),
   ...pageBudgets.map(check),
   ...pageScripts.map(check),
+  ...analyticsChecks(),
 ];
 
 const failures = results.filter((item) => !item.ok);

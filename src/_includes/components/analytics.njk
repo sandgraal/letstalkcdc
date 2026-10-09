@@ -1,0 +1,19 @@
+{#- GoatCounter visit counting (P15-10). Renders nothing unless GOATCOUNTER_CODE
+    is set at build time to a valid site code (checked again here, so a bad
+    value can never reach the markup). Cookie-less, no consent banner.
+    The tiny guard skips the whole thing when the browser sends Do Not Track:
+    count.js itself ignores that signal, so we do not load it at all. #}
+{%- if analytics.goatcounterCode and r/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(analytics.goatcounterCode) %}
+    <script>
+      (function () {
+        var n = navigator;
+        var d = n.doNotTrack || window.doNotTrack || n.msDoNotTrack;
+        if (d === "1" || d === "yes") return;
+        var s = document.createElement("script");
+        s.async = true;
+        s.dataset.goatcounter = {{ ('https://' ~ analytics.goatcounterCode ~ '.goatcounter.com/count') | dump | safe }};
+        s.src = "https://gc.zgo.at/count.js";
+        document.head.appendChild(s);
+      })();
+    </script>
+{%- endif %}

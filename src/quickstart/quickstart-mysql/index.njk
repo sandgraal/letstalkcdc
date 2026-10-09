@@ -104,4 +104,13 @@ FROM target_customers;</code></pre>
       Stop the connector; keep binlogs until you are sure downstream systems are consistent. If you must prune logs, confirm all consumers are caught up first.
     </p>
   </section>
+
+  <section class="box">
+    <h2>Next steps</h2>
+    <ul>
+      <li>Understand the initial load behind <code>snapshot.mode=initial</code> in <a href="{{ '/snapshotting/' | url }}">Snapshotting (Initial Load)</a>.</li>
+      <li>Route and fix poison messages with the <a href="{{ '/dlq-triage/' | url }}">DLQ Triage Assistant</a>, and keep the <a href="{{ '/troubleshooting/' | url }}">first-15-minutes playbook</a> handy.</li>
+      <li>Other databases: <a href="{{ '/quickstarts/quickstart-postgres/' | url }}">Postgres quickstart</a>, <a href="{{ '/quickstarts/quickstart-mssql/' | url }}">SQL Server quickstart</a>, <a href="{{ '/quickstarts/quickstart-oracle/' | url }}">Oracle quickstart</a>.</li>
+    </ul>
+  </section>
 </div>

@@ -1,5 +1,7 @@
 {
   "runs": 3,
+  "minValidRuns": 1,
+  "minValidRunsForError": 2,
   "aggregation": "optimistic",
   "distDir": "_site",
   "outputDir": ".lighthouseci",

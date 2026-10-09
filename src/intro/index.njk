@@ -157,9 +157,9 @@ scripts:
           <summary>Show full breakdown</summary>
           <p>
             <strong>Log-based CDC (The Gold Standard):</strong> Reads committed changes
-            from the database’s transaction log (<em>PostgreSQL WAL</em>, <em>MySQL binlog</em>,
+            from the database’s transaction log (<em>PostgreSQL <a href="{{ '/glossary/' | url }}#wal-redo-log">WAL</a></em>, <em>MySQL binlog</em>,
             <em>SQL Server transaction log</em>, <em>Oracle redo</em>). It’s <em>low-impact</em> on OLTP,
-            but not free: log retention, I/O, and <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a>/archival settings must be tuned.
+            but not free: <a href="{{ '/glossary/' | url }}#log-retention">log retention</a>, I/O, and <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a>/archival settings must be tuned.
             It reliably captures inserts/updates/deletes in order. <em>DDL capture</em> depends on the
             database and connector configuration. PostgreSQL's Write-Ahead Log (WAL) records all changes to
             the database before they are applied, ensuring data integrity and
@@ -667,7 +667,7 @@ COMMIT;</code></pre>
       <em>capture method</em> (prefer log-based), <em>ops model</em> (managed
       vs self-managed), <em>source/target coverage &amp; versions</em>, and
       <em>exactly-once behavior at the sink</em> (idempotent upserts +
-      replay).
+      replay). For a side-by-side of six platforms, see <a href="{{ '/compare/' | url }}">Compare CDC Platforms</a>.
     </p>
 
     <section aria-labelledby="cdc-vendors-title" class="cdc-vendors">
