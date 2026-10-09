@@ -101,6 +101,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "cdc-data-contracts",
+    title: "Data Contracts for Database Events",
+    description:
+      "What a consumer may rely on when the producer is a database: the envelope, which DDL breaks it, registry modes, and a gate that catches it.",
+    href: "cdc-data-contracts/",
+    ctaLabel: "Read the Contract",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "ops-offsets",
     title: "Ops: Offsets & Replays",
     description:
