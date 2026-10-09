@@ -352,7 +352,7 @@ SELECT SYSTEM$PIPE_STATUS('customers_cdc_pipe');</code></pre>
         <strong>Issue:</strong> <code>CONTINUE</code> skips malformed records
         and keeps loading — the pipe never fails, so rejected rows vanish with
         no error surfaced. That is silent <strong>data loss</strong>. The Kafka
-        path routes rejects to a dead-letter queue
+        path routes rejects to a <a href="{{ '/dlq-triage/' | url }}">dead-letter queue</a>
         (<code>errors.deadletterqueue.topic.name</code>); Snowpipe has no
         built-in DLQ, so you must actively check for skipped rows.
       </p>
@@ -432,7 +432,7 @@ SELECT * FROM customers_cdc ORDER BY load_timestamp DESC LIMIT 10;</code></pre>
   <section class="box" id="materialization">
     <h2>Materializing CDC Events</h2>
     <p>
-      Raw CDC events contain operations (INSERT, UPDATE, DELETE). To build a current state table, apply MERGE logic:
+      Raw CDC events contain operations (INSERT, UPDATE, DELETE). To build a current state table, apply MERGE logic (see <a href="{{ '/materialization/' | url }}">Materialization 101</a> for the pattern and the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a> for variants):
     </p>
     <div class="callout callout-warning">
       <h4>At-least-once delivery → dedup by log position, never <code>ts_ms</code></h4>
@@ -443,7 +443,7 @@ SELECT * FROM customers_cdc ORDER BY load_timestamp DESC LIMIT 10;</code></pre>
         <strong>duplicate offsets</strong> for a key. The MERGE below is what
         makes ingestion <em>effectively-once</em> — but only if it collapses
         duplicates by <strong>log position</strong>
-        (the Kafka <code>partition</code>/<code>offset</code>, or the Debezium
+        (the Kafka <code>partition</code>/<code>offset</code> — see <a href="{{ '/ops-offsets/' | url }}">Offsets & Replays</a> — or the Debezium
         <code>source</code> LSN/SCN/file+pos), <strong>not</strong> by
         <code>ts_ms</code>.
       </p>
@@ -603,7 +603,7 @@ ORDER BY START_TIME DESC;</code></pre>
     <div class="callout callout-warning">
       <h4>5. Schema Evolution</h4>
       <p>
-        <strong>Issue:</strong> Kafka Connect Snowflake Sink doesn't auto-evolve tables on schema changes.
+        <strong>Issue:</strong> Kafka Connect Snowflake Sink doesn't auto-evolve tables on schema changes (background: <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a>).
       </p>
       <p>
         <strong>Solution:</strong> Enable <code>snowflake.enable.schematization=true</code> for automatic column additions, or handle schema changes manually.
@@ -613,6 +613,9 @@ ORDER BY START_TIME DESC;</code></pre>
 
   <section class="box" id="monitoring">
     <h2>Monitoring & Observability</h2>
+    <p>
+      <a href="{{ '/observability/' | url }}">Observability Basics</a> explains what to track and why; the queries below are the Snowflake-specific versions.
+    </p>
     
     <h3>Key Metrics to Track</h3>
     <pre><code>-- Lag: Time between source change and Snowflake load
@@ -723,6 +726,9 @@ ALTER TABLE customers_cdc CLUSTER BY (DATE_TRUNC('day', load_timestamp));</code>
         </tr>
       </tbody>
     </table>
+    <p>
+      Other routes into a warehouse: the <a href="{{ '/cloud-labs/matillion-cdc/' | url }}">Matillion lab</a> (polling), the <a href="{{ '/cloud-labs/fivetran/' | url }}">Fivetran lab</a> (managed) and the <a href="{{ '/cloud-labs/aws-dms/' | url }}">AWS DMS lab</a> (S3 files). <a href="{{ '/compare/' | url }}">Compare CDC Platforms</a> puts them side by side.
+    </p>
   </section>
 
   <section class="qs-verify" aria-labelledby="resources-heading">

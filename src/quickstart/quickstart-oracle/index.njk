@@ -117,4 +117,14 @@ FROM TARGET_CUSTOMERS;</code></pre>
       Pause the connector and retain archived logs until downstream systems are consistent. If schema or log-group changes are needed, plan a clean re-snapshot of affected tables.
     </p>
   </section>
+
+  <section class="box">
+    <h2>Next steps</h2>
+    <ul>
+      <li>Understand the initial load behind <code>snapshot.mode=initial</code> in <a href="{{ '/snapshotting/' | url }}">Snapshotting (Initial Load)</a>.</li>
+      <li>Route and fix poison messages with the <a href="{{ '/dlq-triage/' | url }}">DLQ Triage Assistant</a>, and keep the <a href="{{ '/troubleshooting/' | url }}">first-15-minutes playbook</a> handy.</li>
+      <li>For a commercial, log-based alternative see the <a href="{{ '/cloud-labs/goldengate/' | url }}">Oracle GoldenGate lab</a>.</li>
+      <li>Other databases: <a href="{{ '/quickstarts/quickstart-postgres/' | url }}">Postgres quickstart</a>, <a href="{{ '/quickstarts/quickstart-mysql/' | url }}">MySQL quickstart</a>, <a href="{{ '/quickstarts/quickstart-mssql/' | url }}">SQL Server quickstart</a>.</li>
+    </ul>
+  </section>
 </div>

@@ -81,7 +81,7 @@ scripts:
       <li>Pause ingestion and confirm downstream consumers are idle.</li>
       <li>Restore the offset snapshot you want to resume from.</li>
       <li>Validate that the target system can handle replays idempotently.</li>
-      <li>Resume the connector and watch lag + error metrics.</li>
+      <li>Resume the connector and watch <a href="{{ '/glossary/' | url }}#lag">lag</a> + error metrics.</li>
       <li>Document the incident: why rewind happened, what data was affected.</li>
     </ol>
     <p class="callout">

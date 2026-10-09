@@ -89,7 +89,7 @@ scripts:
         <span class="learn-icon" aria-hidden="true">②</span>
         <div>
           <strong>Execution made safe.</strong>
-          <p>Pick the right snapshot mode, chunk large tables, and cap parallelism to respect OLTP workloads.</p>
+          <p>Pick the right snapshot mode, chunk large tables, and cap parallelism to respect OLTP workloads. The <a href="{{ '/quickstarts/' | url }}">quickstarts</a> show the snapshot settings for each database.</p>
         </div>
       </li>
       <li>
@@ -116,9 +116,9 @@ scripts:
           Consistent-read isolation is enabled where applicable (REPEATABLE READ/SNAPSHOT).
         </li>
         <li>
-          Sink MERGE/UPSERT implemented; delete/tombstone semantics defined.
+          Sink MERGE/UPSERT implemented; delete/<a href="{{ '/glossary/' | url }}#tombstone">tombstone</a> semantics defined.
         </li>
-        <li>Offsets are durable and backed up/versioned.</li>
+        <li>Offsets are durable and backed up/versioned (see <a href="{{ '/ops-offsets/' | url }}">Offsets &amp; Replays</a>).</li>
         <li>DDL freeze or schema-compatibility policy in place.</li>
       </ul>
     </details>
@@ -489,7 +489,7 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
           <h2 id="idempotent">Idempotent sink patterns</h2>
           <p>
             Use UPSERT/MERGE semantics keyed on the primary key, ordered by
-            the source log position, with explicit delete markers.
+            the source log position, with explicit delete markers. Ready-made templates are in the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a>.
           </p>
           <p>
             <strong>How snapshot rows interleave with streamed changes.</strong>
