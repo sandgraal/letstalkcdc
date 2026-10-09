@@ -37,10 +37,6 @@ const ELEVENTY_BIN = path.join(
 );
 const PREFIX = "/guide";
 
-// The one page allowed to fail the outline check: a noindex iframe fixture
-// with no <main> and no <h1>.
-const OUTLINE_EXEMPT = new Set(["/mermaid-sandbox/"]);
-
 function walk(dir) {
   return readdirSync(dir).flatMap((n) => {
     const f = path.join(dir, n);
@@ -91,9 +87,9 @@ describe("internal links and headings (built site)", () => {
       host: `https://links.example.org${PREFIX}`,
       git: false,
     });
-    const bad = audit.details["headings.pagesWithAnyIssue"]
-      .filter((p) => !OUTLINE_EXEMPT.has(p.url))
-      .map((p) => `${p.url}: ${p.issues.join("; ")}`);
+    const bad = audit.details["headings.pagesWithAnyIssue"].map(
+      (p) => `${p.url}: ${p.issues.join("; ")}`,
+    );
     expect(bad).toEqual([]);
     expect(audit.metrics["headings.pagesWithMultipleH1"]).toBe(0);
   }, 60_000);
