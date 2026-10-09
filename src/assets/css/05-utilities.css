@@ -606,3 +606,41 @@
     display: flex;
   }
 }
+
+/* ==========================================================================
+   Visual heading levels (P16-9)
+   --------------------------------------------------------------------------
+   Use when the document outline needs one heading level but the design wants
+   another: pick the tag for the outline (h2, h3, ...) and add the class to
+   get the look of a different level. Mirrors the h3/h4 rules in 02-base.css.
+   `h3.h-as-4` (0,1,1) beats the context rules `.prose h3` (0,1,1) by source
+   order, so a promoted h4 keeps the h4 margins inside prose.
+   ========================================================================== */
+
+.h-as-3,
+.h-as-4 {
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--space-md);
+}
+
+.h-as-3 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
+.h-as-4 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+/* Inside .prose an h3 gets a top margin (03-layout.css) and an h4 gets none;
+   keep that tied to the visual level, not the tag. */
+.prose .h-as-3 {
+  margin-top: var(--space-xl);
+}
+
+.prose .h-as-4 {
+  margin-top: 0;
+}

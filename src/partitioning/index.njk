@@ -75,7 +75,7 @@ head_extra: |
           The quality of your partition key directly impacts both the
           correctness and performance of your system.
         </p>
-        <h4>Good Keys (Preserve Order & Distribute Load)</h4>
+        <h3 class="h-as-4">Good Keys (Preserve Order & Distribute Load)</h3>
         <ul>
           <li>
             <strong
@@ -92,7 +92,7 @@ head_extra: |
             multiple partitions.
           </li>
         </ul>
-        <h4>Bad Keys (Lead to Incorrect Order or Skew)</h4>
+        <h3 class="h-as-4">Bad Keys (Lead to Incorrect Order or Skew)</h3>
         <ul>
           <li>
             <strong><code>event_id</code> (a UUID):</strong> This distributes
@@ -109,7 +109,7 @@ head_extra: |
             processing for that entire partition.
           </li>
         </ul>
-        <h4>Mitigations for hot keys (keep per-entity order)</h4>
+        <h3 class="h-as-4">Mitigations for hot keys (keep per-entity order)</h3>
         <ul>
           <li>
             <strong>Tenant-scoped keys:</strong>
