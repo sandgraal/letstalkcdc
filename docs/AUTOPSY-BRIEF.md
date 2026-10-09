@@ -7,8 +7,10 @@ tell you.
 
 ## 1. Purpose, scope and how to use this document
 
-- **As of:** 2026-10-09, `origin/main` at `eb7f95e` (P16-8, #416). Live deploy
-  of that commit succeeded at 2026-10-09 14:16 UTC (`gh run list --workflow=deploy.yml`).
+- **As of:** 2026-10-09. Written at `eb7f95e` (P16-8, #416); the open-work
+  list (section 6), the counts marked `bd5a2a4` and the flake list (section 7)
+  were re-derived at `origin/main` `bd5a2a4` (#427, the last merge of the day).
+  Measurements in section 3 that are not marked `bd5a2a4` are from `eb7f95e`.
   Later commits are not reflected; see "Re-check that this brief is current" below.
 - **Everything here was derived** from the repo, the built site, git history,
   `gh`, and measurements run on that commit (section 3 says how). Where I
@@ -18,9 +20,9 @@ tell you.
   small Supabase footprint, and the content's technical accuracy. Out of
   scope: the maintainer's accounts (Search Console, GoatCounter, Buttondown,
   Supabase dashboard), which this brief could not open.
-- **Not in this brief:** [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md). It is dated
-  2026-05-19 (274 tests, 21 modules) and is being refreshed under plan item
-  P13-9. Do not use its numbers.
+- **Not repeated here:** [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md), the
+  short dated dashboard (refreshed 2026-10-09 under P13-9). It carries the
+  headline counts and open items; this brief is the deeper evidence kit.
 
 ### Reading order
 
@@ -31,7 +33,7 @@ tell you.
 | 3   | [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md)                               | The running checklist; Phases 13 to 16 are current       |
 | 4   | [`DEVELOPMENT.md`](DEVELOPMENT.md)                                               | Run, build and check locally                             |
 | 5   | [`HOSTING.md`](HOSTING.md)                                                       | Deploy pipeline, variables, runbook                      |
-| 6   | [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md)                                     | Historical snapshot only (stale, see above)              |
+| 6   | [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md)                                     | Short dashboard: counts, gates and open items, dated     |
 | 7   | [`seo-audit-2026-10.md`](seo-audit-2026-10.md)                                   | First SEO audit, with findings F-01 to F-17              |
 | 8   | [`seo-baseline-2026-10-after.md`](seo-baseline-2026-10-after.md)                 | Same audit re-run after the Phase 16 work                |
 | 9   | [`content-gap-plan-2026-10.md`](content-gap-plan-2026-10.md)                     | What readers might search for; basis of the new modules  |
@@ -41,14 +43,15 @@ tell you.
 ### Re-check that this brief is current
 
 ```bash
-git fetch origin && git log --oneline eb7f95e..origin/main
+git fetch origin && git log --oneline bd5a2a4..origin/main
 ```
 
 ```bash
 grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md
 ```
 
-At `eb7f95e` the command prints 21 (open boxes; `grep -c '^ *- \[x\]'` prints 134 ticked).
+At `eb7f95e` the command printed 21 open boxes (134 ticked). After the
+closing PRs of 2026-10-09 it prints 9 (`grep -c '^ *- \[x\]'` prints 148).
 
 ## 2. What the site is, and what it is made of
 
@@ -89,7 +92,7 @@ does.
 | Glossary entries                 |       32 | `src/_data/glossary.mjs`                                                                                                                                            |
 | Errata callout entries           |        5 | `src/_data/errata.mjs`; the `/errata/` hub is hand-written                                                                                                          |
 | Assistant intents / triggers     | 45 / 648 | `src/data/assistant.yml`. `content-gap-plan` quotes 23 / 229: that was before P15-11, so it is stale                                                                |
-| Playground scenarios             |   11 + 6 | 11 shared (Compare tab) and 6 demo scenarios, per the inventory doc dated 2026-10-09; **not recounted**                                                             |
+| Playground scenarios             |       14 | `playground/assets/shared-scenarios.js` default export, recounted at `bd5a2a4` (11 at `eb7f95e` plus the 3 labs from P16-26)                                        |
 | Feed items (`/feed.xml`)         |       40 | audit `feed.items`                                                                                                                                                  |
 
 ### Architecture map
@@ -137,7 +140,8 @@ which is configured in repository settings and has no file):
 
 ## 3. Evidence kit
 
-Every number below was measured on 2026-10-09 at `eb7f95e` on one macOS
+Every number below was measured on 2026-10-09 at `eb7f95e` (rows marked
+`bd5a2a4` were re-measured at the end of the day) on one macOS
 machine (Node 24.19.0, Chrome from the system, Playwright browsers cached).
 Lab numbers vary by machine; treat the Lighthouse and timing rows as
 indicative. Runs happen in this order: install, build (production variables),
@@ -167,16 +171,16 @@ CI; the other CI jobs still use the artifact without it._
 
 | Measure                  | Command                                                                                | Value on 2026-10-09                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------------------ | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit tests               | `npm test`                                                                             | 1,704 passed in 54 files, about 17 s                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Unit tests               | `npm test`                                                                             | `bd5a2a4`: 1,727 passed in 58 files, about 12 s (`eb7f95e`: 1,704 in 54 files)                                                                                                                                                                                                                                                                                                                                                                                        |
 | Lint                     | `npm run lint`                                                                         | exit 0, no output                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| E2E (as CI runs it)      | `npx playwright test --project=chromium --reporter=line`                               | 358 tests listed with no playground in `_site/`: 357 passed, 1 failed (below). With the playground published: 361 listed, 2 more fail (the `/playground/` contrast tests; #419 is open to fix them)                                                                                                                                                                                                                                                                   |
+| E2E (as CI runs it)      | `npx playwright test --project=chromium --reporter=line`                               | 358 tests listed with no playground in `_site/`: 357 passed, 1 failed (below). With the playground published: 361 listed, 2 more failed (the `/playground/` contrast tests; fixed afterwards by #419). At `bd5a2a4` chromium lists 368 tests (1,104 over the three projects)                                                                                                                                                                                          |
 | axe contrast, all pages  | included in the e2e run above                                                          | Every sitemap page plus `/dashboard/`, `/styleguide/`, `/mermaid-sandbox/`, `/newsletter/`, both themes: passes. `/playground/` fails in both themes (section 6)                                                                                                                                                                                                                                                                                                      |
 | pa11y-ci                 | `npm run a11y`                                                                         | 8 of 8 URLs, 0 errors                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | pa11y wrapper            | `npm run smoke:a11y`                                                                   | 6 pages pass                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Smoke                    | `npm run smoke:core`                                                                   | Both stages pass (canvases, fonts, edit links, errata, glossary, methodology, privacy; visual fingerprints)                                                                                                                                                                                                                                                                                                                                                           |
 | Size budgets             | `npm run smoke:perf`                                                                   | All pass. CSS 98.3 KB of 200; app JS 2.3 KB of 80; `/intro/` HTML 101.3 KB of 300; page scripts 1.0 to 12.6 KB of 120                                                                                                                                                                                                                                                                                                                                                 |
 | Build time               | `time npm run build`                                                                   | 3.4 to 4.2 s warm (9.2 s on the first run); Eleventy reports "Copied 109 Wrote 90 files in 0.4 seconds"                                                                                                                                                                                                                                                                                                                                                               |
-| Production CSS hash      | `NODE_ENV=production npm run build:css && shasum -a 256 src/assets/css/styles.min.css` | `83943ab39baf798fdd5cfd1dc726035d030b0bd3d0dc4dc6bb322934d2d060b6`, equal to `CLAUDE.md` and to `_site/assets/css/styles.css` after the final minify                                                                                                                                                                                                                                                                                                                  |
+| Production CSS hash      | `NODE_ENV=production npm run build:css && shasum -a 256 src/assets/css/styles.min.css` | `bd5a2a4`: `c5806349294d3bc295a07c93054684a70545d291216916e45cef1c154017f944`, equal to `CLAUDE.md` (it was `83943ab3…` at `eb7f95e`; #417 and #426 added and removed bundle rules)                                                                                                                                                                                                                                                                                   |
 | Output size              | `du -sh _site`                                                                         | 5.4 MB, 201 files (without the playground)                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `npm audit` (root)       | `npm audit` and `npm audit --omit=dev`                                                 | 9 findings (4 moderate, 5 high); 0 with `--omit=dev`                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `npm audit` (playground) | `cd playground && npm audit --package-lock-only`                                       | 5 high; 0 with `--omit=dev`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -237,8 +241,9 @@ npm run lighthouse
 | `/snapshotting/` |        0.93 |          1.00 |           1.00 | 1.00 |     3 of 3 |
 
 Gate result: "22 assertions over 5 URLs: 0 errors, 0 warnings". Floors are
-0.9 for every category at `warn` level; `/intro/` has `error` floors of 0.82
-(performance) and 0.93 (accessibility) in `lighthouse-ci.config.json`.
+0.9 for every category at `warn` level; `/intro/` has `error` floors of 0.84
+(performance; raised from 0.82 by P15-44 from 10 CI jobs, median 0.88) and 0.93
+(accessibility) in `lighthouse-ci.config.json`.
 Other figures: `/intro/` LCP 3.16 s, FCP 2.03 s, TBT 13 to 32 ms, CLS 0.
 `/overview/` transfers 1.19 MB (Mermaid 936 KB). The runner also reports an
 "agentic-browsing" category (0.50 on `/snapshotting/` and `/intro/`); its
@@ -362,18 +367,18 @@ judgement for the content reviewer.
 Checked on 2026-10-09 with `gh` and `curl` (read-only). Variable **names** only;
 no values appear in this document.
 
-| Source                 | State on 2026-10-09                                                                                                                                                                                                                                                                                                     | What you need from the maintainer                                                 |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| GitHub Pages deploy    | Live at `https://sandgraal.github.io/letstalkcdc/`, `build_type: workflow`, HTTPS enforced, no custom domain. Latest deploy of `eb7f95e` succeeded 14:16 UTC                                                                                                                                                            | Repo read (public) for runs; admin for settings and variables                     |
-| Repository variables   | Set: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME`, `GOATCOUNTER_CODE`. **Not set:** `ELEVENTY_PATH_PREFIX`, `SITE_HOST` (production uses the code fallbacks, which equal today's host; the build warns)                                                                                            | Admin on the repo to view or change variables                                     |
-| Repository secrets     | `gh secret list` returned nothing for the maintainer's own token. So the Fortify scan, which needs `FOD_*`/`SSC_*` secrets, probably does not scan (**unverified**)                                                                                                                                                     | Admin, to confirm                                                                 |
-| GoatCounter            | Script `gc.zgo.at/count.js` is on the live home page. Variable updated 2026-10-09 13:24 UTC, so **data starts today** and a week's numbers will mean little for weeks. Cookie-less; honours Do Not Track                                                                                                                | A GoatCounter login (or a read-only share link) for the site code                 |
-| Search Console         | Verification file `googleeb5f2ebb27afc761.html` returns HTTP 200 live. **Whether the property is verified and the sitemap submitted is unknown** (P16-12 is open)                                                                                                                                                       | Owner or full user on the property; the sitemap URL is `/letstalkcdc/sitemap.xml` |
-| Buttondown newsletter  | Live: `/newsletter/` returns 200 and posts to the `letstalkcdc` username; the live sitemap lists it. Subscriber count unknown                                                                                                                                                                                           | A Buttondown login (read-only if offered)                                         |
-| Supabase               | Project shared with the playground; variables above are baked into the build. The conductor's notes record the first real vote reaching `assistant_feedback` on 2026-10-09 (**to be confirmed by the maintainer**). **I could not read any table**: the browser key cannot SELECT, and no database access was available | Supabase dashboard role that can run SQL (read-only is enough)                    |
-| Feedback volume        | The content-gap plan records "roughly 1 to 2 rows" on 2026-10-09 (a maintainer report relayed in that plan; **to be confirmed**). Re-run trigger: **at least 30 rows** (P16-25)                                                                                                                                         | Run the query below                                                               |
-| Host-root `robots.txt` | `https://sandgraal.github.io/robots.txt` returns 404 (checked); the file the site ships is at `/letstalkcdc/robots.txt`, which crawlers do not treat as the site's robots file                                                                                                                                          | Nothing; sitemap submission replaces it. Fixed properly only by an own domain     |
-| Third-party at runtime | Mermaid and Chart.js load from `cdn.jsdelivr.net` (`mermaid@11` is a floating major; no integrity hash)                                                                                                                                                                                                                 | n/a                                                                               |
+| Source                 | State on 2026-10-09                                                                                                                                                                                                                                                                                                                                                                                   | What you need from the maintainer                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| GitHub Pages deploy    | Live at `https://sandgraal.github.io/letstalkcdc/`, `build_type: workflow`, HTTPS enforced, no custom domain. Latest deploy of `eb7f95e` succeeded 14:16 UTC                                                                                                                                                                                                                                          | Repo read (public) for runs; admin for settings and variables                     |
+| Repository variables   | Set: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME`, `GOATCOUNTER_CODE`. **Not set:** `ELEVENTY_PATH_PREFIX`, `SITE_HOST` (production uses the code fallbacks, which equal today's host; the build warns)                                                                                                                                                                          | Admin on the repo to view or change variables                                     |
+| Repository secrets     | `gh secret list` returned nothing for the maintainer's own token. So the Fortify scan, which needs `FOD_*`/`SSC_*` secrets, probably does not scan (**unverified**)                                                                                                                                                                                                                                   | Admin, to confirm                                                                 |
+| GoatCounter            | Script `gc.zgo.at/count.js` is on the live home page. Variable updated 2026-10-09 13:24 UTC, so **data starts today** and a week's numbers will mean little for weeks. Cookie-less; honours Do Not Track                                                                                                                                                                                              | A GoatCounter login (or a read-only share link) for the site code                 |
+| Search Console         | Verification file `googleeb5f2ebb27afc761.html` returns HTTP 200 live. The maintainer reports the property verified and the sitemap submitted (2026-10-09, after this brief's first draft; not checkable from the repo). Google first showed "Sitemap could not be read", a transient message: the live sitemap is valid and lists 57 URLs. P16-12 stays open for the 28-day snapshot, due 2026-11-06 | Owner or full user on the property; the sitemap URL is `/letstalkcdc/sitemap.xml` |
+| Buttondown newsletter  | Live: `/newsletter/` returns 200 and posts to the `letstalkcdc` username; the live sitemap lists it. Subscriber count unknown                                                                                                                                                                                                                                                                         | A Buttondown login (read-only if offered)                                         |
+| Supabase               | Project shared with the playground; variables above are baked into the build. The conductor's notes record the first real vote reaching `assistant_feedback` on 2026-10-09 (**to be confirmed by the maintainer**). **I could not read any table**: the browser key cannot SELECT, and no database access was available                                                                               | Supabase dashboard role that can run SQL (read-only is enough)                    |
+| Feedback volume        | 2 rows on 2026-10-09 (the project's Supabase notes; the content-gap plan said "roughly 1 to 2"; neither was re-queried by this brief, **to be confirmed**). Re-run trigger: **at least 30 rows** (P16-25)                                                                                                                                                                                             | Run the query below                                                               |
+| Host-root `robots.txt` | `https://sandgraal.github.io/robots.txt` returns 404 (checked); the file the site ships is at `/letstalkcdc/robots.txt`, which crawlers do not treat as the site's robots file                                                                                                                                                                                                                        | Nothing; sitemap submission replaces it. Fixed properly only by an own domain     |
+| Third-party at runtime | Mermaid and Chart.js load from `cdn.jsdelivr.net` (`mermaid@11` is a floating major; no integrity hash)                                                                                                                                                                                                                                                                                               | n/a                                                                               |
 
 ### People and access
 
@@ -447,84 +452,63 @@ npm run verify:deployment
 
 ## 6. Known issues and open work
 
-### Open boxes in `IMPLEMENTATION-PLAN.md` at `eb7f95e`
+### Open boxes in `IMPLEMENTATION-PLAN.md` at `bd5a2a4`
 
-21 open boxes (20 top-level, 1 nested). Size and role are the plan's own. All
-are grouped below; none is omitted.
+8 open boxes (`grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`), re-derived
+after the closing PRs of 2026-10-09. At `eb7f95e` there were 21. Size and role
+are the plan's own; none is omitted. Check for newer merges with
+`gh pr list --state all`.
 
-**Moving target:** #413 (P15-45) merged after the snapshot without ticking its
-box, so the count is still 21 on `38ee475`. #417 (P16-9 headings) and #419 are open;
-#415 and #416 merged just before. Re-check with `gh pr list --state all`.
+**Closed since `eb7f95e`** (so the earlier version of this list no longer
+applies): P15-44 (floor ratcheted to 0.84), P13-6, P15-45 (#413: CLS 0.33 to 0
+on `/intro/` under Slow 4G plus 4x CPU, guard `tests/e2e/cls.spec.js`),
+P15-15 (#421, assistant panel), P15-35 (#422, gradient headline contrast),
+P15-50 (#426), P16-8 (#425, #426: glossary link-outs and the related-lessons
+styling), P16-9 and P16-28 (#417, #423: headings), P16-26 and P16-27 (#424,
+#427: playground labs, redeliver op, `?try=` links, seed rows), P16-29 (#419),
+and P13-9 (the dashboard refresh).
 
 **Maintainer-only steps and decisions**
 
-| ID     | What                                                                         | Why it is open                                                                                                                          |
-| ------ | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| P16-12 | Baseline measurement: verify Search Console, submit sitemap, 28-day snapshot | Needs the maintainer's accounts; GoatCounter is now installed, so only the waiting remains                                              |
-| P16-25 | Re-run `content-gap-plan` when `assistant_feedback` has at least 30 rows     | Maintainer reads the table; roughly 1 to 2 rows on 2026-10-09                                                                           |
-| P15-39 | Decide whether to file an upstream Debezium docs issue about `wal_keep_size` | Debezium and PostgreSQL docs disagree; the lesson carries a note                                                                        |
-| P15-52 | Confirm in Codacy that nothing runs `.codacy/cli.sh`, then delete it         | Non-use is unproven without the dashboard                                                                                               |
-| P15-13 | One place for the host (own-domain move)                                     | Code and runbook done (#354); README has `sandgraal.github.io` 55 times (`grep -c`; the plan recorded 44). The domain name is undecided |
+| ID     | What                                                                     | Why it is open                                                                                                                                                                 |
+| ------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P16-12 | Baseline measurement: Lighthouse on 10 key pages and the 28-day snapshot | GoatCounter started 2026-10-09; Search Console is verified and the sitemap submitted (maintainer's report). The snapshot is due 2026-11-06                                     |
+| P16-25 | Re-run `content-gap-plan` when `assistant_feedback` has at least 30 rows | 2 rows on 2026-10-09; Search Console has no data yet                                                                                                                           |
+| P15-39 | File the upstream Debezium docs issue about `wal_keep_size`              | The maintainer decided to file. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md). Stays open until it is filed; the maintainer files it             |
+| P15-52 | Confirm in Codacy that nothing runs `.codacy/cli.sh`, then delete it     | Non-use is unproven without the dashboard                                                                                                                                      |
+| P15-13 | One place for the host (own-domain move)                                 | Code and runbook done (#354); README has `sandgraal.github.io` on 55 lines, 71 occurrences (`grep -c` counts lines). The maintainer plans an own domain; the name is undecided |
 
-**Needs Docker (cannot be proven in CI as it stands)**
+**Needs Docker (cannot be proven in CI as it stands; the maintainer has no Docker, so these are left for the autopsy team)**
 
 | ID     | What                                                                                                                    | Why                                                                                                                                                         |
 | ------ | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P15-46 | Move the labs from Debezium 2.7 / Confluent Platform 7.7 / PostgreSQL 15 to Debezium 3.x, then re-run each lab (Size L) | Pages teach 3.x behaviour (`no_data`, exactly-once from 3.3, outbox router); labs run 2.7.4.Final. Confluent 7.7 end of support was 2026-07-26 per the plan |
 | P15-37 | Playground images are `node:20-alpine`; move to Node 24 (Size S)                                                        | Needs Docker and coordination with the playground owner                                                                                                     |
 
-**CSS follow-ups (route to `css-refactor`; each moves the production CSS hash)**
+**Performance**
 
-| ID             | What                                                                                            | Why                                                                                                                                                                                                                                                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P15-45         | Layout shift of 0.25 when the async preloaded stylesheet applies (Size M)                       | Measured under Slow 4G plus 4x CPU throttle; the e2e bound (under 0.01) is unthrottled and cannot see it. **#413 (render-blocking stylesheet fix, with a CLS guard e2e) merged after this snapshot and addresses it; the plan box was still unticked at the merge, so re-measure under throttling and close it** |
-| P15-15         | Assistant panel: close button is about 22x30 (needs 44x44), focus not returned, short landscape | Found in reviews of #332 and #339                                                                                                                                                                                                                                                                                |
-| P15-50         | Dead copy-button CSS (`.copy-snippet`, `.copy-btn`)                                             | Markup removed in #409; hash must be re-baselined                                                                                                                                                                                                                                                                |
-| P16-28a        | CSS hook for the 10 heading-level skips (this build shows 11 with the playground published)     | Half of P16-9; the audit's `headings.pagesWithLevelSkips`                                                                                                                                                                                                                                                        |
-| P16-8 (nested) | Related-lessons list has no styling                                                             | `.series-nav*` classes have no rules in the shipped stylesheet                                                                                                                                                                                                                                                   |
-| P15-35         | Contrast of gradient-clipped headline text is unmeasured (Size S, `scout`)                      | axe cannot score `h1.type-display` and `span.accent`                                                                                                                                                                                                                                                             |
-
-**Content follow-ups**
-
-| ID             | What                                                                                                                                  | Why                                                                                                   |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| P16-8          | Glossary does not link out to owning lessons; reciprocal links on `/tooling/` and `/compare/`; links to `/privacy/` and `/dashboard/` | The "Related lessons" block shipped in #416; the audit targets are met, the plan's accept list is not |
-| P16-9, P16-28b | `<h1>` missing on `/merge-cookbook/` and `/mermaid-sandbox/`                                                                          | `/merge-cookbook/` is on the test's `KNOWN_NO_H1` list                                                |
-| P16-26         | Playground labs linked from lessons: redeliver op, sink guard modes, `?try=<id>` deep links (Size L)                                  | Nothing built; the playground cannot demonstrate the site's thesis today                              |
-| P16-27         | Playground fixes, slice B: seed rows duplicate `insert` ops; `snapshot-to-stream` describes behaviour that is not modelled            | Documented, not fixed                                                                                 |
-| P16-28c        | Re-run the audit scripts after the module batch                                                                                       | Done in this brief for the headline numbers; the plan box is still open                               |
-
-**Performance ratchet and documentation**
-
-| ID                          | What                                                                                           | Why                                                              |
-| --------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| P15-44                      | Raise the `/intro/` Lighthouse floor (0.82 now) to median minus 0.04 and bump the README badge | Needs at least three measured CI runs after #404, not local runs |
-| P13-6                       | Parent of P15-44 (fonts and contrast already shipped: #340, #404)                              | Closes with P15-44                                               |
-| Phase 5 `/intro/` perf debt | `dom-size` is the only sub-item below 0.9                                                      | 1,035 elements; this brief's runs measured about 1,030           |
-| P13-9                       | Refresh `STATE-OF-PROJECT.md`                                                                  | Dated 2026-05-19; this brief links to it and does not edit it    |
+| ID                          | What                                                                                                                                          | Why                                                                                                                                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 5 `/intro/` perf debt | The `dom-size` line, which no PR has brought under a threshold (#293 and others trimmed it, 965 to 917; #404, #413 and #420 did not touch it) | 1,040 elements at `bd5a2a4`. It scored 0.5 under Lighthouse 12.6; Lighthouse 13.5 reports `dom-size-insight` at 1 in 3 of 3 runs. Every other sub-item is met (CLS 0, fonts deterministic, floor ratcheted). Trim, or the maintainer accepts and ticks |
 
 **Found while writing this brief, not in the plan**
 
-1. `/playground/` fails axe `color-contrast` in both themes on the live site:
-   `#simTabFeed > .simulator__tab-hint`, 2.95:1 (`#adc4f7` on `#2563eb`, 11.5 px).
-   CI never sees it because the CI artifact does not include the playground
-   (`tests/e2e/accessibility.spec.js` skips pages missing from `_site`).
-   Reproduce in section 3. #419 (open) targets this item and item 4.
-2. `.lighthouserc.json`, which the plan names (the README does not), does not exist. The
-   config is `lighthouse-ci.config.json` (renamed when `@lhci/cli` was
-   replaced in #390).
-3. `CLAUDE.md` says `main` is "branch-protected"; the API shows a ruleset with
-   no required status checks (section 7).
-4. README says "No analytics", but GoatCounter has been live since
-   2026-10-09. `/privacy/` handles this correctly; the README line is stale.
-5. `CLAUDE.md` calls the stack "Vite 7"; `package.json` pins `^8.1.3`.
-6. `scripts/smoke.mjs` checks for a CSP in `.htaccess`, but no `.htaccess`
-   exists, so that check never runs and no CSP is served (section 8).
+1. **Fixed:** `/playground/` axe `color-contrast` failure on the tab hint
+   (#419; P16-29 measured 0 violations in the listed states). CI now publishes
+   and audits the playground in both themes (P16-30, done).
+2. **Fixed:** the plan named `.lighthouserc.json`; the config is
+   `lighthouse-ci.config.json` (P16-29 corrected the plan).
+3. **Still true:** `CLAUDE.md` says `main` is "branch-protected"; the API shows a
+   ruleset with no required status checks (section 7).
+4. **Fixed:** README said "No analytics" while GoatCounter is live (#419).
+5. **Still true:** `CLAUDE.md` calls the stack "Vite 7"; `package.json` pins `^8.1.3`.
+6. **Still true:** `scripts/smoke.mjs` checks for a CSP in `.htaccess`, but no
+   `.htaccess` exists, so that check never runs and no CSP is served (section 8).
 
 ### Phase 14 decision register
 
 All nine decisions in the plan's Phase 14 were answered on 2026-10-09; nothing
-in the register is unresolved at `eb7f95e`. Recommended default as written in
+in the register is unresolved at `bd5a2a4`. Recommended default as written in
 the plan, and the outcome:
 
 | #   | Decision                          | Recommended default (plan)                      | Outcome                                      |
@@ -534,7 +518,7 @@ the plan, and the outcome:
 | D3  | Author photo                      | Supply a square image of at least 400 px        | Supplied, 400x400 (P15-2)                    |
 | D4  | Author identity links             | LinkedIn, talks, podcast when they exist        | LinkedIn only (P15-2)                        |
 | D5  | CSS `@layer` migration            | Declare "won't do" until a real specificity bug | Won't do (P15-7)                             |
-| D6  | Lighthouse badge in README        | Static badge, bumped when the threshold rises   | Static badge (P15-6); bump pending in P15-44 |
+| D6  | Lighthouse badge in README        | Static badge, bumped when the threshold rises   | Static badge (P15-6); bumped to 84 in P15-44 |
 | D7  | Dependabot PR #319                | Re-run checks and merge                         | #319 and #331 merged, #328 closed            |
 | D8  | Light-theme accent blue `#0c8dbd` | Darken to pass WCAG AA on white                 | Done, now `#0a7299` (#349)                   |
 | D9  | Playground public, undeleted data | 30-day retention plus a "use made-up data" note | Done (#361); live state unverified by me     |
@@ -596,22 +580,22 @@ generated `styles.min.css`; no `console.log` in shipped code.
 
 ### CI flake history (verified in git log, `gh run`, or the workflow files)
 
-| Flake                                                                 | Evidence                                                                                                                                                                   | Status                                                                                             |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Lighthouse `NO_LCP` on `/overview/`                                   | #396: "loses its LCP (LanternError NO_LCP) in roughly 1 run in 3". My local run hit it 6 times in 15 attempts                                                              | Mitigated: 3 attempts per run, invalid runs never counted, LCP image loaded eagerly. Still happens |
-| Lighthouse `NO_FCP` ("did not paint any content")                     | Local macOS run, and **CI on `main`**: run 37898380673 (2026-10-09 07:19 UTC) failed the `lighthouse` job with exit 2 after `/snapshotting/` lost all 3 attempts to NO_FCP | Retries added in #396; whether that CI run predates it is unverified. Not eliminated               |
-| PGlite 5 s timeout in unit tests                                      | `backfill-resnapshot-page.test.js` "Test timed out in 5000ms" in `unit-tests` runs on 2026-10-09 (two on `main`, ids 37929470803 and 37929548105, plus a branch run)       | Fixed in #406 (one shared instance, 60 s timeouts)                                                 |
-| `unit-tests` failures at 05:36 UTC on `main`                          | Runs 37889394790 and 37889407468 (merges of #373, titles and descriptions, and #381, the vitest 5 upgrade) failed the `unit-tests` job; **I did not retrieve the cause**   | Unknown                                                                                            |
-| Chrome download inside `npm ci`                                       | `ci.yml` comment: puppeteer's postinstall fails the step when download providers are unreachable; #388 and `PUPPETEER_SKIP_DOWNLOAD`                                       | Mitigated; **no failing run was retrieved, so frequency is unverified**                            |
-| lychee 503 / 504 from `github.com`                                    | #388 (burst of about 45 requests for one URL), #391 (profile and file-history pages answer 504 from runner IPs). lychee does not retry a 5xx                               | Mitigated by `--remap`, `--max-concurrency 8` and `.lycheeignore` entries                          |
-| lychee 403 from `dev.mysql.com`, Oracle, LinkedIn, Fivetran community | `.lycheeignore` comments (bots blocked; valid in a browser). **The MySQL host answers 403, not 5xx**                                                                       | Ignored by pattern                                                                                 |
-| `seo-audit.test.js` real-build case                                   | Carries an explicit 60 s timeout (added in #410). **That it timed out at 5 s under load is unverified**: no CI log shows it                                                | n/a                                                                                                |
-| `layout.spec.js` `/intro/ accumulates no meaningful layout shift`     | Failed once in my full chromium run at `eb7f95e`; passed in an earlier run at `2eb0f29`                                                                                    | See section 3 for the re-run result                                                                |
+| Flake                                                                 | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                     | Status                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Lighthouse `NO_LCP` on `/overview/`                                   | #396: "loses its LCP (LanternError NO_LCP) in roughly 1 run in 3". My local run hit it 6 times in 15 attempts                                                                                                                                                                                                                                                                                                                | Mitigated: 3 attempts per run, invalid runs never counted, LCP image loaded eagerly. Still happens                                                                                                                                               |
+| Lighthouse `NO_FCP` ("did not paint any content")                     | Local macOS run, and **CI on `main`**: run 37898380673 (2026-10-09 07:19 UTC) failed the `lighthouse` job with exit 2 after `/snapshotting/` lost all 3 attempts to NO_FCP                                                                                                                                                                                                                                                   | Retries were added in #396. The log of run 37898380673 shows the retry loop ran ("retrying ...") and all three attempts failed, so retries do not remove it. A local run at `bd5a2a4` hit NO_FCP and NO_LCP repeatedly, on macOS. Not eliminated |
+| PGlite 5 s timeout in unit tests                                      | `backfill-resnapshot-page.test.js` "Test timed out in 5000ms" in `unit-tests` runs on 2026-10-09 (two on `main`, ids 37929470803 and 37929548105, plus a branch run)                                                                                                                                                                                                                                                         | Fixed in #406 (one shared instance, 60 s timeouts)                                                                                                                                                                                               |
+| `unit-tests` failures at 05:36 UTC on `main`                          | Runs 37889394790 and 37889407468 (merges of #373, titles and descriptions, and #381, the vitest 5 upgrade). Cause retrieved from both logs: `seo-titles-descriptions.test.js` "keeps the exception lists honest: every entry still breaks its limit" (`expected [ Array(1) ] to deeply equal []`), one test of 728. Deterministic, so not a flake; most likely a merge-order effect between two PRs (inference, not checked) | Not repeated: no `unit-tests` failure in the last 40 CI runs across branches (`gh run list --workflow=ci.yml -L 40`)                                                                                                                             |
+| Chrome download inside `npm ci`                                       | `ci.yml` comment: puppeteer's postinstall fails the step when download providers are unreachable; #388 and `PUPPETEER_SKIP_DOWNLOAD`                                                                                                                                                                                                                                                                                         | Mitigated; **no failing run was retrieved, so frequency is unverified**                                                                                                                                                                          |
+| lychee 503 / 504 from `github.com`                                    | #388 (burst of about 45 requests for one URL), #391 (profile and file-history pages answer 504 from runner IPs). lychee does not retry a 5xx                                                                                                                                                                                                                                                                                 | Mitigated by `--remap`, `--max-concurrency 8` and `.lycheeignore` entries                                                                                                                                                                        |
+| lychee 403 from `dev.mysql.com`, Oracle, LinkedIn, Fivetran community | `.lycheeignore` comments (bots blocked; valid in a browser). **The MySQL host answers 403, not 5xx**                                                                                                                                                                                                                                                                                                                         | Ignored by pattern                                                                                                                                                                                                                               |
+| `seo-audit.test.js` real-build case                                   | Carries an explicit 60 s timeout (added in #410). **That it timed out at 5 s under load is unverified**: no CI log shows it                                                                                                                                                                                                                                                                                                  | n/a                                                                                                                                                                                                                                              |
+| `layout.spec.js` `/intro/ accumulates no meaningful layout shift`     | Failed once in my full chromium run at `eb7f95e`; passed in an earlier run at `2eb0f29`                                                                                                                                                                                                                                                                                                                                      | Passed 3 of 3 alone (section 3). `tests/e2e/cls.spec.js` (#413) now guards the throttled case; the unthrottled flake remains unexplained. The 40 most recent CI runs show no e2e failure                                                         |
 
 CI history on `main`, recomputed with `gh run list --workflow=<file> --branch main -L 100`
-(the last 100 runs, 2026-08-27 to 2026-10-09): `ci.yml` 93 success / 5 failure /
+(re-run at `bd5a2a4`; the last 100 runs of `ci.yml` span 2026-10-09 01:58 to 17:48 UTC): `ci.yml` 93 success / 5 failure /
 1 cancelled / 1 in progress (failures, all on 2026-10-09: 1 `lighthouse` job, 4
-`unit-tests` runs, as listed above); `deploy.yml` 69 success / 31 cancelled (superseded
+`unit-tests` runs, as listed above; none after 12:22 UTC); `deploy.yml` 70 success / 30 cancelled (superseded
 pushes, `cancel-in-progress`); `linkcheck.yml` 89 success / 11 failure (all 11
 between 02:57 and 06:32 UTC on 2026-10-09, before #388 and #391). Fortify and
 CodeQL runs were green but see section 5 on whether Fortify scans.
@@ -657,26 +641,26 @@ mitigation.
 | 4   | **GitHub Pages: single host, prefix, no headers**         | `curl -I` shows no CSP, no `x-content-type-options`, no `x-frame-options`, `cache-control: max-age=600`; host-root `robots.txt` 404; sitemap lives under `/letstalkcdc/`; `smoke.mjs` CSP check is a no-op without `.htaccess`                                                                                                                                         | Plan the own-domain move (P15-13, `DOMAIN-MIGRATION.md`); put a CDN in front only if headers matter                                                                                       |
 | 5   | **Third-party scripts at runtime**                        | `/overview/` transfers 936 KB of Mermaid from jsdelivr (floating `mermaid@11`, no integrity); `/intro/` loads Chart.js (68 KB); `/overview/` is 1.19 MB in Lighthouse                                                                                                                                                                                                  | Vendor and pin the files, or lazy-load behind a click; add SRI                                                                                                                            |
 | 6   | **Supabase publishable key in the browser, RLS reliance** | Key is public by design; `anon` holds INSERT on three tables and SELECT on `events` per `schema.sql`; `events` is public and takes visitor-typed data; the schema file is "desired state", never applied by CI, and I could not inspect the live DB                                                                                                                    | Run the section 5 queries and compare grants with `pg_policies`; add a scheduled drift check; keep the made-up-data note                                                                  |
-| 7   | **Performance and layout-shift variability**              | Lighthouse floors are `warn` at 0.9 except `/intro/` (`error`, 0.82); `/intro/` scored 0.91 to 0.92; CLS 0.25 under Slow 4G plus 4x CPU (P15-45); NO_LCP flake                                                                                                                                                                                                         | P15-44; verify that #413 closed P15-45 under throttling (it added `tests/e2e/cls.spec.js`)                                                                                                |
+| 7   | **Performance and layout-shift variability**              | Lighthouse floors are `warn` at 0.9 except `/intro/` (`error`, 0.84 since P15-44); `/intro/` scored 0.91 to 0.92 locally and 0.88 in CI (median); CLS was 0.33 under Slow 4G plus 4x CPU and is 0 since #413 (guard `tests/e2e/cls.spec.js`); 1,040 DOM elements; NO_LCP / NO_FCP flake                                                                                | DOM trim or acceptance; re-check the floor after about 10 more CI runs (raise only if best-of-3 stays at or above 0.90)                                                                   |
 | 8   | **Accessibility coverage gaps**                           | `/playground/` failed axe contrast on the live site and CI could not see it (fixed by #419; CI's e2e job now publishes and audits it, P16-30); gradient headline text unmeasured (P15-35); no assistive-technology test is recorded anywhere                                                                                                                           | Done for the playground (P16-30); real screen-reader pass (section 9)                                                                                                                     |
 | 9   | **Dependency advisories (dev-only) and Node range**       | `npm audit`: 9 findings (4 moderate, 5 high), `npm audit --omit=dev`: 0; chain is `braces` through `chokidar`/`nunjucks`/`@11ty/eleventy-dev-server`. Playground lockfile: 5 high, 0 with `--omit=dev`. GitHub reports 0 open Dependabot alerts (100 or more fixed). No `dependabot.yml`. `engines` is `^22.22.3 \|\| ^24.15.0 \|\| >=26`; CI and `.nvmrc` use 24 only | Keep `--omit=dev` at 0; add a Node 22 CI job or narrow `engines`                                                                                                                          |
 | 10  | **Licensing and provenance of images**                    | Cover art (`src/static/images/cdc-cover.jpg`, the only `og:image`) is AI-generated and the maintainer's own, per the conductor's notes (**to be confirmed by the maintainer**). Its copyright status is legally unsettled. `LICENSE-CONTENT.md` (lines 8 and 31 to 32) already puts `src/static/images/**` under CC BY 4.0, which includes this file                   | Carve the AI-generated cover out of the CC BY claim in `LICENSE-CONTENT.md` (say it is released by the maintainer, with no claim beyond that); decide the same for other generated images |
-| 11  | **No measured audience yet**                              | GoatCounter live today; Search Console state unknown; assistant feedback about 1 to 2 rows                                                                                                                                                                                                                                                                             | Wait for data before choosing the next phase's content; section 9                                                                                                                         |
-| 12  | **Documentation drift**                                   | Items 2 to 5 under "Found while writing this brief"; `STATE-OF-PROJECT.md` is 5 months old; README "44" versus 55 host occurrences                                                                                                                                                                                                                                     | Land P13-9 and P15-13; make doc facts commands, as this brief does                                                                                                                        |
+| 11  | **No measured audience yet**                              | GoatCounter live today; Search Console verified (maintainer's report) but empty; assistant feedback about 1 to 2 rows                                                                                                                                                                                                                                                  | Wait for data before choosing the next phase's content; section 9                                                                                                                         |
+| 12  | **Documentation drift**                                   | Items 2 to 5 under "Found while writing this brief"; `STATE-OF-PROJECT.md` was 5 months old until P13-9 refreshed it; README "44" versus 55 host occurrences                                                                                                                                                                                                           | Land P13-9 and P15-13; make doc facts commands, as this brief does                                                                                                                        |
 
 ## 9. Questions for the autopsy, and a two-week schedule
 
 ### Questions the autopsy should answer
 
-| #   | Question                                                               | Evidence to use                                                                |
-| --- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | Is the content correct enough to promote? Which pages are not?         | Section 4 sample; executed versus unexecuted SQL; labs run on current versions |
-| 2   | Do readers exist, and which pages do they use?                         | GoatCounter, Search Console, feedback rows (all too young today)               |
-| 3   | Can everyone use it? (keyboard, screen reader, mobile, reduced motion) | Real assistive-technology pass; the `/playground/` contrast failure            |
-| 4   | Is it fast enough on real devices and networks?                        | Lighthouse field data is absent; lab only                                      |
-| 5   | Is it findable? Is anything wrongly excluded or duplicated in search?  | Search Console coverage; the audit's headline numbers                          |
-| 6   | Is the build and process safe to hand to a second person?              | Section 7 gates, required checks, secrets, who can deploy                      |
-| 7   | What should the next phase be: depth, growth, demos, or hardening?     | Answers 1 to 6 plus the maintainer's stated priorities                         |
+| #   | Question                                                               | Evidence to use                                                                   |
+| --- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1   | Is the content correct enough to promote? Which pages are not?         | Section 4 sample; executed versus unexecuted SQL; labs run on current versions    |
+| 2   | Do readers exist, and which pages do they use?                         | GoatCounter, Search Console, feedback rows (all too young today)                  |
+| 3   | Can everyone use it? (keyboard, screen reader, mobile, reduced motion) | Real assistive-technology pass (the playground is in the CI axe run since P16-30) |
+| 4   | Is it fast enough on real devices and networks?                        | Lighthouse field data is absent; lab only                                         |
+| 5   | Is it findable? Is anything wrongly excluded or duplicated in search?  | Search Console coverage; the audit's headline numbers                             |
+| 6   | Is the build and process safe to hand to a second person?              | Section 7 gates, required checks, secrets, who can deploy                         |
+| 7   | What should the next phase be: depth, growth, demos, or hardening?     | Answers 1 to 6 plus the maintainer's stated priorities                            |
 
 ### Suggested schedule
 
@@ -699,18 +683,22 @@ mitigation.
 1. **Domain:** the name, and when (P15-13). It changes canonicals, the sitemap,
    Search Console and every `sandgraal.github.io` link; do it before building
    search history on the current host.
-2. **Search Console:** verify the property and submit the sitemap (P16-12), or
-   say it is already done and when.
+2. **Search Console:** answered: verified and the sitemap submitted on
+   2026-10-09 (maintainer's report). What remains is the 28-day snapshot, due
+   2026-11-06 (P16-12).
 3. **Merge policy:** whether to keep conductor-merges under the standing grant,
    and whether to add required status checks to the ruleset.
 4. **Who reviews content:** name the SME or a second human, and where review
    texts are kept.
-5. **Labs on Debezium 3.x (P15-46, Size L):** fund it, or add "check your
+5. **Labs on Debezium 3.x (P15-46, Size L):** the maintainer has no Docker, so
+   someone else must run it. Fund it, or add "check your
    version" notes and leave the labs at 2.7.
-6. **Upstream docs issue** on `wal_keep_size` (P15-39): file it or not.
+6. **Upstream docs issue** on `wal_keep_size` (P15-39): decided to file;
+   the draft is [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md)
+   and the maintainer files it.
 7. **Codacy:** is it in use (P15-52)?
-8. **Playground:** is the playground owner available for P16-26 and P16-27, and
-   may the contrast failure be fixed under `playground/`?
+8. **Playground:** P16-26, P16-27 and the contrast fix are done. Who owns it
+   from here (CODEOWNERS records no one)? P16-30 (CI audits it) is done.
 9. **Third-party scripts:** pin and vendor Mermaid and Chart.js, or accept the
    CDN dependency.
 10. **Next phase's theme:** depth, growth, demos or hardening, once the data
