@@ -1244,6 +1244,17 @@ body[data-theme="light"] .sim-shell__lane-diff-chip--missing {
   background: rgba(16, 185, 129, 0.12);
   color: var(--sem-positive);
 }
+/* Light theme: the semantic text tokens fall under 4.5:1 on these tinted chips. */
+body[data-theme="light"] .sim-shell__lane-diff-chip--ok,
+body[data-theme="light"] .sim-shell__lane-diff-chip--schema {
+  color: #065f46;
+}
+body[data-theme="light"] .sim-shell__lane-diff-chip--extra {
+  color: #9a3412;
+}
+body[data-theme="light"] .sim-shell__lane-diff-chip--ordering {
+  color: #134e4a;
+}
 .sim-shell__lane-diff-details {
   font-size: 0.82rem;
   color: var(--muted-strong);

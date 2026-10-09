@@ -2243,11 +2243,15 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
 - [x] **P16-29 · Autopsy fixes: analytics claim, playground contrast, stale
       config name.** Accept: README no longer says "No analytics" and matches
       the privacy page; `/playground/` has 0 axe `color-contrast` violations
-      in both themes on the onboarding overlay, the Feed tab (before and
-      after Seed + Emit Snapshot) and the Compare tab; the current-state
-      `.lighthouserc.json` references in this plan name
+      in both themes, measured on the published build with reduced motion
+      emulated, in these states: onboarding overlay, Feed, Feed after Seed
+      sample rows + Emit Snapshot (success toast visible), Compare, and
+      Compare while Start, Start generator and Burst +40 are running (6.5 s
+      in). States needing typed data, the share dialog and the 230 to 380
+      "incomplete" nodes per state (gradient background) are not covered.
+      Current-state `.lighthouserc.json` references in this plan now name
       `lighthouse-ci.config.json`. Size: S. Role: `implementer`.
-      _2026-10-09: done; historical notes that describe the old file keep its name._
+      _2026-10-09: done; historical notes that describe the old file keep its name. The dark `.section-lead` colour moved from #bac8e6 to `--muted-strong` (#c0cee6), a negligible brightening._
 - [ ] **P16-30 · Put `/playground/` under the contrast check in CI.**
       Outcome: a contrast regression in the playground fails a PR. Accept:
       CI publishes the playground into the artifact the e2e/axe job audits
@@ -2255,7 +2259,9 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       playground when only `npm run build` ran; `scripts/publish-playground.sh`
       is run only by `deploy.yml` and `linkcheck.yml`), and
       `tests/e2e/accessibility.spec.js` audits it in both themes with the
-      onboarding overlay dismissed. Also decide what to do about the 230 to
+      onboarding overlay dismissed, covering the Compare tab while the
+      comparator runs (the `:root` ticker text needs reduced motion, because
+      its fade-in is measured mid-animation). Also decide what to do about the 230 to
       380 `color-contrast` "incomplete" nodes per state that axe cannot score
       over the playground's gradient background (same class as P15-35).
       **Needs maintainer approval: it changes CI behaviour.** Size: M. Role:

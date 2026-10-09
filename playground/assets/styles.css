@@ -950,11 +950,11 @@ body[data-theme="light"] .template-card__kicker {
 }
 
 body[data-theme="light"] .template-card__difficulty--beginner {
-  color: #15803d;
+  color: #166534;
 }
 
 body[data-theme="light"] .template-card__difficulty--intermediate {
-  color: #a16207;
+  color: #854d0e;
 }
 
 body[data-theme="light"] .template-card__difficulty--advanced {
@@ -2445,6 +2445,18 @@ select:focus {
 .cdc-event-log__op[data-op="d"] {
   background: rgba(220, 38, 38, 0.24);
   color: #fecaca;
+}
+
+body[data-theme="light"] .cdc-event-log {
+  color: var(--ink);
+}
+
+body[data-theme="light"] .cdc-event-log__op {
+  color: var(--accent-strong);
+}
+
+body[data-theme="light"] .cdc-event-log__op[data-op="d"] {
+  color: #991b1b;
 }
 
 .cdc-event-log__meta {
@@ -4065,6 +4077,15 @@ body[data-theme="light"] .method-guidance__chip {
 .toast--info {
   background: rgba(30, 64, 175, 0.92);
   border-color: rgba(96, 165, 250, 0.35);
+}
+
+/* Light theme: the translucent fills composite to mid-tones under #f8fafc text. */
+body[data-theme="light"] .toast--success {
+  background: #047857;
+}
+
+body[data-theme="light"] .toast--warning {
+  background: #b45309;
 }
 
 .toast--leaving {
