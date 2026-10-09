@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Glossary terms link to the lessons that teach them (P16-8).** Every
+  entry on `/glossary/` now ends with a "Learn more" line (1-2 lessons,
+  deep-linked to the section where one exists), driven by an optional
+  `lessons` field in `src/_data/glossary.mjs`. A test checks each link
+  against the built pages and their ids.
 - **Conductor protocol for AI-assisted work.** The main Claude Code session
   now runs as a `conductor` agent that delegates to single-purpose roles
   (`scout`, `verifier`, `scribe`, `implementer`, `reviewer`, plus the

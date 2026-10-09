@@ -33,18 +33,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "C-881",
-      "name": "Ishaan",
-      "email": "ishaan@example.net",
-      "loyalty_tier": "bronze",
-      "preferences": {
-        "marketing_opt_in": false,
-        "locale": "en-GB"
-      }
-    }
-  ],
   "ops": [
     {
       "t": 75,

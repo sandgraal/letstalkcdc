@@ -18,12 +18,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "W-1",
-      "status": "ready"
-    }
-  ],
   "ops": [
     {
       "t": 100,

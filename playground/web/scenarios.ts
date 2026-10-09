@@ -43,6 +43,18 @@ function cloneJson<T>(value: T): T {
   }
 }
 
+// Distinct rows the scenario touches: pre-existing `rows` plus keys that `ops`
+// inserts. `ops` is the source of truth, so inserted rows are not also listed
+// in `rows`; counting both keeps the "N rows" label honest.
+export function countScenarioRows(template: Pick<ScenarioTemplate, "table" | "rows" | "ops">): number {
+  const keys = new Set<string>();
+  template.rows.forEach(row => keys.add(`${template.table ?? ""}|${String(row.id)}`));
+  template.ops.forEach(op => {
+    if (op.op === "insert") keys.add(`${op.table}|${String(op.pk.id)}`);
+  });
+  return keys.size;
+}
+
 function toShellScenario(template: ScenarioTemplate): ShellScenario {
   return {
     id: template.id,
@@ -51,7 +63,7 @@ function toShellScenario(template: ScenarioTemplate): ShellScenario {
     description: template.description,
     highlight: template.highlight,
     stats: {
-      rows: template.rows.length,
+      rows: countScenarioRows(template),
       ops: template.ops.length,
     },
     table: template.table,

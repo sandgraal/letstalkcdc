@@ -23,6 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import glossary from "../../src/_data/glossary.mjs";
+import series from "../../src/_data/series.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -81,6 +82,23 @@ describe("glossary data", () => {
       const entry = glossary.find((e) => e.slug === slug);
       expect(entry, slug).toBeDefined();
       expect(entry.related?.length, `${slug} related`).toBeGreaterThan(0);
+    }
+  });
+
+  it("names 1-3 distinct, real lessons per term in `lessons`", () => {
+    const keys = new Set(series.map((s) => s.key));
+    for (const entry of glossary) {
+      if (entry.lessons === undefined) continue;
+      expect(entry.lessons.length, entry.slug).toBeGreaterThanOrEqual(1);
+      expect(entry.lessons.length, entry.slug).toBeLessThanOrEqual(3);
+      const seen = new Set();
+      for (const { slug, anchor } of entry.lessons) {
+        expect(keys.has(slug), `${entry.slug} -> ${slug}`).toBe(true);
+        if (anchor !== undefined) expect(anchor).toMatch(/^[A-Za-z][\w-]*$/);
+        const id = `${slug}#${anchor ?? ""}`;
+        expect(seen.has(id), `${entry.slug} repeats ${id}`).toBe(false);
+        seen.add(id);
+      }
     }
   });
 
@@ -247,6 +265,54 @@ describe("built site", () => {
           : 0,
     );
     expect(terms).toEqual(sorted);
+  });
+
+  it("links each term to lessons that exist, with anchors that exist", () => {
+    const sitemap = readFileSync(path.join(out, "sitemap.xml"), "utf8");
+    const dd = (slug) =>
+      glossaryHtml
+        .split(/<dt id="/)
+        .find((chunk) => chunk.startsWith(`${slug}"`));
+    let checked = 0;
+    for (const entry of glossary) {
+      const chunk = dd(entry.slug);
+      const hrefs = [
+        ...(chunk.match(/Learn more:[\s\S]*?<\/p>/)?.[0] ?? "").matchAll(
+          /href="([^"]+)"/g,
+        ),
+      ].map((m) => m[1]);
+      expect(hrefs.length, entry.slug).toBe(entry.lessons?.length ?? 0);
+      (entry.lessons ?? []).forEach(({ slug, anchor }, i) => {
+        const lesson = series.find((s) => s.key === slug);
+        const [pagePath, hash] = hrefs[i].split("#");
+        expect(pagePath, entry.slug).toBe(`${PREFIX}/${lesson.href}`);
+        expect(hash, entry.slug).toBe(anchor);
+        expect(sitemap, `${entry.slug} -> ${pagePath}`).toContain(
+          `${pagePath}</loc>`,
+        );
+        const html = pages.get(
+          path.join(lesson.href.replace(/\/$/, ""), "index.html"),
+        );
+        expect(html, `${entry.slug} -> ${lesson.href}`).toBeDefined();
+        if (anchor) {
+          expect(html, `${entry.slug} -> ${slug}#${anchor}`).toMatch(
+            new RegExp(`\\sid="${anchor}"`),
+          );
+        }
+        checked++;
+      });
+    }
+    expect(checked).toBeGreaterThan(40);
+  });
+
+  it("keeps the glossary page's JSON-LD parseable", () => {
+    const blocks = [
+      ...glossaryHtml.matchAll(
+        /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
+      ),
+    ];
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const [, json] of blocks) expect(() => JSON.parse(json)).not.toThrow();
   });
 
   it("has more than 20 content links into /glossary/ from lessons", () => {

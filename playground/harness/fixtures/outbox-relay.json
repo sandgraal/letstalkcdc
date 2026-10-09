@@ -34,15 +34,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "ORD-221",
-      "customer_id": "C-14",
-      "status": "packed",
-      "total": 275,
-      "last_event_id": "EVT-220"
-    }
-  ],
   "ops": [
     {
       "t": 75,

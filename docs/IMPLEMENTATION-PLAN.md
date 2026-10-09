@@ -2076,7 +2076,7 @@ ready to start; the first job is to turn it into measured, specific items.
       `css-refactor`. Size: M. Role: `implementer`, `css-refactor`
       (breadcrumb only), `reviewer`.
       _2026-10-09: shipped in #362. Approved by the maintainer 2026-10-09._
-- [ ] **P16-8 · Internal link repair.** Outcome: no lesson depends on a
+- [x] **P16-8 · Internal link repair.** Outcome: no lesson depends on a
       single link, and the glossary feeds the lessons. Accept: a
       "Related lessons" block on each module page, driven by data; the
       accepted subset of the 65 opportunities in section 4 linked in prose;
@@ -2095,16 +2095,18 @@ ready to start; the first job is to turn it into measured, specific items.
       "Related lessons" list now ends 34 of 36 module pages (`related` keys
       in `src/_data/series.mjs`, rendered by `series-nav.njk`; `cloud-labs`
       and `failure-drills` have no `seriesKey`, so no series navigation).
-      Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
-      does not yet link out to the owning lesson; that needs a curated
-      `lesson` field on the 33 entries._
-      _2026-10-09: the related-list styling is done (sub-item below). The
-      box stays open: the glossary still does not link out to the owning
-      lesson and the reciprocal `/tooling/` and `/compare/` links are not
-      confirmed, so the Accept list is not fully met. Audit numbers as of
-      the last status: 0 broken fragments, 2 pages under 3 content inbound
-      links (`/` and `/privacy/`), minimum 4 inbound for every cloud lab
-      and quickstart page._
+      Glossary link-out done: all 32 entries carry a curated
+      `lessons: [{ slug, anchor? }]` (1-2 each, 50 links, every anchor
+      checked against the built page by `tests/unit/glossary.test.js`),
+      rendered as a "Learn more" line on `/glossary/`.
+      _2026-10-09: the related-lessons styling is done (sub-item below), so
+      every Accept clause is now met. `scripts/seo-audit.mjs` on the built
+      site after #425 and this PR: broken internal links 0, broken
+      fragments 0, indexable pages with fewer than 3 content inbound links
+      2 (`/` and `/privacy/`, the two non-content pages), minimum 4 inbound
+      for every cloud lab and quickstart page (earlier status). Glossary
+      first-use links are in `/intro/`, `/snapshotting/`, `/exactly-once/`
+      and `/event-envelope/`._
   - [x] Related-lessons list has no styling (bullets/indent: `.series-nav*`
         classes have no rules in the shipped stylesheet); needs a
         `css-refactor` pass.
@@ -2238,12 +2240,13 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       link to them with `| url`. The playground owner coordinates every change
       under `playground/`. Size: L. Role: `implementer`, `reviewer`.
       _2026-10-09: still nothing built. #393 relabelled the old duplicate-insert scenario and did not add a `redeliver` op; the three labs, the `?try=<id>` deep link and the redeliver op remain this item._
-- [ ] **P16-27 · Playground fixes, slice B.** Outcome: the remaining
+- [x] **P16-27 · Playground fixes, slice B.** Outcome: the remaining
       playground defects found in review are fixed. Accept: the phantom Dedupe
       on the PK and Drop snapshot rows copy; honesty about snapshot replay;
       seed rows; the orphan `scenarios.json`; the brand pill. Size: M. Role:
       `implementer`, `reviewer`.
       _2026-10-09: #393 merged (phantom Dedupe/Drop-snapshot copy removed everywhere and guarded by a test; `snapshot-replay` relabelled "Re-insert after Update"; orphan `scenarios.json`, `playground/.eleventy.js` and `ui-index.js` deleted; brand pill fixed). Stays open: seed rows are documented, not fixed (9 of 11 scenarios have a `rows` entry that duplicates an `insert` op, so loading `rows` would be a duplicate-key insert), and `snapshot-to-stream` still says it shows "snapshot catch-up handing off to change feed tails", which is not modelled._
+      _2026-10-09: closed. `ops` is now the single source of truth for rows: the 9 duplicate `rows` entries were removed from `shared-scenarios.js` (only `retention-erasure`, `snapshot-to-stream` and `LED-101` in `snapshot-replay` keep rows, none of which any `insert` op creates), a unit test fails on any `rows` entry that repeats an `insert` op's table and key, and the "N rows" label counts distinct rows from `ops` plus `rows`. The Compare lanes never loaded `rows` (they start empty), so only the synthetic generator is affected: it seeds its known ids from `scenario.rows` (`src/ui/generator.ts`), so for the 8 scenarios that lost their rows it now updates and deletes only the rows it generated itself instead of orphan seed ids such as `ORD-501`. The `snapshot-to-stream` copy ("Account Changes": "no snapshot phase and no handoff") was already honest on main; this PR changes no copy, only the stale mention in the demos inventory. Loading seed rows into the lanes stays out of scope._
 - [x] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
       SEO work has no orphaned remainder. Accept: (a) the CSS hook for the 10
       heading-level skips (the other half of P16-9), routed to `css-refactor`
