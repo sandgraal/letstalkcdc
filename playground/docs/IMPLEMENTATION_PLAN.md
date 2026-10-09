@@ -60,7 +60,7 @@ pgsql
 ```
 
 ### Storage integration (Deferred)
-- **Status**: Deferred until external dependencies are ready.
+- **Status**: Backend provisioning is done (shared Supabase project); the `storage.ts` helper itself is still deferred until the data model is confirmed.
 - **Remaining work**: implement the domain `storage.ts` helper to persist source/destination tables between refreshes. The persistence backend is Supabase, not Appwrite (see [supabase-setup.md](./supabase-setup.md)); the original Appwrite issue is closed as superseded in [docs/issues/appwrite-persistence.md](./issues/appwrite-persistence.md).
 - **Prerequisites/blockers**:
   - Confirm the data model and interface for the storage helper so it matches upcoming engine/state machine expectations.
