@@ -190,8 +190,9 @@ intents:
       idempotent sink. Upsert or MERGE on the primary key, and keep one row per
       key by ordering on the source log position (LSN or SCN), not on ts_ms,
       which is only a millisecond commit time and can tie for the same key. Do
-      not rely on arrival order. Apply deletes as tombstones, and record the
-      processed offset so restarts can resume safely.
+      not rely on arrival order. Keep deletes as delete markers that carry
+      their log position, so a late older update cannot bring the row back, and
+      record the processed offset so restarts can resume safely.
     links:
       - label: Build idempotent merge logic
         url: /materialization/
@@ -436,8 +437,9 @@ intents:
       primary key is the stable identifier for idempotent upserts, and the log
       position or transaction identifier is where you resume when reprocessing.
       The before image matters for audit pipelines, SCD Type 2 tables and cache
-      invalidation. Soft deletes are stored as explicit tombstones, because
-      compaction depends on them.
+      invalidation. A delete is an event with op d and a log position; Debezium
+      follows it with a tombstone (a record with a null value) so a compacted
+      topic can eventually drop the key. The tombstone has no position.
     links:
       - label: What lives inside the envelope
         url: /event-envelope/
@@ -495,6 +497,154 @@ intents:
       - label: Deletion requests and an append-only log
         url: /security/
         anchor: "#erasure-title"
+        preview: Three ways to honour a right-to-erasure request.
+
+  - id: delete_resurrection
+    triggers:
+      [
+        "resurrect",
+        "resurrection",
+        "row came back",
+        "row comes back",
+        "rows come back",
+        "reappear after",
+        "come back after",
+        "zombie row",
+        "deleted row",
+        "deleted rows",
+        "delete marker",
+        "delete markers",
+        "purge marker",
+        "purge a marker",
+        "purge a delete marker",
+        "update after a delete",
+        "late update after",
+      ]
+    modules: []
+    answer: >
+      A sink that physically removes the row on a delete also removes the
+      stored log position, so a replayed older update finds no row, inserts it
+      again and the deleted row comes back. Keep the delete as a delete marker
+      instead: a deleted flag plus the delete's source log position, with the
+      payload set to null, and a guard that applies a change only when its
+      position is greater than the stored one. Applying the delete twice is
+      then harmless. A Kafka tombstone cannot do this job because it has no
+      value and no position. Purge a marker only after every consumer has seen
+      it and nothing that can be replayed (topic, dead-letter queue, archive,
+      staging) holds an older event for that key.
+    links:
+      - label: Resurrection - the late, older update
+        url: /deletes-stay-deleted/
+        anchor: "#resurrection"
+        preview: One key, five arrivals, two sinks.
+      - label: Purging markers safely
+        url: /deletes-stay-deleted/
+        anchor: "#purge"
+        preview: When a delete marker can finally be removed.
+      - label: Making sinks bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Version guards on the source log position.
+
+  - id: tombstone_retention
+    triggers:
+      [
+        "delete.retention.ms",
+        "delete.retention",
+        "delete retention",
+        "consumer missed",
+        "tombstone retention",
+        "tombstones on delete",
+        "tombstones.on.delete",
+        "missed the tombstone",
+        "miss the tombstone",
+        "missed the delete",
+        "tombstone expire",
+        "tombstone expired",
+        "tombstone removed",
+        "tombstone alone",
+        "does a tombstone delete",
+        "tombstone delete the row",
+      ]
+    modules: []
+    answer: >
+      A Kafka tombstone is a record with a key and a null value. It tells the
+      log cleaner of a compacted topic that older records for the key may be
+      removed, and the tombstone itself is removed after delete.retention.ms
+      (one day by default). A consumer that falls further behind than that can
+      miss the delete. A tombstone does not delete a warehouse row by itself:
+      it has no position, and many sinks ignore it unless configured (the
+      Debezium JDBC sink needs delete.enabled set to true). Debezium follows
+      each delete event with a tombstone while tombstones.on.delete is true,
+      which is the default. If you flatten events, keep the delete event with
+      its position instead of passing on only the bare tombstone.
+    links:
+      - label: Three things people call a delete
+        url: /deletes-stay-deleted/
+        anchor: "#three-deletes"
+        preview: Delete event, tombstone and sink delete marker compared.
+      - label: What a consumer that falls behind misses
+        url: /deletes-stay-deleted/
+        anchor: "#late-consumer"
+        preview: delete.retention.ms and compacted topics.
+      - label: Ordering and compaction
+        url: /event-envelope/
+        anchor: "#ordering"
+        preview: Log position as the version, deletes and compaction.
+
+  - id: erasure_stores
+    triggers:
+      [
+        "delta vacuum",
+        "vacuum retention",
+        "delta time travel retention",
+        "time travel retention and delete",
+        "deleted data",
+        "expire snapshot",
+        "expire snapshots",
+        "expire_snapshots",
+        "snapshot expiry",
+        "fail-safe",
+        "right to be forgotten",
+        "gdpr delete",
+        "article 17",
+        "erase from backups",
+        "erase from the warehouse",
+        "erasure in the warehouse",
+        "data still exists",
+        "after the delete event",
+      ]
+    modules: []
+    answer: >
+      The delete event changes the current table only. Other copies live on
+      under their own settings. Delta keeps old versions for time travel (30
+      days by default) and removes data files only when VACUUM runs, for files
+      unreferenced longer than 7 days by default; with deletion vectors enabled
+      a delete does not rewrite the file until REORG TABLE APPLY PURGE does.
+      Check your version. Iceberg keeps old snapshots
+      until expire snapshots runs. BigQuery has a 7 day time travel window by
+      default and a 7 day fail-safe for the operations it lists. Snowflake has
+      1 day of time travel by default (up to 90 on Enterprise) and a 7 day
+      fail-safe. Dead-letter topics, staging tables, archives and backups are
+      separate copies with their own schedules. This is engineering guidance,
+      not legal advice: whether and when a copy must be erased, and whether an
+      Article 17(3) exception applies, is for your lawyer to decide.
+    links:
+      - label: Trace one deleted row
+        url: /deletes-stay-deleted/
+        anchor: "#trace"
+        preview: Every place a copy can live and the setting that governs it.
+      - label: Erasure requests - the technical question
+        url: /deletes-stay-deleted/
+        anchor: "#erasure"
+        preview: What the official text says and what to ask your lawyer.
+      - label: What to do Monday
+        url: /deletes-stay-deleted/
+        anchor: "#monday"
+        preview: A ten-step checklist.
+      - label: Deletion requests and an append-only log
+        url: /security/
+        anchor: "#erasure"
         preview: Three ways to honour a right-to-erasure request.
 
   - id: non_relational

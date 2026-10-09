@@ -72,7 +72,8 @@ scripts:
       <li>Merge updates and inserts using the latest event per key.</li>
       <li>Apply deletes as delete markers (a <code>deleted</code> flag plus the delete&rsquo;s log position)
         so a late, older update cannot bring the row back. Physically removing the row is safe only when
-        nothing can replay older events.</li>
+        nothing can replay older events; see
+        <a href="{{ '/deletes-stay-deleted/' | url }}#purge">purging markers safely</a>.</li>
       <li>Record the processed offset so restarts can resume safely.</li>
       <li>Publish metrics: rows inserted, updated, deleted, skipped duplicates.</li>
     </ol>

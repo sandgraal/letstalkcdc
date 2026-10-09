@@ -1,0 +1,778 @@
+---
+layout: base.njk
+title: "Deletes That Stay Deleted"
+description: "Delete events, Kafka tombstones and sink delete markers: why a late update can bring a row back, and where deleted data can still live after the DELETE."
+canonicalPath: "/deletes-stay-deleted/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section id="start" aria-labelledby="start-title">
+    <h2 id="start-title">The question behind this page</h2>
+    <p>
+      A user asks you to delete their data. The row is removed from the source
+      database, the connector emits a delete event, and the event reaches the
+      warehouse. <strong>Is the data gone?</strong> Usually not. The delete
+      event changed one copy of the data. Every other copy lives under its own
+      setting and its own schedule, and some of those schedules are measured in
+      weeks.
+    </p>
+    <p>
+      The same mistake runs the other way too. A sink that handles a delete by
+      removing the row can bring the row back later, because delivery is
+      <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a> and
+      an older change can arrive after a newer one.
+      Both problems have one answer: a delete is an event with a position,
+      applied by an idempotent sink, and every other copy has a known expiry.
+    </p>
+    <p class="callout">
+      <strong>This is not legal advice.</strong> This page explains the
+      technical side: where data can still exist and which setting governs it.
+      Whether a particular copy must be erased, by when, and whether an
+      exception applies is a legal decision for your lawyer or data protection
+      officer. Nothing here promises that following it satisfies any regulation.
+    </p>
+    <p>
+      It extends <a href="{{ '/security/' | url }}#erasure">Deletion requests
+      and an append-only log</a> and does not repeat its three strategies
+      (never carry the identifier in the clear, compaction plus tombstones,
+      crypto-shredding). It assumes the site&rsquo;s standing rule: delivery is
+      at-least-once, and the sink is idempotent, keyed on the primary key and
+      ordered by the <strong>source log position</strong>
+      (<a href="{{ '/glossary/#lsn-scn' | url }}">LSN or SCN</a>), never by a
+      timestamp or a Kafka offset. End-to-end exactly-once across independent
+      systems is not achievable; see
+      <a href="{{ '/exactly-once/' | url }}">Exactly-Once Semantics</a>.
+    </p>
+  </section>
+
+  <section id="three-deletes" aria-labelledby="three-deletes-title">
+    <h2 id="three-deletes-title">Three things people call a delete</h2>
+    <p>
+      A CDC pipeline has three different objects that all get called
+      &ldquo;the delete&rdquo;. They are made by different components, for
+      different readers, and they do different jobs.
+    </p>
+    <table>
+      <caption class="sr-only">The three kinds of delete in a CDC pipeline</caption>
+      <thead>
+        <tr>
+          <th scope="col"></th>
+          <th scope="col">Source DELETE event</th>
+          <th scope="col">Kafka tombstone</th>
+          <th scope="col">Sink delete marker</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">What it is</th>
+          <td>An ordinary change event with <code>op: "d"</code>, the row as it was (the before image) and the <code>source</code> block.</td>
+          <td>A Kafka record with the row&rsquo;s key and a <code>null</code> value.</td>
+          <td>A row in the target table with a deleted flag and the position of the delete.</td>
+        </tr>
+        <tr>
+          <th scope="row">Made by</th>
+          <td>The connector, from the database log.</td>
+          <td>The connector, after the delete event. Debezium&rsquo;s PostgreSQL connector does this when <code>tombstones.on.delete</code> is <code>true</code>, which is the default; check the setting for your connector.</td>
+          <td>Your sink&rsquo;s upsert or <code>MERGE</code>.</td>
+        </tr>
+        <tr>
+          <th scope="row">What it is for</th>
+          <td>Telling consumers that the row was deleted, and when in the log.</td>
+          <td>Telling Kafka&rsquo;s log cleaner that it may drop the key&rsquo;s older records on a compacted topic, and later the tombstone itself.</td>
+          <td>Hiding the row from readers and stopping an older, replayed change from re-creating it.</td>
+        </tr>
+        <tr>
+          <th scope="row">Carries a position?</th>
+          <td>Yes, in the <code>source</code> block.</td>
+          <td><strong>No.</strong> It has a key and no value; there is nothing in it to compare.</td>
+          <td>Yes, by design. That is the point of keeping it.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      Sources: Kafka design documentation, &ldquo;Log Compaction Basics&rdquo;;
+      Debezium PostgreSQL connector, &ldquo;Tombstone events&rdquo; and
+      <code>tombstones.on.delete</code>. Glossary:
+      <a href="{{ '/glossary/#tombstone' | url }}">tombstone</a>,
+      <a href="{{ '/glossary/#compaction' | url }}">compaction</a>.
+    </p>
+
+    <h3 id="tombstone-not-delete">Why a tombstone alone does not delete a warehouse row</h3>
+    <ul>
+      <li>
+        <strong>It is addressed to Kafka, not to your table.</strong> Kafka&rsquo;s
+        documentation describes a key with a null payload as a delete <em>from
+        the log</em>. Whether anything downstream deletes a row on seeing it is
+        up to the sink.
+      </li>
+      <li>
+        <strong>Sinks differ and often default to not deleting.</strong>
+        Debezium&rsquo;s own JDBC sink, by default, does not delete the row in
+        the target when it consumes a delete or a tombstone; you must set
+        <code>delete.enabled=true</code> and give it a primary key mapping.
+        Other connectors differ. Read yours.
+      </li>
+      <li>
+        <strong>A flattened stream may carry only the tombstone.</strong> The
+        Debezium event-flattening transform drops the delete event and keeps
+        the tombstone by default. The sink then sees a key and nothing else:
+        no operation code, no position, no before image. To keep a delete
+        as a normal record, set the transform&rsquo;s delete handling to
+        <code>rewrite</code> (or <code>rewrite-with-tombstone</code>) and add
+        the position with <code>add.fields</code> (for example
+        <code>op,table,lsn</code>). The option name has changed between
+        Debezium versions; check yours.
+      </li>
+      <li>
+        <strong>Acting on the tombstone is still a physical delete.</strong>
+        A sink that removes the row when the tombstone arrives has the problem
+        in the next section.
+      </li>
+      <li>
+        <strong>None of this touches earlier events.</strong> The inserts and
+        updates that carried the person&rsquo;s values are separate records in
+        the topic, and in every copy made from it.
+      </li>
+    </ul>
+  </section>
+
+  <section id="resurrection" aria-labelledby="resurrection-title">
+    <h2 id="resurrection-title">Resurrection: the late, older update</h2>
+    <p>
+      Delivery is at-least-once, so an event can arrive twice and an older one
+      can arrive after a newer one. Common ways that happens: a connector restart
+      re-emits changes from before the last committed offset, a consumer is
+      rewound, a failed update waits in a
+      <a href="{{ '/dlq-triage/' | url }}">dead-letter queue</a> and is
+      re-driven later, or a second pipeline writes the same table. The row
+      with <code>id = 7</code> sees these changes, at these source log
+      positions:
+    </p>
+    <ol>
+      <li>Position 100: insert, email <code>a@example.com</code>.</li>
+      <li>Position 140: update, email <code>b@example.com</code>.</li>
+      <li>Position 180: delete.</li>
+    </ol>
+    <p>
+      Then the update at 140 is delivered again, after the delete. Two sinks
+      handle the same arrivals:
+    </p>
+    <table>
+      <caption class="sr-only">State of one key after each arrival, with a physical delete and with a delete marker</caption>
+      <thead>
+        <tr>
+          <th scope="col">Arrival</th>
+          <th scope="col">Sink A: removes the row on delete</th>
+          <th scope="col">Sink B: delete marker with position</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">1. insert at 100</th>
+          <td><code>(7, a@, 100)</code></td>
+          <td><code>(7, a@, deleted = false, 100)</code></td>
+        </tr>
+        <tr>
+          <th scope="row">2. update at 140</th>
+          <td><code>(7, b@, 140)</code></td>
+          <td><code>(7, b@, deleted = false, 140)</code></td>
+        </tr>
+        <tr>
+          <th scope="row">3. delete at 180</th>
+          <td>row removed</td>
+          <td><code>(7, NULL, deleted = true, 180)</code></td>
+        </tr>
+        <tr>
+          <th scope="row">4. update at 140 again</th>
+          <td><strong>the row is back:</strong> <code>(7, b@, 140)</code>, with the email that was supposed to be erased</td>
+          <td>unchanged; the guard asks whether 180 &lt; 140 and it is not</td>
+        </tr>
+        <tr>
+          <th scope="row">5. delete at 180 again</th>
+          <td>row removed again</td>
+          <td>unchanged; 180 &lt; 180 is false, so applying it twice is harmless</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Sink A removed the stored position along with the row, so the late update
+      found nothing to compare against, took the insert path and re-created the
+      row. Sink B kept the delete as a row that carries its position and nulls
+      the payload, so the same guard that handles every other replay handles
+      this one. This is the rule from
+      <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>
+      applied to deletes. A tombstone cannot do this job: it has no position.
+    </p>
+    <pre><code class="language-sql">CREATE TABLE customers (
+  id         BIGINT  PRIMARY KEY,
+  email      TEXT,                          -- NULL on a delete: erase the payload with the marker
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  source_lsn BIGINT  NOT NULL               -- position of the change that wrote this row
+);
+
+-- Apply ONE change (a batch is first reduced to the newest change per key,
+-- as in the merge cookbook). A delete is the same statement with
+-- email = NULL and is_deleted = TRUE; it also inserts a marker for a key
+-- the table has never seen, so a late older insert cannot create the row.
+INSERT INTO customers (id, email, is_deleted, source_lsn)
+VALUES (7, 'b@example.com', FALSE, 140)
+ON CONFLICT (id) DO UPDATE
+SET email      = EXCLUDED.email,
+    is_deleted = EXCLUDED.is_deleted,
+    source_lsn = EXCLUDED.source_lsn
+WHERE customers.source_lsn &lt; EXCLUDED.source_lsn;
+
+-- Readers never see markers.
+CREATE VIEW customers_current AS
+SELECT id, email FROM customers WHERE NOT is_deleted;</code></pre>
+    <p class="muted small">
+      Tested as written against SQLite in this site&rsquo;s unit tests (the
+      five arrivals above, and the case where the delete arrives first). Not run
+      against PostgreSQL, whose <code>ON CONFLICT ... DO UPDATE ... WHERE</code>
+      form it follows. The position is assumed to be one number that is unique
+      per change for a key; if it can repeat, compare a (position, ordinal)
+      pair as described on the page linked above. The full per-engine versions
+      are in the <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a>,
+      and the pattern is explained on
+      <a href="{{ '/materialization/' | url }}#merge">Materialization 101</a>.
+    </p>
+  </section>
+
+  <section id="trace" aria-labelledby="trace-title">
+    <h2 id="trace-title">Trace one deleted row</h2>
+    <p>
+      Take one person&rsquo;s row and list every place a copy can exist after
+      the delete event has been applied in the sink. All values below were read
+      from the vendors&rsquo; documentation on 2026-10-09 (versions in
+      <a href="#limits">What this page did not test</a>); defaults change, so
+      check the number for your version before you rely on it.
+    </p>
+
+    <h3 id="trace-stream">In the stream</h3>
+    <table>
+      <caption class="sr-only">Copies of a deleted row in the Kafka stream and what governs them</caption>
+      <thead>
+        <tr>
+          <th scope="col">Copy</th>
+          <th scope="col">Does the delete event touch it?</th>
+          <th scope="col">What governs how long it lives</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Earlier change events in the topic (the values)</th>
+          <td>No. They are separate records.</td>
+          <td>
+            <code>cleanup.policy</code> (default <code>delete</code>) and, for
+            that policy, <code>retention.ms</code> (default 7 days). With
+            <code>compact</code>, older records for the key are removed when
+            the log cleaner runs; the newest segment is never compacted, and
+            <code>min.compaction.lag.ms</code> and
+            <code>max.compaction.lag.ms</code> bound when a record becomes
+            eligible. Compaction is background work, not a deadline.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">The delete event itself</th>
+          <td>It is the delete event. It holds the before image.</td>
+          <td>
+            With <code>tombstones.on.delete=false</code> only the delete event
+            is emitted, and Debezium&rsquo;s documentation says that Kafka can
+            remove all messages for a key only when the last one has a null
+            value. On a compacted topic that leaves the delete event, before
+            image included, as the key&rsquo;s last record.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">The tombstone</th>
+          <td>It is the delete signal for the log.</td>
+          <td>
+            <code>delete.retention.ms</code> (default 1 day). A consumer that is
+            more than this far behind can miss it. See below.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Dead-letter topic</th>
+          <td>No. An event that failed earlier may be sitting here with the values.</td>
+          <td>
+            A normal topic with its own <code>retention.ms</code> and
+            <code>cleanup.policy</code>, named by
+            <code>errors.deadletterqueue.topic.name</code> on a sink connector
+            (blank by default). With
+            <code>errors.deadletterqueue.context.headers.enable</code> it also
+            carries error context headers. See
+            <a href="{{ '/dlq-triage/' | url }}">DLQ triage</a> and
+            <a href="{{ '/glossary/#dead-letter-queue' | url }}">the glossary</a>.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Archive or raw staging table</th>
+          <td>No. Append-only copies keep every version.</td>
+          <td>
+            Whatever lifecycle rule you set. The lessons here advise keeping raw
+            envelopes for N days so you can reprocess
+            (<a href="{{ '/materialization/' | url }}#late-arrivals">late arrivals</a>),
+            and some pipelines archive the whole stream on purpose
+            (<a href="{{ '/use-cases/' | url }}">use cases</a>). That N is also
+            your erasure delay for this copy.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      Sources: Apache Kafka topic configuration and design (Log Compaction)
+      pages; Kafka Connect configuration; Debezium PostgreSQL connector.
+    </p>
+
+    <h3 id="trace-sink">In the sink and after it</h3>
+    <table>
+      <caption class="sr-only">Copies of a deleted row in the sink, its history and backups, and what governs them</caption>
+      <thead>
+        <tr>
+          <th scope="col">Copy</th>
+          <th scope="col">What the delete does to it</th>
+          <th scope="col">What governs how long it lives</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Current-state row</th>
+          <td>With a marker: the payload is nulled and the row stays as <code>(key, deleted, position)</code>.</td>
+          <td>Your merge, and your purge job (below).</td>
+        </tr>
+        <tr>
+          <th scope="row">Delta Lake table history</th>
+          <td><code>DELETE</code> removes the data from the latest version only. Without deletion vectors the old files stay until <code>VACUUM</code>. With deletion vectors enabled, <code>DELETE</code> does not rewrite the Parquet file, so the deleted values stay in the live file until <code>REORG TABLE ... APPLY (PURGE)</code> rewrites it. After that, <code>VACUUM</code> removes the old files once they are past <code>delta.deletedFileRetentionDuration</code>.</td>
+          <td>
+            <code>VACUUM</code> is not triggered automatically in open-source
+            Delta; it removes unreferenced files older than <code>delta.deletedFileRetentionDuration</code>
+            (default 7 days). Time travel is limited by
+            <code>delta.logRetentionDuration</code> (default 30 days) <em>and</em>
+            by whether the data files still exist. Change data feed files in
+            <code>_change_data</code> follow the same retention and go with
+            <code>VACUUM</code>.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Iceberg table snapshots</th>
+          <td>A delete is a new snapshot. Old snapshots, and the data files they reference, stay available for time travel.</td>
+          <td>
+            Snapshots accumulate until the <code>expireSnapshots</code>
+            operation runs. Expiry uses
+            <code>history.expire.max-snapshot-age-ms</code> (default 5 days) and
+            <code>history.expire.min-snapshots-to-keep</code> (default 1); data
+            files are removed only when no remaining snapshot references them.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Iceberg delete files (format v2 and later)</th>
+          <td>With merge-on-read (format v2 and later) a row-level delete writes a delete file (position or equality) and does not rewrite the data file. The default copy-on-write rewrites the affected data files. Format v3 uses deletion vectors for position deletes.</td>
+          <td>
+            <code>write.delete.mode</code>, <code>write.update.mode</code> and
+            <code>write.merge.mode</code> default to <code>copy-on-write</code>;
+            <code>merge-on-read</code> writes delete files instead. The deleted
+            values stay in the original data file until it is rewritten
+            (compaction) and the older snapshots are expired.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">BigQuery table with CDC</th>
+          <td>A CDC <code>DELETE</code> counts as applied only once <code>upsert_stream_apply_watermark</code> has passed the time it was streamed.</td>
+          <td>
+            BigQuery keeps deletes for a 2-day retention window to handle
+            out-of-order deletes. If CDC operations fail, or the reservation
+            has too little capacity, the documentation warns that you might
+            unintentionally retain data you meant to delete. After that, time
+            travel applies (7 days by default, 2 to 7 configurable). BigQuery
+            documents a fixed 7-day fail-safe for table deletion or
+            replacement and partition deletion. It does not say whether
+            row-level CDC deletes enter fail-safe.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Snowflake table</th>
+          <td>Time Travel preserves the pre-delete state of the data.</td>
+          <td>
+            <code>DATA_RETENTION_TIME_IN_DAYS</code>: 1 day by default, and up
+            to 90 days for permanent objects on Enterprise Edition or higher.
+            Then a non-configurable 7-day Fail-safe that only Snowflake can
+            recover from.
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">Backups, replicas, exports, caches, search indexes</th>
+          <td>Not touched. A restore brings the old rows back.</td>
+          <td>Their own schedules. See the erasure section.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      Sources: Delta Lake batch, update and utility documentation and change
+      data feed documentation; Apache Iceberg maintenance, configuration and
+      specification pages; BigQuery change data capture and time travel
+      documentation; Snowflake Time Travel and Fail-safe documentation. URLs in
+      <a href="#resources">Further resources</a>.
+    </p>
+
+    <h3 id="late-consumer">Kafka: what a consumer that falls behind misses</h3>
+    <p>
+      Kafka&rsquo;s documentation is specific. A consumer that reads from the
+      start sees the final state of every key, and sees the delete markers too,
+      <em>provided it reaches the head of the log in less than
+      <code>delete.retention.ms</code></em>. Because the cleaner removes
+      tombstones while consumers read, a consumer that lags by more than that
+      can miss them. The setting also bounds how long a read that starts at
+      offset 0 has to finish to get a valid snapshot of the final state.
+    </p>
+    <p>
+      Two consequences for a CDC sink. First, a sink that already holds the
+      row and then falls behind by more than a day (the default) can come back
+      to a topic where the tombstone is gone and the log no longer says the key
+      was deleted, so it keeps the row. Second, a sink bootstrapped by reading
+      a compacted topic needs to finish within the window or it may end up with
+      a state that never saw the delete. Alert when consumer lag approaches
+      <code>delete.retention.ms</code> for any compacted topic you depend on
+      for deletes. See
+      <a href="{{ '/observability/' | url }}">observability</a> for lag signals.
+    </p>
+
+    <h3 id="two-clocks">Delta Lake: two clocks, and VACUUM safety</h3>
+    <p>
+      The 30-day figure is the time-travel history. The bytes leave storage on
+      a different clock: the 7-day deleted-file retention, and only when
+      someone runs <code>VACUUM</code>. With deletion vectors enabled there is
+      a step before that: <code>DELETE</code> only marks the rows, and
+      <code>REORG TABLE ... APPLY (PURGE)</code> is what rewrites the files that
+      hold them (<code>OPTIMIZE</code> and other DML have no strict guarantee
+      of doing so). The purge creates a new table version, and the time it
+      completes is the timestamp the <code>VACUUM</code> retention threshold
+      counts from. I did not verify the default of the
+      <code>delta.enableDeletionVectors</code> table property for your version;
+      check it. Delta recommends keeping the retention
+      interval at least 7 days because shorter intervals can break concurrent
+      readers or writers, and has a safety check that blocks shorter intervals
+      unless you turn it off. So you cannot speed up erasure without taking a
+      reader-safety risk; that trade belongs in your written decision. A managed
+      platform may schedule maintenance for you; check yours rather than assuming
+      either way.
+    </p>
+  </section>
+
+  <section id="purge" aria-labelledby="purge-title">
+    <h2 id="purge-title">Purging markers safely</h2>
+    <p>
+      Markers cost storage and they hold a key (and a position) for a person
+      who asked to be forgotten, so they need a retention policy. The wrong
+      moment to remove one is when &ldquo;the row has been deleted for a
+      while&rdquo;. A marker exists to defeat older events. It can go when
+      both of these are true:
+    </p>
+    <ol>
+      <li>
+        <strong>The delete has propagated.</strong> Every consumer and replica
+        of the table has applied or read the marker: downstream incremental
+        models, marts, caches and search indexes. Purge it first and a
+        downstream job that has not seen it yet never learns of the delete.
+      </li>
+      <li>
+        <strong>Nothing that can be replayed holds an older event for that
+        key.</strong> The oldest source position that any replay source can
+        still deliver must be newer than the marker. Replay sources are the
+        topic (up to its retention, or for a compacted topic its
+        un-compacted history), the dead-letter queue, the archive, the raw
+        staging table, and any re-snapshot or restored backup you might load.
+        Replays carry the position they had the first time, so this is a
+        comparison of positions, not of clock times.
+      </li>
+    </ol>
+    <pre><code class="language-sql">-- Physical delete (purge): the only DELETE in this design.
+-- :purge_below is the LOWEST source position that any replay source (topic,
+-- dead-letter queue, archive, staging, planned re-snapshot) can still deliver,
+-- and it is only valid if every consumer of the table is already past the marker.
+-- The comparison is strict: a marker AT the bound stays.
+DELETE FROM customers
+WHERE is_deleted AND source_lsn &lt; :purge_below;</code></pre>
+    <p>
+      This is the same purge as in the
+      <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a>. Computing
+      <code>:purge_below</code> is the hard part: read the first retained
+      record of each partition of each replay source and take the lowest
+      <code>source</code> position among them, within one source log lineage
+      (positions restart after a failover that loses the log tail or a
+      restore; see the lineage note on
+      <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>).
+      If you cannot get positions out of a replay source, bound by the age of the
+      marker against the <em>longest</em> replay window plus a margin, using
+      load time, not commit time.
+    </p>
+    <p>
+      Vendors that keep delete markers for you chose a window, not a proof.
+      BigQuery holds CDC deletes for 2 days, and Databricks keeps a deleted
+      row as a tombstone for 2 days by default
+      (<code>pipelines.cdc.tombstoneGCThresholdInSeconds</code>), telling you to
+      set it above the longest expected delay between an event arriving and the
+      pipeline running. Treat those as the same question your own purge
+      answers: how late can an older event be?
+    </p>
+  </section>
+
+  <section id="erasure" aria-labelledby="erasure-title">
+    <h2 id="erasure-title">Erasure requests: the technical question</h2>
+    <p class="callout">
+      <strong>Not legal advice.</strong> Read the regulation yourself and ask a
+      lawyer. This section only separates what the law text says from the
+      engineering facts, so that you can bring the right facts to that
+      conversation.
+    </p>
+
+    <h3 id="what-article-17-says">What the official text says</h3>
+    <p>
+      The text below is from Regulation (EU) 2016/679 as published on
+      EUR-Lex (links in <a href="#resources">Further resources</a>).
+    </p>
+    <ul>
+      <li>
+        <strong>Article 17(1)</strong> gives the data subject the right to
+        obtain erasure of personal data from the controller &ldquo;without
+        undue delay&rdquo;, and obliges the controller to erase without undue
+        delay, where one of six listed grounds applies (for example the data are
+        no longer necessary for the purposes they were collected for, or the
+        data subject withdraws consent and there is no other legal ground).
+        &ldquo;Without undue delay&rdquo; is not a number of days.
+      </li>
+      <li>
+        <strong>Article 17(3)</strong> says paragraphs 1 and 2 do <em>not</em>
+        apply to the extent that processing is necessary for: (a) exercising
+        freedom of expression and information; (b) compliance with a legal
+        obligation that requires the processing, or a task in the public
+        interest or in the exercise of official authority; (c) public health
+        reasons; (d) archiving in the public interest, scientific or historical
+        research or statistical purposes, where erasure would likely make the
+        objectives impossible or seriously impair them; or (e) the
+        establishment, exercise or defence of legal claims.
+      </li>
+      <li>
+        <strong>Article 19</strong> requires the controller to communicate the
+        erasure to each recipient to whom the data were disclosed, &ldquo;unless
+        this proves impossible or involves disproportionate effort&rdquo;.
+        Downstream systems and other organisations that received the data
+        may be recipients; whether a given consumer counts is for your lawyer.
+        <strong>Article 17(2)</strong> adds that a controller that made the data
+        public and must erase it has to take reasonable steps to inform other
+        controllers processing it.
+      </li>
+      <li>
+        <strong>Article 12(3)</strong> requires the controller to provide
+        information on action taken on the request without undue delay and in
+        any event within one month of receipt, extendable by two further months
+        where necessary. That is the deadline for telling the person what was
+        done. It is not a statement about how long each copy may take to
+        expire.
+      </li>
+    </ul>
+    <p>
+      The 17(3) exceptions apply &ldquo;to the extent that&rdquo; processing is
+      necessary, so they can cover some data and not other data. In pipeline
+      terms that means a decision per table or per column, not per person:
+      the invoice rows you must keep and the marketing profile you must erase
+      can sit in the same topic. Your pipeline needs to be able to say which
+      copy it kept and on what stated basis. Who decides, and what basis is
+      acceptable, is for your lawyer.
+    </p>
+    <p>
+      The text of the regulation, as published, does not use the words
+      &ldquo;backup&rdquo;, &ldquo;snapshot&rdquo; or &ldquo;time travel&rdquo;,
+      so it does not answer the engineering questions below. The UK
+      Information Commissioner&rsquo;s Office, writing about the UK&rsquo;s own
+      version of the regulation, has published guidance that, where a valid request
+      is received and no exemption applies, you &ldquo;will have to take steps
+      to ensure erasure from backup systems as well as live systems&rdquo;; that
+      data in backups should be put &ldquo;beyond use&rdquo; until overwritten on an
+      established schedule, that individuals should be told clearly what will
+      happen to backup copies, and that the outcome is context-specific. That
+      is one regulator&rsquo;s published view, not EU law, and others may
+      differ.
+    </p>
+
+    <h3 id="technical-questions">The technical questions</h3>
+    <p>For each row of the trace tables above, answer these in writing:</p>
+    <ol>
+      <li>Does a copy of this person&rsquo;s data still exist there after the delete is applied?</li>
+      <li>Until when, and which setting decides that date?</li>
+      <li>Who or what can still read it (time-travel queries, a restore, a replay)?</li>
+      <li>What would remove it sooner, and what does that cost (for Delta, a shorter retention has a reader-safety cost)?</li>
+      <li>Is any exception under 17(3) being relied on for this copy, who decided that, and where is it recorded?</li>
+    </ol>
+
+    <h3 id="backups">Backups and retention copies</h3>
+    <p>
+      Backups, replicas, exports and archives are separate stores with their own
+      schedules. A delete event does not remove anything from them, and neither
+      does applying a marker in the sink. Time-travel windows and fail-safe
+      periods behave like backups: you cannot edit them, you can only wait for
+      them to expire (or shorten them going forward), and a table recovered from
+      them contains the row again.
+    </p>
+    <p>
+      The engineering consequence is a <strong>restore rule</strong>. After
+      you restore a table from a backup or a time-travel version, the table is
+      older than the deletes you have since applied, and the topic may no longer
+      hold those deletes. Keep a record of erasures (a surrogate key and the
+      position and date of the delete, kept for at least as long as your oldest
+      restorable backup) and re-apply it after any restore, before readers see
+      the table. Whether and how long you may keep that record is again for your
+      lawyer.
+    </p>
+
+    <h3 id="shorten">What you can do to make the answers shorter</h3>
+    <ul>
+      <li>
+        Do not put the identifier in the clear in the first place, or encrypt
+        per subject and destroy the key
+        (<a href="{{ '/security/' | url }}#erasure">the strategies on the
+        Security page</a>). That works on every copy at once, including the
+        ones you cannot edit.
+      </li>
+      <li>
+        Choose retention on purpose for the history of tables that hold personal
+        data (time travel, snapshot age, fail-safe where configurable), and
+        schedule the jobs that make expiry real (<code>REORG TABLE ... APPLY
+        (PURGE)</code> then <code>VACUUM</code> for Delta tables with deletion
+        vectors; <code>expireSnapshots</code> for Iceberg).
+      </li>
+      <li>
+        Null the payload columns in the same statement that writes the marker,
+        and keep only the key and the position.
+      </li>
+      <li>
+        Give the dead-letter topic, the archive and the staging tables a
+        retention that you have written down, rather than the default.
+      </li>
+    </ul>
+  </section>
+
+  <section id="monday" aria-labelledby="monday-title">
+    <h2 id="monday-title">What to do Monday</h2>
+    <ol>
+      <li>
+        Pick one table that holds personal data and fill in the two trace tables
+        for it, with the actual values from your cluster and warehouse, not the
+        defaults on this page.
+      </li>
+      <li>
+        Read your connector config: is <code>tombstones.on.delete</code> what
+        you intend, and if you flatten events, does the sink still receive the
+        delete with its position (<code>rewrite</code> plus
+        <code>add.fields</code>) or only a bare tombstone?
+      </li>
+      <li>
+        Find out what your sink does on a tombstone and on a delete event (for
+        the Debezium JDBC sink, <code>delete.enabled</code>). If it removes the row,
+        replay the five arrivals from the resurrection table against it.
+      </li>
+      <li>
+        Make the sink keep delete markers that carry a position, and put a view
+        in front so readers filter them. Null the payload on delete.
+      </li>
+      <li>
+        Write down your replay window: topic retention, dead-letter retention,
+        archive and staging retention, and the oldest backup you could restore.
+        Compute <code>:purge_below</code> from it and schedule the purge.
+      </li>
+      <li>
+        Add an alert for consumer lag against <code>delete.retention.ms</code>
+        on every compacted topic that carries deletes.
+      </li>
+      <li>
+        For Delta, Iceberg, BigQuery or Snowflake, check that the maintenance
+        that makes expiry real is actually scheduled (<code>VACUUM</code>,
+        plus <code>REORG TABLE ... APPLY (PURGE)</code> if deletion vectors are
+        on; <code>expireSnapshots</code>), and record the retention numbers.
+      </li>
+      <li>
+        Set the retention of the dead-letter topic and the raw archive on
+        purpose. If something is kept longer than a request deadline allows,
+        write down why.
+      </li>
+      <li>
+        Write the restore rule: after any restore, re-apply the erasure record
+        before the table is readable.
+      </li>
+      <li>
+        Take the filled-in tables to your lawyer or data protection officer and
+        ask what is acceptable for each copy. Record which Article 17(3)
+        exceptions, if any, they accept, and by whom.
+      </li>
+    </ol>
+  </section>
+
+  <section id="limits" aria-labelledby="limits-title">
+    <h2 id="limits-title">What this page did not test</h2>
+    <ul>
+      <li>
+        No vendor service was run. Every figure in the trace tables comes from
+        the documentation pages listed below, read on 2026-10-09: Apache Kafka
+        documentation at <code>kafka.apache.org/43/</code>, Debezium
+        &ldquo;stable&rdquo; documentation, Delta Lake documentation at
+        <code>docs.delta.io</code>, Apache Iceberg 1.12.0 documentation,
+        BigQuery and Snowflake documentation, and the Databricks pipeline
+        reference. Check your version.
+      </li>
+      <li>
+        The SQL on this page was executed against SQLite only. It is written in
+        the PostgreSQL <code>ON CONFLICT</code> form but was not run on
+        PostgreSQL, and not on any warehouse.
+      </li>
+      <li>
+        Not verified from vendor documentation: whether a managed Delta
+        platform runs <code>VACUUM</code> for you; whether BigQuery&rsquo;s
+        fail-safe covers row-level CDC deletes (its page lists table and
+        partition deletion and replacement); how an Iceberg engine you use
+        applies delete files during compaction.
+      </li>
+      <li>
+        The legal text is quoted from EUR-Lex. How a regulator or court would
+        read it for any pipeline is not covered, and the UK guidance is one
+        regulator&rsquo;s view of a different instrument.
+      </li>
+      <li>
+        The Playground&rsquo;s <em>Retention &amp; Erasure</em> scenario
+        exists, but it does not model a late older update after a delete or any
+        storage-level retention, so this page does not link to it as a demo.
+      </li>
+    </ul>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <h3>On this site</h3>
+    <ul>
+      <li><a href="{{ '/security/' | url }}#erasure">Security: deletion requests and an append-only log</a> for the three erasure strategies.</li>
+      <li><a href="{{ '/event-envelope/' | url }}#ordering">Event envelope: ordering and compaction</a>.</li>
+      <li><a href="{{ '/materialization/' | url }}#merge">Materialization 101</a> and the <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> for the guarded merge and the purge.</li>
+      <li><a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a> for log positions, ordinals and lineage.</li>
+      <li><a href="{{ '/dlq-triage/' | url }}">DLQ triage</a>, <a href="{{ '/ops-offsets/' | url }}">offsets and replays</a> and <a href="{{ '/reconciliation-surgery/' | url }}">reconciliation</a> for how old events come back.</li>
+      <li>Glossary: <a href="{{ '/glossary/#tombstone' | url }}">tombstone</a>, <a href="{{ '/glossary/#compaction' | url }}">compaction</a>, <a href="{{ '/glossary/#log-retention' | url }}">log retention</a>, <a href="{{ '/glossary/#idempotent-write' | url }}">idempotent write</a>.</li>
+    </ul>
+    <h3>Primary sources (read 2026-10-09)</h3>
+    <ul>
+      <li>Regulation (EU) 2016/679, Articles 12, 17 and 19: <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj" rel="noopener">EUR-Lex, official text</a>.</li>
+      <li>UK Information Commissioner&rsquo;s Office, <a href="https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights/right-to-erasure/" rel="noopener">Right to erasure</a>, backups question (UK GDPR).</li>
+      <li>Apache Kafka: <a href="https://kafka.apache.org/43/configuration/topic-configs/" rel="noopener">topic configs</a> (<code>cleanup.policy</code>, <code>delete.retention.ms</code>, <code>retention.ms</code>, compaction lag), <a href="https://kafka.apache.org/43/design/design/" rel="noopener">design: log compaction</a>, <a href="https://kafka.apache.org/43/configuration/kafka-connect-configs/" rel="noopener">Kafka Connect configs</a> (dead-letter queue).</li>
+      <li>Debezium: <a href="https://debezium.io/documentation/reference/stable/connectors/postgresql.html" rel="noopener">PostgreSQL connector</a> (tombstone events, <code>tombstones.on.delete</code>), <a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" rel="noopener">event flattening</a> (delete handling, <code>add.fields</code>), <a href="https://debezium.io/documentation/reference/stable/connectors/jdbc.html" rel="noopener">JDBC sink</a> (<code>delete.enabled</code>).</li>
+      <li>Delta Lake: <a href="https://docs.delta.io/delta-update/" rel="noopener">DELETE</a>, <a href="https://docs.delta.io/delta-batch/" rel="noopener">time travel and data retention</a>, <a href="https://docs.delta.io/delta-utility/" rel="noopener">VACUUM</a>, <a href="https://docs.delta.io/delta-change-data-feed/" rel="noopener">change data feed retention</a>.</li>
+      <li>Apache Iceberg: <a href="https://iceberg.apache.org/docs/latest/maintenance/" rel="noopener">maintenance</a> (expire snapshots), <a href="https://iceberg.apache.org/docs/latest/configuration/" rel="noopener">configuration</a> (write modes, expiry defaults), <a href="https://iceberg.apache.org/spec/" rel="noopener">specification</a> (row-level deletes).</li>
+      <li>BigQuery: <a href="https://docs.cloud.google.com/bigquery/docs/change-data-capture" rel="noopener">change data capture</a> (deleted data considerations), <a href="https://docs.cloud.google.com/bigquery/docs/time-travel" rel="noopener">time travel and fail-safe</a>.</li>
+      <li>Snowflake: <a href="https://docs.snowflake.com/en/user-guide/data-time-travel" rel="noopener">Time Travel</a>, <a href="https://docs.snowflake.com/en/user-guide/data-failsafe" rel="noopener">Fail-safe</a>.</li>
+      <li>Databricks: <a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-python-ref-apply-changes" rel="noopener">create_auto_cdc_flow</a> (tombstone retention for out-of-order deletes).</li>
+    </ul>
+  </section>
+</div>
