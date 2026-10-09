@@ -25,6 +25,8 @@ export class TriggerEngine extends BaseEngine {
   }
 
   applySourceOp(op: SourceOp) {
+    // Redelivery is a log-lane concept: nothing is written at the source.
+    if (op.op === "redeliver") return;
     const commitTs = op.t + this.triggerOverheadMs;
     const txnMeta = op.txn ?? { id: `tx-${commitTs}`, index: 0, total: 1, last: true };
     const tx_id = txnMeta.id ?? `tx-${commitTs}`;

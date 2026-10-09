@@ -59,6 +59,14 @@ export function createLogBasedAdapter(): ModeAdapter {
   const rows = new Map<string, StoredRow>();
   const wal: Event[] = [];
   let lastEmittedIndex = 0;
+  // Index of the next applySource call. A scenario's `redeliver.ref` is a
+  // 0-based index into its ops, and the runner applies ops in order.
+  let opCounter = 0;
+  // op index -> index into `wal` of the record that op produced.
+  const walIndexByOp = new Map<number, number>();
+  // wal index -> the event as published (carries the bus offset). A redelivery
+  // copies this, so it keeps the position the first delivery was given.
+  const delivered = new Map<number, Event>();
   const schemaVersions = new Map<string, number>();
 
   const ensureSchemaVersion = (tableName: string): number => {
@@ -133,6 +141,38 @@ export function createLogBasedAdapter(): ModeAdapter {
     emitFn([event]);
   };
 
+  const flush = () => {
+    if (!emitFn) return;
+    const batch = wal.slice(lastEmittedIndex);
+    if (!batch.length) return;
+    const first = lastEmittedIndex;
+    const published = emitFn(batch);
+    published.forEach((event, i) => delivered.set(first + i, event));
+    lastEmittedIndex = wal.length;
+  };
+
+  const redeliver = (ref: number) => {
+    const walIndex = walIndexByOp.get(ref);
+    if (walIndex === undefined || !emitFn) return;
+    // Make sure the first delivery has happened, so there is an original
+    // position to preserve.
+    flush();
+    const original = delivered.get(walIndex);
+    if (!original || typeof original.offset !== "number") return;
+    const copy: Event = {
+      ...original,
+      id: nextEventId(),
+      before: original.before ? cloneRowPayload(original.before) : undefined,
+      after: original.after ? cloneRowPayload(original.after) : undefined,
+      sourcePosition: original.sourcePosition ?? original.offset,
+      redelivered: true,
+    };
+    // The consumer UI tags published events with a sequence number; the copy
+    // is a new delivery and must get its own.
+    delete (copy as { __seq?: number }).__seq;
+    wal.push(copy);
+  };
+
   return {
     id: "LOG_BASED",
     initialise(nextRuntime) {
@@ -190,6 +230,11 @@ export function createLogBasedAdapter(): ModeAdapter {
     },
     applySource(op) {
       if (!runtime) return;
+      const opIndex = opCounter++;
+      if (op.op === "redeliver") {
+        redeliver(op.ref);
+        return;
+      }
       const commitTs = op.t;
       const key = makeRowKey(op.table, op.pk.id);
       ensureSchemaVersion(op.table);
@@ -202,6 +247,7 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: false,
         });
+        walIndexByOp.set(opIndex, wal.length);
         wal.push(
           buildRowEvent(op, "INSERT", null, cloneRowPayload(op.after), commitTs),
         );
@@ -217,6 +263,7 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: false,
         });
+        walIndexByOp.set(opIndex, wal.length);
         wal.push(
           buildRowEvent(op, "UPDATE", before, cloneRowPayload(merged), commitTs),
         );
@@ -230,6 +277,7 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: true,
         });
+        walIndexByOp.set(opIndex, wal.length);
         wal.push(
           buildRowEvent(op, "DELETE", current ? cloneRowPayload(current.data) : null, null, commitTs),
         );
@@ -261,11 +309,7 @@ export function createLogBasedAdapter(): ModeAdapter {
     tick(nowMs) {
       if (!emitFn) return;
       if (nowMs - lastFetch < fetchIntervalMs) return;
-      const batch = wal.slice(lastEmittedIndex);
-      if (batch.length) {
-        emitFn(batch);
-        lastEmittedIndex = wal.length;
-      }
+      flush();
       lastFetch = nowMs;
     },
     pause() {
@@ -278,6 +322,9 @@ export function createLogBasedAdapter(): ModeAdapter {
       rows.clear();
       wal.length = 0;
       lastEmittedIndex = 0;
+      opCounter = 0;
+      walIndexByOp.clear();
+      delivered.clear();
       emitFn = null;
       runtime = null;
       schemaVersions.clear();

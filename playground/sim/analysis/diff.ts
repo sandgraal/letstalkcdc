@@ -95,6 +95,9 @@ function buildActualEntries(events: CdcEvent[]): ActualEntry[] {
   return events
     .map((event, index) => {
       if (!EVENT_OPS.has(event.op as EventOp)) return null;
+      // A repeat delivery is not a source write: it has no expected entry, so
+      // matching it would report a spurious "extra" event.
+      if (event.redelivered) return null;
       const pk = event.pk?.id != null ? String(event.pk.id) : "";
       const op = event.op as EventOp;
       return {

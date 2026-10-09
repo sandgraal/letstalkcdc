@@ -651,7 +651,14 @@ const eventToCdcEvent = (method: MethodOption, event: EngineEvent, seq: number):
     ts_ms: event.commitTs,
     tx: {
       id: event.txnId ?? `tx-${event.commitTs}`,
-      lsn: typeof event.offset === "number" ? event.offset : null,
+      // A redelivery keeps the position of the record it repeats; the bus
+      // offset it was republished at is a new, larger number.
+      lsn:
+        typeof event.sourcePosition === "number"
+          ? event.sourcePosition
+          : typeof event.offset === "number"
+            ? event.offset
+            : null,
       index: typeof event.txnIndex === "number" ? event.txnIndex : undefined,
       total: typeof event.txnTotal === "number" ? event.txnTotal : undefined,
       last:
@@ -664,6 +671,7 @@ const eventToCdcEvent = (method: MethodOption, event: EngineEvent, seq: number):
     seq,
     meta: { method: METHOD_META_LOOKUP[method] },
     schemaChange,
+    ...(event.redelivered ? { redelivered: true } : {}),
   };
 };
 
@@ -938,7 +946,10 @@ function computeMetrics(
   stats: Partial<Record<MethodOption, LaneStats>>,
   generatorTotals?: GeneratorTotals,
 ): Metrics {
-  const lastEvent = events.length ? events[events.length - 1] : null;
+  // A redelivery repeats an earlier record: it is neither a new change nor a
+  // new delete, and its old ts_ms must not read as lag.
+  const sourceEvents = events.filter(evt => !evt.redelivered);
+  const lastEvent = sourceEvents.length ? sourceEvents[sourceEvents.length - 1] : null;
   const lagMs = lastEvent ? Math.max(clock - lastEvent.ts_ms, 0) : clock;
   const throughput = clock > 0 ? events.length / (clock / 1000) : 0;
 
@@ -947,7 +958,7 @@ function computeMetrics(
   let deleteCount = 0;
   let schemaChangeCount = 0;
 
-  events.forEach(evt => {
+  sourceEvents.forEach(evt => {
     if (evt.op === "c") insertCount += 1;
     else if (evt.op === "u") updateCount += 1;
     else if (evt.op === "d") deleteCount += 1;
@@ -1735,7 +1746,13 @@ export function App() {
               {` · v${event.schemaChange.previousVersion}→v${event.schemaChange.nextVersion}`}
             </span>
           )
-        : undefined;
+        : event.redelivered
+          ? (
+              <span className="sim-shell__event-log-schema">
+                Redelivered · log position {event.tx?.lsn ?? "?"} (the position of the first delivery)
+              </span>
+            )
+          : undefined;
       return {
         id: idParts.length ? idParts.join("|") : `${method}-${index}`,
         methodId: method,

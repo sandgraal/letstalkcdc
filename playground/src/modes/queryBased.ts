@@ -196,6 +196,8 @@ export function createQueryBasedAdapter(): ModeAdapter {
       emitFn = emit;
     },
     applySource(op) {
+      // Redelivery is a log-lane concept: a poll has no log position to repeat.
+      if (op.op === "redeliver") return;
       const key = makeRowKey(op.table, op.pk.id);
       const commitTs = op.t;
       ensureSchemaVersion(op.table);

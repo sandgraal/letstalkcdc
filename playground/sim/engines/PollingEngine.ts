@@ -21,6 +21,8 @@ export class PollingEngine extends BaseEngine {
   }
 
   applySourceOp(op: SourceOp) {
+    // Redelivery is a log-lane concept: a poll has no log position to repeat.
+    if (op.op === "redeliver") return;
     if (op.op === "insert") {
       this.table.set(op.pk.id, {
         id: op.pk.id,

@@ -182,6 +182,78 @@ function assertNonDecreasing(events, method) {
   }
 }
 
+// --- Redelivery (at-least-once) properties -------------------------------
+// Row ops are sorted by t. Redelivery ops are appended after the last write,
+// each naming a random earlier row op by index (`ref`), which is how scenario
+// files address them.
+function withRedeliveries(scenario, seed) {
+  const rng = createRng(seed * 31 + 7);
+  const rowOps = scenario.ops;
+  const lastT = rowOps.length ? rowOps[rowOps.length - 1].t : 0;
+  const ops = [...rowOps];
+  const count = Math.floor(rng() * 4) + 1;
+  for (let i = 0; i < count; i++) {
+    const ref = Math.floor(rng() * rowOps.length);
+    ops.push({
+      t: lastT + 400 + i * 50,
+      op: 'redeliver',
+      ref,
+      table: rowOps[ref].table,
+      pk: rowOps[ref].pk,
+    });
+  }
+  return { ...scenario, name: `${scenario.name}-redeliver`, ops };
+}
+
+// What the source holds after the row ops (redeliveries write nothing).
+function sourceFinalState(ops) {
+  const state = new Map();
+  for (const op of ops) {
+    if (op.op === 'insert') state.set(op.pk.id, { ...op.after });
+    else if (op.op === 'update') state.set(op.pk.id, { ...(state.get(op.pk.id) ?? {}), ...op.after });
+    else if (op.op === 'delete') state.delete(op.pk.id);
+  }
+  return state;
+}
+
+// Sinks. Both are keyed on the primary key. `naive` applies every delivery in
+// arrival order. `positionGuarded` applies a delivery only if its log position
+// (tx.lsn) is newer than the last one applied for that key.
+function applyToSink(state, evt) {
+  if (evt.op === 'd') state.delete(evt.pk.id);
+  else state.set(evt.pk.id, { ...(state.get(evt.pk.id) ?? {}), ...(evt.after ?? {}) });
+}
+
+function runSinks(events) {
+  const naive = new Map();
+  const guarded = new Map();
+  const lastPosition = new Map();
+  let naiveApplied = 0;
+  let guardedApplied = 0;
+  for (const evt of events) {
+    applyToSink(naive, evt);
+    naiveApplied += 1;
+    const last = lastPosition.get(evt.pk.id) ?? -Infinity;
+    if (evt.tx.lsn > last) {
+      lastPosition.set(evt.pk.id, evt.tx.lsn);
+      applyToSink(guarded, evt);
+      guardedApplied += 1;
+    }
+  }
+  return { naive, guarded, naiveApplied, guardedApplied };
+}
+
+function assertSameState(actual, expected, label) {
+  assert(actual.size === expected.size, `${label}: ${actual.size} rows, expected ${expected.size}`);
+  for (const [id, row] of expected) {
+    const got = actual.get(id);
+    assert(got !== undefined, `${label}: row ${id} missing`);
+    for (const [key, value] of Object.entries(row)) {
+      assert(got[key] === value, `${label}: ${id}.${key} is ${got[key]}, expected ${value}`);
+    }
+  }
+}
+
 const seedsPath = path.resolve(__dirname, "seeds.json");
 let seeds = [];
 try {
@@ -203,6 +275,7 @@ if (envSeeds) {
   seeds = envSeeds.split(",").map(value => Number(value.trim())).filter(Number.isFinite);
 }
 const failures = [];
+let naiveDivergedSeeds = 0;
 
 for (const seed of seeds) {
   try {
@@ -235,11 +308,67 @@ for (const seed of seeds) {
     assert(logDeletes === expectedDeletes, `log delete capture mismatch (${logDeletes} vs ${expectedDeletes})`);
     assert(pollingDeletes <= expectedDeletes, 'polling emitted more deletes than source ops');
 
+    // At-least-once redelivery on the log lane.
+    {
+      const replay = withRedeliveries(scenario, seed);
+      const replayLanes = runScenario(replay);
+      const replayLog = replayLanes.get('log').events;
+      const replayPolling = replayLanes.get('polling').events;
+      const replayTrigger = replayLanes.get('trigger').events;
+      const repeats = replayLog.filter(evt => evt.redelivered);
+      const originals = replayLog.filter(evt => !evt.redelivered);
+      const redeliverOps = replay.ops.filter(op => op.op === 'redeliver').length;
+
+      assert(repeats.length === redeliverOps, `log redeliveries ${repeats.length} vs ${redeliverOps} ops`);
+      assert(originals.length === scenario.ops.length, 'redelivery changed the number of original log events');
+      // Preserved position: every repeat has the lsn, payload and ts_ms of an original.
+      for (const repeat of repeats) {
+        const original = originals.find(evt => evt.tx.lsn === repeat.tx.lsn);
+        assert(original, `redelivered lsn ${repeat.tx.lsn} has no original`);
+        assert(original.op === repeat.op && original.pk.id === repeat.pk.id, 'redelivery changed op or key');
+        assert(JSON.stringify(original.after) === JSON.stringify(repeat.after), 'redelivery changed the payload');
+        assert(original.ts_ms === repeat.ts_ms, 'redelivery changed ts_ms');
+      }
+      // The other lanes ignore it, and the lane diff does not flag it as extra.
+      assert(replayPolling.length === polling.length, 'polling lane reacted to a redelivery');
+      assert(replayTrigger.length === trigger.length, 'trigger lane reacted to a redelivery');
+      const replayDiff = diffLane('log', replay.ops, replayLog);
+      assert(replayDiff.totals.missing === 0 && replayDiff.totals.extra === 0, 'redelivery showed up as a diff');
+
+      const expected = sourceFinalState(scenario.ops);
+      const sinks = runSinks(replayLog);
+      assertSameState(sinks.guarded, expected, 'position-guarded sink');
+      assert(sinks.guardedApplied === scenario.ops.length, 'guarded sink applied a repeat');
+      assert(sinks.naiveApplied === scenario.ops.length + redeliverOps, 'naive sink should apply every delivery');
+      // Without a guard the last delivery wins, so a replay of an earlier write
+      // after a later one leaves the naive sink on the older value or a revived row.
+      const naiveDiffers = (() => {
+        try {
+          assertSameState(sinks.naive, expected, 'naive sink');
+          return false;
+        } catch {
+          return true;
+        }
+      })();
+      const repeatWasStale = repeats.some(repeat => {
+        const lastForKey = [...originals].reverse().find(evt => evt.pk.id === repeat.pk.id);
+        return lastForKey && lastForKey.tx.lsn > repeat.tx.lsn;
+      });
+      if (naiveDiffers) naiveDivergedSeeds += 1;
+      if (!repeatWasStale) {
+        assert(!naiveDiffers, 'naive sink diverged although every repeat was the latest write for its key');
+      }
+    }
+
     assert(diffTrigger.lag.max <= 50, `trigger lag spike ${diffTrigger.lag.max}ms`);
     assert(diffLog.lag.max <= 5, `log lag spike ${diffLog.lag.max}ms`);
   } catch (error) {
     failures.push({ seed, error });
   }
+}
+
+if (!failures.length && !envSeeds && naiveDivergedSeeds === 0) {
+  failures.push({ seed: 'all', error: new Error('no generated scenario made the naive sink diverge; the redelivery property has no teeth') });
 }
 
 if (failures.length) {
@@ -250,4 +379,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`✅ Property-based CDC invariants passed for ${seeds.length} generated scenarios.`);
+console.log(`✅ Property-based CDC invariants passed for ${seeds.length} generated scenarios (naive sink diverged after redelivery in ${naiveDivergedSeeds}).`);

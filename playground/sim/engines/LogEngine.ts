@@ -9,6 +9,10 @@ export class LogEngine extends BaseEngine {
   private lsn = 0;
   private fetchIntervalMs = 100;
   private lastFetch = 0;
+  // Index of the next applySourceOp call, so `redeliver.ref` can name an op.
+  private opCounter = 0;
+  // op index -> the WAL record that op produced.
+  private walByOp = new Map<number, WalRecord>();
 
   configure(opts: { fetch_interval_ms?: number }) {
     if (opts.fetch_interval_ms !== undefined) this.fetchIntervalMs = opts.fetch_interval_ms;
@@ -20,9 +24,26 @@ export class LogEngine extends BaseEngine {
     this.wal = [];
     this.lsn = 0;
     this.lastFetch = 0;
+    this.opCounter = 0;
+    this.walByOp.clear();
   }
 
   applySourceOp(op: SourceOp) {
+    const opIndex = this.opCounter++;
+    if (op.op === "redeliver") {
+      // Delivery-layer repeat: the same record, the same lsn. Nothing is
+      // written at the source and the log position does not advance.
+      const original = this.walByOp.get(op.ref);
+      if (original) {
+        this.wal.push({
+          ...original,
+          before: original.before ? { ...original.before } : null,
+          after: original.after ? { ...original.after } : null,
+          redelivered: true,
+        });
+      }
+      return;
+    }
     const txnMeta = op.txn ?? { id: `tx-${op.t}`, index: 0, total: 1, last: true };
     const tx_id = txnMeta.id ?? `tx-${op.t}`;
     const tx_index = typeof txnMeta.index === "number" ? txnMeta.index : 0;
@@ -39,7 +60,7 @@ export class LogEngine extends BaseEngine {
         updated_at_ms: op.t,
         deleted: false,
       });
-      this.wal.push({
+      this.pushRecord(opIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -66,7 +87,7 @@ export class LogEngine extends BaseEngine {
         deleted: false,
       });
 
-      this.wal.push({
+      this.pushRecord(opIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -83,7 +104,7 @@ export class LogEngine extends BaseEngine {
       const cur = this.table.get(op.pk.id);
       this.table.delete(op.pk.id);
 
-      this.wal.push({
+      this.pushRecord(opIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -97,6 +118,11 @@ export class LogEngine extends BaseEngine {
         commit_ts_ms: op.t,
       });
     }
+  }
+
+  private pushRecord(opIndex: number, record: WalRecord) {
+    this.walByOp.set(opIndex, record);
+    this.wal.push(record);
   }
 
   tick(nowMs: number) {
@@ -122,6 +148,7 @@ export class LogEngine extends BaseEngine {
         },
         seq: ++this.seq,
         meta: { method: "log" },
+        ...(record.redelivered ? { redelivered: true } : {}),
       };
 
       this.bus.emit(evt);

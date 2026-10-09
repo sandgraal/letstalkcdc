@@ -51,6 +51,16 @@ export type Event = {
   topic: string;
   partition: number;
   offset?: number;
+  /**
+   * Position of the original log record this event copies. Set only on a
+   * redelivery, where `offset` is a fresh bus offset (the position the copy
+   * was published at) and `sourcePosition` is the offset the first delivery
+   * got. A sink that orders by source log position compares this value, not
+   * the bus offset.
+   */
+  sourcePosition?: number;
+  /** True when this event is a repeat delivery of an earlier log record. */
+  redelivered?: boolean;
   schemaChange?: SchemaChange;
 };
 
@@ -105,6 +115,20 @@ export type SourceOp =
   | {
       t: number;
       op: 'delete';
+      table: string;
+      pk: { id: string };
+      txn?: TransactionMeta;
+    }
+  | {
+      /**
+       * Delivery-layer operation, not a source write: the log lane delivers
+       * the record produced by `ops[ref]` a second time, with its original
+       * position. `ref` is a 0-based index into the scenario's `ops`; `table`
+       * and `pk` repeat that record's key. Polling and trigger lanes ignore it.
+       */
+      t: number;
+      op: 'redeliver';
+      ref: number;
       table: string;
       pk: { id: string };
       txn?: TransactionMeta;
