@@ -12,14 +12,14 @@ head_extra: |
 <h2>shared assumptions (adapt to your schema)</h2>
 <ul class="list">
 <li>delivery is at-least-once: the same event can arrive twice, and an older change can show up after a newer one. every statement below is safe to run again on the same events. correctness comes from an idempotent sink keyed on the primary key and ordered by the <strong>source log position</strong>, not by a clock and not by a Kafka offset. end-to-end exactly-once across independent systems is not achievable; this pattern gives exactly-once <em>processing</em> (see <a href="{{ '/exactly-once/' | url }}">exactly-once semantics</a>).</li>
-<li>staging table: <code>STG_CUSTOMERS</code> (raw CDC, append-only) with <code>ID</code>, <code>EMAIL</code>, <code>OP</code> (c/u/d; r for a snapshot read, treated like c), <code>SOURCE_LSN</code> (the change's position in the source's transaction log, copied from the event as-is), <code>SEQ</code> (ordinal for changes that share one position, such as the index within the transaction) and <code>OP_TS</code> (commit time).</li>
+<li>staging table: <code>STG_CUSTOMERS</code> (raw CDC, append-only) with <code>ID</code>, <code>EMAIL</code>, <code>OP</code> (c/u/d; r for a snapshot read, treated like c), <code>SOURCE_LSN</code> (the change's position in the source's transaction log, copied from the event as-is), <code>SEQ</code> (ordinal for changes that share one position, such as the index within the transaction) and <code>OP_TS</code> (commit time) and, where you partition staging, <code>INGESTED_AT</code> (load time). <code>SOURCE_LSN</code> and <code>SEQ</code> must be <code>NOT NULL</code> on staging too (coalesce them when you load, see the Oracle and SQL Server cards): <code>NULL</code> sorts first under <code>DESC</code> in Postgres, Snowflake and Oracle and last in BigQuery, SQL Server, MySQL and Databricks, so a <code>NULL</code> position would be ranked newest or oldest depending on the engine.</li>
 <li>target table: <code>TARGET_CUSTOMERS</code> (latest state) with <code>ID</code> as the primary key, the payload (<code>EMAIL</code>), an <code>IS_DELETED</code> marker, and the <code>SOURCE_LSN</code> and <code>SEQ</code> of the change that wrote the row. <code>SOURCE_LSN</code> and <code>SEQ</code> are <code>NOT NULL</code> on the target: a <code>NULL</code> makes the comparison <code>NULL</code> and the row is silently never updated.</li>
 <li>business key: <code>ID</code>. replace with your key columns as needed.</li>
-<li>the position column is the source's own, so the name changes by source: Postgres <code>source.lsn</code> (<code>SOURCE_LSN</code>); MySQL binlog file + <code>pos</code> + row index; Oracle <code>scn</code> with <code>rs_id</code>/<code>ssn</code> as the ordinal (<code>SOURCE_SCN</code>); SQL Server <code>commit_lsn</code>, <code>change_lsn</code>, <code>event_serial_no</code>. the cards below use the field that fits their usual source, but the sink engine and the source are independent choices. compare positions as numbers or typed tuples, never as free text, and check which field is unique per change for your connector version: <a href="{{ '/partitioning/' | url }}#recon">making sinks bulletproof</a>.</li>
+<li>the position column is the source's own, so the name changes by source: Postgres <code>source.lsn</code> (<code>SOURCE_LSN</code>); MySQL binlog file + <code>pos</code> + row index; Oracle <code>scn</code> (a string in Debezium: load it with <code>TO_NUMBER</code>) with <code>ssn</code> as the ordinal (<code>SOURCE_SCN</code>, <code>SEQ</code>; <code>rs_id</code> is a string too and would be a separate tuple column); SQL Server <code>commit_lsn</code>, <code>change_lsn</code>, <code>event_serial_no</code>. the cards below use the field that fits their usual source, but the sink engine and the source are independent choices. compare positions as numbers or typed tuples, never as free text, and check which field is unique per change for your connector version: <a href="{{ '/partitioning/' | url }}#recon">making sinks bulletproof</a>.</li>
 <li>ordering rule: apply an incoming change only if its <code>(SOURCE_LSN, SEQ)</code> is <strong>strictly greater</strong> than the pair stored on the target row, that is <code>s.SOURCE_LSN &gt; t.SOURCE_LSN OR (s.SOURCE_LSN = t.SOURCE_LSN AND s.SEQ &gt; t.SEQ)</code>. a replay of the same change carries the same pair, so it is skipped; an older change is skipped too.</li>
-<li>why not <code>OP_TS</code>: two changes to one row can share a millisecond, so <code>&gt;=</code> lets both pass and whichever is processed last wins; clocks on different hosts disagree; a replay or a snapshot carries a later time than the change it repeats. <code>OP_TS</code> is for partition pruning, retention windows and lag metrics only. a Kafka offset is no substitute either: a connector restart re-emits earlier changes at higher offsets.</li>
+<li>why not <code>OP_TS</code>: two changes to one row can share a millisecond, so <code>&gt;=</code> lets both pass and whichever is processed last wins; clocks on different hosts disagree; a replay or a snapshot carries a later time than the change it repeats. <code>OP_TS</code> (and the load time) are for partition pruning, retention windows and lag metrics only. a Kafka offset is no substitute either: a connector restart re-emits earlier changes at higher offsets.</li>
 <li>deletes are delete markers, not <code>DELETE</code> statements: set <code>IS_DELETED</code> and store the delete's position. a physical delete removes the stored position with the row, so a late replay of an older update would find no row and insert it again. readers filter <code>IS_DELETED</code>. the Kafka null-value tombstone that follows a delete is not this marker; it carries no position.</li>
-<li>every card first reduces staging to one row per key (latest by the same <code>(SOURCE_LSN, SEQ)</code> order), because engines reject or mis-handle several source rows for one target row.</li>
+<li>every card first reduces staging to one row per key (latest by the same <code>(SOURCE_LSN, SEQ)</code> order), because engines reject or mis-handle several source rows for one target row. the dedupe has no final tie-break: two rows with the same position and ordinal but different payloads would be picked arbitrarily. that is fine for true duplicates (a replay carries identical content) and a sign of a wrong position field otherwise.</li>
 <li>positions are comparable only within one source log lineage. after a failover that loses the old primary's tail, a point-in-time restore or a move to another server, positions can restart lower and the guard would skip every change; compare a <code>source_epoch</code> column first, then the position.</li>
 </ul>
 <p class="muted"><strong>status of the SQL on this page:</strong> the Postgres card, the Postgres snippets under “handling hard parts” and the acceptance checks were executed against PGlite 0.5.8 (PostgreSQL 18.3 compiled to WebAssembly). every other statement is untested: it was checked against the vendor's reference for that statement, not run on a live engine. run each one on a scratch table before you adopt it.</p>
@@ -48,13 +48,14 @@ WHEN NOT MATCHED THEN
 </article>
 <article class="box">
 <h2>bigquery</h2>
-<pre><code>-- staging is partitioned by commit time so a scan can be pruned;
+<pre><code>-- staging is partitioned by load time so a scan can be pruned;
 -- the target is clustered by key and has no timestamp column at all.
 CREATE TABLE `dataset.STG_CUSTOMERS` (
   ID INT64, EMAIL STRING, OP STRING,
-  SOURCE_LSN INT64, SEQ INT64, OP_TS TIMESTAMP
+  SOURCE_LSN INT64 NOT NULL, SEQ INT64 NOT NULL,
+  OP_TS TIMESTAMP, INGESTED_AT TIMESTAMP NOT NULL
 )
-PARTITION BY DATE(OP_TS)
+PARTITION BY DATE(INGESTED_AT)
 CLUSTER BY ID;
 
 CREATE TABLE `dataset.TARGET_CUSTOMERS` (
@@ -70,7 +71,7 @@ USING (
     SELECT ID, EMAIL, OP, SOURCE_LSN, SEQ,
            ROW_NUMBER() OVER (PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC) AS rn
     FROM `dataset.STG_CUSTOMERS`
-    -- optional pruning: WHERE DATE(OP_TS) BETWEEN @from_day AND @to_day
+    -- optional pruning, on LOAD time: WHERE DATE(INGESTED_AT) BETWEEN @from_day AND @to_day
   )
   WHERE rn = 1
 ) s
@@ -84,7 +85,7 @@ WHEN MATCHED AND (s.SOURCE_LSN &gt; t.SOURCE_LSN
 WHEN NOT MATCHED THEN
   INSERT (ID, EMAIL, IS_DELETED, SOURCE_LSN, SEQ)
   VALUES (s.ID, s.EMAIL, (s.OP = 'd'), s.SOURCE_LSN, s.SEQ);</code></pre>
-<p class="muted">partition the append-only <em>staging</em> table by <code>DATE(OP_TS)</code> to prune scans and expire old partitions, and cluster the target by <code>ID</code> for merge performance. the date is a pruning key only, not the ordering key. pruning is safe because the guard compares against the target row, not against the window. BigQuery raises a runtime error when several source rows match one target row, so keep the dedup.</p>
+<p class="muted">partition the append-only <em>staging</em> table by <code>DATE(INGESTED_AT)</code> (load time) to prune scans and expire old partitions, and cluster the target by <code>ID</code> for merge performance. window on load time, never on commit time: a change committed on day 1 that reaches staging on day 5 is outside a day-1 commit-date window and would never be merged, leaving the key missing. a commit-date window is only safe if it reaches back past your longest delivery lag. with a load-time window the guard still decides which change wins, so re-merging an overlapping window is harmless. BigQuery raises a runtime error when several source rows match one target row, so keep the dedup.</p>
 <p class="muted"><strong>status:</strong> untested on a live BigQuery project.</p>
 </article>
 <article class="box">
@@ -111,6 +112,12 @@ WHEN NOT MATCHED
 <article class="box">
 <h2>oracle</h2>
 <pre><code>-- Oracle has no BOOLEAN column before 23ai, so the marker is NUMBER(1).
+-- Debezium sends scn as a STRING ("1513734"); ssn is an int64. Convert once
+-- on load: comparing the string would sort '9' after '10'.
+INSERT INTO stg_customers (id, email, op, source_scn, seq, op_ts)
+SELECT id, email, op, TO_NUMBER(scn), COALESCE(ssn, 0), op_ts
+FROM raw_events;
+
 CREATE TABLE target_customers (
   id         NUMBER(19) PRIMARY KEY,
   email      VARCHAR2(320),
@@ -139,7 +146,7 @@ WHEN MATCHED THEN UPDATE SET
      OR (s.source_scn = t.source_scn AND s.seq &gt; t.seq)
 WHEN NOT MATCHED THEN INSERT (id, email, is_deleted, source_scn, seq)
   VALUES (s.id, s.email, CASE WHEN s.op = 'd' THEN 1 ELSE 0 END, s.source_scn, s.seq);</code></pre>
-<p class="muted">the guard sits in the <code>WHERE</code> of the update branch. Oracle also offers <code>DELETE WHERE</code> inside <code>WHEN MATCHED</code>, which would physically remove the row and its stored SCN; that is unsafe under replay, so it is not used. with duplicate source rows Oracle fails with <code>ORA-30926</code>, hence the dedup. an SCN can repeat across changes in one transaction, which is why an ordinal <code>seq</code> (for example from <code>rs_id</code>/<code>ssn</code>) is part of the compare.</p>
+<p class="muted">the guard sits in the <code>WHERE</code> of the update branch. Oracle also offers <code>DELETE WHERE</code> inside <code>WHEN MATCHED</code>, which would physically remove the row and its stored SCN; that is unsafe under replay, so it is not used. with duplicate source rows Oracle fails with <code>ORA-30926</code>, hence the dedup. an SCN can repeat across changes in one transaction, which is why the ordinal <code>seq</code> (Debezium's <code>ssn</code>, a number) is part of the compare. <code>rs_id</code> (<code>"001234.00012345.0124"</code>) is also a string; if you need it to separate changes that share an SCN, keep it as its own <code>VARCHAR2</code> column and compare it as a further tuple member, never as a <code>NUMBER</code>. <code>COALESCE(ssn, 0)</code> is defensive: the Debezium Oracle schema marks <code>scn</code>, <code>rs_id</code> and <code>ssn</code> optional, and I did not find a statement about which are absent on snapshot rows; a row with a <code>NULL</code> <code>scn</code> cannot be ordered and should be rejected, not loaded.</p>
 <p class="muted"><strong>status:</strong> untested on a live Oracle database.</p>
 </article>
 <article class="box">
@@ -147,6 +154,18 @@ WHEN NOT MATCHED THEN INSERT (id, email, is_deleted, source_scn, seq)
 <pre><code>-- commit_lsn alone is shared by every change in a transaction, so the
 -- compare uses (commit_lsn, change_lsn, event_serial_no). LSNs are
 -- BINARY(10): compare as binary, never as text.
+-- Snapshot (r) rows can carry NULL change_lsn and event_serial_no. Replace them
+-- with the lowest value on load: a snapshot row then sorts before any streamed
+-- change that shares its commit_lsn, and a later commit_lsn wins on the first compare.
+INSERT INTO dbo.stg_customers (id, email, op, commit_lsn, change_lsn, event_serial_no, op_ts)
+SELECT id, email, op,
+       CONVERT(BINARY(10), REPLACE(commit_lsn_text, ':', ''), 2),
+       COALESCE(CONVERT(BINARY(10), REPLACE(change_lsn_text, ':', ''), 2),
+                0x00000000000000000000),
+       COALESCE(event_serial_no, 0),
+       op_ts
+FROM dbo.raw_events;
+
 CREATE TABLE dbo.target_customers (
   id              BIGINT NOT NULL PRIMARY KEY,
   email           NVARCHAR(320) NULL,
@@ -185,7 +204,7 @@ WHEN NOT MATCHED BY TARGET THEN
   INSERT (id, email, is_deleted, commit_lsn, change_lsn, event_serial_no)
   VALUES (s.id, s.email, CASE WHEN s.op = 'd' THEN 1 ELSE 0 END,
           s.commit_lsn, s.change_lsn, s.event_serial_no);</code></pre>
-<p class="muted">Debezium delivers SQL Server LSNs as strings such as <code>00000027:00000ac0:0002</code>; convert them once on load, for example <code>CONVERT(BINARY(10), REPLACE(commit_lsn_text, ':', ''), 2)</code>. <code>MERGE</code> needs the closing semicolon, and <code>HOLDLOCK</code> keeps two concurrent merges from both inserting the same key; Microsoft recommends testing MERGE under your own concurrency, and separate <code>UPDATE</code>/<code>INSERT</code> statements are the alternative.</p>
+<p class="muted">Debezium delivers SQL Server LSNs as strings such as <code>00000027:00000ac0:0002</code>; the load statement above converts them once (style 2 reads hex without a <code>0x</code> prefix: 20 hex digits, 10 bytes). verified in the Debezium SQL Server reference: <code>change_lsn</code>, <code>commit_lsn</code> and <code>event_serial_no</code> are optional fields, and its snapshot-flagged example shows <code>change_lsn</code> and <code>event_serial_no</code> as null with <code>commit_lsn</code> set. inferred, not documented: that every snapshot data row looks the same, which is why the load coalesces defensively. a <code>NULL</code> <code>commit_lsn</code> cannot be ordered and should be rejected. <code>MERGE</code> needs the closing semicolon, and <code>HOLDLOCK</code> keeps two concurrent merges from both inserting the same key; Microsoft recommends testing MERGE under your own concurrency, and separate <code>UPDATE</code>/<code>INSERT</code> statements are the alternative.</p>
 <p class="muted"><strong>status:</strong> untested on a live SQL Server instance.</p>
 </article>
 <article class="box">
@@ -232,6 +251,7 @@ CREATE TABLE target_customers (
 );
 
 -- latest change per id, by the full position
+DROP TEMPORARY TABLE IF EXISTS tmp_latest;
 CREATE TEMPORARY TABLE tmp_latest AS
 SELECT id, email, op, binlog_file, binlog_pos, row_idx
 FROM (
@@ -263,12 +283,13 @@ FROM tmp_latest s
 WHERE NOT EXISTS (SELECT 1 FROM target_customers t WHERE t.id = s.id);
 
 COMMIT;</code></pre>
-<p class="muted">MySQL 8+ is needed for the window function. <code>INSERT ... ON DUPLICATE KEY UPDATE</code> has no <code>WHERE</code>, so a guard would have to be repeated in an <code>IF()</code> per column, and MySQL evaluates those assignments left to right; that is why this card uses an <code>UPDATE ... JOIN</code> plus an insert. binlog file names compare correctly as text only while they keep the same width (<code>mysql-bin.000009</code> vs <code>mysql-bin.000010</code>). run one applier per table; with several, retry on duplicate-key error 1062. GTIDs are sets, not a total order, and a binlog reset or a failover to another server restarts file names, so add the <code>source_epoch</code> compare from above.</p>
+<p class="muted">MySQL 8+ is needed for the window function. <code>INSERT ... ON DUPLICATE KEY UPDATE</code> has no <code>WHERE</code>, so a guard would have to be repeated in an <code>IF()</code> per column. the MySQL manual documents that single-table <code>UPDATE</code> assignments are generally evaluated left to right and that multi-table <code>UPDATE</code> gives no guarantee of order; I found no statement about <code>ON DUPLICATE KEY UPDATE</code>. a guard that reads columns an earlier assignment already changed would be fragile. in this card's <code>UPDATE ... JOIN</code> the guard is in the <code>WHERE</code>, which is decided before any assignment, and the assignments read only the staging side, so their order does not matter. binlog file names compare correctly as text only while they keep the same width (<code>mysql-bin.000009</code> vs <code>mysql-bin.000010</code>). run one applier per table; with several, retry on duplicate-key error 1062. GTIDs are sets, not a total order, and a binlog reset or a failover to another server restarts file names, so add the <code>source_epoch</code> compare from above.</p>
 <p class="muted"><strong>status:</strong> untested on a live MySQL server.</p>
 </article>
 <article class="box">
 <h2>redshift</h2>
 <pre><code>-- staging dedupe (late-events safe): latest by log position
+DROP TABLE IF EXISTS stg_dedup;
 CREATE TEMP TABLE stg_dedup DISTKEY(id) SORTKEY(id) AS
 SELECT id, email, op, source_lsn, seq
 FROM (
@@ -299,7 +320,7 @@ LEFT JOIN target_customers t ON t.id = s.id
 WHERE t.id IS NULL;
 
 COMMIT;</code></pre>
-<p class="muted">Redshift's <code>MERGE</code> takes no <code>AND condition</code> on its <code>WHEN</code> clauses, so a version guard cannot be expressed in it; use <code>UPDATE ... FROM</code> plus <code>INSERT</code> in one transaction. Redshift does not enforce primary keys, so run one writer per table or two appliers can insert the same key. consider <code>VACUUM</code> / <code>ANALYZE</code> schedules on heavy churn tables.</p>
+<p class="muted">Redshift's <code>MERGE</code> takes no <code>AND condition</code> on its <code>WHEN</code> clauses, so the guard cannot sit there. it can be pushed into the <code>USING</code> subquery (join the target and keep only rows that are newer or have no target match), but <code>UPDATE ... FROM</code> plus <code>INSERT</code> in one transaction is the recommended form: the guard is explicit and the source never references the target. Redshift does not enforce primary keys, so run one writer per table or two appliers can insert the same key. consider <code>VACUUM</code> / <code>ANALYZE</code> schedules on heavy churn tables.</p>
 <p class="muted"><strong>status:</strong> untested on a live Redshift cluster.</p>
 </article>
 </section>
@@ -332,7 +353,7 @@ WHERE is_deleted AND source_lsn &lt; 8589934592;</code></pre>
 <h3>4) schema evolution</h3>
 <p>additive columns are easiest: default target to <code>NULL</code> and include them in the <code>UPDATE SET</code>. for type changes, land to a compatible staging column and cast during merge.</p>
 <h3>5) where timestamps still belong</h3>
-<p><code>OP_TS</code> answers “when”, not “which one is newer”. use it to partition and prune the staging table, to expire old staging data, to bound a reload, and to report freshness. never use it to rank two changes to the same row, and never as the <code>WHEN MATCHED</code> condition.</p>
+<p><code>OP_TS</code> answers “when”, not “which one is newer”. use it to partition and prune the staging table, to expire old staging data, to bound a reload (by load time, not commit time, or late arrivals fall outside the window), and to report freshness. never use it to rank two changes to the same row, and never as the <code>WHEN MATCHED</code> condition.</p>
 </section>
 <section class="box">
 <h2>acceptance checks (copy/paste)</h2>

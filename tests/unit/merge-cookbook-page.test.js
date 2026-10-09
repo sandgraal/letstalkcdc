@@ -87,23 +87,29 @@ describe("merge cookbook: banned patterns stay out of the examples", () => {
     expect(text).not.toMatch(/NOW\(\)\s*-\s*INTERVAL/i);
   });
 
-  it("uses DATE(OP_TS) only to partition the staging table", () => {
-    const uses = [...allCode.matchAll(/DATE\(OP_TS\)/g)];
+  it("never windows or partitions on commit time; staging uses load time", () => {
+    // a commit-date window drops a change committed on day 1 that is
+    // loaded on day 5, so the key is never merged
+    expect(allCode).not.toMatch(/DATE\(\s*OP_TS\s*\)/i);
+    expect(allCode).not.toMatch(/PARTITION BY[^\n]*OP_TS/i);
+    const uses = [...allCode.matchAll(/DATE\(INGESTED_AT\)/g)];
     expect(uses.length).toBeGreaterThan(0);
     for (const m of uses) {
       const line = allCode.slice(
         allCode.lastIndexOf("\n", m.index) + 1,
         allCode.indexOf("\n", m.index),
       );
-      // PARTITION BY DATE(OP_TS), or the optional pruning comment.
-      expect(line).toMatch(/PARTITION BY DATE\(OP_TS\)|optional pruning/);
+      expect(line).toMatch(
+        /PARTITION BY DATE\(INGESTED_AT\)|optional pruning, on LOAD time/,
+      );
     }
     // ... and the partitioned table is staging, not the target.
     const bq = cards.find((c) => c.name === "bigquery");
     const targetDdl = bq.code.match(
       /CREATE TABLE `dataset\.TARGET_CUSTOMERS`[\s\S]*?;/,
     )[0];
-    expect(targetDdl).not.toMatch(/OP_TS|PARTITION BY/);
+    expect(targetDdl).not.toMatch(/OP_TS|INGESTED_AT|PARTITION BY/);
+    expect(prose).toMatch(/window on load time, never on commit time/);
   });
 
   it("never physically deletes, except one marked purge of old markers", () => {
@@ -130,6 +136,8 @@ describe("merge cookbook: banned patterns stay out of the examples", () => {
 
   it("never uses a non-strict comparison on a log position in an apply guard", () => {
     for (const c of cards) {
+      // row/tuple form: (a, b) >= (c, d) and (a, b) <= (c, d)
+      expect(c.code).not.toMatch(/\)\s*(?:>=|<=)\s*\(/);
       expect(c.code).not.toMatch(
         /\b\w*\.?(?:source_lsn|source_scn|commit_lsn|change_lsn|binlog_pos|seq|row_idx|event_serial_no)\s*(?:>=|<=)/i,
       );
@@ -190,6 +198,126 @@ describe("merge cookbook: every dialect applies the log-position rule", () => {
     if (name !== "postgres") {
       expect(html).toMatch(/<strong>status:<\/strong>\s*untested/);
     }
+  });
+
+  // The exact guard, direction and strictness included, plus the delete
+  // branch: it must set the marker from op = 'd' and carry the position.
+  // Whitespace is normalised so the SQL can be re-flowed.
+  const flat = (name) =>
+    cards
+      .find((c) => c.name === name)
+      .code.replace(/--.*$/gm, "")
+      .replace(/\s+/g, " ")
+      .replace(/\(\s+/g, "(")
+      .replace(/\s+\)/g, ")");
+  const guard = (l, r, pos, ord) =>
+    `(${l}.${pos} > ${r}.${pos} OR (${l}.${pos} = ${r}.${pos} AND ${l}.${ord} > ${r}.${ord}))`;
+
+  it.each(["snowflake", "bigquery", "databricks delta"])(
+    "%s: exact guard WHEN MATCHED AND (s > t OR (s = t AND s.SEQ > t.SEQ)) and marker from op",
+    (name) => {
+      const sql = flat(name);
+      expect(sql).toContain(
+        `WHEN MATCHED AND ${guard("s", "t", "SOURCE_LSN", "SEQ")} THEN`,
+      );
+      expect(sql).toContain("IS_DELETED = (s.OP = 'd')");
+      expect(sql).toContain("SOURCE_LSN = s.SOURCE_LSN");
+      expect(sql).toContain("SEQ = s.SEQ");
+      expect(sql).toContain(
+        "INSERT (ID, EMAIL, IS_DELETED, SOURCE_LSN, SEQ) VALUES (s.ID, s.EMAIL, (s.OP = 'd'), s.SOURCE_LSN, s.SEQ)",
+      );
+      // the direction is not flipped and not made non-strict
+      expect(sql).not.toMatch(/s\.SOURCE_LSN < t\.SOURCE_LSN/);
+      expect(sql).not.toMatch(/IS_DELETED = (?:0|FALSE)/i);
+    },
+  );
+
+  it("oracle: guard in the update WHERE, marker from op, scn loaded with TO_NUMBER", () => {
+    const sql = flat("oracle");
+    expect(sql).toContain(
+      `WHERE s.source_scn > t.source_scn OR (s.source_scn = t.source_scn AND s.seq > t.seq) WHEN NOT MATCHED`,
+    );
+    expect(sql).toContain(
+      "t.is_deleted = CASE WHEN s.op = 'd' THEN 1 ELSE 0 END",
+    );
+    expect(sql).toContain("t.source_scn = s.source_scn");
+    expect(sql).toContain("t.seq = s.seq");
+    expect(sql).toContain("TO_NUMBER(scn)");
+    expect(sql).toContain("COALESCE(ssn, 0)");
+    expect(sql).not.toMatch(/is_deleted = (?:0|1)\b/);
+  });
+
+  it("sql server: exact three-level guard, marker from op, snapshot NULLs coalesced on load", () => {
+    const sql = flat("sql server");
+    expect(sql).toContain(
+      "WHEN MATCHED AND (s.commit_lsn > t.commit_lsn OR (s.commit_lsn = t.commit_lsn AND s.change_lsn > t.change_lsn) OR (s.commit_lsn = t.commit_lsn AND s.change_lsn = t.change_lsn AND s.event_serial_no > t.event_serial_no)) THEN",
+    );
+    expect(sql).toContain(
+      "is_deleted = CASE WHEN s.op = 'd' THEN 1 ELSE 0 END, commit_lsn = s.commit_lsn, change_lsn = s.change_lsn, event_serial_no = s.event_serial_no",
+    );
+    expect(sql).not.toMatch(/is_deleted = (?:0|1)\b/);
+    // snapshot rows carry NULL change_lsn / event_serial_no
+    expect(sql).toContain("COALESCE(CONVERT(BINARY(10)");
+    expect(sql).toContain("0x00000000000000000000");
+    expect(sql).toContain("COALESCE(event_serial_no, 0)");
+    expect(sql).toMatch(/CREATE TABLE dbo\.target_customers/);
+    expect(sql).toMatch(/change_lsn BINARY\(10\) NOT NULL/);
+  });
+
+  it("postgres: exact guard (t.source_lsn, t.seq) < (EXCLUDED...), marker from op", () => {
+    const sql = flat("postgres");
+    expect(sql).toContain(
+      "WHERE (t.source_lsn, t.seq) < (EXCLUDED.source_lsn, EXCLUDED.seq);",
+    );
+    expect(sql).toContain(
+      "SELECT s.id, s.email, (s.op = 'd'), s.source_lsn, s.seq",
+    );
+    expect(sql).toContain("is_deleted = EXCLUDED.is_deleted");
+    expect(sql).toContain("source_lsn = EXCLUDED.source_lsn");
+    expect(sql).toContain("seq = EXCLUDED.seq");
+  });
+
+  it("mysql: exact tuple guard (s) > (t), marker from op, temp table dropped first", () => {
+    const sql = flat("mysql");
+    expect(sql).toContain(
+      "WHERE (s.binlog_file, s.binlog_pos, s.row_idx) > (t.binlog_file, t.binlog_pos, t.row_idx);",
+    );
+    expect(sql).toContain("t.is_deleted = (s.op = 'd')");
+    expect(sql).toContain("t.binlog_file = s.binlog_file");
+    expect(sql).toContain("t.binlog_pos = s.binlog_pos");
+    expect(sql).toContain("t.row_idx = s.row_idx");
+    expect(sql).toContain("SELECT s.id, s.email, (s.op = 'd'), s.binlog_file");
+    expect(
+      sql.indexOf("DROP TEMPORARY TABLE IF EXISTS tmp_latest"),
+    ).toBeGreaterThan(-1);
+    expect(sql.indexOf("DROP TEMPORARY TABLE")).toBeLessThan(
+      sql.indexOf("CREATE TEMPORARY TABLE"),
+    );
+  });
+
+  it("redshift: exact guard in UPDATE ... FROM, marker from op, temp table dropped first", () => {
+    const sql = flat("redshift");
+    expect(sql).toContain(
+      `AND ${guard("s", "target_customers", "source_lsn", "seq")};`,
+    );
+    expect(sql).toContain("is_deleted = (s.op = 'd')");
+    expect(sql).toContain(
+      "SELECT s.id, s.email, (s.op = 'd'), s.source_lsn, s.seq",
+    );
+    expect(sql.indexOf("DROP TABLE IF EXISTS stg_dedup")).toBeLessThan(
+      sql.indexOf("CREATE TEMP TABLE stg_dedup"),
+    );
+  });
+
+  it("states the NULL-ordering and no-tie-break caveats, and the commit-date window pitfall", () => {
+    expect(prose).toMatch(/NOT NULL on staging too/);
+    expect(prose).toMatch(
+      /NULL sorts first under DESC in Postgres, Snowflake and Oracle/,
+    );
+    expect(prose).toMatch(/no final tie-break/);
+    expect(prose).toMatch(/committed on day 1 that reaches staging on day 5/);
+    expect(prose).toMatch(/scn.*string/i);
+    expect(prose).toMatch(/I found no statement about ON DUPLICATE KEY UPDATE/);
   });
 
   it("SQL Server compares the full (commit_lsn, change_lsn, event_serial_no) tuple", () => {
