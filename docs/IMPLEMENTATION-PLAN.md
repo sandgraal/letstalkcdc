@@ -1248,7 +1248,7 @@ dependencies).
       (route the CSS to `css-refactor`). `dom-size` (1,035) and
       chart.js lazy-loading are the next, smaller levers.
 
-- [ ] **P13-6 · Make `/intro/` font loading deterministic, fix the contrast
+- [x] **P13-6 · Make `/intro/` font loading deterministic, fix the contrast
       regression, ratchet the threshold.** Rewritten 2026-10-09 after P13-5:
       CLS is already 0.0025 (goal was < 0.1), so the original "fix the CLS
       culprit" is met. What the measurement actually found: (1) four web
@@ -1277,6 +1277,7 @@ dependencies).
       `base.njk`).
       _2026-10-09 status: the contrast half shipped in #340 (event-demo text now 4.75:1, and the pale-on-pale body in the light theme fixed, with an e2e guard). Still open: (1) make the four late font weights deterministic and add a metric-matched fallback, (2) ratchet the `/intro/` performance floor and bump the README badge in the same PR. The light-theme accent colour is split out as P15-16 / D8._
       _2026-10-09 status: fonts shipped in #404 (Plex 400/500/600/700 sans and mono 400 preloaded, metric-matched `IBM Plex Sans Fallback` / `IBM Plex Mono Fallback` faces, e2e layout-shift bound under 0.01; production CSS hash re-baselined). Still open: the Lighthouse floor ratchet, which needs measured CI runs (tracked as P15-44), so this box stays open._
+      _2026-10-09 closed: the floor ratchet landed with P15-44 (`/intro/` performance floor 0.82 to 0.84 from 10 CI jobs, median 0.88; local spread 0.91 to 0.92 against 0.88 to 0.97 before the fonts). All of (a) to (d) are met._
 - [x] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
       mobile-chrome for a "pointer-intercept flake" with no tracking (the
@@ -1691,7 +1692,7 @@ production CSS hashes.
       group fixed at its shared cause, then the audit's narrow exemption list
       shrinks to zero and every sitemap page is checked in both themes. Size:
       L → one PR per group. Role: `css-refactor`, `reviewer`.
-      _2026-10-09: shipped in #378. axe failing `color-contrast` nodes at rest across all 49 built pages: light 206 -> 0, dark 587 -> 0; the `KNOWN_CONTRAST_ELEMENTS` exemption list is deleted, and the e2e audit covers every page in `sitemap.xml` (45) plus the noindex `/dashboard/`, `/styleguide/` and `/mermaid-sandbox/`, in both themes; the repaired controls are also measured on hover and focus-visible. Production CSS hash re-baselined (see `CLAUDE.md`). Not covered: gradient-clipped headline text, which axe cannot score (P15-35, open); `/playground/` is built separately and skipped._
+      _2026-10-09: shipped in #378. axe failing `color-contrast` nodes at rest across all 49 built pages: light 206 -> 0, dark 587 -> 0; the `KNOWN_CONTRAST_ELEMENTS` exemption list is deleted, and the e2e audit covers every page in `sitemap.xml` (45) plus the noindex `/dashboard/`, `/styleguide/` and `/mermaid-sandbox/`, in both themes; the repaired controls are also measured on hover and focus-visible. Production CSS hash re-baselined (see `CLAUDE.md`). Not covered: gradient-clipped headline text, which axe cannot score (P15-35, measured since); `/playground/` is built separately and skipped._
 - [x] **P15-22 · Rewrite `/merge-cookbook/` to the log-position rule.** The
       most copyable page on the site is timestamp-ordered throughout: about 20
       statements across Snowflake, BigQuery, Oracle, Postgres, MySQL and SQL
@@ -1820,12 +1821,13 @@ production CSS hashes.
       updated; no console output added. Size: S. Role: `implementer`,
       `reviewer`.
       _2026-10-09: shipped in #409. `initLegacyCopyButtons` is gone; `enhanceCodeBlocks` removes any in-`pre` `button.copy`, `.copy-btn` or `.copy-snippet`, so there is one header Copy button per block (counted on the built site: 33 blocks on failure-drills went from 3 controls each to 1). Proof: 26 unit tests in `tests/unit/modules/code-blocks.test.js`, new `tests/e2e/code-blocks.spec.js` on six pages (one visible, hit-testable, keyboard-focusable button per block; copied text equals the code), the failure-drills contrast selector updated, no console output added. Follow-ups: P15-49 to P15-51._
-- [ ] **P15-35 · Contrast of gradient-clipped headline text is unmeasured.**
+- [x] **P15-35 · Contrast of gradient-clipped headline text is unmeasured.**
       Outcome: a measured answer for `h1.type-display` and `span.accent`,
       whose text is clipped to a gradient, so axe cannot compute their
       contrast. Accept: measure by hand against the real backgrounds in both
       themes and record the ratios here; open a `css-refactor` item for any
       below 4.5:1 (3:1 for large text). Size: S. Role: `scout`, `reviewer`.
+      _2026-10-09: measured; nothing fails, so no CSS change (production hash unchanged). Only two rules in `src` use `background-clip: text`: `.hero-section h1` (`03-layout.css`; `h1.type-display` and `h1.type-hero` from the `hero` macro, 52 built pages) and `.hero h1 .accent` (`pages/styleguide.css`, one page). `scripts/measure-gradient-contrast.mjs` renders the built site and, for every fully covered glyph pixel, compares the gradient colour that pixel shows against the real background behind it (section gradient and glow included); all four are large text, so 3:1 applies. Minimum contrast (Chromium): `.hero-section h1` light 7.48 at 375 px, 7.20 at 1280 px; dark 9.46, 9.62. `.hero h1 .accent` light 4.41, 4.20; dark 6.85, 6.66. The hero also clears 4.5:1 everywhere; the styleguide accent in light dips under 4.5:1 (4.20) but is 37-62 px, so 3:1 is the bar. Guard: `tests/unit/gradient-text-contrast.test.js` fails when a new `background-clip: text` rule is added without an allowlist entry carrying a measurement. Not covered: the playground (built separately; its gradient-background `color-contrast` incompletes are tracked in the axe-in-CI item). Not done: an axe e2e addition, because axe cannot see this text at all._
 - [x] **P15-36 · Refresh `src/_data/toolVersions.mjs`.** Outcome: the
       versions match what is current. Evidence: the file has Debezium
       `3.6.1.Final` while 3.7.0.Final exists, and Kafka `4.3.0` while 4.3.1
@@ -1888,13 +1890,14 @@ production CSS hashes.
       moves `vite` to 8 and `@vitejs/plugin-react` to 6 and the playground
       builds and tests pass. Size: S. Role: `implementer`.
       _2026-10-09: shipped in #398 (only `playground/` changed)._
-- [ ] **P15-44 · Lighthouse `/intro/` performance floor ratchet after the font
+- [x] **P15-44 · Lighthouse `/intro/` performance floor ratchet after the font
       work.** Outcome: the enforced floor reflects what the page now scores.
       Accept: from at least three measured CI runs after #404, set the
       `/intro/` performance floor in `lighthouse-ci.config.json` to the median minus
       0.04 (it is 0.82 today) and bump the README badge in the same PR. Needs
       measured CI runs, not local ones. Split from P13-6. Size: S. Role:
       `implementer`.
+      _2026-10-09: floor ratcheted 0.82 to 0.84 (`/intro/` performance, `error`; accessibility 0.93 and every other URL unchanged). Data: the 10 CI `lighthouse` jobs after #413 (0506f67) on main and PR runs (37946299023, 37946323877, 37947264218, 37948092281, 37949624607, 37952657743, 37952783456, 37952792167, 37953912025, 37954004408), 3 runs each = 30 scores. Individual: min 0.78, 5th percentile 0.81, median 0.88, max 0.92. The gate asserts the best of 3 (`aggregation: optimistic`), so the quantity that matters is best-of-3 per job: 0.86 to 0.92, minimum 0.86, 5th percentile 0.87, median of job medians 0.88. Floor = median 0.88 minus 0.04 = 0.84, which is 0.02 below the lowest observed best-of-3 (a false failure needs all three runs at or below 0.83; 5 of 30 individual runs were). Applying the 5th percentile of the 30 individual scores instead would give about 0.79, a loosening, so it was not used. Local reference, not used for the floor: 10 invocations of 3 runs (30 scores) of `npm run build:lhci` output, all 0.91 to 0.92 (CI is noisier and slower). Badge in `docs/DEVELOPMENT.md` bumped to 84. Re-check after the next ~10 CI runs; raise only if best-of-3 minimum stays at or above 0.90._
 - [ ] **P15-45 · Large layout shift when the async preloaded stylesheet
       applies.** Outcome: no big shift when styles arrive late. Evidence (found
       in the #404 review): `/intro/` CLS is 0.25 under Slow 4G plus 4x CPU

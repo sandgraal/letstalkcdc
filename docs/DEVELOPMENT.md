@@ -178,7 +178,7 @@ and the Lighthouse score gate. The Lighthouse `error` floors apply to `/intro/`
 only, and this badge states them (a unit test fails if it drifts from
 `lighthouse-ci.config.json`):
 
-[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](../lighthouse-ci.config.json)
+[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2084%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](../lighthouse-ci.config.json)
 
 A floor passes if the best of the three runs reaches it (`aggregation` in
 `lighthouse-ci.config.json`, as Lighthouse CI did), because a run can be hurt by
