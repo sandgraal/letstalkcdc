@@ -166,7 +166,10 @@ with source_events as (
   {% if is_incremental() %}
   -- Bound the scan by the source log position already applied. It is >=, not >:
   -- re-reading the changes at the high-water position is harmless (the guard
-  -- below drops them) and keeps a change that shares that position. A strict
+  -- below drops them) and keeps a different key's change that shares that
+  -- position. The same key at the same lsn is dropped by the strict guard, so
+  -- if one key can have two changes at one position, store the ordinal and
+  -- compare the pair. A strict
   -- bound is not safe if changes can land in this table out of order: the
   -- late row has a lower lsn than max(source_lsn) and is skipped for good.
   -- var('lsn_lookback') subtracts a margin (default 0) to re-read further back.

@@ -32,6 +32,9 @@ const between = (src, from, to) => {
   return src.slice(i, j);
 };
 
+/** Collapse whitespace so prose assertions survive prettier reflowing. */
+const flat = (s) => s.replace(/\s+/g, " ");
+
 /** Every <pre><code> body on a page, HTML entities decoded. */
 const codeBlocks = (src) =>
   [...src.matchAll(/<code[^>]*>([\s\S]*?)<\/code>/g)]
@@ -60,7 +63,7 @@ describe("/snapshotting/ warehouse MERGE", () => {
     expect(sql).toMatch(/deleted\s*=\s*\(s\.op = 'd'\)/);
     expect(sql).not.toMatch(/WHEN MATCHED[^\n]*THEN DELETE/);
     expect(sql).toMatch(
-      /ROW_NUMBER\(\) OVER \(PARTITION BY customer_id ORDER BY lsn DESC\)/,
+      /ROW_NUMBER\(\) OVER \(PARTITION BY customer_id ORDER BY lsn DESC/,
     );
   });
 
@@ -68,11 +71,18 @@ describe("/snapshotting/ warehouse MERGE", () => {
     expect(sql).toMatch(/^-- Untested:/m);
   });
 
+  it("warns that a NULL source_lsn is never updated", () => {
+    expect(sql).toMatch(/NULL < x is[\s-]+NULL/);
+    expect(sql).toMatch(/COALESCE\(t\.source_lsn, -1\) < s\.lsn/);
+  });
+
   it("explains how snapshot rows interleave with streamed changes", () => {
-    const section = between(
-      snapshotting,
-      '<h2 id="idempotent">',
-      '<section aria-labelledby="observability">',
+    const section = flat(
+      between(
+        snapshotting,
+        '<h2 id="idempotent">',
+        '<section aria-labelledby="observability">',
+      ),
     );
     expect(section).toMatch(/interleave/);
     expect(section).toMatch(/<code>op = 'r'<\/code>/);
@@ -80,10 +90,8 @@ describe("/snapshotting/ warehouse MERGE", () => {
   });
 
   it("Gotcha covers replays and overlapping chunks, not just deletes", () => {
-    const gotcha = between(
-      snapshotting,
-      '<aside aria-label="Gotcha"',
-      "</aside>",
+    const gotcha = flat(
+      between(snapshotting, '<aside aria-label="Gotcha"', "</aside>"),
     );
     expect(gotcha).toMatch(/replay/);
     expect(gotcha).toMatch(/overlapping snapshot chunk/);
@@ -167,7 +175,7 @@ describe("/materialization/ SQL", () => {
 describe("/errata/ and the errata data", () => {
   it("does not tell readers to reconcile snapshots by version column or op_ts", () => {
     expect(errataPage).not.toMatch(/version columns or/);
-    const panel = between(errataPage, "id: 'snapshots'", "{% endcall %}");
+    const panel = flat(between(errataPage, "id: 'snapshots'", "{% endcall %}"));
     expect(panel).toMatch(/log position/);
     // op_ts may be named only to be ruled out.
     for (const m of panel.matchAll(/op_ts/g)) {
@@ -184,12 +192,10 @@ describe("/errata/ and the errata data", () => {
     expect(entry).toBeTruthy();
     expect(entry.dateModified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(entry.urls).toEqual(
-      expect.arrayContaining([
-        "/errata/",
-        "/snapshotting/",
-        "/materialization/",
-      ]),
+      expect.arrayContaining(["/snapshotting/", "/materialization/"]),
     );
+    // The callout footer links to /errata/, so it must not be shown there.
+    expect(entry.urls).not.toContain("/errata/");
     expect(entry.body).toMatch(/log position/);
     // errata.mjs rule: no root-absolute internal links (they skip `| url`).
     expect(entry.body).not.toMatch(/href="\//);

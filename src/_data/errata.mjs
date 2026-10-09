@@ -75,7 +75,7 @@ export default [
   },
   {
     id: "reconcile-by-log-position-2026-10-09",
-    urls: ["/errata/", "/snapshotting/", "/materialization/"],
+    urls: ["/snapshotting/", "/materialization/"],
     title: "Corrected: reconcile by log position, not a timestamp",
     dateModified: "2026-10-09",
     body: `<p>Several examples ordered or reconciled changes by a

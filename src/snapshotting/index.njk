@@ -516,6 +516,9 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
 -- and PostgreSQL 15+. Assumes dw.customers has a primary key customer_id, a
 -- deleted flag, a source_lsn column that is never NULL, and nullable name and
 -- email (a delete carries no row values). Readers filter deleted = FALSE.
+-- If you add source_lsn to an existing table, backfill it first: NULL < x is
+-- NULL, so a row with a NULL source_lsn would never be updated. Or compare
+-- COALESCE(t.source_lsn, -1) < s.lsn.
 -- lsn is the log position copied from the event as-is, never a clock time.
 -- If you keep a source updated_at as a data column, copy it but never
 -- compare it.
