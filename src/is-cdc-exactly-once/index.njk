@@ -1,0 +1,475 @@
+---
+layout: base.njk
+title: "Is CDC Exactly-Once? Per Hop"
+description: "Scope any exactly-once claim hop by hop: Debezium's opt-in Kafka Connect mode, Kafka transactions, offsets in the sink, and how to verify."
+canonicalPath: "/is-cdc-exactly-once/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section id="claims" aria-labelledby="claims-title">
+    <h2 id="claims-title">Read the sentence before you trust it</h2>
+    <p>
+      Debezium's documentation says it provides <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a>
+      delivery. A vendor page says its service delivers &ldquo;with exactly-once semantics&rdquo;. Both
+      can be true, because a guarantee belongs to a <em>hop</em>, not to a pipeline. This page is the
+      companion to <a href="{{ '/exactly-once/#per-hop' | url }}">Exactly-Once Semantics</a>: that page
+      gives the summary table and the idempotent-consumer patterns, and this one goes down to the
+      settings, shows what each guarantee covers, and ends with how to check what <em>your</em> pipeline
+      gives.
+    </p>
+    <p>
+      Five questions scope any exactly-once sentence:
+    </p>
+    <ol>
+      <li><strong>Which hop?</strong> Database to connector, connector to topic, topic to topic, topic to sink, or the sink's own store.</li>
+      <li><strong>Which producer or connector, and is the opt-in switched on?</strong> Many guarantees are off by default.</li>
+      <li><strong>Which sink?</strong> Does it share a transaction with the offsets, or only receive a call?</li>
+      <li><strong>What happens on failover?</strong> A crash, a restart, a rebalance, a second worker that thinks it owns the task.</li>
+      <li><strong>What dedupes, on which key, ordered by what?</strong> The answer that matters at the end is a primary key and a source log position, not a timestamp.</li>
+    </ol>
+    <table>
+      <caption>Phrases you will meet, and the question each one needs</caption>
+      <thead>
+        <tr>
+          <th scope="col">Phrase</th>
+          <th scope="col">What it leaves open</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">&ldquo;delivers events to your destination with exactly-once semantics&rdquo;</th>
+          <td>Which hop, and which destination. Is the destination write idempotent, or does the service only retry until it is acknowledged?</td>
+        </tr>
+        <tr>
+          <th scope="row">&ldquo;restart from the last successfully processed LSN, guaranteeing that every change is captured exactly once without data loss or duplication&rdquo;</th>
+          <td>Captured by what, and processed where? A restart position makes the read side resumable; it says nothing about duplicates that the restart itself can cause, or about the destination.</td>
+        </tr>
+        <tr>
+          <th scope="row">&ldquo;Exactly-once processing&rdquo; (stream processors)</th>
+          <td>Exactly-once inside which system? For Kafka Streams it is Kafka topics and state stores, not an external database.</td>
+        </tr>
+        <tr>
+          <th scope="row">&ldquo;Transactional&rdquo;</th>
+          <td>Whose transaction, spanning what? A Kafka transaction does not include your database.</td>
+        </tr>
+        <tr>
+          <th scope="row">&ldquo;Idempotent&rdquo;</th>
+          <td>Idempotent on which key, and does a replay of an older change overwrite a newer row?</td>
+        </tr>
+        <tr>
+          <th scope="row">&ldquo;No duplicates&rdquo;</th>
+          <td>Visible to whom? A default Kafka consumer reads records from aborted transactions.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      The first two phrases come from
+      <a href="https://streamkap.com/resources-and-guides/sql-server-cdc-setup-guide" target="_blank" rel="noopener">Streamkap's SQL Server CDC guide</a> and
+      <a href="https://cloud.google.com/discover/what-is-change-data-capture" target="_blank" rel="noopener">Google Cloud's change data capture explainer</a>
+      (read 2026-10-09). They are examples of wording that leaves the hop and the mechanism open, not
+      claims we found to be wrong. Streamkap's sentence names a destination but no mechanism, and its
+      page does not mention at-least-once delivery or idempotent writes. Google's sentence is about
+      restarting the read from the log and does not mention a destination.
+    </p>
+    <p class="callout">
+      <strong>As of:</strong> 2026-10-09, against the Debezium 3.7 documentation (the exactly-once page exists
+      for Debezium 3.3 to 3.7 and is absent from 3.2) and the Apache Kafka 4.1 documentation. These
+      pages change; if a setting below does not match your version, trust your version's documentation.
+    </p>
+  </section>
+
+  <section id="hops" aria-labelledby="hops-title">
+    <h2 id="hops-title">Four hops, and what each guarantee means</h2>
+    <table>
+      <caption>What a CDC pipeline guarantees at each hop, by default and with the opt-ins</caption>
+      <thead>
+        <tr>
+          <th scope="col">Hop</th>
+          <th scope="col">Default</th>
+          <th scope="col">What can change it</th>
+          <th scope="col">What you still do</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">1. Database to connector (reading the log)</th>
+          <td>
+            At-least-once. Debezium's page says no changes are missed but a record may be delivered
+            more than once, and its FAQ explains why: after a crash the connector restarts from the last
+            position it managed to record.
+          </td>
+          <td>Nothing in Debezium. The page states that Debezium has no internal deduplication layer.</td>
+          <td>Carry the source log position on every event (<a href="{{ '/event-envelope/' | url }}">event envelope</a>) so a replay can be recognised later.</td>
+        </tr>
+        <tr>
+          <th scope="row">2. Connector to Kafka topic</th>
+          <td>
+            At-least-once. Without the opt-in, Kafka Connect writes the records and then, separately,
+            the source offsets, so an interruption between the two repeats the records on restart
+            (KIP-618).
+          </td>
+          <td>
+            The opt-in Kafka Connect exactly-once source mode, <a href="#connect-eos">next section</a>.
+            Documented by Debezium from 3.3, with caveats.
+          </td>
+          <td>Read the topic with <code>isolation.level=read_committed</code> if you opt in, and still treat the topic as possibly duplicated.</td>
+        </tr>
+        <tr>
+          <th scope="row">3. Topic to sink (the consumer side)</th>
+          <td>
+            At-least-once. Kafka delivers at-least-once unless the writes and the offsets commit together.
+            Kafka Connect has no exactly-once framework for sinks: whether one provides it depends on the
+            connector. Debezium's JDBC sink documents at-least-once delivery.
+          </td>
+          <td>
+            Inside Kafka: transactions and Kafka Streams <code>exactly_once_v2</code>
+            (<a href="#kafka-to-kafka">below</a>). To an external system: only the sink's cooperation.
+          </td>
+          <td>Make the write idempotent (<a href="#sink">sink section</a>).</td>
+        </tr>
+        <tr>
+          <th scope="row">4. Sink to its own store</th>
+          <td>Whatever the store's transaction gives you. A single database transaction is atomic.</td>
+          <td>Storing the consumed offsets in the same transaction as the rows, where the sink supports transactions.</td>
+          <td>Upsert on the primary key, apply only if the incoming source log position is newer, keep deletes as markers.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Nothing in the table adds up to a single transaction from the database to the sink. The guarantee
+      across independent systems is not achievable as delivery; the achievable thing is
+      <a href="{{ '/glossary/#effectively-once' | url }}">effectively-once</a> processing: duplicates
+      may arrive, and the sink makes them harmless.
+    </p>
+  </section>
+
+  <section id="connect-eos" aria-labelledby="connect-eos-title">
+    <h2 id="connect-eos-title">Hop 2 in practice: the Kafka Connect opt-in</h2>
+    <p>
+      Kafka Connect supports exactly-once for source connectors from version 3.3.0, in distributed mode
+      only (<a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-618%3A+Exactly-Once+Support+for+Source+Connectors" target="_blank" rel="noopener">KIP-618</a>,
+      built on the transactions of <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging" target="_blank" rel="noopener">KIP-98</a>).
+      Debezium's page documents it for the MariaDB, MongoDB, MySQL, Oracle, PostgreSQL and SQL Server
+      connectors. The settings it lists:
+    </p>
+<pre><code># Every Connect worker (distributed mode, Connect 3.3.0 or later)
+exactly.once.source.support=enabled
+
+# The connector configuration, added to your existing Debezium settings
+"exactly.once.support": "required",
+"transaction.boundary": "poll"        # the default; Debezium requires poll</code></pre>
+    <h3>What the framework does when you switch it on</h3>
+    <ul>
+      <li>
+        <strong>Records and offsets commit together.</strong> With the default <code>poll</code> boundary
+        Connect starts a Kafka transaction for each batch a task returns from <code>poll</code>, writes the
+        batch and its source offsets inside it, and commits. After a crash either both are there or
+        neither is, so a restarted task resumes from an offset that matches what is in the topic.
+      </li>
+      <li>
+        <strong>Zombie tasks are <a href="{{ '/glossary/#fencing' | url }}">fenced</a>.</strong> Each task gets a transactional ID of the form
+        <code>&lt;group.id&gt;-&lt;connector&gt;-&lt;task id&gt;</code>. A new producer with that ID bars the
+        older one from writing, which stops a task that has been replaced but is still running.
+      </li>
+      <li>
+        <strong>The check happens before you start.</strong> With <code>exactly.once.support=required</code>
+        the framework asks the connector whether it can provide exactly-once with that configuration. If it
+        cannot, or the worker validating the request does not have exactly-once enabled, the request to
+        create or validate the connector fails instead of silently running at-least-once.
+      </li>
+      <li>
+        <strong>Rolling out is two steps on an existing cluster.</strong> Set
+        <code>exactly.once.source.support=preparing</code> on every worker first, then <code>enabled</code>.
+        The workers and the connectors also need ACLs for the transactional IDs and the offsets topic, which
+        Debezium's page leaves to the Kafka documentation.
+      </li>
+    </ul>
+    <p>
+      The framework can only do this for a connector that provides meaningful source offsets for each
+      record and can resume from exactly the position an offset names, which is why the Kafka documentation
+      says exactly-once source support &ldquo;is highly dependent on the type of connector you run&rdquo;.
+    </p>
+    <h3>What it does not do</h3>
+    <ul>
+      <li>It covers the connector-to-topic hop. It does nothing for the sink, and the topic you read may still contain duplicates produced by other paths (an upstream replay, a re-snapshot you triggered, a second connector).</li>
+      <li>A consumer on the default <code>isolation.level=read_uncommitted</code> returns records from aborted transactions too. A Kafka Connect sink must set <code>consumer.isolation.level=read_committed</code> to benefit.</li>
+      <li>A <code>read_committed</code> consumer returns messages only up to the last stable offset, so it sees a batch only after that batch's transaction has committed.</li>
+    </ul>
+    <h3>The caveats Debezium itself lists</h3>
+    <p>
+      Debezium's page has a &ldquo;Known issues and considerations&rdquo; section. In short: it says it is
+      unclear whether the implementation is fully correct, that no comprehensive study has analysed the
+      correctness of transactions in recent Kafka releases, and that two Jepsen reports (on Redpanda and on
+      Bufstream) raise concerns about the Kafka protocol and its implementations, particularly for Bufstream.
+      It lists three Apache Kafka issues as open and reasons that, since Connect relies on Kafka transactions,
+      they may affect Connect too. Their status in Apache JIRA on 2026-10-09:
+    </p>
+    <table>
+      <caption>The three Kafka issues Debezium's page lists, as JIRA showed them on 2026-10-09</caption>
+      <thead>
+        <tr>
+          <th scope="col">Issue</th>
+          <th scope="col">Title in JIRA</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><a href="https://issues.apache.org/jira/browse/KAFKA-17754" target="_blank" rel="noopener">KAFKA-17754</a></th>
+          <td>A delayed EndTxn message can cause aborted read, lost writes, atomicity violation</td>
+          <td>Resolved (Fixed) on 2026-08-12. A committer's comment there says it &ldquo;should be resolved by KIP-890 and its related followups&rdquo;; no fix version is recorded, so check your broker release.</td>
+        </tr>
+        <tr>
+          <th scope="row"><a href="https://issues.apache.org/jira/browse/KAFKA-17734" target="_blank" rel="noopener">KAFKA-17734</a></th>
+          <td>KafkaConsumer.close(0) can block indefinitely in ConsumerNetworkClient.poll</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <th scope="row"><a href="https://issues.apache.org/jira/browse/KAFKA-17582" target="_blank" rel="noopener">KAFKA-17582</a></th>
+          <td>Unpredictable consumer position after transaction abort</td>
+          <td>Open</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The Debezium page lists all three as open, so the page and JIRA disagree on the first. This page does not
+      know whether the two open ones affect a Debezium connector in practice, and neither does Debezium's page:
+      it says it is reasonable to assume they might. That is why the opt-in is a reason to test, not a reason to
+      drop the idempotent sink. <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-890%3A+Transactions+Server-Side+Defense" target="_blank" rel="noopener">KIP-890</a>
+      describes the delayed-message problem and the server-side defense (a new epoch for each transaction).
+    </p>
+  </section>
+
+  <section id="kafka-to-kafka" aria-labelledby="kafka-to-kafka-title">
+    <h2 id="kafka-to-kafka-title">Inside Kafka: transactions, offsets and read_committed</h2>
+    <p>
+      If a step reads a topic and writes another topic (a filter, an enrichment, a join), Kafka can make
+      that step exactly-once, and Kafka's design documentation is explicit about where it stops.
+    </p>
+    <ul>
+      <li>
+        <strong>The idempotent producer is not enough on its own.</strong> <code>enable.idempotence</code>
+        defaults to <code>true</code> in current Kafka and removes duplicates from producer retries, but KIP-98
+        notes that the guarantee holds within a single producer session: a restarted producer gets a new
+        producer ID.
+      </li>
+      <li>
+        <strong>A transactional producer</strong> (a <a href="{{ '/glossary/#kafka-transaction' | url }}">Kafka transaction</a>) sets <code>transactional.id</code>, which also makes a restarted
+        instance abort its predecessor's in-flight transaction. It writes the output records and calls
+        <code>sendOffsetsToTransaction</code> so the consumer's offsets commit atomically with them
+        (<a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics" target="_blank" rel="noopener">KIP-447</a>
+        lets the producer pass the consumer's group metadata). The consumer needs
+        <code>isolation.level=read_committed</code> and <code>enable.auto.commit=false</code>.
+      </li>
+      <li>
+        <strong>Kafka Streams</strong> does this for you: <code>processing.guarantee=exactly_once_v2</code>
+        (the default is <code>at_least_once</code>; v2 needs brokers 2.5 or newer). The documentation scopes it
+        to the input offsets, the state stores and the output topics, committed atomically.
+      </li>
+    </ul>
+    <p>
+      The scope is the sentence to remember: the Kafka documentation says exactly-once delivery
+      &ldquo;for other destination systems generally requires cooperation with such systems&rdquo;. A processor that
+      also writes to a database, a warehouse load or an HTTP endpoint is outside the transaction.
+    </p>
+  </section>
+
+  <section id="sink" aria-labelledby="sink-title">
+    <h2 id="sink-title">Hop 3 and 4: the sink, where it ends</h2>
+    <p>
+      Kafka Connect's documentation says it can provide exactly-once for sink connectors, but it depends on the
+      connector, and the one framework-level instruction is the consumer isolation level. Debezium's JDBC sink
+      says it guarantees events are processed at least once, tells you that after a restart or rebalance it can
+      receive the same event again, and tells you to set <code>insert.mode=upsert</code> to make the writes
+      idempotent. Its <code>delete.enabled</code> setting is off by default, so out of the box a delete event does
+      not remove the row. The page describes upsert as an update-or-insert on the primary key; it does not describe
+      comparing a source log position, so read your sink's documentation for what happens when an older change
+      arrives after a newer one.
+    </p>
+    <h3>Offsets in the sink's transaction</h3>
+    <p>
+      Kafka's own documentation describes the pattern for a destination that has transactions
+      (<a href="{{ '/glossary/#offsets-in-sink-transaction' | url }}">offsets in the sink transaction</a>): let the consumer
+      store its offset in the same place as its output, because a two-phase commit between the offset store and the
+      output is usually not available. For a relational database, the <code>KafkaConsumer</code> documentation says
+      this lets you commit the result and the offset in a single transaction, and it lists the steps: set
+      <code>enable.auto.commit=false</code>, save the position with each write, and on restart or assignment
+      <code>seek</code> to it. The Kafka design documentation gives a Connect connector that writes data and offsets to
+      HDFS together as its example.
+    </p>
+    <p>
+      Here is that pattern with a position guard added. The statements use PostgreSQL syntax
+      (<a href="https://www.postgresql.org/docs/current/sql-insert.html" target="_blank" rel="noopener"><code>INSERT ... ON CONFLICT DO UPDATE ... WHERE</code></a>);
+      the table and column names are examples. One transaction per Kafka record, or per batch:
+    </p>
+<pre><code>CREATE TABLE customers (
+  id       bigint PRIMARY KEY,
+  name     text,
+  deleted  boolean NOT NULL DEFAULT false,   -- a delete is a marker, not a DELETE
+  src_lsn  bigint  NOT NULL                  -- source log position of the last applied change
+);
+CREATE TABLE sink_offsets (
+  topic text, part int, next_offset bigint NOT NULL,
+  PRIMARY KEY (topic, part)
+);
+
+BEGIN;
+INSERT INTO customers (id, name, deleted, src_lsn)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name, deleted = EXCLUDED.deleted, src_lsn = EXCLUDED.src_lsn
+  WHERE customers.src_lsn &lt; EXCLUDED.src_lsn;      -- older or equal position: no-op
+INSERT INTO sink_offsets (topic, part, next_offset)
+VALUES ($5, $6, $7)                                  -- the record's offset + 1
+ON CONFLICT (topic, part) DO UPDATE SET next_offset = EXCLUDED.next_offset;
+COMMIT;</code></pre>
+    <p>
+      On start or partition assignment, read <code>next_offset</code> from <code>sink_offsets</code> and
+      <code>seek</code> there. Run on one customer key, the same two statements behave like this (the logic was run
+      in SQLite 3.54, which accepts the same <code>ON CONFLICT ... WHERE</code> form; it was not run on PostgreSQL):
+    </p>
+    <table>
+      <caption>One key, four Kafka records, and what the two guards each catch</caption>
+      <thead>
+        <tr>
+          <th scope="col">Kafka offset</th>
+          <th scope="col">Change (source position)</th>
+          <th scope="col">Row after</th>
+          <th scope="col">Which guard acted</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">40</th><td>name = a, position 100</td><td>a, 100</td><td>None needed: first write.</td></tr>
+        <tr><th scope="row">41</th><td>name = b, position 110</td><td>b, 110</td><td>None needed: newer position.</td></tr>
+        <tr><th scope="row">57</th><td>name = b, position 110 (the source re-emitted the same change after a crash)</td><td>b, 110 (0 rows changed)</td><td>Position guard. The offset is new, so the offset table cannot recognise it.</td></tr>
+        <tr><th scope="row">58</th><td>name = a, position 100, arriving late</td><td>b, 110 (0 rows changed)</td><td>Position guard.</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The two guards cover different failures. Storing the offset with the row means a consumer that crashes
+      between the write and the offset commit cannot leave them out of step: the transaction rolled back or it
+      did not. It does not help with a duplicate that is already in the topic at a different offset, because that
+      is a different Kafka record. The position guard is what turns that into a no-op, and it also covers
+      backfills and replays that rewind the consumer. That is why the idempotent, position-ordered upsert stays
+      required even where the first hop is exactly-once. For deletes, keep the row with <code>deleted = true</code> so an
+      older change cannot bring it back; the <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> and
+      <a href="{{ '/materialization/' | url }}">materialization</a> pages show the same guard in warehouse
+      <code>MERGE</code> form.
+    </p>
+  </section>
+
+  <section id="decide" aria-labelledby="decide-title">
+    <h2 id="decide-title">What guarantee do I really have?</h2>
+    <p>Answer these in order; each one says what you can claim.</p>
+    <ol>
+      <li>
+        <strong>Is there a step that reads a topic and writes a topic, using a transactional producer or Kafka Streams
+        with <code>exactly_once_v2</code>?</strong> Then that step is exactly-once with respect to its input and output
+        topics, as long as every consumer of the output reads <code>read_committed</code>. Claim that, and nothing past
+        the topic.
+      </li>
+      <li>
+        <strong>Is the destination an external system (database, warehouse, search index, HTTP call)?</strong>
+        You do not have exactly-once delivery. Go to 3.
+      </li>
+      <li>
+        <strong>Can the destination hold your consumer offsets in the same transaction as the data?</strong> If yes, a
+        consumer crash cannot double-apply or skip a record. If no, a crash between the write and the offset commit
+        repeats a record, and only the guard in step 5 protects you.
+      </li>
+      <li>
+        <strong>Is the connector-to-topic opt-in off, or on?</strong> Off: the topic can contain duplicates after a
+        connector crash. On: fewer, with the caveats above; still assume some.
+      </li>
+      <li>
+        <strong>Is the write an upsert on the primary key, applied only if the incoming source log position is
+        newer, with deletes kept as markers?</strong> If yes, you have <em>exactly-once processing</em> for this sink:
+        any duplicate or replay leaves the same table. If no, you have whatever the sink's default is, and an older
+        change can overwrite a newer one.
+      </li>
+    </ol>
+    <p>
+      Step 5 is the one that holds regardless of the answers to 3 and 4, which is why the rest of this site treats
+      at-least-once as the default and the idempotent sink as the guarantee.
+    </p>
+  </section>
+
+  <section id="verify" aria-labelledby="verify-title">
+    <h2 id="verify-title">Verify what your pipeline gives</h2>
+    <p>
+      A configuration that says &ldquo;required&rdquo; does not prove behaviour. Three checks, in the order of
+      cost. None of these ran against a live Debezium and Kafka stack for this page; the commands are written from
+      the Kafka tool documentation, and the <code>jq</code> pipeline was run on a three-line sample only.
+    </p>
+    <ol>
+      <li>
+        <strong>Look for duplicates in the topic.</strong> Duplicates from the source show up as the same key and the
+        same source position at two different offsets. With the JSON converter and schemas enabled the path is
+        <code>.payload</code>; adjust it for your converter.
+<pre><code>kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+  --topic dbserver1.public.customers --from-beginning --timeout-ms 10000 \
+  --isolation-level read_committed \
+| jq -r '[.payload.source.lsn, .payload.op, (.payload.after.id // .payload.before.id)] | @tsv' \
+| sort | uniq -d</code></pre>
+        Every line printed is a change that appears more than once. Run it again with
+        <code>--isolation-level read_uncommitted</code> to see what a default consumer sees: with the opt-in on, the
+        difference is records from aborted transactions.
+      </li>
+      <li>
+        <strong>Inject the duplicates yourself.</strong> Stop the sink connector, rewind its consumer group, start it
+        and compare the table with a copy taken before. The Kafka documentation describes
+        <code>kafka-consumer-groups.sh --reset-offsets --to-earliest --execute</code> (the consumer instances must be
+        inactive). If the table changes, the sink is not idempotent. This is the cheapest test of the claim that
+        matters.
+      </li>
+      <li>
+        <strong>Kill the connector mid-batch.</strong> Send <code>SIGKILL</code> to the Connect worker while changes are
+        flowing, restart it, and run check 1. With the opt-in off you expect duplicates if the kill landed between
+        writing records and recording offsets; with it on you expect none visible to a <code>read_committed</code>
+        consumer. Fail the run if you injected no duplicates, since then the sink was never exercised. The
+        <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a> gives you a stack to try it on, and the
+        <a href="{{ '/ops-offsets/' | url }}">offsets and replays</a> page covers rewinds.
+      </li>
+    </ol>
+  </section>
+
+  <section id="try-it" aria-labelledby="try-it-title">
+    <h2 id="try-it-title">See the failure and the fix</h2>
+    <p>
+      The <a href="{{ '/exactly-once/#demo' | url }}">interactive demo on the Exactly-Once page</a> steps through
+      a consumer that writes to the sink, crashes before committing its offset, and re-processes the message, then
+      shows the idempotent version. It demonstrates the sink side of hop 3; it does not simulate the Kafka Connect
+      opt-in.
+    </p>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="{{ '/exactly-once/#per-hop' | url }}">Exactly-Once Semantics</a>: the summary table, the demo, idempotent consumers and the outbox.</li>
+      <li><a href="{{ '/errata/' | url }}">Errata</a>: corrections to wording about exactly-once and effectively-once.</li>
+      <li><a href="{{ '/event-envelope/' | url }}">Event envelope</a> and <a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a>: the position fields and rewinds.</li>
+      <li>Glossary: <a href="{{ '/glossary/#kafka-transaction' | url }}">Kafka transaction</a>, <a href="{{ '/glossary/#fencing' | url }}">fencing</a>, <a href="{{ '/glossary/#offsets-in-sink-transaction' | url }}">offsets in the sink transaction</a>, <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a>, <a href="{{ '/glossary/#deduplication' | url }}">deduplication</a>, <a href="{{ '/glossary/#upsert' | url }}">upsert</a>, <a href="{{ '/glossary/#idempotent-write' | url }}">idempotent write</a>.</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/configuration/eos.html" target="_blank" rel="noopener">Debezium: Exactly-once delivery</a>: scope, prerequisites, connectors, known issues.</li>
+      <li><a href="https://debezium.io/documentation/faq/" target="_blank" rel="noopener">Debezium FAQ</a>: why consumers must expect duplicate events.</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/connectors/jdbc.html" target="_blank" rel="noopener">Debezium JDBC sink</a>: at-least-once delivery, idempotent writes, delete mode.</li>
+      <li><a href="https://kafka.apache.org/41/kafka-connect/user-guide/" target="_blank" rel="noopener">Kafka Connect user guide</a>: exactly-once support, worker settings, ACLs, sink isolation level.</li>
+      <li><a href="https://kafka.apache.org/41/kafka-connect/connector-development-guide/" target="_blank" rel="noopener">Kafka Connect connector development guide</a>: exactly-once source connectors, transaction boundaries, preflight validation.</li>
+      <li><a href="https://kafka.apache.org/41/design/design/" target="_blank" rel="noopener">Kafka design: message delivery semantics and using transactions</a>.</li>
+      <li><a href="https://kafka.apache.org/41/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html" target="_blank" rel="noopener">KafkaConsumer</a>: storing offsets outside Kafka.</li>
+      <li><a href="https://kafka.apache.org/41/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html" target="_blank" rel="noopener">KafkaProducer</a>: <code>sendOffsetsToTransaction</code>.</li>
+      <li><a href="https://kafka.apache.org/41/streams/core-concepts/" target="_blank" rel="noopener">Kafka Streams core concepts</a> and <a href="https://kafka.apache.org/41/streams/developer-guide/config-streams/" target="_blank" rel="noopener">configuration</a>: processing guarantees and <code>processing.guarantee</code>.</li>
+      <li><a href="https://kafka.apache.org/41/operations/basic-kafka-operations/" target="_blank" rel="noopener">Kafka basic operations</a>: resetting consumer group offsets.</li>
+      <li><a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging" target="_blank" rel="noopener">KIP-98</a>, <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics" target="_blank" rel="noopener">KIP-447</a>, <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-618%3A+Exactly-Once+Support+for+Source+Connectors" target="_blank" rel="noopener">KIP-618</a>, <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-890%3A+Transactions+Server-Side+Defense" target="_blank" rel="noopener">KIP-890</a>.</li>
+      <li><a href="https://www.postgresql.org/docs/current/sql-insert.html" target="_blank" rel="noopener">PostgreSQL INSERT</a>: <code>ON CONFLICT DO UPDATE ... WHERE</code>.</li>
+    </ul>
+  </section>
+</div>
