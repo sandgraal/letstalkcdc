@@ -9,7 +9,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import toolVersions from "../../src/_data/toolVersions.mjs";
-import pkg from "../../src/_data/pkg.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -110,18 +109,11 @@ describe("toolVersions: what the labs pin", () => {
     for (const tag of tags) expect(tag).toBe(tested.postgresMajor);
   });
 
-  it("feeds the lab page note from the pins, never from the latest releases", () => {
-    expect(pkg.confluentPlatform).toBe(tested.confluentPlatform);
-    expect(pkg.kafka).toBe(tested.apacheKafka);
-    expect(pkg.debeziumConnect).toBe(tested.debeziumConnect);
-    expect(pkg.pgMajor).toBe(tested.postgresMajor);
-  });
-
-  it("words the lab page note as pins, not as a test result", () => {
+  it("builds the lab page note from the pins, worded as pins not a test result", () => {
     // No CI job starts the labs, so the note must not say "Tested with".
     const note = read(LAB_PAGE).match(/<div class="note">([\s\S]*?)<\/div>/)[1];
-    expect(note).toContain("{{ pkg.confluentPlatform }}");
-    expect(note).toContain("{{ pkg.debeziumConnect }}");
+    expect(note).toContain("{{ toolVersions.tested.confluentPlatform }}");
+    expect(note).toContain("{{ toolVersions.tested.debeziumConnect }}");
     expect(note).not.toMatch(/Tested with/i);
   });
 });
