@@ -1622,7 +1622,7 @@ production CSS hashes.
       is re-baselined. Verify: axe in both themes, `/css-byte-check`, e2e,
       screenshots. Size: M. Role: `css-refactor`, `reviewer`.
       _2026-10-09: shipped in #349 (`#0c8dbd` → `#0a7299`, light theme only; the global `color-contrast` exemption is removed and the e2e audit runs both themes). Production CSS hash is now `424e77a0…`. The contrast failures that are not the accent are P15-21._
-- [ ] **P15-17 · Tighten `/partitioning/#recon` to the site's thesis.**
+- [x] **P15-17 · Tighten `/partitioning/#recon` to the site's thesis.**
       Outcome: no page contradicts the standing rule. Accept: the section
       says a sink's version guard orders by **log position**, not a timestamp
       (it currently says "a transaction ID or a precise timestamp"); every
@@ -1631,6 +1631,7 @@ production CSS hashes.
       `ts_ms`; no end-to-end exactly-once). Then the assistant's
       `idempotent_sink` intent may link there. Size: S. Role: `implementer`,
       `reviewer`.
+      _2026-10-09: shipped in #352 (`/partitioning/#recon`) and #357 (the pages that still taught a timestamp as the ordering key). The section now says the version guard compares the source log position per database, not a timestamp and not a Kafka offset; two independent technical reviews re-read every statement against the thesis (the first caught an unsafe offset guard in the first fix). The optional link from the assistant's `idempotent_sink` intent was not added._
 - [x] **P15-18 · Give the reviewing roles room to finish.** Outcome: a
       thorough review is not cut off mid-experiment. Accept: `maxTurns` on
       `reviewer` and `implementer` is raised (60 → 100 and 30 → 60 are the
@@ -1793,7 +1794,7 @@ production CSS hashes.
       backlog shows lag; lane events are no longer appended twice. Size: M.
       Role: `implementer`, `reviewer`.
       _2026-10-09: shipped in #384. Slice B is P16-27._
-- [ ] **P15-33 · Design question: `.cta-button`, `.btn-primary` and
+- [x] **P15-33 · Design question: `.cta-button`, `.btn-primary` and
       `.btn-secondary` have no CSS.** Outcome: a decision on whether those
       calls to action should look like buttons. Evidence (review): the classes
       are used on `/` and `/observability/` and match no rule, so they render
@@ -1802,13 +1803,15 @@ production CSS hashes.
       re-baselined) or "change the markup to the existing button classes".
       Size: S. Role: maintainer decision, then `css-refactor` or
       `implementer`.
-- [ ] **P15-34 · Duplicate "Copy" buttons on code blocks.** Outcome: each code
+      _2026-10-09: shipped in #407 on the maintainer's "go with the defaults": the markup now uses the existing `.button primary` / `.button secondary` classes (6 module cards on `/`, 7 links on `/observability/`); no CSS changed, so the production CSS hash stayed at `83943ab3…`. `tests/unit/button-classes.test.js` fails if the three class names return, and the e2e button-contrast audit now covers `/observability/`. Left over: the adjacent primary and secondary buttons on `/observability/` sit close together at desktop widths (a gap rule would need `css-refactor`)._
+- [x] **P15-34 · Duplicate "Copy" buttons on code blocks.** Outcome: each code
       block has one Copy button. Evidence (review): `initLegacyCopyButtons`
       runs before `enhanceCodeBlocks`, so both add a button. Accept: the
       legacy path is removed or skipped when the enhanced one applies; the
       `code-blocks` unit tests cover it; the failure-drills e2e selector is
       updated; no console output added. Size: S. Role: `implementer`,
       `reviewer`.
+      _2026-10-09: shipped in #409. `initLegacyCopyButtons` is gone; `enhanceCodeBlocks` removes any in-`pre` `button.copy`, `.copy-btn` or `.copy-snippet`, so there is one header Copy button per block (counted on the built site: 33 blocks on failure-drills went from 3 controls each to 1). Proof: 26 unit tests in `tests/unit/modules/code-blocks.test.js`, new `tests/e2e/code-blocks.spec.js` on six pages (one visible, hit-testable, keyboard-focusable button per block; copied text equals the code), the failure-drills contrast selector updated, no console output added. Follow-ups: P15-49 to P15-51._
 - [ ] **P15-35 · Contrast of gradient-clipped headline text is unmeasured.**
       Outcome: a measured answer for `h1.type-display` and `span.accent`,
       whose text is clipped to a gradient, so axe cannot compute their
@@ -1899,7 +1902,8 @@ production CSS hashes.
       Confluent) and PostgreSQL 15, while the pages teach Debezium 3.x
       behaviour (`no_data` snapshot mode, exactly-once support from 3.3, the
       outbox router). Debezium images past 3.0.0.Final are on quay.io, not
-      Docker Hub. Accept: upgrade the sandbox compose files and the
+      Docker Hub, and the `2.7` tag the labs use does not exist on Docker Hub
+      either (quay.io only; a fix for the lab note is in progress in #408). Accept: upgrade the sandbox compose files and the
       quickstart / lab connector configs to Debezium 3.x (and say so in
       `toolVersions.mjs` `tested`, which a unit test ties to the compose
       files), then re-run each lab; until then every page that depends on a 3.x
@@ -1923,6 +1927,30 @@ production CSS hashes.
       `snapshot-to-stream` description is also listed under P16-27). The
       review texts were not recorded in the PRs: re-read each review, fix what
       still applies, and delete the rest. Size: S. Role: `scout`,
+      `implementer`.
+
+- [ ] **P15-49 · Copy confirmation is not announced to screen readers.**
+      Outcome: a keyboard or screen-reader user learns that the copy worked.
+      Evidence (review of #409): the copy-button toast has no `role` or
+      `aria-live`, and the header button's `aria-label` hides its visible
+      "Copied!" text from screen readers. Accept: the toast is a polite live
+      region (or the button label changes with `aria-live`) in
+      `src/assets/js/modules/toast.js` and `code-blocks.js`; a unit test
+      asserts the announcement and `tests/e2e/code-blocks.spec.js` checks it
+      on one page. Size: S. Role: `implementer`, `reviewer`.
+- [ ] **P15-50 · Dead copy-button CSS.** Outcome: no rule for markup that no
+      longer exists. Evidence (review of #409): the `.copy-snippet` rules in
+      `src/assets/css/components/code-block.css` and `.copy-btn` in
+      `src/assets/css/pages/snapshotting.css` have no matching element after
+      #409. Accept: remove both, with the production CSS hash re-baselined
+      (it will change) and recorded in `CLAUDE.md` and
+      `.claude/commands/css-byte-check.md`. Size: S. Role: `css-refactor`.
+- [ ] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
+      Outcome: the one-copy-button test covers every page with code blocks.
+      Evidence (review of #409): the `PAGES` list in
+      `tests/e2e/code-blocks.spec.js` omits `/troubleshooting/`, which has the
+      same markup as `/troubleshooting/failure-drills/`. Accept: add it (or
+      derive the list from the sitemap) and the spec passes. Size: S. Role:
       `implementer`.
 
 ### Ordering
