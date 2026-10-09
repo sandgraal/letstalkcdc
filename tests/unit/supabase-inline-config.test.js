@@ -29,9 +29,13 @@ const render = (supabase) => env.renderString(fragment, { supabase });
 
 /** Run the emitted <script> body against a fake window and return it. */
 function evaluate(html) {
-  const body = html
-    .replace(/^[\s\S]*?<script\b[^>]*>/i, "")
-    .replace(/<\/script\b[^>]*>[\s\S]*$/i, "");
+  // Plain string search, not a regex: the template emits one lowercase
+  // <script> element, and hostile values must already have been neutralised
+  // so no second closing tag exists for lastIndexOf to land on.
+  const open = html.indexOf("<script");
+  const bodyStart = html.indexOf(">", open) + 1;
+  const bodyEnd = html.lastIndexOf("</script");
+  const body = html.slice(bodyStart, bodyEnd);
   const win = {};
   new Function("window", body)(win);
   return win;
