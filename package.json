@@ -55,7 +55,7 @@
     "nunjucks": "^3.2.4",
     "pa11y-ci": "^4.1.1",
     "postcss": "^8.5.26",
-    "postcss-cli": "^11.0.0",
+    "postcss-cli": "^12.0.0",
     "postcss-import": "^17.0.0",
     "prettier": "^3.8.1",
     "rimraf": "^6.1.3",
