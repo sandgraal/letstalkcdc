@@ -116,6 +116,113 @@ intents:
         anchor: "#offset-surgery"
         preview: Advanced offset manipulation and repair procedures.
 
+  # The two data-contract intents sit above schema_changes on purpose: they are
+  # the more specific answer for "rename a column", "backward compatible" and
+  # "data contract", and a tie goes to the earlier intent.
+  - id: cdc_data_contract
+    triggers:
+      [
+        "data contract",
+        "data contracts",
+        "cdc data contract",
+        "schema contract",
+        "event contract",
+        "database event contract",
+        "contract for database events",
+        "who owns the schema",
+        "who approves ddl",
+        "ddl approval",
+        "ddl review",
+        "breaking schema change",
+        "consumer contract",
+        "contract break",
+      ]
+    modules: []
+    answer: >
+      When the producer is a database, the schema is a side effect of table
+      DDL, so the contract is the change event envelope: the key, the op
+      codes, the before and after images, the source position fields and the
+      tombstone. Consumers may rely on what the connector documents for their
+      version, and should not rely on column order, on nullability staying
+      fixed or on a type staying narrow. A nullable column renamed reaches
+      consumers as one field gone and another added, and the registry accepts
+      it, so the break is silent. Name an owner per captured table, run a DDL
+      gate on proposed changes, and keep the sink idempotent: a contract
+      describes shape, not delivery, which stays at-least-once.
+    links:
+      - label: Data Contracts for Database Events
+        url: /cdc-data-contracts/
+        anchor: "#contract-title"
+        preview: Why a table is a producer nobody designed.
+      - label: What the envelope promises
+        url: /cdc-data-contracts/
+        anchor: "#surface-title"
+        preview: What a consumer may rely on and what it should not.
+      - label: A DDL gate you can run
+        url: /cdc-data-contracts/
+        anchor: "#gate-title"
+        preview: Check a proposed ALTER TABLE against one consumer.
+      - label: Schema Evolution
+        url: /schema-evolution/
+        anchor: "#compatibility"
+        preview: Registry compatibility modes.
+
+  - id: ddl_breaks_consumers
+    triggers:
+      [
+        "rename a column",
+        "renamed a column",
+        "column rename",
+        "rename column",
+        "renaming a column",
+        "drop a column",
+        "dropped a column",
+        "dropping a column",
+        "drop column",
+        "what happens if i drop a column",
+        "what happens when i drop a column",
+        "widen a column",
+        "type widening",
+        "alter column type",
+        "change a column type",
+        "backward compatible",
+        "forward compatible",
+        "fully compatible",
+        "backward_transitive",
+        "forward_transitive",
+        "full_transitive",
+        "transitive compatibility",
+        "compatibility mode",
+        "compatibility modes",
+        "schema history topic",
+        "schema.history.internal",
+        "column.include.list",
+      ]
+    modules: []
+    answer: >
+      Which DDL breaks a consumer depends on the registry mode. In
+      Confluent's Avro table, adding or removing an optional field is accepted
+      under BACKWARD, FORWARD and FULL; removing a required field is accepted
+      only under BACKWARD, adding a required field only under FORWARD, and
+      widening a type only under BACKWARD. The default is BACKWARD and it
+      checks only the latest version, so use a transitive mode if consumers
+      replay old data. A column rename reaches consumers as a drop plus an
+      add, and a nullable column passes that silently. Protobuf and JSON
+      Schema follow different rules, so check your format and your registry.
+    links:
+      - label: Which DDL breaks which consumer
+        url: /cdc-data-contracts/
+        anchor: "#ddl-map-title"
+        preview: Twelve kinds of ALTER TABLE against the three modes.
+      - label: Registry modes for a CDC topic
+        url: /cdc-data-contracts/
+        anchor: "#registry-title"
+        preview: Transitive or not, and who upgrades first.
+      - label: How Debezium learns about DDL
+        url: /cdc-data-contracts/
+        anchor: "#debezium-title"
+        preview: Schema history, PostgreSQL, SQL Server.
+
   - id: schema_changes
     triggers:
       [
