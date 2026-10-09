@@ -117,6 +117,12 @@ export default function (eleventyConfig) {
   eleventyConfig.ignores.add("resources/**/*.md");
   eleventyConfig.ignores.add("src/resources/**/*.md");
 
+  // Google Search Console ownership file: served verbatim by the src/static
+  // passthrough above. Without this ignore the `html` template format would
+  // also render it as a page (/static/google…/), which would then land in the
+  // sitemap and search index. Must never be removed; see docs/HOSTING.md.
+  eleventyConfig.ignores.add("src/static/google*.html");
+
   // ---- Vite asset filters --------------------------------------------------
 
   // See `lib/render-head-extra.mjs` for the supported expression set and

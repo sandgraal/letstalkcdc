@@ -136,6 +136,8 @@ function walkHtml(dir, rel = "") {
     (e) => {
       const r = path.join(rel, e.name);
       if (e.isDirectory()) return walkHtml(dir, r);
+      // The Search Console ownership file is plain text, not a page.
+      if (/^google[0-9a-f]+\.html$/.test(e.name)) return [];
       return r.endsWith(".html") ? [r] : [];
     },
   );

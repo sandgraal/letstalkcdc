@@ -207,7 +207,10 @@ function decodeFragment(fragment) {
 export function auditSite(siteDir, options = {}) {
   if (!existsSync(siteDir))
     throw new Error(`site directory not found: ${siteDir}`);
-  const files = walk(siteDir).filter((f) => f.endsWith(".html"));
+  // Search Console ownership files are plain text, not pages (see HOSTING.md).
+  const files = walk(siteDir).filter(
+    (f) => f.endsWith(".html") && !/(^|[\\/])google[0-9a-f]+\.html$/.test(f),
+  );
   const all = files
     .map((f) => parsePage(siteDir, f))
     .sort((a, b) => a.urlPath.localeCompare(b.urlPath));
