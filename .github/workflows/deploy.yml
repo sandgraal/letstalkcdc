@@ -30,6 +30,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          # puppeteer (via pa11y-ci, a devDependency) downloads Chrome in its
+          # postinstall and fails the install when the download is flaky.
+          # Building the site needs no browser.
+          PUPPETEER_SKIP_DOWNLOAD: "true"
 
       - name: Build site
         env:
