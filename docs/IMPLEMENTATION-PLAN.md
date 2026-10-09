@@ -1834,12 +1834,16 @@ production CSS hashes.
       README table) name a Node 24 image; the harness builds and the scenario
       starts. **Needs Docker to test**, and the playground owner coordinates
       the change under `playground/`. Size: S. Role: `implementer`.
-- [ ] **P15-38 · README module count and module list are stale.** Outcome:
+- [x] **P15-38 · README module count and module list are stale.** Outcome:
       the README matches the site. Evidence: it says "All 26 modules", and
       `src/_data/series.mjs` has 36 entries on `main` (counted 2026-10-09
       after the Phase 16 module batches merged). Accept: the count and the list are correct,
       ideally generated or checked by a test so they cannot drift again.
       Size: S. Role: `scribe`.
+      Done 2026-10-09: README now says "All 36 modules" with all 36
+      `series.mjs` entries in the table (`merge-cookbook` is noted as an
+      uncounted reference page); `tests/unit/readme-modules.test.js` fails
+      if the count or a table link drifts.
 - [ ] **P15-39 · Debezium docs on `wal_keep_size` contradict the PostgreSQL
       docs.** Outcome: a decision on telling upstream. Evidence: the
       Debezium docs say `wal_keep_size` limits how much WAL a slot retains,
