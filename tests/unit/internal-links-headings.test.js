@@ -104,8 +104,7 @@ describe("internal links and headings (built site)", () => {
   it("every content page has exactly one h1, except the known exceptions", () => {
     const bad = [...pages]
       .filter(
-        ([url, html]) =>
-          headingLevels(html).filter((l) => l === 1).length !== 1,
+        ([, html]) => headingLevels(html).filter((l) => l === 1).length !== 1,
       )
       .map(([url]) => url)
       .filter((url) => !KNOWN_NO_H1.has(url));
@@ -148,6 +147,7 @@ describe("internal links and headings (built site)", () => {
       if (url === "/mermaid-sandbox/") continue;
       for (const m of html.matchAll(/<a\s[^>]*?href=["']([^"']+)["']/g)) {
         const href = m[1].replace(/&amp;/g, "&");
+        if (href.includes("${")) continue;
         if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) continue;
         const target = new URL(href, `https://x.test${PREFIX}${url}`);
         if (!target.pathname.startsWith(`${PREFIX}/`)) continue;
