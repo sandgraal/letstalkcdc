@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "CDC Glossary — terms, aliases, and where they come up"
+title: "CDC Glossary: Terms and Aliases"
 description: "Vendor-agnostic definitions for the CDC vocabulary: WAL, LSN, tombstones, snapshots, exactly-once vs. effectively-once, and the rest. Anchor links per term."
 canonicalPath: "/glossary/"
 ---
@@ -27,7 +27,7 @@ canonicalPath: "/glossary/"
 <section class="prose" aria-labelledby="glossary-terms">
   <h2 id="glossary-terms" class="visually-hidden">Definitions</h2>
   <dl class="glossary">
-    {% set sortedTerms = glossary | sort(false, true, "term") %}
+    {% set sortedTerms = glossary | sort(false, false, "term") %}
     {% for entry in sortedTerms %}
       <dt id="{{ entry.slug }}" class="glossary__term">
         <a class="glossary__anchor" href="#{{ entry.slug }}" aria-label="Permalink to {{ entry.term }}">#</a>
