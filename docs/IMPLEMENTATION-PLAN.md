@@ -1017,12 +1017,18 @@ dependencies).
       the `linkcheck` workflow passes on the PR. Verify: all six URLs
       return 200 in production (checked 2026-10-08); `npm run build`;
       CI `linkcheck`. Size: S. Role: `scribe`.
-- [ ] **P13-2 · Make link-check tolerate transient 5xx.** Outcome: a
+- [x] **P13-2 · Make link-check tolerate transient 5xx.** Outcome: a
       single flaky 503 (as on the Dependabot PR's run of 2026-09-01,
       1 error in 519 links, healthy a moment later) no longer fails
       the check. Accept: `linkcheck.yml` passes `--max-retries` and
       `--retry-wait-time` to lychee; the workflow still fails on a real 404. Verify: workflow lint (`actionlint` if present, else YAML
       parse) and a green CI run. Size: S. Role: `implementer`.
+      Done 2026-10-08: added `--max-retries 5 --retry-wait-time 10` to
+      the lychee args in `linkcheck.yml`; no `--accept` change, so a
+      real 404 still fails. Note lychee's defaults are already 3
+      retries at a 1 s wait, and the original 503 survived those, so the
+      change that matters is the longer wait. Whether 10 s is enough is
+      only provable over several CI runs.
 - [ ] **P13-3 · Remove dead "coming soon" copy.**
       `src/cloud-labs/index.njk:158` renders a "Cloud labs are coming
       soon" callout when `publishedLabs == 0`, but all five labs
