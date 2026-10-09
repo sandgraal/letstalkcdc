@@ -196,19 +196,13 @@ Latest assessment:
 
 We welcome improvements to the simulator, documentation, and learning resources. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and the day-to-day [`Development Playbook`](docs/development.md) for branching conventions, pull request expectations, and quality guidelines before you start work.
 
-## Deploy to Appwrite Sites
+## Deployment
 
-1. Build the simulator, comparator, and playground bundles:
+This playground now lives in the [`letstalkcdc`](https://github.com/sandgraal/letstalkcdc) repository under `playground/` and is published to GitHub Pages at <https://sandgraal.github.io/letstalkcdc/playground/>. The site workflow (`.github/workflows/deploy.yml`) copies `index.html`, `CDC_logo.png`, and `assets/` into `_site/playground/`; the generated bundles in `assets/generated/` are committed, so no playground build step runs at deploy time (CI enforces they stay in sync via `npm run check:bundles`).
 
-   ```bash
-   npm run package:appwrite
-   ```
+Appwrite Cloud remains the optional backend (realtime sync, saved scenarios). Add `sandgraal.github.io` as a Web platform in the Appwrite project so browser requests pass CORS.
 
-   This produces `dist/appwrite-site` plus `dist/appwrite-site.zip` containing `index.html`, `assets/`, `docs/`, and `CDC_logo.png`.
-
-2. Upload `dist/appwrite-site.zip` in the Appwrite **Sites** console (or sync the `dist/appwrite-site` folder if you use the Appwrite CLI).
-
-3. If you front the site with Appwrite or a CDN that requires headers for bundle fetches, configure `window.APPWRITE_CFG.assetHeaders` before loading `index.html` so `assets/ui-shell-loader.js` can pull the generated modules.
+`npm run package:appwrite` still produces `dist/appwrite-site` and `dist/appwrite-site.zip` for the legacy Appwrite Sites host.
 
 ## Roadmap
 

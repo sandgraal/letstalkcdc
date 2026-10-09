@@ -16,7 +16,7 @@ jobs:
           # works even if the repo variables are unset.
           ELEVENTY_PATH_PREFIX: /letstalkcdc
           SITE_HOST: https://sandgraal.github.io
-        run: npm ci && npm run build
+        run: npm ci && npm run build && scripts/publish-playground.sh
       - uses: lycheeverse/lychee-action@v2.0.2
         env:
           # Authenticated requests to github.com avoid the rate-limited 404s

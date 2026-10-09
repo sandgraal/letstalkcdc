@@ -25,6 +25,21 @@ Build Eleventy Site (npm run build)
 Deploy to GitHub Pages (_site/ directory)
 ```
 
+### Change Feed Playground (`/playground/`)
+
+The interactive Change Feed Playground lives in `playground/` (imported with its
+history from `sandgraal/Lets-Talk-CDC-Change-Feed-Playground`) and has its own
+toolchain (Vite 7, React, TypeScript). It is a static app whose bundles in
+`playground/assets/generated/` are committed, so `scripts/publish-playground.sh`
+simply copies `index.html`, `CDC_logo.png`, and `assets/` into `_site/playground/`
+after the Eleventy build (used by `deploy.yml` and `linkcheck.yml`). Its CI
+(`playground-preflight`, `playground-generated-bundles`, `playground-harness-nightly`)
+runs with `working-directory: playground`. Root ESLint/Prettier ignore `playground/`.
+
+The playground talks to Appwrite Cloud from the browser (optional realtime sync and
+saved scenarios); `sandgraal.github.io` must be listed under the Appwrite project's
+**Platforms** for those calls to pass CORS.
+
 ## Setting Up GitHub Pages Deployment
 
 ### 1. Enable GitHub Pages
