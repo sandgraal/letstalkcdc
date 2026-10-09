@@ -24,13 +24,17 @@ const require = createRequire(import.meta.url);
 const page = read("src/non-kafka-cdc/index.njk");
 const data = require(path.join(ROOT, "src/non-kafka-cdc/index.11tydata.cjs"));
 const flat = (s) => s.replace(/\s+/g, " ");
+// Single pass over a lookup map, so "&amp;lt;" decodes to "&lt;", not "<".
+const ENTITIES = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  ldquo: '"',
+  rdquo: '"',
+  rsquo: "'",
+};
 const decode = (s) =>
-  s
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&[lr]dquo;/g, '"')
-    .replace(/&rsquo;/g, "'");
+  s.replace(/&(amp|lt|gt|ldquo|rdquo|rsquo);/g, (_m, name) => ENTITIES[name]);
 const prose = flat(
   decode(page.replace(/<pre>[\s\S]*?<\/pre>/g, "").replace(/<[^>]+>/g, " ")),
 );
