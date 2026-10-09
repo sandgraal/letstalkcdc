@@ -105,7 +105,13 @@ letstalkcdc/
 `playground/` is a separate app inside this repo, with its own `package.json`,
 README and tests. The deploy workflow copies its files into the site at
 `/playground/` using `scripts/publish-playground.sh`, which is why
-`npm run build` alone does not produce that page.
+`npm run build` alone does not produce that page. The CI `e2e-tests` job runs
+the same script on the downloaded build artifact before Playwright starts, so
+`tests/e2e/accessibility.spec.js` audits `/playground/` (onboarding, Feed,
+Feed after Seed, Compare idle and the three `?try=` labs, both themes, reduced
+motion emulated) the way it ships. The other CI jobs still see the build
+without it. Run the script yourself before that spec locally; without the
+playground those tests fail rather than skip.
 
 ## How the pipeline fits together
 
