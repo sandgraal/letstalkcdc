@@ -64,7 +64,7 @@ pgsql
 - **Remaining work**: implement the domain `storage.ts` helper to persist source/destination tables between refreshes. The persistence backend is Supabase, not Appwrite (see [supabase-setup.md](./supabase-setup.md)); the original Appwrite issue is closed as superseded in [docs/issues/appwrite-persistence.md](./issues/appwrite-persistence.md).
 - **Prerequisites/blockers**:
   - Confirm the data model and interface for the storage helper so it matches upcoming engine/state machine expectations.
-  - Backend provisioning is done on the shared Supabase project (see [supabase-setup.md](./supabase-setup.md)). Still open: authentication and a data-retention policy for demo data. Anonymous inserts are open, a trade-off [supabase-setup.md](./supabase-setup.md) accepts for the public demo.
+  - Backend provisioning is done on the shared Supabase project (see [supabase-setup.md](./supabase-setup.md)). Data retention is done: `events` and `scenarios` rows are deleted after 30 days by daily `pg_cron` jobs recorded in the repo-root `supabase/schema.sql` (see [Retention](./supabase-setup.md#retention)), and the UI asks visitors to use made-up data. Still open: authentication. Anonymous inserts are open, a trade-off [supabase-setup.md](./supabase-setup.md) accepts for the public demo.
   - Document environment configuration (env vars, SDK initialization) so the integration can be toggled without breaking the pure in-memory demo mode.
 
 ### Core data types (TypeScript)

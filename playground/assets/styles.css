@@ -2095,6 +2095,25 @@ select:focus {
   margin-top: 8px;
 }
 
+/* Retention / made-up-data notice (P15-24). Uses theme tokens so contrast holds
+   in both themes: body text measures about 8:1 (dark) and 12:1 (light) on
+   the tinted background, above the 4.5:1 AA minimum. */
+.data-notice {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--accent-yellow);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.data-notice strong {
+  color: var(--ink);
+}
+
 .schema-demo-actions {
   margin-top: 18px;
   border: 1px solid rgba(78, 116, 173, 0.32);
