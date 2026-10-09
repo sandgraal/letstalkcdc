@@ -36,6 +36,21 @@ const rendered = env.renderString(body, {
   author,
   site: { repository: "sandgraal/letstalkcdc" },
 });
+// The same body with visit counting configured (GOATCOUNTER_CODE set).
+const renderedWithAnalytics = env.renderString(body, {
+  ...data,
+  author,
+  site: { repository: "sandgraal/letstalkcdc" },
+  analytics: { goatcounterCode: "letstalkcdc" },
+});
+// The hero description, rendered with a stub macro so its conditional runs.
+const renderHero = (analytics) =>
+  new nunjucks.Environment(null, { autoescape: true }).renderString(
+    page
+      .slice(0, page.indexOf("}) | safe }}") + "}) | safe }}".length)
+      .replace('{% import "components/ui.njk" as ui %}', ""),
+    { analytics, ui: { hero: (c) => c.description } },
+  );
 const section = (html, id) =>
   html.match(
     new RegExp(`<section[^>]*aria-labelledby="${id}"[\\s\\S]*?</section>`),
@@ -316,6 +331,159 @@ describe("newsletter signup disclosure (P15-9)", () => {
       'href="/letstalkcdc/newsletter/"',
     );
     expect(section(off, "newsletter")).not.toContain("/newsletter/");
+  });
+});
+
+describe("privacy page, analytics (P15-10)", () => {
+  it("unset: says no analytics and no cookies, and has no visit-count section", () => {
+    expect(section(rendered, "cookies")).toContain(
+      "does not set cookies or use analytics",
+    );
+    expect(section(rendered, "visit-counts")).toBe("");
+    expect(rendered).not.toMatch(/goatcounter|gc\.zgo\.at/i);
+  });
+
+  it("unset: the hero makes no analytics claim", () => {
+    const hero = renderHero({});
+    expect(hero).toContain(
+      "stores nothing about you on a server. Two optional",
+    );
+    expect(hero).not.toMatch(/GoatCounter|visit count/i);
+  });
+
+  it("set: the hero mentions the aggregate count", () => {
+    const hero = renderHero({ goatcounterCode: "letstalkcdc" });
+    expect(hero).toMatch(/apart from an anonymous visit count/);
+    expect(hero).toMatch(/Do Not Track/);
+  });
+
+  it("set: discloses GoatCounter, what it counts and where it goes", () => {
+    const v = section(renderedWithAnalytics, "visit-counts");
+    expect(v).toContain("GoatCounter");
+    expect(v).toMatch(/page path\s+and title/);
+    expect(v).toMatch(/referrer/);
+    expect(v).toMatch(/screen width/);
+    expect(v).toMatch(/country/);
+    expect(v).toMatch(/sets no cookies/);
+    expect(v).toMatch(/no cross-site tracking/);
+    expect(v).toMatch(/personal profile/);
+    expect(v).toContain("gc.zgo.at");
+    expect(v).toMatch(/processes the counts on the maintainer's\s+behalf/);
+    expect(v).toMatch(/Do Not Track is respected/);
+  });
+
+  it("third-party list: gc.zgo.at present only when set, scripts sentence stays true", () => {
+    const on = section(renderedWithAnalytics, "third-parties");
+    expect(on).toMatch(
+      /<strong>gc\.zgo\.at<\/strong> and <strong>goatcounter\.com<\/strong>/,
+    );
+    expect(on).toMatch(/except\s+the\s+playground/);
+    expect(on).toMatch(/except the visit-count script/);
+    const off = section(rendered, "third-parties");
+    expect(off).not.toMatch(/zgo\.at|goatcounter|visit-count/i);
+    expect(off).toMatch(
+      /site's own scripts\s+are served from the site itself\./,
+    );
+  });
+
+  it("set: retention mentions the 30-day backup caveat and a default", () => {
+    const v = section(renderedWithAnalytics, "visit-counts");
+    expect(v).toMatch(/By\s+default nothing deletes them on a\s+schedule/);
+    expect(v).toMatch(/backups for up to 30 days/);
+  });
+
+  it("set: the cookies section no longer says there is no analytics", () => {
+    const c = section(renderedWithAnalytics, "cookies");
+    expect(c).toContain("does not set cookies");
+    expect(c).toContain("GoatCounter");
+    expect(renderedWithAnalytics).not.toMatch(/use analytics/);
+  });
+});
+
+describe("privacy page, newsletter and analytics together", () => {
+  const site = { repository: "sandgraal/letstalkcdc" };
+  const newsletter = resolveNewsletter("demo-user", () => {});
+  const analytics = { goatcounterCode: "letstalkcdc" };
+  const both = env.renderString(body, {
+    ...data,
+    author,
+    site,
+    newsletter,
+    analytics,
+  });
+  const newsletterOnly = env.renderString(body, {
+    ...data,
+    author,
+    site,
+    newsletter,
+  });
+  const analyticsOnly = env.renderString(body, {
+    ...data,
+    author,
+    site,
+    analytics,
+  });
+  const neither = env.renderString(body, { ...data, author, site });
+
+  it("lists GoatCounter and Buttondown among third-party requests, each only when on", () => {
+    const list = section(both, "third-parties");
+    expect(list).toMatch(
+      /<strong>gc\.zgo\.at<\/strong> and <strong>goatcounter\.com<\/strong>/,
+    );
+    expect(list).toContain("<strong>buttondown.com</strong>");
+    expect(list).toMatch(/except the visit-count script/);
+    expect(section(newsletterOnly, "third-parties")).not.toMatch(
+      /zgo\.at|goatcounter/i,
+    );
+    expect(section(newsletterOnly, "third-parties")).toContain(
+      "<strong>buttondown.com</strong>",
+    );
+    expect(section(analyticsOnly, "third-parties")).not.toMatch(/buttondown/i);
+    expect(section(neither, "third-parties")).not.toMatch(
+      /zgo\.at|goatcounter|buttondown/i,
+    );
+  });
+
+  it("cookies: no contradiction, Buttondown's page cookies are said separately", () => {
+    const c = section(both, "cookies");
+    expect(c).toContain("The site's own code does not set cookies.");
+    expect(c).toContain("GoatCounter, which sets no cookies either");
+    expect(c).toMatch(
+      /Separately, if you use the newsletter signup, the Buttondown page you continue to\s+may set its own cookies/,
+    );
+    // The analytics-off sentence must not appear once analytics is on.
+    expect(c).not.toMatch(/use analytics/);
+    // The Buttondown sentence belongs to the newsletter alone.
+    expect(section(analyticsOnly, "cookies")).not.toMatch(/Buttondown/);
+    expect(section(newsletterOnly, "cookies")).toContain(
+      "does not set cookies or use analytics",
+    );
+    expect(section(newsletterOnly, "cookies")).toMatch(/Buttondown page/);
+  });
+
+  it("keeps both disclosure sections when both are on", () => {
+    expect(section(both, "visit-counts")).toContain("GoatCounter");
+    expect(section(both, "newsletter")).toMatch(/What is sent/);
+    expect(section(both, "retention")).toMatch(/Buttondown, not this site/);
+  });
+
+  it("hero: keeps the visit-count wording and appends the newsletter sentence", () => {
+    const hero = (a, n) =>
+      new nunjucks.Environment(null, { autoescape: true }).renderString(
+        page
+          .slice(0, page.indexOf("}) | safe }}") + "}) | safe }}".length)
+          .replace('{% import "components/ui.njk" as ui %}', ""),
+        { analytics: a, newsletter: n, ui: { hero: (c) => c.description } },
+      );
+    const h = hero(analytics, newsletter);
+    expect(h).toMatch(/apart from an anonymous visit count/);
+    expect(h).toMatch(/Do Not Track/);
+    expect(h).toMatch(
+      /The newsletter signup is a third optional feature: if you use it, the email address you type is sent to Buttondown\./,
+    );
+    expect(hero({}, {})).not.toMatch(/Buttondown|GoatCounter/);
+    expect(hero({}, newsletter)).not.toMatch(/GoatCounter|visit count/i);
+    expect(hero(analytics, {})).not.toMatch(/Buttondown/);
   });
 });
 
