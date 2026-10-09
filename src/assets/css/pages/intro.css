@@ -762,18 +762,23 @@
 }
 
 .severity-must {
-  background: rgba(239, 68, 68, 0.18);
-  color: #f87171;
+  background: var(--color-error-subtle);
+  color: var(--color-error);
 }
 
 .severity-should {
-  background: rgba(60, 200, 240, 0.18);
-  color: #6fd6f5;
+  background: var(--color-info-subtle);
+  color: var(--color-info);
 }
 
 .severity-nice {
-  background: rgba(99, 102, 241, 0.18);
-  color: #a5b4fc;
+  background: var(--color-secondary-subtle);
+  color: var(--color-secondary);
+}
+
+html[data-theme="light"] .severity-nice {
+  /* --color-secondary is 4.18:1 on its own tint in the light theme. */
+  color: var(--color-secondary-hover);
 }
 
 .operational-checklist .checklist-link {
