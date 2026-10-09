@@ -21,10 +21,15 @@ head_extra: |
       {% call ui.panel({ id: 'exactly-once', titleId: 'exactly-once', title: 'End‑to‑end <em>exactly‑once</em> vs. <em>effectively‑once</em>' }) %}
         <ul>
           <li>
-            <strong>Source connectors are at‑least‑once</strong> in practice.
-            You can achieve <em>effectively‑once</em> by making sinks idempotent
-            (UPSERT on stable keys) and/or <em>deduplicating</em> using a
-            durable <code>event_id</code> ledger.
+            <strong>Source connectors are at‑least‑once</strong> by default.
+            Kafka Connect has an opt‑in exactly‑once mode for source
+            connectors (Debezium documents it from 3.3), but it covers only
+            the hop into Kafka and comes with open caveats; see
+            <a href="{{ '/exactly-once/' | url }}#per-hop">exactly‑once, hop by hop</a>.
+            Either way, achieve <em>effectively‑once</em> at the sink by making
+            it idempotent (UPSERT on stable keys, ordered by log position)
+            and/or <em>deduplicating</em> using a durable
+            <code>event_id</code> ledger.
           </li>
           <li>
             <strong>Transaction boundaries</strong>: Database transactions map
