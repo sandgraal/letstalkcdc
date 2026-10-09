@@ -141,6 +141,7 @@
                   <a class="{% if page.url | startsWith('/connector-builder') %}active{% endif %}" href="{{ '/connector-builder/' | url }}" role="menuitem">Connector Builder</a>
                   <a class="{% if page.url | startsWith('/debezium-decoder') %}active{% endif %}" href="{{ '/debezium-decoder/' | url }}" role="menuitem">Event Decoder</a>
                   <a class="{% if page.url | startsWith('/dlq-triage') %}active{% endif %}" href="{{ '/dlq-triage/' | url }}" role="menuitem">DLQ Triage</a>
+                  <a href="{{ '/playground/' | url }}" role="menuitem">Change Feed Playground</a>
                 </div>
               </div>
             </div>
@@ -347,14 +348,10 @@
         <script type="module" src="{{ script | url }}" defer></script>
       {% endfor %}
     {% endif %}
-    {% if appwrite.endpoint and appwrite.project and appwrite.databaseId %}
+    {% if supabase.url and supabase.key %}
       <script>
-        window.APPWRITE_ENDPOINT = {{ appwrite.endpoint | dump | safe }};
-        window.APPWRITE_PROJECT = {{ appwrite.project | dump | safe }};
-        window.APPWRITE_DB_ID = {{ appwrite.databaseId | dump | safe }};
-        {%- if appwrite.assistantCollectionId %}
-        window.COL_ASSISTANT_ID = {{ appwrite.assistantCollectionId | dump | safe }};
-        {%- endif %}
+        window.SUPABASE_URL = {{ supabase.url | dump | safe }};
+        window.SUPABASE_PUBLISHABLE_KEY = {{ supabase.key | dump | safe }};
       </script>
     {% endif %}
     {% if seriesKey %}

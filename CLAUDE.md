@@ -11,7 +11,7 @@ Pages at `https://sandgraal.github.io/letstalkcdc/`.
 
 Static-first: every page is pre-rendered HTML. JavaScript is progressive
 enhancement only. There is **no backend** in production — the optional
-Appwrite integration only stores assistant-feedback events.
+Supabase integration only stores assistant-feedback events.
 
 ## Commands
 
@@ -275,7 +275,7 @@ next turn finishes, but in practice that's seconds, not minutes.
 ## Where to read more
 
 - `docs/CONTRIBUTING.md` — human-contributor workflow
-- `docs/SETUP.md` — full setup incl. Appwrite, tracing, env vars
+- `docs/SETUP.md` — full setup incl. Supabase, tracing, env vars
 - `docs/HOSTING.md` — deploy pipeline + CI runbook
 - `docs/adding-modules.md` — how to add a new content section
 - `docs/javascript-architecture.md` — JS module layout + Vite split

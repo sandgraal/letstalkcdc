@@ -21,17 +21,16 @@
 | `src/_includes/components/series-nav.njk` | Renders the journey toolbar without authentication controls.                           |
 | `scripts/dashboard.js`                    | Renders charts using the locally cached dashboard data.                                |
 
-## Optional: Appwrite for assistant feedback
+## Optional: Supabase for assistant feedback
 
-Appwrite is now optional and only used to sync assistant feedback. If you provide credentials, the browser will send queued feedback to your Appwrite collection; otherwise everything stays local.
+Supabase is optional and only used to sync assistant feedback. If you provide credentials, the browser will send queued feedback to your `assistant_feedback` table; otherwise everything stays local.
 
-| Variable            | Scope              | Notes                                                                    |
-| ------------------- | ------------------ | ------------------------------------------------------------------------ |
-| `APPWRITE_ENDPOINT` | Client & Functions | Exposed to the browser as `window.APPWRITE_ENDPOINT`.                    |
-| `APPWRITE_PROJECT`  | Client & Functions | Exposed to the browser as `window.APPWRITE_PROJECT`.                     |
-| `APPWRITE_DB_ID`    | Client & Functions | Exposed to the browser as `window.APPWRITE_DB_ID`.                       |
-| `COL_ASSISTANT_ID`  | Client & Functions | Exposed to the browser as `window.COL_ASSISTANT_ID`.                     |
-| `APPWRITE_API_KEY`  | **Functions only** | **SECRET**. Required only if you sync feedback through a backend worker. |
+| Variable                   | Scope  | Notes                                                                                           |
+| -------------------------- | ------ | ----------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`             | Client | Exposed to the browser as `window.SUPABASE_URL`.                                                |
+| `SUPABASE_PUBLISHABLE_KEY` | Client | Exposed as `window.SUPABASE_PUBLISHABLE_KEY`. Public by design; row-level security protects it. |
+
+Never expose a `service_role`/secret key to the browser.
 
 If you skip these variables the assistant quietly falls back to local storage.
 
@@ -50,4 +49,4 @@ If you skip these variables the assistant quietly falls back to local storage.
 - GitHub Pages or any static host works out of the box.
 - Ensure the bundled assets include `scripts/progress.js` for journey layouts (already wired in `base.njk`).
 
-This document replaces the previous Appwrite/GitHub login integration guide. Older references to OAuth or the `migrateUser` function can be removed from downstream tooling.
+This document replaces the previous GitHub login integration guide. Older references to OAuth or the `migrateUser` function can be removed from downstream tooling.
