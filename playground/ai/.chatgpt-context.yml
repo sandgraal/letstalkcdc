@@ -8,7 +8,7 @@ primary_components: >
   Static playground entry point at index.html backed by simulator engines in src/ and a
   React comparator shell under web/ that consumes bundles from assets/generated/.
 local_setup: >
-  Install Node.js 20+, run npm install, then npm run dev:sim for the simulator engine or
+  Install Node.js 22.13+, run npm install, then npm run dev:sim for the simulator engine or
   npm run dev:web for the comparator shell. The static build also runs by opening index.html directly.
 build_commands: "npm run build (full), npm run build:sim, npm run build:web"
 test_commands: >

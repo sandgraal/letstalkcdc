@@ -6,8 +6,8 @@ rules (pull requests, voice, conventions) are in [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Prerequisites
 
-- **Node.js 20.19 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
-  `20`, so `nvm use` picks a matching version.
+- **Node.js 22.13 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
+  `24` (the LTS CI runs on), so `nvm use` picks a matching version.
 - npm, which ships with Node.
 - Optional: Chromium for the accessibility smoke test (`npm run smoke:a11y`),
   Playwright browsers for `npm run test:e2e` (`npx playwright install chromium`),

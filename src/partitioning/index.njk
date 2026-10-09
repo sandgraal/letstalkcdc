@@ -1,18 +1,13 @@
 ---
 layout: base.njk
-title: "Partitioning & Reconciliation — Keys, Skew, Late Arrivals | CDC: The
-      Missing Manual"
+title: "Partitioning & Reconciliation"
 description: "CDC partitioning and reconciliation: choose keys, handle skew, preserve per-key order, and make late arrivals safe with log-position version guards."
 canonicalPath: "/partitioning/"
 scripts:
   - "/assets/js/pages/partitioning.js"
   - "/assets/js/lib/quiz.js"
 head_extra: |
-  <meta
-        name="description"
-        content="CDC partitioning and reconciliation: choose keys, handle skew, preserve per-key order, and make late arrivals safe with log-position version guards."
-      />
-      <link rel="stylesheet" href="{{ '/assets/css/pages/partitioning.css' | url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/pages/partitioning.css' | url }}">
 
 ---
 {% import "components/ui.njk" as ui %}
@@ -36,7 +31,7 @@ head_extra: |
         </p>
         <p>
           That ordering is the order in which records were appended to the
-          partition, and delivery is still at-least-once: a restart or replay
+          partition, and delivery is still <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a>: a restart or replay
           hands the consumer records it has already seen. Partitioning narrows
           how much reordering a sink must absorb; it does not remove the need
           for the sink to be idempotent (see
@@ -356,7 +351,7 @@ head_extra: |
           source log lineage. After a failover that loses the old
           primary's tail, a point-in-time restore, a move to a different server
           or cluster, or a binlog reset (not a normal rotation or a new
-          replication slot on the same cluster), positions can restart lower,
+          <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a> on the same cluster), positions can restart lower,
           and the guard skips every change until the new position passes the
           stored one. Version the lineage, for example a
           <code>source_epoch</code> column that you compare first, then the
@@ -410,7 +405,7 @@ head_extra: |
           for log compaction and carry no position.
         </p>
         <p>
-          <strong>Watermark (aggregates only):</strong> event time is the right
+          <strong><a href="{{ '/glossary/#watermark' | url }}">Watermark</a> (aggregates only):</strong> event time is the right
           axis for closing time windows, but never for deciding which version
           of a row wins. If events can arrive late, advance a per-table
           watermark (“safe up to T-Δ”) before finalizing aggregates. Late
@@ -470,7 +465,7 @@ WHEN NOT MATCHED THEN
   INSERT (id, lsn, seq, payload) VALUES (S.id, S.lsn, S.seq, S.p);</code></pre>
         </div>
         <p class="muted">
-          A primary-key upsert with a log-position guard makes the sink
+          A primary-key <a href="{{ '/glossary/#upsert' | url }}">upsert</a> with a log-position guard makes the sink
           idempotent for updates: transport stays at-least-once, and duplicates
           and late arrivals become no-ops (deletes need the retained delete
           marker described above). That is exactly-once

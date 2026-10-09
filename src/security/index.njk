@@ -1,7 +1,7 @@
 ---
 layout: base.njk
 title: "Security, PII & Access Control"
-description: "Mask and filter columns before they reach the broker, size the database privileges CDC really needs, and plan for a change log that outlives the row it describes."
+description: "Mask and filter columns before they reach the broker, size the database privileges CDC really needs, and plan for a change log that outlives its row."
 canonicalPath: "/security/"
 ---
 {% import "components/ui.njk" as ui %}
@@ -91,7 +91,7 @@ canonicalPath: "/security/"
       <tbody>
         <tr>
           <th scope="row">Postgres</th>
-          <td><code>REPLICATION</code> attribute, plus a replication slot</td>
+          <td><code>REPLICATION</code> attribute, plus a <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a></td>
           <td>
             The slot reads the whole WAL. An abandoned slot also pins WAL
             forever and can fill the disk — an availability risk, not just a

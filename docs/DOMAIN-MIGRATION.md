@@ -179,8 +179,12 @@ SITE_HOST=https://example.org ELEVENTY_PATH_PREFIX=/ npm run verify:deployment
 - **Supabase:** if the assistant feedback or the playground are configured for a
   project, check the Supabase project's URL configuration (and any allowed
   origins or redirect URLs) for the old host.
-- **Playground:** `scripts/publish-playground.sh` copies `playground/` as-is, so
-  its hardcoded site URLs do not follow `SITE_HOST`. See the checklist.
+- **Playground:** `scripts/publish-playground.sh` copies `playground/` and
+  fills the `__SITE_URL__` placeholder in the `<head>` of `index.html`
+  (canonical, `og:url`, `og:image`, Twitter image) from `SITE_HOST` and
+  `ELEVENTY_PATH_PREFIX`, so those follow the variables. The other hardcoded
+  site URLs in the playground (`LTCDC_BASE`, `shareBaseUrl`) do not. See the
+  checklist. The sitemap lists `/playground/` from `src/sitemap.11ty.cjs`.
 - **Old URLs:** `curl -sI` a handful of the old URLs and record what they do.
 
 ## Hand-edited references checklist

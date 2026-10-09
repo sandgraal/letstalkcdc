@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "Event Envelope & Delivery Guarantees"
+title: "CDC Event Envelope & Delivery"
 description: "Break down the structure of CDC change events and learn how at-least-once delivery and exactly-once processing affect consumers."
 canonicalPath: "/event-envelope/"
 scripts:
@@ -61,7 +61,7 @@ scripts:
         <tr>
           <th scope="row"><code>op</code> / action</th>
           <td>Signals whether the change was an insert, update, or delete.</td>
-          <td>Should I upsert or tombstone this record?</td>
+          <td>Should I <a href="{{ '/glossary/#upsert' | url }}">upsert</a> or tombstone this record?</td>
         </tr>
         <tr>
           <th scope="row"><code>source.lsn</code> / log position</th>
@@ -101,7 +101,7 @@ scripts:
     </p>
     <ul>
       <li>
-        <strong>Deduplication.</strong> With the prior primary-key hash you
+        <strong><a href="{{ '/glossary/#deduplication' | url }}">Deduplication</a>.</strong> With the prior primary-key hash you
         can detect replays without touching the target system.
       </li>
       <li>
@@ -124,7 +124,7 @@ scripts:
   <section id="delivery" aria-labelledby="delivery-title">
     <h2 id="delivery-title">Delivery guarantees set your expectations</h2>
     <p>
-      CDC stacks normally promise <strong>at-least-once (ALO)</strong>
+      CDC stacks normally promise <strong><a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a> (ALO)</strong>
       delivery. End-to-end exactly-once delivery across independent systems is
       not achievable; what you layer on top is <strong>exactly-once
       processing</strong>: at-least-once transport plus an idempotent sink (or

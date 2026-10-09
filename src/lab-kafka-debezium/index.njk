@@ -1,7 +1,7 @@
 ---
 layout: base.njk
-title: "Hands-On Lab: CDC with Kafka, Debezium, and Postgres (with Sinks)"
-description: "A complete guide to building a real-time Change Data Capture pipeline using Docker, Postgres, Kafka, Debezium, and JDBC Sink connector—from source to destination."
+title: "Kafka + Debezium + Postgres Lab"
+description: "Build a real-time Change Data Capture pipeline with Docker, Postgres, Kafka, Debezium, and the JDBC Sink connector, from source to destination."
 canonicalPath: "/lab-kafka-debezium/"
 skillLevel: "Intermediate"
 head_extra: |
@@ -146,7 +146,7 @@ services:
                 </li>
                  <li>
                     <h3>Register the Postgres Connector</h3>
-                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the Kafka Connect REST API. Create a file named <code>register-postgres.json</code>:</p>
+                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the <a href="{{ '/glossary/#kafka-connect' | url }}">Kafka Connect</a> REST API. Create a file named <code>register-postgres.json</code>:</p>
                     <pre><code>{
   "name": "inventory-connector",
   "config": {
