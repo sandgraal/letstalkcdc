@@ -23,3 +23,6 @@ test-results/
 # .claude/scripts/check-merged-prs.sh). Stores the last-acknowledged
 # PR number; resetting it just means the next merge re-triggers.
 .claude/.merge-watcher-state.json
+
+# Git worktrees created by isolated subagents (see docs/CONDUCTOR.md).
+.claude/worktrees/
