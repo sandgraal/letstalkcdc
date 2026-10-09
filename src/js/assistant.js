@@ -9,7 +9,7 @@
  * - Next-topic suggestions based on progress
  * - Improved feedback with inline confirmation
  */
-import { databases, dbConfig, isAppwriteReady } from "./appwrite-config.js";
+import { client, FEEDBACK_TABLE, isBackendReady } from "./supabase-config.js";
 import { withBasePath } from "../assets/js/utils/path-prefix.js";
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
@@ -82,20 +82,28 @@ function queueLocalFeedback(entry) {
   writeLocalFeedback(queue);
 }
 
+// Map a locally queued feedback entry to the assistant_feedback table's columns.
+function toFeedbackRow(entry) {
+  return {
+    question: entry.question,
+    intent_id: entry.intentId ?? null,
+    helpful: Boolean(entry.helpful),
+    ts: entry.ts,
+  };
+}
+
 async function syncPendingFeedback() {
-  if (!databases || !dbConfig.databaseId || !dbConfig.collectionId) return;
+  if (!client) return;
   const pending = readLocalFeedback();
   if (!pending.length) return;
 
   const remaining = [];
   for (const entry of pending) {
     try {
-      await databases.createDocument(
-        dbConfig.databaseId,
-        dbConfig.collectionId,
-        "unique()",
-        entry,
-      );
+      const { error } = await client
+        .from(FEEDBACK_TABLE)
+        .insert(toFeedbackRow(entry));
+      if (error) throw error;
     } catch {
       remaining.push(entry);
     }
@@ -260,8 +268,8 @@ function renderMessageBubble(msg) {
 document.addEventListener("DOMContentLoaded", async () => {
   const kb = await loadKB();
 
-  // Sync any pending Appwrite feedback
-  if (isAppwriteReady) {
+  // Sync any pending feedback
+  if (isBackendReady) {
     syncPendingFeedback();
   }
 
@@ -417,18 +425,16 @@ async function saveFeedback(question, intentId, helpful) {
     ts: new Date().toISOString(),
   };
 
-  if (!databases) {
+  if (!client) {
     queueLocalFeedback(entry);
     return;
   }
 
   try {
-    await databases.createDocument(
-      dbConfig.databaseId,
-      dbConfig.collectionId,
-      "unique()",
-      entry,
-    );
+    const { error } = await client
+      .from(FEEDBACK_TABLE)
+      .insert(toFeedbackRow(entry));
+    if (error) throw error;
     // Also try to flush any pending queue
     syncPendingFeedback();
   } catch {

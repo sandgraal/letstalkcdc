@@ -25,6 +25,7 @@ export default [
       ".lighthouseci/**",
       "handoff/**",
       "sandbox/**",
+      "playground/**",
     ],
   },
 

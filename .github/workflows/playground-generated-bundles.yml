@@ -1,0 +1,35 @@
+name: Playground Generated Bundles
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      ["playground/**", ".github/workflows/playground-generated-bundles.yml"]
+  pull_request:
+    paths:
+      ["playground/**", ".github/workflows/playground-generated-bundles.yml"]
+
+defaults:
+  run:
+    working-directory: playground
+
+jobs:
+  generated-bundle-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: playground/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build bundles
+        run: npm run build
+      - name: Verify generated bundles are committed
+        run: npm run check:bundles

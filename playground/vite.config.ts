@@ -1,0 +1,51 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig(({ mode }) => {
+  if (mode === "web") {
+    return {
+      plugins: [react()],
+      publicDir: false,
+      build: {
+        outDir: "assets/generated",
+        emptyOutDir: false,
+        rollupOptions: {
+          input: {
+            shell: "web/main.tsx",
+            "event-log-widget": "web/event-log-widget.tsx",
+            "changefeed-playground": "web/changefeed.tsx",
+          },
+          output: {
+            entryFileNames: (chunk) => {
+              const entryNames: Record<string, string> = {
+                "event-log-widget": "event-log-widget.js",
+                "changefeed-playground": "changefeed-playground.js",
+                shell: "ui-shell.js",
+              };
+              return entryNames[chunk.name] || "ui-shell.js";
+            },
+            chunkFileNames: "ui-[name].js",
+            assetFileNames: "ui-[name].[ext]",
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    publicDir: false,
+    build: {
+      outDir: "assets/generated",
+      emptyOutDir: false,
+      lib: {
+        entry: "sim/bundle.ts",
+        name: "LetsTalkCdcSimulator",
+        formats: ["es"],
+        fileName: () => "sim-bundle.js",
+      },
+      rollupOptions: {
+        external: [],
+      },
+    },
+  };
+});
