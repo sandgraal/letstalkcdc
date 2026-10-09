@@ -287,6 +287,7 @@ test.describe("accessibility", () => {
 const BUTTON_PAGES = [
   ...PAGES_TO_AUDIT,
   "/snapshotting/",
+  "/observability/",
   "/cloud-labs/",
   "/cloud-labs/goldengate/",
   "/dashboard/",
