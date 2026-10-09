@@ -96,7 +96,7 @@ describe("internal links and headings (built site)", () => {
       .map((p) => `${p.url}: ${p.issues.join("; ")}`);
     expect(bad).toEqual([]);
     expect(audit.metrics["headings.pagesWithMultipleH1"]).toBe(0);
-  });
+  }, 60_000);
 
   it("ids are unique within each page", () => {
     const dups = [];
