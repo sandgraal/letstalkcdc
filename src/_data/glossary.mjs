@@ -113,8 +113,12 @@ export default [
     definition: `<p>The bootstrap process: read the current state of
         every row, emit it as change events, then switch to
         streaming the log. Initial snapshots can interleave with
-        live changes — design consumers to reconcile by version
-        column or <code>op_ts</code>. Incremental snapshots (signal-
+        live changes — design consumers to reconcile by source log
+        position (LSN/SCN/binlog coordinates), not by a timestamp:
+        keep a row only if the incoming event's position is newer
+        than the one the row already holds. Snapshot reads carry the
+        snapshot's boundary position, so live streaming events that
+        follow it win. Incremental snapshots (signal-
         based, popularized by Debezium) let you re-snapshot a
         subset without taking down the whole connector, at the
         cost of potential duplicates the sink has to dedupe.</p>`,
@@ -140,23 +144,27 @@ export default [
     definition: `<p>An operation that produces the same end state
         regardless of how many times it's replayed. Keyed
         <code>MERGE</code> / <code>UPSERT</code> on a stable
-        primary key is the most common pattern. Without
-        idempotency, at-least-once delivery from the source
-        amplifies into duplicate rows in the sink on every
-        connector restart.</p>`,
+        primary key is the most common pattern, applied only if
+        the incoming event's source log position is newer than the
+        one the row already holds, so a replayed older event
+        becomes a no-op. Without idempotency, at-least-once
+        delivery from the source amplifies into duplicate rows in
+        the sink on every connector restart.</p>`,
     related: ["exactly-once", "effectively-once", "upsert", "at-least-once"],
   },
   {
     term: "Exactly-once",
     slug: "exactly-once",
-    definition: `<p>The (mostly aspirational) guarantee that every
-        source event lands in the sink exactly once, with no
-        duplicates and no drops. End-to-end exactly-once across a
-        CDC pipeline requires coordinated transactions in the
-        source, the broker, and the sink — most stacks settle for
-        "effectively-once" (at-least-once delivery + idempotent
-        sinks + a deduplication ledger). The errata page covers
-        the specific traps.</p>`,
+    definition: `<p>The guarantee that every source event lands in the
+        sink exactly once, with no duplicates and no drops.
+        End-to-end exactly-once across independent systems (source
+        database, broker, warehouse) is not achievable;
+        exactly-once is possible only inside one transactional
+        boundary, such as Kafka to Kafka (and Debezium's opt-in
+        Kafka Connect EOS covers only the source-to-Kafka hop).
+        Most stacks ship "effectively-once" (at-least-once delivery
+        + idempotent sinks + a deduplication ledger). The errata
+        page covers the specific traps.</p>`,
     related: ["effectively-once", "idempotent-write", "at-least-once"],
   },
   {
@@ -166,8 +174,10 @@ export default [
         source is at-least-once, but the sink's idempotent writes
         plus a durable <code>event_id</code> ledger collapse
         duplicates so the observable end state matches an
-        exactly-once delivery. This is what most production CDC
-        pipelines actually ship.</p>`,
+        exactly-once delivery. The write is a keyed upsert applied
+        only if the incoming source log position is newer than the
+        row's. This is what most production CDC pipelines actually
+        ship.</p>`,
     related: ["exactly-once", "idempotent-write", "at-least-once"],
   },
   {
@@ -229,7 +239,8 @@ export default [
         out to a system) on a pool of workers that handle
         configuration, scaling and offset storage. Debezium's CDC
         connectors are Kafka Connect source connectors; they commit
-        the source log position as their offset in a Kafka topic,
+        the source log position as their offset in a Kafka topic in
+        distributed mode (standalone mode stores offsets in a file),
         and a restart resumes from the last committed one.</p>`,
     related: ["smt", "dead-letter-queue", "checkpoint", "at-least-once"],
   },
@@ -238,7 +249,7 @@ export default [
     slug: "deduplication",
     aliases: ["dedup", "dedupe"],
     definition: `<p>Collapsing repeated deliveries of the same change
-        into one effect. At-least-once delivery guarantees repeats
+        into one effect. At-least-once delivery allows repeats
         after retries and restarts, so the sink either makes the
         write idempotent (an upsert on the primary key) or skips any
         event whose source log position is not newer than what the
@@ -259,7 +270,7 @@ export default [
         indefinitely and can fill the primary's disk. Cap the
         retention with <code>max_slot_wal_keep_size</code> (default
         <code>-1</code>, unlimited), accepting that a slot that falls
-        further behind loses its WAL and the connector must
+        further behind is invalidated and the connector must
         re-snapshot, and drop slots you no longer use.</p>`,
     related: ["wal-redo-log", "log-retention", "checkpoint", "snapshot"],
   },
@@ -287,9 +298,11 @@ export default [
         key and ordered by source log position, not from the
         transport. It is a per-hop property: Debezium documents
         at-least-once delivery, and its opt-in Kafka Connect
-        exactly-once mode (Debezium 3.3+, built on KIP-618) covers
-        only the source-to-Kafka hop and does not make the pipeline
-        exactly-once end to end.</p>`,
+        exactly-once mode (requires Kafka Connect 3.3+, KIP-618;
+        documented from Debezium 3.3) covers only the source-to-Kafka
+        hop, and the docs note open correctness issues in Kafka
+        transactions, so it does not make the pipeline exactly-once
+        end to end.</p>`,
     related: [
       "exactly-once",
       "effectively-once",

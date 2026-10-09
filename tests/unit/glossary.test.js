@@ -84,6 +84,25 @@ describe("glossary data", () => {
     }
   });
 
+  it("never orders or reconciles by a timestamp", () => {
+    for (const { slug, definition } of glossary) {
+      const text = definition.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+      expect(text, slug).not.toMatch(/\b(op_ts|ts_ms)\b/);
+      expect(text, slug).not.toMatch(
+        /(reconcile|order(ed)?|sort(ed)?|resolve)\s+by\s+(a\s+|the\s+)?(version column|timestamp|wall-clock)/i,
+      );
+    }
+  });
+
+  it("does not call end-to-end exactly-once achievable", () => {
+    const text = glossary
+      .find((e) => e.slug === "exactly-once")
+      .definition.replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+    expect(text).toMatch(/across independent systems[^.]*is not achievable/);
+    expect(text).not.toMatch(/aspirational|requires coordinated/i);
+  });
+
   it("keeps definitions short and free of root-relative links", () => {
     for (const slug of NEW_TERMS) {
       const { definition } = glossary.find((e) => e.slug === slug);
@@ -190,6 +209,33 @@ describe("built site", () => {
     for (const [file, slug] of deepLinks) {
       expect(ids.has(slug), `${file} -> #${slug}`).toBe(true);
     }
+  });
+
+  it("never puts a glossary link inside a heading, code or pre block", () => {
+    const blocks = /<(h[1-6]|code|pre)\b[^>]*>[\s\S]*?<\/\1>/gi;
+    const link = new RegExp(`href="${PREFIX}/glossary/#`);
+    for (const [file, html] of pages) {
+      for (const m of html.matchAll(blocks)) {
+        expect(link.test(m[0]), `${file}: ${m[0].slice(0, 80)}`).toBe(false);
+      }
+    }
+  });
+
+  it("lists entries alphabetically, ignoring case", () => {
+    const terms = [
+      ...glossaryHtml.matchAll(
+        /<dt id="[^"]+"[^>]*>\s*<a[^>]*>#<\/a>\s*([^<]+?)\s*(?:<span|<\/dt>)/g,
+      ),
+    ].map((m) => m[1].replace(/&amp;/g, "&").replace(/&#39;/g, "'"));
+    expect(terms.length).toBe(glossary.length);
+    const sorted = [...terms].sort((a, b) =>
+      a.toLowerCase() < b.toLowerCase()
+        ? -1
+        : a.toLowerCase() > b.toLowerCase()
+          ? 1
+          : 0,
+    );
+    expect(terms).toEqual(sorted);
   });
 
   it("has more than 20 content links into /glossary/ from lessons", () => {
