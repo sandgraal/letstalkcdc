@@ -261,7 +261,8 @@ scripts:
           <li>
             <strong>Delivery semantics:</strong> at-least-once by default; ask
             what any “exactly-once” claim actually covers (Kafka-only
-            transactions are not end-to-end across systems).
+            transactions are not end-to-end across systems; see
+            <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a>).
           </li>
           <li>
             <strong>Idempotent sinks:</strong> MERGE/UPSERT on the primary key,

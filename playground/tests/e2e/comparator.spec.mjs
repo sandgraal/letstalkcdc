@@ -66,6 +66,39 @@ suite("Comparator basics", () => {
     await expect(destination.locator('th[data-highlight="true"]')).toHaveCount(0);
   });
 
+  test("ordering reads OK on every lane when events arrive in log order, even across tables", async ({ page }) => {
+    await loadComparator(page);
+
+    const scenarioSelect = page.locator('select[aria-label="Scenario"]');
+    await scenarioSelect.waitFor({ timeout: 10000 });
+    // Multi-table scenario: its interleaved ts_ms used to flip Ordering to KO on the trigger lane.
+    await scenarioSelect.selectOption({ label: "Omnichannel Orders" });
+    await page.evaluate(() => window.cdcComparatorClock?.play?.());
+    await page.waitForTimeout(4500);
+
+    const orderingBadges = page.locator('[role="status"]', { hasText: "Ordering:" });
+    await expect(orderingBadges).toHaveCount(3);
+    await expect(orderingBadges.filter({ hasText: "Ordering: KO" })).toHaveCount(0);
+    await expect(orderingBadges.filter({ hasText: "Ordering: OK" })).toHaveCount(3);
+  });
+
+  test("each lane counts a source change once (CRUD Basic is 1 insert, 1 update, 1 delete)", async ({ page }) => {
+    await loadComparator(page);
+
+    const scenarioSelect = page.locator('select[aria-label="Scenario"]');
+    await scenarioSelect.waitFor({ timeout: 10000 });
+    await scenarioSelect.selectOption({ label: "CRUD Basic" });
+    await page.evaluate(() => window.cdcComparatorClock?.play?.());
+    await page.waitForTimeout(4500);
+
+    const badges = page.locator('[role="status"]', { hasText: "Ops C/U/D:" });
+    await expect(badges).toHaveCount(3);
+    // Log and trigger capture all three ops; polling misses the delete and the intermediate update.
+    await expect(badges.filter({ hasText: "Ops C/U/D: 1/1/1" })).toHaveCount(2);
+    await expect(badges.filter({ hasText: "Ops C/U/D: 1/0/0" })).toHaveCount(1);
+    await expect(badges.filter({ hasText: "Deletes: 200%" })).toHaveCount(0);
+  });
+
   test("transactions scenario exposes apply-on-commit toggle", async ({ page }) => {
     await loadComparator(page);
 

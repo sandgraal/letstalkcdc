@@ -20,7 +20,9 @@ canonicalPath: "/errata/"
             Kafka Connect has an opt‑in exactly‑once mode for source
             connectors (Debezium documents it from 3.3), but it covers only
             the hop into Kafka and comes with open caveats; see
-            <a href="{{ '/exactly-once/' | url }}#per-hop">exactly‑once, hop by hop</a>.
+            <a href="{{ '/exactly-once/' | url }}#per-hop">exactly‑once, hop by hop</a>,
+            and <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a>
+            for how to scope a vendor's claim.
             Either way, achieve <em>effectively‑once</em> at the sink by making
             it idempotent (UPSERT on stable keys, ordered by log position)
             and/or <em>deduplicating</em> using a durable

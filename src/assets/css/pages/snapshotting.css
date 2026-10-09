@@ -452,7 +452,8 @@ html[data-theme="dark"] .learn-grid p {
   height: 2.2rem;
   border-radius: 999px;
   background: radial-gradient(circle at top, #0ea5e9, #14b8a6);
-  color: #ffffff;
+  /* white on this gradient was 2.5-2.8:1 */
+  color: #0b1220;
   font-weight: 700;
   font-size: 1.1rem;
   box-shadow: 0 6px 14px rgba(14, 165, 233, 0.28);

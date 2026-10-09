@@ -22,7 +22,7 @@
   align-items: center;
   justify-content: center;
   background: var(--color-primary, #3cc8f0);
-  color: white;
+  color: var(--color-text-inverse);
   font-weight: 600;
   font-size: 0.875rem;
   padding: 0.375rem 0.875rem;
@@ -39,8 +39,8 @@
 .drill-badge {
   display: inline-flex;
   align-items: center;
-  background: var(--color-accent-bg, #f1f5f9);
-  color: var(--color-text-secondary, #64748b);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
@@ -98,7 +98,7 @@
 .drill-notes {
   margin-top: 1.5rem;
   padding: 1rem;
-  background: var(--color-info-bg, #eff6ff);
+  background: var(--color-info-subtle);
   border-left: 4px solid var(--color-info, #3cc8f0);
   border-radius: 4px;
 }
@@ -111,7 +111,7 @@
 }
 
 .drill-notes summary:hover {
-  color: var(--color-info-dark, #22b3e0);
+  color: var(--color-info-hover);
 }
 
 .drill-notes p {
@@ -165,12 +165,19 @@
 /* Copy button styling (inherits from main styles but can be customized) */
 .drill-content pre {
   position: relative;
-  background: var(--color-code-bg, #1e293b);
-  color: var(--color-code-text, #e2e8f0);
+  background: #1e293b;
+  color: #e2e8f0;
   padding: 1rem;
   border-radius: 6px;
   overflow-x: auto;
   margin: 1rem 0;
+}
+
+.drill-content pre code {
+  /* The page's code surface is dark in both themes; the global `code` rule
+     paints the theme's primary text colour, which is near-black in light. */
+  color: inherit;
+  background: transparent;
 }
 
 .drill-content pre button.copy {

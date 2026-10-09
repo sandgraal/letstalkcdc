@@ -458,6 +458,7 @@ WHERE slot_name LIKE 'fivetran%';
 -- If lag > 10GB and connector won't resume, drop slot:
 SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
       <p><strong>Prevention:</strong> Set alerts for replication lag, resume connectors promptly.</p>
+      <p>Before dropping a slot, read the <a href="{{ '/postgres-replication-slots/' | url }}">replication slot runbook</a>: a dropped slot means a re-snapshot, not a resume.</p>
     </div>
 
     <div class="callout callout-warning">

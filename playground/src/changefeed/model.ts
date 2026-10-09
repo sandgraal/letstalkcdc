@@ -97,10 +97,13 @@ const hash = (input: string): number => {
   return acc;
 };
 
+// Deterministic per-lsn drop decision. A multiplicative (Knuth) hash spreads small
+// consecutive lsns across 0-99; hashing the decimal string instead left every lsn
+// below 22 outside a 20% drop window, so short demos never lost an event.
 const shouldDrop = (lsn: number, probability: number) => {
   if (probability <= 0) return false;
   const scaled = Math.floor(probability * 100);
-  return (hash(String(lsn)) % 100) < scaled;
+  return ((lsn * 2654435761) >>> 0) % 100 < scaled;
 };
 
 const partitionForKey = (pk: string, partitions: number) => {
@@ -176,7 +179,7 @@ const applyReadyTransactions = (state: PlaygroundState, readyEvents: ChangeEvent
   for (const event of readyEvents) {
     const existing = consumer.buffered[event.txId];
     const buffered = existing
-      ? { ...existing, events: [...existing.events, event] }
+      ? { ...existing, events: [...existing.events, event], lsn: Math.min(existing.lsn, event.lsn) }
       : { events: [event], total: event.total, commitTs: event.commitTs, lsn: event.lsn };
 
     if (state.options.applyPolicy === "apply-as-polled") {
@@ -206,15 +209,18 @@ const applyReadyTransactions = (state: PlaygroundState, readyEvents: ChangeEvent
 
   if (state.options.applyPolicy === "apply-on-commit") {
     const ready = [...consumer.ready, ...newlyReady];
-    const pendingCommitCandidates = [
-      ...ready.map(tx => tx.commitTs),
-      ...Object.values(consumer.buffered).map(buf => buf.commitTs),
-      ...state.broker.partitions.flat().map(evt => evt.commitTs),
+    // Apply in log order: a transaction may apply only once nothing with a lower log
+    // position (lsn) is still in flight. Commit order within one log is the log
+    // position; commitTs is a wall-clock label that can tie or skew, so it is not
+    // an ordering key. The floor is the lowest position still waiting on a later hop
+    // (partially buffered or not yet delivered); ready transactions below it apply
+    // in order, up to maxApplyPerTick.
+    const pendingPositions = [
+      ...Object.values(consumer.buffered).map(buf => buf.lsn),
+      ...state.broker.partitions.flat().map(evt => evt.lsn),
     ];
-    const floorCommitTs = pendingCommitCandidates.length > 0 ? Math.min(...pendingCommitCandidates) : Infinity;
-    const eligible = ready
-      .filter(tx => tx.commitTs <= floorCommitTs)
-      .sort((a, b) => (a.commitTs === b.commitTs ? a.lsn - b.lsn : a.commitTs - b.commitTs));
+    const floorLsn = pendingPositions.length > 0 ? Math.min(...pendingPositions) : Infinity;
+    const eligible = ready.filter(tx => tx.lsn <= floorLsn).sort((a, b) => a.lsn - b.lsn);
     const slice = eligible.slice(0, state.options.maxApplyPerTick);
 
     let tables = { ...consumer.tables };
@@ -246,6 +252,7 @@ const applyReadyTransactions = (state: PlaygroundState, readyEvents: ChangeEvent
 const pollBroker = (state: PlaygroundState): { nextState: PlaygroundState; delivered: ChangeEvent[] } => {
   const partitions = state.broker.partitions.map(queue => [...queue]);
   const delivered: ChangeEvent[] = [];
+  let dropped = 0;
   const maxToDeliver = state.options.maxApplyPerTick * state.options.partitions + state.options.maxApplyPerTick;
   for (let idx = 0; idx < partitions.length; idx += 1) {
     const queue = partitions[idx];
@@ -254,6 +261,7 @@ const pollBroker = (state: PlaygroundState): { nextState: PlaygroundState; deliv
       const evt = queue.shift()!;
       consumed += 1;
       if (shouldDrop(evt.lsn, state.options.dropProbability)) {
+        dropped += 1;
         continue;
       }
       delivered.push(evt);
@@ -267,6 +275,7 @@ const pollBroker = (state: PlaygroundState): { nextState: PlaygroundState; deliv
       broker: {
         ...state.broker,
         partitions,
+        dropped: state.broker.dropped + dropped,
       },
     },
     delivered,
@@ -338,12 +347,16 @@ const withSchemaDrift = (state: PlaygroundState, base: Record<string, any>) => {
   return { ...base, [SCHEMA_DRIFT_COLUMN]: true };
 };
 
-const generateCustomerInsert = (state: PlaygroundState, idSuffix: number) => {
+const generateCustomerInsert = (state: PlaygroundState, idSuffix: number, commitTs?: number) => {
   const id = `C-${500 + idSuffix}`;
   const base = { id, email: `user${idSuffix}@example.com`, name: `Customer ${idSuffix}`, tier: idSuffix % 2 === 0 ? "gold" : "silver" };
   const payload = withSchemaDrift(state, base);
-  return createEvent(state, "customers", "insert", id, payload);
+  return createEvent(state, "customers", "insert", id, payload, null, commitTs === undefined ? undefined : { commitTs });
 };
+
+// A backlog is a burst committed over time, not one instant: spacing the commit
+// timestamps is what lets "how far behind is the consumer" (lag) be non-zero.
+const BACKLOG_COMMIT_SPACING_MS = 100;
 
 const generateOrderWithItems = (state: PlaygroundState, customerId: string, itemCount: number) => {
   const txId = nanoid();
@@ -481,7 +494,11 @@ export const reducePlayground = (state: PlaygroundState, action: PlaygroundActio
       let next = state;
       const events: ChangeEvent[] = [];
       for (let i = 0; i < action.count; i += 1) {
-        const { event, nextState } = generateCustomerInsert(next, i + 1000 + state.source.rows.length);
+        const { event, nextState } = generateCustomerInsert(
+          next,
+          i + 1000 + state.source.rows.length,
+          state.clockMs + 100 + i * BACKLOG_COMMIT_SPACING_MS,
+        );
         next = upsertSourceRow(nextState, "customers", event.after ?? {});
         events.push(event);
       }

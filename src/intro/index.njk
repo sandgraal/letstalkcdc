@@ -179,7 +179,7 @@ scripts:
             </li>
             <li>
               <em>Disadvantage: Complexity.</em> Requires DB-level privileges and correct log retention
-              (<code>wal_keep_size</code> or logical slots in Postgres; binlog purge in MySQL; T-log backups in SQL Server).
+              (logical slots, capped by <code>max_slot_wal_keep_size</code>, in Postgres; binlog purge in MySQL; T-log backups in SQL Server).
             </li>
           </ul>
         </details>
@@ -237,7 +237,7 @@ scripts:
             queries source tables for rows that have changed, typically
             identified by a last_updated timestamp. However, it puts a
             significant load on the source database, can miss updates if
-            multiple changes occur between polls, and cannot observe <em>hard deletes</em> (unless you keep tombstone/soft-delete markers).
+            multiple changes occur between polls, and cannot observe <em>hard deletes</em> (unless you keep soft-delete markers).
           </p>
           <ul>
             <li>

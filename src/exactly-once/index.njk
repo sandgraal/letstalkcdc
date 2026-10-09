@@ -65,7 +65,7 @@ eleventyComputed:
               <td>Yes, inside Kafka, when enabled</td>
               <td>
                 Kafka Streams with <code>processing.guarantee=exactly_once_v2</code>, or transactional producers
-                using <code>sendOffsetsToTransaction</code>, make the output writes and the consumer offsets atomic.
+                using <code>sendOffsetsToTransaction</code> (a <a href="{{ '/glossary/#kafka-transaction' | url }}">Kafka transaction</a>), make the output writes and the consumer offsets atomic.
               </td>
               <td>
                 The scope is Kafka topics only, and consumers must set <code>isolation.level=read_committed</code>
@@ -78,7 +78,7 @@ eleventyComputed:
               <td>
                 Exactly-once <em>processing</em>: an idempotent upsert keyed on the primary key, applied only if the
                 change's source log position is newer than the one stored, with deletes kept as delete markers.
-                Optionally also store the offsets in the sink's own transaction with the data, where the sink supports one.
+                Optionally also <a href="{{ '/glossary/#offsets-in-sink-transaction' | url }}">store the offsets in the sink's own transaction</a> with the data, where the sink supports one.
               </td>
               <td>
                 Kafka's transaction does not reach into the sink. If you commit offsets separately from the sink
@@ -105,7 +105,9 @@ eleventyComputed:
         <p>
           Read the full caveats on
           <a href="https://debezium.io/documentation/reference/stable/configuration/eos.html">Debezium's exactly-once delivery page</a>
-          before relying on the first row.
+          before relying on the first row. For the settings behind each hop, what each guarantee
+          really covers, and how to check what your own pipeline gives, continue with
+          <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a>.
         </p>
         <p>
           How a CDC pipeline behaves during failures is defined by its data

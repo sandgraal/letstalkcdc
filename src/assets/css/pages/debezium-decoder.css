@@ -1,16 +1,14 @@
+/* The site theme tokens (01-variables.css) already define --bg, --surface,
+   --border, --muted, --ok, --warn and --err for both themes and win over any
+   palette redefined here, so only the one name the site does not define is
+   declared. It follows the theme: this app used to hard-code a dark palette
+   and light text, which is unreadable on the light theme. */
 :root {
-  --bg: #0b121d;
-  --surface: #0f1726;
-  --surface2: #0b1322;
-  --border: #2a3441;
-  --muted: #9aa7b7;
-  --ok: #22c55e;
-  --warn: #f59e0b;
-  --err: #ef4444;
+  --surface2: var(--color-bg-secondary);
 }
 .decoder-app {
   background: var(--bg);
-  color: #e6eef7;
+  color: var(--color-text-primary);
   font:
     16px/1.6 system-ui,
     -apple-system,
@@ -66,7 +64,7 @@
 .decoder-app textarea {
   width: 100%;
   min-height: 220px;
-  color: #e6eef7;
+  color: var(--color-text-primary);
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
@@ -101,7 +99,7 @@
 }
 .decoder-app .btn:hover,
 .decoder-app .btn:focus {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-accent-subtle);
   outline: none;
 }
 .decoder-app .small {
@@ -172,7 +170,7 @@
   vertical-align: top;
 }
 .decoder-app table.diff th {
-  background: #0f1a2e;
+  background: var(--color-bg-tertiary);
   text-align: left;
 }
 .decoder-app tr.add td {
@@ -199,7 +197,7 @@
   cursor: pointer;
 }
 .decoder-app .tabs button.active {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-accent-subtle);
   font-weight: 600;
 }
 .decoder-app .copy {
@@ -238,12 +236,12 @@
     monospace;
 }
 .decoder-app table.headers th {
-  background: #0f1a2e;
+  background: var(--color-bg-tertiary);
   text-align: left;
 }
 .decoder-app .hint {
-  border-left: 4px solid #22b3e0;
-  background: #071427;
+  border-left: 4px solid var(--color-accent-primary);
+  background: var(--color-info-subtle);
   padding: 0.6rem;
   border-radius: 0.25rem;
   margin: 0.5rem 0;
@@ -258,7 +256,7 @@
     Menlo,
     Consolas,
     monospace;
-  background: #101a2d;
+  background: var(--color-bg-tertiary);
   padding: 0.05rem 0.3rem;
   border: 1px solid var(--border);
   border-radius: 0.25rem;

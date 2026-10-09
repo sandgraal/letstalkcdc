@@ -47,6 +47,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "is-cdc-exactly-once",
+    title: "Is CDC Exactly-Once? Per Hop",
+    description:
+      "Check any exactly-once claim hop by hop: Kafka Connect and Debezium opt-in settings, Kafka transactions, offsets in the sink, and how to verify.",
+    href: "is-cdc-exactly-once/",
+    ctaLabel: "Check the Claim",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "multi-tenancy",
     title: "Multi-Tenancy",
     description: "Isolation patterns, topic math, and rough egress estimates.",
@@ -90,6 +100,15 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "postgres-replication-slots",
+    title: "Postgres Replication Slots & WAL Growth",
+    description:
+      "A runbook for a Postgres disk filling behind a CDC slot: the checks, max_slot_wal_keep_size, Debezium heartbeats, and safe recovery.",
+    href: "postgres-replication-slots/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Intermediate",
+  },
+  {
     key: "non-relational",
     title: "CDC Beyond Relational Databases",
     description:
@@ -112,6 +131,18 @@ export default [
       { label: "Strategy", variant: "tag-strategy" },
     ],
     skillLevel: "Intermediate",
+  },
+  {
+    key: "deletes-stay-deleted",
+    title: "Deletes That Stay Deleted",
+    description:
+      "Delete events, Kafka tombstones and sink delete markers; why a late update can resurrect a row; and where a deleted row can still live (compaction, time travel, snapshots, backups).",
+    href: "deletes-stay-deleted/",
+    tags: [
+      { label: "Advanced Pattern", variant: "tag-pattern" },
+      { label: "Ops", variant: "tag-ops" },
+    ],
+    skillLevel: "Advanced",
   },
   {
     key: "reconciliation-surgery",
@@ -192,6 +223,19 @@ export default [
     href: "tests/",
     ctaLabel: "Verify Your Stack",
     tags: [{ label: "Lab", variant: "tag-labs" }],
+    skillLevel: "Intermediate",
+  },
+  {
+    key: "test-your-pipeline",
+    title: "Testing a CDC Pipeline",
+    description:
+      "Contract, duplicate, out-of-order and replay tests for your own pipeline, with runnable examples and what not to test for.",
+    href: "test-your-pipeline/",
+    ctaLabel: "Write the Tests",
+    tags: [
+      { label: "Ops", variant: "tag-ops" },
+      { label: "Advanced Pattern", variant: "tag-pattern" },
+    ],
     skillLevel: "Intermediate",
   },
   {
