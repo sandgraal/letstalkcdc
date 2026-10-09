@@ -139,9 +139,10 @@ test.describe("one copy control per code block", () => {
           // The visible "Copied!" is hidden behind the button's aria-label,
           // so a screen-reader user hears the confirmation from the polite
           // live region instead.
-          await expect(
-            page.locator('[role="status"][aria-live="polite"]'),
-          ).toContainText("code copied to clipboard");
+          const live = page.locator(".toast-live-region");
+          await expect(live).toHaveAttribute("role", "status");
+          await expect(live).toHaveAttribute("aria-live", "polite");
+          await expect(live).toContainText("code copied to clipboard");
 
           const copied = await page.evaluate(() =>
             navigator.clipboard.readText(),
