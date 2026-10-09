@@ -23,13 +23,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "1",
-      "name": "Alice",
-      "email": "alice@contoso.io"
-    }
-  ],
   "ops": [
     {
       "t": 100,

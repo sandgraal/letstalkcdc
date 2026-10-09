@@ -39,16 +39,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "ORD-501",
-      "customer_id": "C-19",
-      "status": "collected",
-      "channel": "store-108",
-      "total": 189.5,
-      "pickup_ts": 420
-    }
-  ],
   "ops": [
     {
       "t": 120,

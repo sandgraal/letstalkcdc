@@ -39,15 +39,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "DEV-5@130",
-      "device_id": "DEV-5",
-      "temp_c": 19.2,
-      "humidity": 0.39,
-      "anomaly": false
-    }
-  ],
   "ops": [
     {
       "t": 10,

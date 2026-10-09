@@ -36,13 +36,6 @@
   ],
   "rows": [
     {
-      "id": "LED-100",
-      "account_id": "AC-9",
-      "balance": 12500,
-      "checkpoint_ts": 1000,
-      "version": "v1"
-    },
-    {
       "id": "LED-101",
       "account_id": "AC-21",
       "balance": 8800,

@@ -33,15 +33,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "ORD-720",
-      "customer_id": "C-32",
-      "status": "shipped",
-      "subtotal": 412.5,
-      "shipped_ts": 520
-    }
-  ],
   "ops": [
     {
       "t": 300,

@@ -139,10 +139,9 @@ describe("Scenario templates", () => {
     });
   });
 
-  it("provides snapshot rows and schema for previews", () => {
+  it("provides schema, and only pre-existing rows, for previews", () => {
     SCENARIO_TEMPLATES.forEach(template => {
       expect(Array.isArray(template.rows)).toBe(true);
-      expect(template.rows.length).toBeGreaterThan(0);
       template.rows.forEach(row => {
         expect(row).toBeTruthy();
         expect(typeof row).toBe("object");
@@ -206,6 +205,42 @@ describe("Scenario templates", () => {
   });
 });
 
+// `ops` is the single source of truth for rows. A `rows` entry that repeats the
+// table and key of an `insert` op would be a duplicate-key insert if rows were
+// ever loaded as seed data.
+const duplicatedSeedKeys = (scenario: SharedScenario): string[] => {
+  const inserted = new Set(
+    (scenario.ops ?? []).filter(op => op.op === "insert").map(op => `${op.table}|${op.pk?.id}`),
+  );
+  return (scenario.rows ?? [])
+    .map(row => `${scenario.table}|${String(row.id)}`)
+    .filter(key => inserted.has(key));
+};
+
+describe("Seed rows have one source of truth", () => {
+  it("no scenario lists a row that one of its insert ops also creates", () => {
+    sharedScenarios.forEach(scenario => {
+      expect(duplicatedSeedKeys(scenario), scenario.id).toEqual([]);
+    });
+  });
+
+  it("the check fails on a rows entry that duplicates an insert op", () => {
+    const duplicated: SharedScenario = {
+      id: "synthetic-duplicate-seed",
+      name: "Synthetic duplicate seed",
+      table: "widgets",
+      rows: [{ id: "W-1", status: "ready" }],
+      ops: [{ t: 1, op: "insert", table: "widgets", pk: { id: "W-1" }, after: { status: "new" } }],
+    };
+    expect(duplicatedSeedKeys(duplicated)).toEqual(["widgets|W-1"]);
+  });
+
+  it("still keeps rows that ops never insert", () => {
+    const seeded = sharedScenarios.find(scenario => scenario.id === "retention-erasure");
+    expect(seeded?.rows?.length ?? 0).toBeGreaterThan(0);
+  });
+});
+
 describe("Comparator scenarios", () => {
   it("mirrors curated scenario coverage", () => {
     const ids = COMPARATOR_SCENARIOS.map(scenario => scenario.id).sort();
@@ -243,9 +278,23 @@ describe("Comparator scenarios", () => {
 
       expect(scenario.ops.length).toBe(template?.ops.length ?? 0);
       expect(scenario.ops).not.toBe(template?.ops);
-      expect(scenario.stats?.rows ?? 0).toBe(scenario.rows?.length ?? 0);
+      expect(scenario.stats?.rows ?? 0).toBeGreaterThan(0);
       expect(scenario.stats?.ops ?? 0).toBe(scenario.ops.length);
     });
+  });
+
+  it("counts rows by hand-checked totals, not by re-running the counter", () => {
+    const rowsById = new Map(COMPARATOR_SCENARIOS.map(scenario => [scenario.id, scenario.stats?.rows]));
+    // crud-basic: 1 insert, no seed rows.
+    expect(rowsById.get("crud-basic")).toBe(1);
+    // orders-items-transactions: 3 inserts (TX-720 order + 2 items), no seed rows.
+    expect(rowsById.get("orders-items-transactions")).toBe(3);
+    // snapshot-replay: 2 inserted keys + the seed-only LED-101 = 3.
+    expect(rowsById.get("snapshot-replay")).toBe(3);
+    // retention-erasure: 6 inserts + 2 seed rows (C-300, C-301) = 8.
+    expect(rowsById.get("retention-erasure")).toBe(8);
+    // snapshot-to-stream: 1 insert + 2 seed rows = 3.
+    expect(rowsById.get("snapshot-to-stream")).toBe(3);
   });
 });
 
