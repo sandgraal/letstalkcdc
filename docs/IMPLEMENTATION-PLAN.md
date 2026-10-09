@@ -1397,6 +1397,12 @@ where the work now lives:
 | —   | Order                    | **Housekeeping bundle first**, then privacy page + retention, then newsletter and analytics, then perf fixes and major upgrades. | see Phase 15 ordering |
 | —   | Appwrite                 | **Deleted by the maintainer** (project and key).                                                                                 | P15-4 records it      |
 
+### New decision D9 (2026-10-09)
+
+| #   | Decision                                                     | Recommended default                                                                                                                                                                                                                                                                                                | Unblocks |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| D9  | The Change Feed Playground's public, undeleted data exposure | **Add a retention job for `events` and `scenarios` (30 days), and show a visible "use made-up data" note in the playground UI.** Today `events` is public-readable, receives whatever a visitor types (`before`/`after`, up to ~200 KB a row) and streams it to other visitors, and neither table is ever deleted. | P15-24   |
+
 ### New decision (2026-10-09)
 
 | #   | Decision                          | Recommended default                                                                                                                                                                                                                                                                              | Unblocks |
@@ -1502,7 +1508,7 @@ production CSS hashes.
 
 ### Tier 2 — feedback data privacy
 
-- [ ] **P15-8 · Privacy page and 12-month retention.** Outcome: visitors can
+- [x] **P15-8 · Privacy page and 12-month retention.** Outcome: visitors can
       see what the assistant stores, and old rows go away on their own.
       Accept: a `/privacy/` page (what is stored — typed question, topic id,
       vote, time; why; who can read it; how to request deletion; the
@@ -1515,6 +1521,7 @@ production CSS hashes.
       database, a dry-run `select count(*)` of the rows it would delete,
       `/verify-all`, `smoke:core`. Size: M. Role: `implementer` (page, copy,
       SQL), `css-refactor` if the page needs styles, then `reviewer`.
+      _2026-10-09: shipped in #351; an independent claim-by-claim review found four wrong statements, fixed in #355 (the share-link leak path, queued votes, the missing date, the cookie qualifier). The retention job is live (migration `assistant_feedback_retention_12_months`, 2026-10-09 03:21 UTC). The playground's `events`/`scenarios` tables have no retention: decision D9._
 
 ### Tier 3 — growth plumbing (placeholders, off until configured)
 
@@ -1540,7 +1547,7 @@ production CSS hashes.
       branch, LHCI-style check that the script does not move the `/intro/`
       score, `/verify-all`. **Maintainer step:** create the GoatCounter
       site and set `GOATCOUNTER_CODE`. Size: S. Role: `implementer`.
-- [ ] **P15-11 · Assistant beginner intents and gap review.** Outcome: the
+- [x] **P15-11 · Assistant beginner intents and gap review.** Outcome: the
       question that scored the first real 👎 ("help me learn cdc") gets a
       useful answer. Accept: new intents for "where do I start", "learn
       CDC", "what should I read first" and close variants, answering with
@@ -1554,6 +1561,7 @@ production CSS hashes.
       to watch the effect. Size: M. Role: `implementer` (data, tests),
       `scout` (gap list), `reviewer`.
       _2026-10-09: in progress as draft PR #343; an independent review found page-boost regressions (fix under way), so the box stays open._
+      _2026-10-09: shipped in #343 after two independent review rounds (the first found 15 page-boost regressions in the initial fix). Anchors are now checked in `smoke:core`._
 
 ### Tier 4 — structural
 
@@ -1587,7 +1595,7 @@ production CSS hashes.
       and input row stay on screen. Verify: the hit-test e2e on every project,
       the reviewer's viewport matrix. Size: M. Role: `css-refactor` for (a)
       and (c), `implementer` for (b), `reviewer`.
-- [ ] **P15-16 · Light-theme accent contrast.** Needs D8. Outcome: the
+- [x] **P15-16 · Light-theme accent contrast.** Needs D8. Outcome: the
       light theme meets WCAG AA for accent-coloured text and controls.
       Accept: `--color-accent-primary` (or its light-theme value) reaches
       ≥ 4.5:1 on its real backgrounds; axe reports no `color-contrast` on the
@@ -1596,6 +1604,7 @@ production CSS hashes.
       exemption is removed or narrowed. Side effect: the CSS hash changes and
       is re-baselined. Verify: axe in both themes, `/css-byte-check`, e2e,
       screenshots. Size: M. Role: `css-refactor`, `reviewer`.
+      _2026-10-09: shipped in #349 (`#0c8dbd` → `#0a7299`, light theme only; the global `color-contrast` exemption is removed and the e2e audit runs both themes). Production CSS hash is now `424e77a0…`. The contrast failures that are not the accent are P15-21._
 - [ ] **P15-17 · Tighten `/partitioning/#recon` to the site's thesis.**
       Outcome: no page contradicts the standing rule. Accept: the section
       says a sink's version guard orders by **log position**, not a timestamp
@@ -1605,12 +1614,13 @@ production CSS hashes.
       `ts_ms`; no end-to-end exactly-once). Then the assistant's
       `idempotent_sink` intent may link there. Size: S. Role: `implementer`,
       `reviewer`.
-- [ ] **P15-18 · Give the reviewing roles room to finish.** Outcome: a
+- [x] **P15-18 · Give the reviewing roles room to finish.** Outcome: a
       thorough review is not cut off mid-experiment. Accept: `maxTurns` on
       `reviewer` and `implementer` is raised (60 → 100 and 30 → 60 are the
       values that were hit), the `reviewer` brief template in
       `docs/CONDUCTOR.md` says "write findings first, then run extra
       experiments", and the roster test still passes. Size: S. Role: `scribe`.
+      _2026-10-09: shipped in #350 (reviewer and implementer now 100 turns; the reviewer is told to write findings first; CONDUCTOR.md says a capped role is resumed, never inferred from a partial report)._
 - [ ] **P15-19 · Triage `npm audit` for the dev tooling.** Outcome: known
       advisories are either fixed or consciously accepted. Accept: `npm audit`
       currently reports 27 vulnerabilities (2 low, 5 moderate, 20 high) in the
@@ -1619,6 +1629,88 @@ production CSS hashes.
       reachable from our scripts, and whether a P13-8 major upgrade fixes it;
       fix what is cheap and record the rest as accepted with the reason.
       Size: M. Role: `scout` (inventory), `implementer`.
+
+### Tier 6 — found in review (2026-10-09)
+
+- [ ] **P15-20 · Three visible UI bugs.** Outcome: pages stop looking broken on
+      phones and in dark theme. Root causes were traced by the screenshot
+      pass: (a) the community box ("Questions or comments?",
+      `src/_includes/components/discussion-link.njk`) uses
+      `callout--enhanced callout--info discussion-callout` but not `.callout`,
+      so it has no padding or margin and touches both screen edges;
+      (b) the dashboard chip (`#statsButton.stats-chip`, `base.njk`) is
+      unstyled: only a phone media query in `09-mobile-responsive.css` sets
+      `bottom`/`right`, which do nothing without `position: fixed`, so a stray
+      "📊 0" sits after the footer; (c) `html[data-theme="dark"] .prose a`
+      in `pages/snapshotting.css` outranks `.button.primary`, so the primary
+      button's text is the link colour on a cyan gradient (about 1.1:1) on
+      `/snapshotting/` in dark theme, on desktop as well as phone, and likely
+      on every dark-theme `.prose a.button`. Accept: each fixed at the cause
+      (not per page), `elementFromPoint`/axe checks, before/after screenshots
+      at 393 and 1280 in both themes, CSS hashes recorded. Size: M. Role:
+      `css-refactor`, `reviewer`.
+- [ ] **P15-21 · Remaining colour-contrast debt.** Outcome: the e2e contrast
+      audit can cover every sitemap page. The accent fix (#349) removed the
+      exemption and exposed what remains: about 151 light-theme and 532
+      dark-theme nodes. Biggest first: code-block "copy" buttons that render
+      browser-default black text on a dark button (1.1–1.2:1, dark theme);
+      light-theme code blocks (1.0:1) on `/connector-builder/`,
+      `/debezium-decoder/`, `/dlq-triage/` and `/troubleshooting/failure-drills/`
+      (68 nodes); `/versions/` status badges; greyed steps on `/exactly-once/`
+      (1.96 and 2.56:1); `/tests/` `.ok`/`.no`; the `/intro/` simulator
+      buttons and severity badges (hard-coded status colours). Accept: each
+      group fixed at its shared cause, then the audit's narrow exemption list
+      shrinks to zero and every sitemap page is checked in both themes. Size:
+      L → one PR per group. Role: `css-refactor`, `reviewer`.
+- [ ] **P15-22 · Rewrite `/merge-cookbook/` to the log-position rule.** The
+      most copyable page on the site is timestamp-ordered throughout: about 20
+      statements across Snowflake, BigQuery, Oracle, Postgres, MySQL and SQL
+      Server use `ORDER BY OP_TS DESC` or `s.OP_TS >= t.OP_TS` (the `>=` also
+      lets two same-millisecond changes both pass, so the last processed
+      wins), and log position is offered only as a fallback; several examples
+      physically `DELETE`. A mechanical rename would break `DATE(OP_TS)`
+      partitioning and an `op_ts >= NOW() - INTERVAL '10 minutes'` check, so
+      the intro and delete handling need a deliberate rewrite using the
+      pattern now on `/materialization/` (delete marker, `source_lsn`
+      guard, `(position, ordinal)` where positions can repeat). Accept:
+      every example compiles in its dialect and is reviewed by the SME; the
+      page agrees with `/partitioning/#recon` and `/materialization/`.
+      Size: L. Role: `implementer`, then `reviewer` (technical), then the
+      maintainer signs off.
+- [ ] **P15-23 · The remaining unguarded or timestamp-ordered examples.**
+      `/snapshotting/` ≈ line 499: the "Warehouse MERGE example" has no guard
+      at all (`UPDATE SET … updated_at = s.updated_at`), so any replay or
+      overlapping snapshot chunk overwrites newer rows, and its Gotcha mentions
+      only deletes; ≈ line 535: "dedupe in sink (hash + latest timestamp)";
+      `/errata/` ≈ line 47: "reconcile using version columns or `op_ts`";
+      and the dbt incremental example on `/materialization/`: it filters
+      deletes (`op != 'd'`) before they reach the target so a deleted row
+      never goes away, uses BigQuery-only `select * except(rnk)`, and has no
+      `is_incremental()` bound or guard. Accept: each uses the
+      log-position guard and delete marker, SQL reviewed technically, snippets
+      noted as untested if they are. Size: M. Role: `implementer`,
+      `reviewer`.
+- [ ] **P15-24 · Playground data retention and warning (needs D9).**
+      Per the decision: a retention job for `public.events` and
+      `public.scenarios` (a database change the maintainer approves first,
+      recorded in `supabase/schema.sql`), and a visible note in the
+      playground UI asking visitors to use made-up data; `/privacy/` updated
+      in the same change (it currently says plainly that there is no
+      automatic deletion). The playground code is the other agent's finished
+      work: the conductor may edit it for this item only with the maintainer's
+      go-ahead. Size: M. Role: `implementer`, `reviewer`.
+- [ ] **P15-25 · Small safe fixes.** Use `youtube-nocookie.com` for the embed
+      (one line in `src/_includes/components/video-embed.njk`, after checking
+      the embed still works; the thumbnail host `img.youtube.com` is still
+      contacted); `docs/CONTRIBUTING.md` says `npm install` where
+      `CLAUDE.md` says `npm ci`; `docs/javascript-architecture.md` lines 24 and
+      115 still list the removed `web-vitals-dashboard.js`; make
+      `.github/workflows/linkcheck.yml` read `SITE_HOST` and
+      `ELEVENTY_PATH_PREFIX` from repository variables instead of literals so a
+      domain move is purely a variable change (**a CI change: the maintainer
+      approves it first**); the playground's hardcoded host values
+      (`LTCDC_BASE`, `shareBaseUrl`) are listed in `docs/DOMAIN-MIGRATION.md`.
+      Size: S each. Role: `scribe` / `implementer`.
 
 ### Ordering
 
