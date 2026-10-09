@@ -83,6 +83,48 @@ describe("privacy page source", () => {
     );
   });
 
+  it("keeps the server-side timestamp triggers that retention depends on", () => {
+    expect(schema).toMatch(
+      /create or replace function public\.force_server_timestamp\(\)[\s\S]*?set search_path = ''/,
+    );
+    expect(schema).toContain("new.saved_at := now()");
+    expect(schema).toContain("new.created_at := now()");
+    expect(schema).toContain("tg_table_name = 'scenarios'");
+    expect(schema).toContain("tg_table_name = 'events'");
+    for (const [trigger, table] of [
+      ["scenarios_server_saved_at", "scenarios"],
+      ["events_server_created_at", "events"],
+    ]) {
+      expect(schema).toContain(
+        `drop trigger if exists ${trigger} on public.${table};`,
+      );
+      expect(schema).toMatch(
+        new RegExp(
+          `create trigger ${trigger}\\s+before insert on public\\.${table}\\s+for each row execute function public\\.force_server_timestamp\\(\\);`,
+        ),
+      );
+    }
+  });
+
+  it("keeps the playground tables insert-only (events also readable)", () => {
+    for (const stmt of [
+      "revoke all on table public.events from anon, authenticated;",
+      "revoke all on table public.scenarios from anon, authenticated;",
+      "grant insert on public.events to anon, authenticated;",
+      "grant select on public.events to anon, authenticated;",
+      "grant insert on public.scenarios to anon, authenticated;",
+    ]) {
+      expect(schema).toContain(stmt);
+    }
+    // No broader grant on these tables may creep back in.
+    expect(schema).not.toMatch(
+      /grant\s+(all|update|delete|select)[^;]*on (table )?public\.scenarios/i,
+    );
+    expect(schema).not.toMatch(
+      /grant\s+(all|update|delete)[^;]*on (table )?public\.events/i,
+    );
+  });
+
   it("states the 30-day playground retention and never the old claim", () => {
     expect(page).toContain("<code>events</code>");
     expect(page).toContain("<code>scenarios</code>");
@@ -132,6 +174,23 @@ describe("privacy page, rendered", () => {
     expect(ret).toMatch(/12 months/);
     expect(section(rendered, "who-sees")).toMatch(/see new events live/);
     expect(rendered).not.toMatch(/no automatic deletion/i);
+  });
+
+  it("says the 30 days start on the server's clock and browsers cannot change or delete", () => {
+    const pg = section(rendered, "playground");
+    expect(pg).toMatch(
+      /counted from the server's time when the record is\s+stored/,
+    );
+    expect(pg).toMatch(/device's clock cannot change it/);
+    expect(pg).toMatch(
+      /only add\s+records \(and, for events, read them\): they cannot change or delete any/,
+    );
+    expect(section(rendered, "retention")).toMatch(
+      /start from the database\s+server's time[\s\S]*?device clock\s+cannot change that/,
+    );
+    expect(section(rendered, "who-sees")).toMatch(
+      /can only add playground\s+records, and read events; they cannot change or delete any record/,
+    );
   });
 
   it("tells people not to paste private text or share links publicly", () => {

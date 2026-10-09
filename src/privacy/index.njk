@@ -107,9 +107,12 @@ canonicalPath: "/privacy/"
       every day and deletes playground events and saved scenarios that are
       older than 30 days. Because the job runs once a day, a record can
       last up to about 31 days. When a scenario is deleted, its share link
-      stops working, so a link you copy will expire after about 30 days.
-      Visitors cannot delete their own events or scenarios sooner; you can
-      ask for earlier removal (see "Asking about or deleting your entry").
+      stops working, so a link you copy will expire after about 30 days. The
+      30 days are counted from the server's time when the record is stored,
+      so a device's clock cannot change it. Visitors' browsers can only add
+      records (and, for events, read them): they cannot change or delete any,
+      so you cannot delete your own events or scenarios sooner; you can ask
+      for earlier removal (see "Asking about or deleting your entry").
     </li>
     <li>
       <strong>Stays on your device:</strong> your workspace, your onboarding
@@ -206,7 +209,9 @@ canonicalPath: "/privacy/"
     separate scheduled job runs every day and deletes playground events and
     saved scenarios older than that, so a record can last up to about 31
     days before it is removed, and a playground share link stops working
-    once its scenario is deleted. The playground also asks you, on the page,
+    once its scenario is deleted. The 30 days start from the database
+    server's time when the record is stored; a visitor's device clock
+    cannot change that. The playground also asks you, on the page,
     to use made-up data only. This policy took effect on 2026-10-09.
   </p>
 </section>
@@ -224,7 +229,8 @@ canonicalPath: "/privacy/"
     Change Feed Playground: events are readable by anyone, and other
     playground visitors see new events live while they are stored. A saved
     scenario is readable by anyone who has its link (see above) until it is
-    deleted after 30 days.
+    deleted after 30 days. Visitors' browsers can only add playground
+    records, and read events; they cannot change or delete any record.
   </p>
 </section>
 

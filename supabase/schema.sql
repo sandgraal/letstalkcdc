@@ -114,3 +114,55 @@ select cron.schedule(
   '29 3 * * *',
   $$delete from public.scenarios where saved_at < now() - interval '30 days'$$
 );
+
+-- ---------------------------------------------------------------------------
+-- Server-side timestamps and least privilege for the playground tables
+-- (APPLIED 2026-10-09 UTC as the migration
+-- `playground_server_clock_and_least_privilege`; maintainer-approved)
+--
+-- Why: the retention jobs above key on events.created_at and
+-- scenarios.saved_at. The browser used to supply saved_at itself, so a
+-- visitor's device clock (or a hand-made request) could set a date far in
+-- the future and keep a row past the 30-day limit. A BEFORE INSERT trigger
+-- now overwrites the column with the server's now() on every insert, so the
+-- 30-day clock starts from the time the row is stored and the client value
+-- is ignored.
+--
+-- The grants are least privilege: after them, anon and authenticated can
+-- INSERT into both tables and SELECT from events (the live public stream),
+-- and nothing else. They cannot update or delete any row, and cannot select
+-- from scenarios directly (a shared scenario is opened only through the
+-- get_scenario(uuid) share-link lookup). Re-running this block is safe:
+-- the function is create-or-replace, each trigger is dropped before it is
+-- created, and revoke and grant are idempotent.
+-- ---------------------------------------------------------------------------
+create or replace function public.force_server_timestamp()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_table_name = 'scenarios' then
+    new.saved_at := now();
+  elsif tg_table_name = 'events' then
+    new.created_at := now();
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists scenarios_server_saved_at on public.scenarios;
+create trigger scenarios_server_saved_at
+  before insert on public.scenarios
+  for each row execute function public.force_server_timestamp();
+
+drop trigger if exists events_server_created_at on public.events;
+create trigger events_server_created_at
+  before insert on public.events
+  for each row execute function public.force_server_timestamp();
+
+revoke all on table public.events from anon, authenticated;
+revoke all on table public.scenarios from anon, authenticated;
+grant insert on public.events to anon, authenticated;
+grant select on public.events to anon, authenticated;
+grant insert on public.scenarios to anon, authenticated;

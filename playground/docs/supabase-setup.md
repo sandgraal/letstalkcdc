@@ -79,7 +79,10 @@ Both tables are pruned to 30 days by two `pg_cron` jobs (applied 2026-10-09, rec
 | `playground-events-retention`    | `23 3 * * *` | `public.events` rows with `created_at` older than 30 days         |
 | `playground-scenarios-retention` | `29 3 * * *` | `public.scenarios` rows with `saved_at` older than 30 days        |
 
-The jobs run once a day, so a row can live up to about 31 days. A share link stops working once its scenario row is deleted. The playground shows a "use made-up data only" note beside the row editor and the change feed, and `/privacy/` describes the same policy.
+The jobs run once a day, so a row can live up to about 31 days.
+
+The clock starts from the server's time when the row is stored. `BEFORE INSERT` triggers (`scenarios_server_saved_at`, `events_server_created_at`, both calling `public.force_server_timestamp()`) overwrite `saved_at` and `created_at` with `now()`, so a value sent by the client, or a wrong device clock, is ignored. Table privileges are least privilege: `anon` and `authenticated` hold `INSERT` on `events` and `scenarios` and `SELECT` on `events` only, so browsers cannot update or delete any row. Both are recorded in the repo-root `supabase/schema.sql` (migration `playground_server_clock_and_least_privilege`, applied 2026-10-09).
+ A share link stops working once its scenario row is deleted. The playground shows a "use made-up data only" note beside the row editor and the change feed, and `/privacy/` describes the same policy.
 
 ## Verifying
 
