@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Conductor protocol for AI-assisted work.** The main Claude Code session
+  now runs as a `conductor` agent that delegates to single-purpose roles
+  (`scout`, `verifier`, `scribe`, `implementer`, `reviewer`, plus the
+  existing `css-refactor`), each pinned to Haiku 5.5 or Sonnet 5.5 by task;
+  nothing above Sonnet is configured. A `PreToolUse` hook denies any other
+  per-call model, and `tests/unit/agent-roster.test.js` fails CI if a role
+  is pinned elsewhere. Protocol, routing, Definition of Ready / Done and the
+  limits of the model lock are in `docs/CONDUCTOR.md`.
+- **Implementation plan: Phases 13 and 14.** A formal backlog (outcome,
+  acceptance criteria, verification, size, role per item) and a maintainer
+  decisions register with a recommended default for each open decision.
+  Phase 1 (production configuration) is closed with evidence.
+
 - **Content depth: the four gaps between correct and comprehensive
   (Phase 12).** The SME review found the CDC material accurate but
   Kafka-first and relational-first in places, with one mechanism named

@@ -145,12 +145,14 @@ context=$(
   printf 'PR #%s merged on `main`: %s (branch: %s).\n\n' \
     "$latest_num" "$latest_title" "$latest_branch"
   printf 'Auto-continue directive: read docs/IMPLEMENTATION-PLAN.md, pick '
-  printf 'the lowest-numbered open `- [ ]` item you can act on (skip items '
-  printf 'that require human-only GitHub-side configuration like Phase 1), '
-  printf 'and start work on it. Branch from `main` after `git fetch && git '
+  printf 'the next open item you can act on: work the Phase 13 queue in '
+  printf 'order first, then the lowest-numbered open `- [ ]` (skip Phase 14 '
+  printf 'and anything needing a maintainer decision or human-only GitHub '
+  printf 'configuration), per docs/CONDUCTOR.md. Branch from `main` after '
+  printf '`git fetch && git '
   printf 'checkout main && git pull`.\n'
   if [ -n "$next_open" ]; then
-    printf '\nFirst open item by file order: %s\n' "$next_open"
+    printf '\nFirst open item by file order (informational; Phase 13 comes first): %s\n' "$next_open"
   fi
 )
 

@@ -1,0 +1,66 @@
+{
+  "id": "crud-basic",
+  "name": "CRUD Basic",
+  "description": "Teaching delete visibility basics.",
+  "tags": [
+    "crud",
+    "basics"
+  ],
+  "schema": [
+    {
+      "name": "id",
+      "type": "string",
+      "pk": true
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "pk": false
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "pk": false
+    }
+  ],
+  "rows": [
+    {
+      "id": "1",
+      "name": "Alice",
+      "email": "alice@contoso.io"
+    }
+  ],
+  "ops": [
+    {
+      "t": 100,
+      "op": "insert",
+      "table": "customers",
+      "pk": {
+        "id": "1"
+      },
+      "after": {
+        "name": "Alice",
+        "email": "alice@example.com"
+      }
+    },
+    {
+      "t": 350,
+      "op": "update",
+      "table": "customers",
+      "pk": {
+        "id": "1"
+      },
+      "after": {
+        "email": "alice@contoso.io"
+      }
+    },
+    {
+      "t": 700,
+      "op": "delete",
+      "table": "customers",
+      "pk": {
+        "id": "1"
+      }
+    }
+  ]
+}

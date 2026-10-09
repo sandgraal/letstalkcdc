@@ -23,13 +23,13 @@ Please include:
 ## Secret Management
 
 - Never commit secrets or API keys to version control. Use environment variables in your deployment platform (Netlify, Vercel, GitHub Actions, etc.) or a local `.env` file ignored by Git.
-- For Appwrite integration, set `APPWRITE_API_KEY`, `APPWRITE_PROJECT`, `APPWRITE_ENDPOINT`, and other IDs as environment variables. Only non-secret values should be exposed to the browser; the API key must remain server-side.
+- For the optional Supabase integration, only the project URL and the _publishable_ key (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) reach the browser; they are public by design and protected by row-level security. Never expose a `service_role`/secret key.
 - Rotate credentials immediately if a secret is accidentally exposed.
 
 ## Key Rotation
 
-- If a secret (such as `APPWRITE_API_KEY`) is committed, generate a new key in Appwrite and update your environment variables accordingly.
-- Remove the compromised key from all environments and revoke it in Appwrite.
+- If a secret key is committed, generate a new key in the provider's dashboard and update your environment variables accordingly.
+- Remove the compromised key from all environments and revoke it at the provider.
 - Consider using tools like `git filter-repo` to remove exposed secrets from history.
 
 ## Recent Security Update

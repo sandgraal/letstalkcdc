@@ -1,7 +1,7 @@
 /**
  * Local Progress Tracker
  * Tracks module completion using localStorage (no server required)
- * Progressive enhancement - works alongside Appwrite integration
+ * Progressive enhancement - works fully offline
  */
 
 const STORAGE_KEY = "cdc-local-progress";
