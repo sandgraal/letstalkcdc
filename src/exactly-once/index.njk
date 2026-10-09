@@ -334,6 +334,8 @@ WHEN MATCHED THEN
           its own progress will re-emit the event. (Opting in to Kafka Connect exactly-once source support, above,
           narrows that first hop, with the caveats listed there.) Either way, outbox does <em>not</em> make delivery
           exactly-once into your sinks — you still need idempotent consumers to absorb the duplicates.
+          The relay options, Debezium's router and the consumer guard are on
+          <a href="{{ '/transactional-outbox/' | url }}">Transactional Outbox and Relay</a>.
         </p>
       </article>
 
