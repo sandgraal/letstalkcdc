@@ -533,8 +533,15 @@ WHEN NOT MATCHED THEN
       <code>v3</code> follows. That re-insert is an ordinary later source write, not a redelivered old event, so every target
       applies it, and a position guard would too. Write down what each target above would hold after the <code>v1</code> write,
       then work out what would change if the same <code>v1</code> record arrived a second time after <code>v3</code>: that is
-      the case your default and the position-based setting disagree on, and the playground cannot produce it. It compares
-      capture methods; it does not simulate these six targets, so the exercise is on paper.
+      the case your default and the position-based setting disagree on. The Re-insert scenario cannot produce it, but two
+      labs can, for one log lane and one key:
+      <a href="{{ '/playground/' | url }}?try=replay-guard#simulator">Replay against a guarded sink</a> delivers old changes
+      again after newer ones, and
+      <a href="{{ '/playground/' | url }}?try=ts-vs-position#simulator">ts_ms against log position</a> shows a timestamp
+      guard keeping the wrong change. They open the playground, a separate tool that contacts a third-party database
+      (see the <a href="{{ '/privacy/' | url }}#playground">privacy note</a>). The playground compares capture methods and
+      models a guard in general terms; it does not simulate these six targets, so mapping what you see onto each target is
+      on paper.
     </p>
   </section>
 

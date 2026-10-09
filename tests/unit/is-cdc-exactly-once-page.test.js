@@ -221,6 +221,13 @@ describe("links", () => {
       expect(glossary.map((g) => g.slug)).toContain(anchor);
       return;
     }
+    if (p === "/playground/") {
+      // A separate published artifact (playground/), not a page under src/.
+      expect(existsSync(path.join(ROOT, "playground", "index.html"))).toBe(
+        true,
+      );
+      return;
+    }
     const file = path.join(ROOT, `src${p}index.njk`);
     expect(existsSync(file), p).toBe(true);
     if (anchor) {

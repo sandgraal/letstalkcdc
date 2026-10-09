@@ -209,6 +209,12 @@ scripts:
       <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>
       applied to deletes. A tombstone cannot do this job: it has no position.
     </p>
+    <p>
+      Try it in the playground: <a href="{{ '/playground/' | url }}?try=delete-then-late-update#simulator">Delete
+      followed by a late update</a> starts with Sink A&rsquo;s behaviour (the order comes back) and lets you switch on a
+      position guard and delete markers. It opens a separate tool that contacts a third-party database (see the
+      <a href="{{ '/privacy/' | url }}#playground">privacy note</a>).
+    </p>
     <pre><code class="language-sql">CREATE TABLE customers (
   id         BIGINT  PRIMARY KEY,
   email      TEXT,                          -- NULL on a delete: erase the payload with the marker

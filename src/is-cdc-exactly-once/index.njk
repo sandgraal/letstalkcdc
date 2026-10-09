@@ -461,6 +461,13 @@ COMMIT;</code></pre>
       shows the idempotent version. It demonstrates the sink side of hop 3; it does not simulate the Kafka Connect
       opt-in.
     </p>
+    <p>
+      To see the same sink-side idea on a change feed, open
+      <a href="{{ '/playground/' | url }}?try=replay-guard#simulator">Replay against a guarded sink</a> in the
+      playground: the log sends two changes a second time, and a position guard skips them. It models one lane and one
+      key and does not make delivery exactly-once. The playground is a separate tool that contacts a third-party
+      database (see the <a href="{{ '/privacy/' | url }}#playground">privacy note</a>).
+    </p>
   </section>
 
   {{ quizMacro.quiz(quizConfig) | safe }}
