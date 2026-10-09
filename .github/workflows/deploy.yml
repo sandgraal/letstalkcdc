@@ -41,6 +41,11 @@ jobs:
 
       # Publishes the static Change Feed Playground at /playground/.
       - name: Publish playground to /playground/
+        env:
+          # Same variables as the build: the playground's canonical and
+          # Open Graph URLs are filled in from them.
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
+          SITE_HOST: ${{ vars.SITE_HOST }}
         run: scripts/publish-playground.sh
 
       - name: Upload artifact
