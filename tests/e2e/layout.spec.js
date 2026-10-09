@@ -101,3 +101,41 @@ test.describe("floating controls", () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe("font swap does not shift layout (P13-6)", () => {
+  // `layout-shift` entries are Chromium-only. The metric-matched fallback
+  // faces in 01-variables.css exist so the Plex swap is invisible; the bound
+  // is far below the 0.1 "good" line so a regression to a late, unmatched
+  // font shows up here rather than only in Lighthouse.
+  test("/intro/ accumulates no meaningful layout shift", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "layout-shift is Chromium-only");
+    await page.addInitScript(() => {
+      window.__cls = 0;
+      window.__shifts = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) {
+          if (e.hadRecentInput) continue;
+          window.__cls += e.value;
+          window.__shifts.push({
+            value: e.value,
+            nodes: (e.sources || []).map((s) =>
+              s.node ? s.node.nodeName + "." + (s.node.className || "") : "?",
+            ),
+          });
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    await page.goto("/intro/");
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(500);
+    const { cls, shifts } = await page.evaluate(() => ({
+      cls: window.__cls,
+      shifts: window.__shifts,
+    }));
+    expect(cls, JSON.stringify(shifts)).toBeLessThan(0.01);
+  });
+});

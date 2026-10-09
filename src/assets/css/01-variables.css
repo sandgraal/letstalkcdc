@@ -56,15 +56,132 @@
   src: url("../../fonts/ibm-plex-mono-600.woff2") format("woff2");
 }
 
+/* Metric-matched fallbacks (P13-6). While a Plex file is still in flight
+   (font-display: swap) the text is set in a locally installed face that has
+   been rescaled to Plex's advance widths and given Plex's vertical metrics,
+   so the swap changes glyph shapes but not line breaks or line boxes, and
+   causes no layout shift. They are listed right after the Plex family in
+   --font-sans / --font-mono. The numbers are computed from the shipped
+   woff2 files and Arial / Courier New with fontTools:
+     size-adjust = Plex weighted average advance / fallback weighted average
+                   advance (English letter frequencies, space = 18%)
+     ascent-override  = Plex typo ascender  (1.025 em) / size-adjust
+     descent-override = Plex typo descender (0.275 em) / size-adjust
+     line-gap-override = 0 (Plex's line gap is 0)
+   The local() names list Arial and its metric-compatible clones (Liberation
+   Sans on Linux, Arimo on ChromeOS / Android) by full and PostScript name;
+   Courier New and its clones (Liberation Mono, Cousine) for mono. Where none
+   is installed the face is skipped and the next family in the stack is used,
+   exactly as before. unicode-range is Plex's own latin coverage, so glyphs
+   Plex lacks (arrows, symbols, emoji) still fall through to system-ui. */
+@font-face {
+  font-family: "IBM Plex Sans Fallback";
+  font-style: normal;
+  font-weight: 400;
+  src:
+    local("Arial"), local("ArialMT"), local("Liberation Sans"),
+    local("LiberationSans"), local("Arimo");
+  size-adjust: 101.23%;
+  ascent-override: 101.26%;
+  descent-override: 27.17%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+20AC,
+    U+2122;
+}
+@font-face {
+  font-family: "IBM Plex Sans Fallback";
+  font-style: normal;
+  font-weight: 500;
+  src:
+    local("Arial"), local("ArialMT"), local("Liberation Sans"),
+    local("LiberationSans"), local("Arimo");
+  size-adjust: 103.38%;
+  ascent-override: 99.15%;
+  descent-override: 26.6%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+20AC,
+    U+2122;
+}
+@font-face {
+  font-family: "IBM Plex Sans Fallback";
+  font-style: normal;
+  font-weight: 600;
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"),
+    local("LiberationSans-Bold"), local("Arimo Bold"), local("Arimo-Bold");
+  size-adjust: 96.9%;
+  ascent-override: 105.78%;
+  descent-override: 28.38%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+20AC,
+    U+2122;
+}
+@font-face {
+  font-family: "IBM Plex Sans Fallback";
+  font-style: normal;
+  font-weight: 700;
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"),
+    local("LiberationSans-Bold"), local("Arimo Bold"), local("Arimo-Bold");
+  size-adjust: 98.25%;
+  ascent-override: 104.33%;
+  descent-override: 27.99%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+20AC,
+    U+2122;
+}
+@font-face {
+  font-family: "IBM Plex Mono Fallback";
+  font-style: normal;
+  font-weight: 400 500;
+  src:
+    local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"),
+    local("LiberationMono"), local("Cousine");
+  size-adjust: 99.98%;
+  ascent-override: 102.52%;
+  descent-override: 27.5%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+20AC,
+    U+2122;
+}
+@font-face {
+  font-family: "IBM Plex Mono Fallback";
+  font-style: normal;
+  font-weight: 600 700;
+  src:
+    local("Courier New Bold"), local("CourierNewPS-BoldMT"),
+    local("Liberation Mono Bold"), local("LiberationMono-Bold"),
+    local("Cousine Bold"), local("Cousine-Bold");
+  size-adjust: 99.98%;
+  ascent-override: 102.52%;
+  descent-override: 27.5%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+20AC,
+    U+2122;
+}
+
 :root {
   /* Typography - IBM Plex superfamily (self-hosted, latin subset) */
   --font-sans:
-    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+    "IBM Plex Sans", "IBM Plex Sans Fallback", system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display:
+    "IBM Plex Sans", "IBM Plex Sans Fallback", system-ui, sans-serif;
   --font-mono:
-    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    monospace;
+    "IBM Plex Mono", "IBM Plex Mono Fallback", ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
 
   /* Font Sizes - Refined typographic scale */
   --text-xs: clamp(0.75rem, 0.7rem + 0.2vw, 0.813rem);
