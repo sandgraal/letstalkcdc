@@ -221,6 +221,11 @@ const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
         detail:
           "Delivery is still at-least-once: the log sent the changes twice either way. The guard makes applying them twice harmless for this key. Polling and trigger lanes are not redelivered.",
       },
+      {
+        title: "ts_ms on a replay",
+        detail:
+          "Here a redelivered change keeps its original ts_ms, like source.ts_ms. The envelope ts_ms on a real replay is the later processing time, which a timestamp guard would treat as newer and apply, so the timestamp guard skipping the repeats in this model is an artefact of the model.",
+      },
     ],
   },
   "ts_ms against log position": {
@@ -242,7 +247,7 @@ const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
       {
         title: "ts_ms is a clock reading",
         detail:
-          "It can tie or lag behind when the node that committed a change has a different clock. The log position is assigned in log order.",
+          "It can tie or lag behind when the host that committed a change has a different clock. The log position is assigned in log order. On a tie a strict rule drops the later change; a >= rule accepts whatever arrived last. Neither knows which committed later.",
       },
       {
         title: "Nothing is replayed here",
@@ -280,7 +285,7 @@ const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
       {
         title: "Polling",
         detail:
-          "The polling lane never sees the delete or the repeat, so it ends empty either way.",
+          "With the default poll interval the polling lane never sees this order at all, so it ends empty. A polling lane that did see it would not learn of the delete.",
       },
     ],
   },

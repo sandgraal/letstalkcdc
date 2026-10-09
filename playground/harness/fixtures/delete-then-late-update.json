@@ -4,7 +4,7 @@
   "description": "An order is created, packed and then deleted at the source. After the delete, the log sends the packed change a second time.",
   "tags": [
     "delete",
-    "tombstone",
+    "delete-marker",
     "redelivery",
     "guard"
   ],

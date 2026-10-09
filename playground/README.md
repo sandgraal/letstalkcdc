@@ -185,6 +185,8 @@ https://sandgraal.github.io/letstalkcdc/playground/?try=replay-guard#simulator
 
 Scenarios can contain `{ "op": "redeliver", "ref": <index into ops> }`, a delivery-layer step rather than a source write: the **log** lane sends the record produced by `ops[ref]` a second time, with the position of its first delivery (shown as the event's log position; the bus still stamps the copy a new offset). Polling and trigger lanes ignore it. A write may also carry `ts_ms` to stamp a different `ts_ms` on its event than `t` (a skewed clock).
 
+**What the model keeps and what it does not.** A redelivered event keeps its original `ts_ms`, like Debezium's `source.ts_ms`. The envelope `ts_ms` on a real replay is the later time the connector processed the event, so a timestamp guard would see the repeat as newer and apply it. The timestamp guard skipping the repeats in `replay-guard` is therefore an artefact of this model, not what a real timestamp guard does on a replay; the point of that lab is the position guard. See `/partitioning/` on the site for the envelope-versus-source distinction.
+
 A scenario may set `sink: { guard, deleteMarkers }` for how the log lane's destination starts, and the reader can change it (which resets the run):
 
 | Guard                      | The destination applies a change only if…                           |

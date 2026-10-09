@@ -685,7 +685,7 @@ const defaultScenarios = [
     name: "ts_ms against log position",
     label: "ts_ms against log position",
     description:
-      "Two orders each get a paid change and then a refunded change. For ORD-7 the node that committed the refund has a clock 22 ms behind, so its ts_ms is older than the paid change. For ORD-8 both changes carry the same ts_ms.",
+      "Two orders each get a paid change and then a refunded change. For ORD-7 the host that committed the refund (for example after a failover) has a clock 22 ms behind, so its ts_ms is older than the paid change. For ORD-8 both changes carry the same ts_ms.",
     highlight:
       "Starts with a timestamp guard, which keeps the change with the newer ts_ms: both orders stay paid and one change is skipped for each. Switch the guard to position and press Start: both end refunded. Here the log delivers every change once and in order; only the guard decides.",
     tags: ["ordering", "ts_ms", "log-position", "guard"],
@@ -716,7 +716,7 @@ const defaultScenarios = [
       "An order is created, packed and then deleted at the source. After the delete, the log sends the packed change a second time.",
     highlight:
       "Starts with no guard and no delete marker: the deleted order comes back as packed. A position guard alone does not stop it, because the destination forgot the delete. Turn on delete markers with the position guard and press Start: the order stays deleted and the marker shows where. Polling never sees the repeat.",
-    tags: ["delete", "tombstone", "redelivery", "guard"],
+    tags: ["delete", "delete-marker", "redelivery", "guard"],
     seed: 63,
     table: "orders",
     schema: [
