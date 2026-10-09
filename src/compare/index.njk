@@ -1,7 +1,7 @@
 ---
 layout: base.njk
-title: "Compare CDC Platforms"
-description: "Head-to-head comparison of six CDC platforms — Debezium, AWS DMS, Fivetran, Airbyte, Oracle GoldenGate, and Qlik Replicate — on deployment, method, delivery semantics, latency, and cost."
+title: "Compare CDC Platforms: Which Fits?"
+description: "Which CDC platform fits your situation: a decision matrix and guide for Debezium, AWS DMS, Fivetran, Airbyte, GoldenGate and Qlik Replicate."
 canonicalPath: "/compare/"
 ---
 {% import "components/ui.njk" as ui %}
@@ -9,11 +9,21 @@ canonicalPath: "/compare/"
 {{ ui.hero(heroConfig) | safe }}
 
 <div class="page-wrap prose">
+  <p>
+    This page is a <strong>decision aid</strong>: it lines six platforms up on
+    the same dimensions so you can work out which one fits your constraints. For
+    a profile of what any one tool is and how it works, see the
+    <a href="{{ '/tooling/' | url }}">Tooling page</a>; each platform card below
+    links to its profile.
+  </p>
+
   <aside class="compare-note" role="note">
     <p>
       <strong>Read the "delivery semantics" row first.</strong> Every platform
-      here delivers <strong>at-least-once</strong> at the wire — none give
-      end-to-end exactly-once across systems, whatever the marketing says.
+      here delivers <strong>at-least-once</strong> by default (Debezium with
+      Kafka Connect has an opt-in exactly-once mode for the source-to-Kafka
+      hop, off by default). No platform gives end-to-end exactly-once across
+      independent systems, whatever the marketing says.
       Correctness comes from an <strong>idempotent sink</strong>: upsert on the
       primary key, ordered by the source log position (LSN/SCN), not
       <code>ts_ms</code>. Where a vendor markets "exactly-once", the table
@@ -60,6 +70,7 @@ canonicalPath: "/compare/"
         <article class="compare-card" id="{{ p.slug }}">
           <h3>{{ p.name }}</h3>
           <p class="compare-card__best"><strong>Best for:</strong> {{ p.bestFor }}</p>
+          <p class="muted"><a href="{{ '/tooling/' | url }}#{{ p.slug }}">What {{ p.name }} is and how it works</a></p>
           <div class="compare-card__cols">
             <div class="compare-card__col">
               <h4>Strengths</h4>
@@ -86,7 +97,7 @@ canonicalPath: "/compare/"
       <li><strong>Zero ops, warehouse target</strong> → <a href="#fivetran">Fivetran</a> (or <a href="#airbyte">Airbyte Cloud</a>) — hand it off, dedupe in the destination MERGE.</li>
       <li><strong>All-in on AWS</strong> → <a href="#aws-dms">AWS DMS</a> — managed, IaC-friendly, into S3/Redshift/Kinesis.</li>
       <li><strong>Sub-second, full control, event-driven</strong> → <a href="#debezium">Debezium + Kafka Connect</a> — you run it, you own it.</li>
-      <li><strong>Open source + broad connectors, minutes are fine</strong> → <a href="#airbyte">Airbyte</a>.</li>
+      <li><strong>Self-hostable with public code, broad connectors, minutes are fine</strong> → <a href="#airbyte">Airbyte</a>.</li>
       <li><strong>Enterprise Oracle, heterogeneous or active-active</strong> → <a href="#goldengate">Oracle GoldenGate</a> — with the honest delivery caveat.</li>
       <li><strong>Broad connectivity, low-code / GUI-first</strong> → <a href="#qlik-replicate">Qlik Replicate</a>.</li>
     </ul>
@@ -111,8 +122,8 @@ canonicalPath: "/compare/"
         <p>Stand up open-source, log-based CDC end to end.</p>
       </a>
       <a class="compare-related__card" href="{{ '/tooling/' | url }}">
-        <h3>Tooling &amp; versions</h3>
-        <p>The full platform catalog and current version matrix.</p>
+        <h3>Tool profiles</h3>
+        <p>What each tool is and does, beyond these six, plus the tool version reference.</p>
       </a>
       <a class="compare-related__card" href="{{ '/exactly-once/' | url }}">
         <h3>Exactly-once, honestly</h3>
