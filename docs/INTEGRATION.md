@@ -23,16 +23,14 @@
 
 ## Optional: Supabase for assistant feedback
 
-Supabase is optional and only used to sync assistant feedback. If you provide credentials, the browser will send queued feedback to your `assistant_feedback` table; otherwise everything stays local.
+Supabase is optional and only used to store assistant feedback. If you provide the two build-time variables below, the browser sends queued 👍/👎 feedback to the `public.assistant_feedback` table with plain `fetch` (no SDK); otherwise everything stays local.
 
-| Variable                   | Scope  | Notes                                                                                           |
-| -------------------------- | ------ | ----------------------------------------------------------------------------------------------- |
-| `SUPABASE_URL`             | Client | Exposed to the browser as `window.SUPABASE_URL`.                                                |
-| `SUPABASE_PUBLISHABLE_KEY` | Client | Exposed as `window.SUPABASE_PUBLISHABLE_KEY`. Public by design; row-level security protects it. |
+| Variable                   | Scope               | Notes                                                                                  |
+| -------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`             | Build time (public) | Project URL, exposed to the browser.                                                   |
+| `SUPABASE_PUBLISHABLE_KEY` | Build time (public) | Publishable key (`sb_publishable_...`). Row-level security limits it to `INSERT` only. |
 
-Never expose a `service_role`/secret key to the browser.
-
-If you skip these variables the assistant quietly falls back to local storage.
+Never use a secret or service-role key here. If you skip these variables the assistant quietly falls back to local storage (`assistantFeedback`). See [SETUP.md](SETUP.md) for the table schema and setup steps.
 
 ## Testing checklist
 

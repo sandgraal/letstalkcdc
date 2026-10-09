@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking via localStorage. Supabase is optionally used for one feature only — collecting 👍/👎 assistant feedback. (User authentication and cross-device cloud progress sync used to be Appwrite-backed too but were removed; see `docs/SETUP.md`.)
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking via localStorage. Supabase is optionally used for one feature only — collecting 👍/👎 assistant feedback. (User authentication and cross-device cloud progress sync existed once but were removed; see `docs/SETUP.md`.)
 
 ### Key Architecture Decisions
 
@@ -129,12 +129,14 @@ Global site configuration derived from environment variables:
 
 ### Supabase Data (`src/_data/supabase.mjs`)
 
-Optional configuration for assistant feedback collection:
+Optional configuration for assistant feedback storage. Two environment
+variables are read at build time and `base.njk` exposes them to the
+browser as `window.SUPABASE_URL` / `window.SUPABASE_PUBLISHABLE_KEY`:
 
 ```javascript
 {
   url: process.env.SUPABASE_URL,
-  key: process.env.SUPABASE_PUBLISHABLE_KEY
+  publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY
 }
 ```
 
@@ -176,17 +178,23 @@ Shared UI components (buttons, cards, badges) used across the site.
 
 ## Supabase Integration (Optional)
 
-Supabase is the optional headless backend for one shipping feature
-— assistant feedback. The historical auth + cloud-progress-sync
-feature was removed.
+Supabase is the optional backend for one shipping feature — assistant
+feedback. The browser posts each 👍/👎 vote straight to Supabase's REST
+API (PostgREST) with `fetch` (`src/js/feedback-client.js`, called from
+`src/js/assistant.js`). There is no SDK
+and no CDN script.
 
-- **Config**: `src/_data/supabase.mjs` reads env vars
-  (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`). Both are public
-  client-side values; row-level security is the access control.
-- **Client**: `src/js/supabase-config.js` lazy-loads the SDK from a CDN
-  only when configured.
-- **Table**: `assistant_feedback` — 👍/👎 ratings on AI-assistant
-  responses. Anonymous visitors can insert only.
+- **Config**: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, read at
+  build time. In GitHub they are repository **Variables** (not
+  Secrets) that `deploy.yml` passes to the build.
+- **Key**: only the **publishable** key (`sb_publishable_...`) is used.
+  It is safe in the browser because row-level security limits it to
+  `INSERT` on one table. Never put a secret or service-role key in this
+  repo or in the browser.
+- **Table**: `public.assistant_feedback`, recorded in
+  `supabase/schema.sql` (reviewable and idempotent; not applied
+  automatically). Reading rows is a maintainer-only action in the
+  Supabase dashboard.
 
 ### When Supabase is Needed
 
@@ -202,21 +210,23 @@ feature was removed.
 - Progress tracking runs entirely in browser localStorage
   (`src/assets/js/local-progress.js`).
 - Assistant works with local-only feedback storage
+  (`localStorage` key `assistantFeedback`)
 - Only loses: centralized assistant-feedback analytics
 
 ### Table Schema
 
-**`assistant_feedback`**:
+**`public.assistant_feedback`** (stores assistant interaction feedback):
 
-```sql
-id uuid primary key default gen_random_uuid(),
-question text not null,      -- User's question text (<= 2000 chars)
-intent_id text,              -- Matched intent identifier
-helpful boolean not null,    -- 👍 = true, 👎 = false
-ts timestamptz not null default now()
-```
+| Column      | Type          | Notes                                                     |
+| ----------- | ------------- | --------------------------------------------------------- |
+| `id`        | `uuid` (PK)   | Client-generated so retries are idempotent (409 = stored) |
+| `question`  | `text`        | Required, at most 2000 characters                         |
+| `intent_id` | `text`        | Optional, at most 200 characters                          |
+| `helpful`   | `boolean`     | 👍 = true, 👎 = false                                     |
+| `ts`        | `timestamptz` | Defaults to `now()`                                       |
 
-- Permissions: anon can insert only (RLS); reads need the dashboard or a service key.
+- Row-level security is on; the `anon` role may `INSERT` only. There is
+  no anon read policy.
 
 The playground (`playground/`) uses the same Supabase project for realtime
 sync and shared scenarios; see `playground/docs/supabase-setup.md`.
@@ -274,7 +284,7 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 ## When in Doubt
 
 1. Check **[docs/README.md](../docs/README.md)** for complete documentation index
-2. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Supabase, tracing, deployment)
+2. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Supabase feedback, tracing, deployment)
 3. Inspect existing pages in `src/` for patterns
 4. Run `npm run smoke` to validate changes
 
@@ -284,7 +294,7 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 
 **Setup & Deployment:**
 
-- **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Supabase, tracing, all features)
+- **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Supabase feedback, tracing, all features)
 - **[docs/HOSTING.md](../docs/HOSTING.md)** — Hosting platforms and deployment
 - **[README.md](../README.md)** — Project overview and quick start
 

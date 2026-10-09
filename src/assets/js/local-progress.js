@@ -1,7 +1,7 @@
 /**
  * Local Progress Tracker
  * Tracks module completion using localStorage (no server required)
- * Progressive enhancement - works fully offline
+ * Progressive enhancement - progress never leaves the browser
  */
 
 const STORAGE_KEY = "cdc-local-progress";
