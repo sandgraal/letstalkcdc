@@ -3,6 +3,7 @@
  * @module tests/unit/modules/code-blocks.test
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { showToast } from "../../../src/assets/js/modules/toast.js";
 import {
   initCodeBlocks,
   initHeadingAnchors,
@@ -161,6 +162,25 @@ describe("code-blocks module", () => {
           }),
         );
       });
+    });
+
+    it("announces the copy in a polite live region the button label cannot hide", async () => {
+      window.showToast = showToast;
+      document.body.innerHTML = `
+        <pre><code class="language-sql">SELECT 1</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const copyBtn = document.querySelector(".code-copy-button");
+      copyBtn.click();
+
+      await vi.waitFor(() => {
+        const region = document.querySelector('[role="status"]');
+        expect(region.getAttribute("aria-live")).toBe("polite");
+        expect(region.textContent).toContain("SQL code copied to clipboard");
+      });
+      // The accessible name is unchanged; the live region carries the news.
+      expect(copyBtn.getAttribute("aria-label")).toBe("Copy SQL code");
     });
 
     it("shows error toast on clipboard failure", async () => {
