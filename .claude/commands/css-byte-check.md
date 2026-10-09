@@ -22,9 +22,11 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   f59f964fe388ee151653e9a075eea653e243e72e66e234bb5b0099cd36aa0ea2
+   fceb82dffad4130b8b4cd8100a93d8aa679299796681e528391b13b2a3d568b5
    ```
-   (re-baselined 2026-10-09 for P16-9: `.h-as-3` / `.h-as-4` heading-level
+   (re-baselined 2026-10-09 for P15-50: the dead `.copy-snippet` selectors
+   and rule removed from components/code-block.css, deletions only; previously
+   `f59f964f…`, re-baselined the same day for P16-9: `.h-as-3` / `.h-as-4` heading-level
    helpers in 05-utilities.css, nothing else; previously `83943ab3…`,
    re-baselined the same day for P13-6: metric-matched fallback `@font-face`
    rules and the `--font-*` tokens that list them, nothing else; previously

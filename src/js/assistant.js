@@ -232,6 +232,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     panel.hidden = true;
     panel.classList.remove("assistant-open");
     fab.setAttribute("aria-expanded", "false");
+    // Every close path (close button, Escape, the floating button itself)
+    // runs through here, so this is the one place focus goes back to the
+    // control that opened the panel. Hiding the panel would otherwise drop
+    // focus to <body> and a keyboard user would lose their place (P15-15).
+    fab.focus();
   }
 
   fab.addEventListener("click", () => {
