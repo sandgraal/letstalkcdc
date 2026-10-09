@@ -38,6 +38,7 @@ export default {
     "/overview/":
       "Series hub. Carries an ItemList generated from series.mjs instead.",
     "/privacy/": "Policy page, not an article.",
+    "/newsletter/": "Signup page, not an article.",
     "/versions/":
       "Generated version matrix with no authored publish or review date.",
     "/dashboard/": "Per-reader progress UI, no editorial content to describe.",

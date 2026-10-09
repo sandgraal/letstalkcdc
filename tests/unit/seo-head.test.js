@@ -171,9 +171,12 @@ describe("social cards and structured data in the built site", () => {
 
     it("no page rendered by base.njk has silently become noindex", () => {
       // Only pages that are noindex on purpose. /dashboard/ is a per-reader
-      // progress UI, made noindex deliberately in P16-5. If another page is
-      // added here it should be a decision, not an accident.
-      const expectedNoindex = ["/dashboard/"];
+      // progress UI, made noindex deliberately in P16-5. /newsletter/ is
+      // noindex on purpose while BUTTONDOWN_USERNAME is unset (this build
+      // leaves it unset); it becomes indexable once configured (P15-9,
+      // tests/unit/newsletter.test.js). If another page is added here it
+      // should be a decision, not an accident.
+      const expectedNoindex = ["/dashboard/", "/newsletter/"];
       const actual = allFiles
         .filter((f) => f.usesBaseLayout && f.noindex)
         .map((f) => f.url)
