@@ -51,10 +51,13 @@ saved scenarios); no CORS setup is needed. See `playground/docs/supabase-setup.m
 
 Define these repository variables under **Settings → Secrets and variables → Actions → Variables**:
 
-| Variable               | Description                                                    | Example                                                   |
-| ---------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
-| `SITE_HOST`            | Full URL where the site is hosted                              | `https://sandgraal.github.io` or `https://yourdomain.com` |
-| `ELEVENTY_PATH_PREFIX` | Path prefix for project pages (leave blank for user/org pages) | `/letstalkcdc` or blank                                   |
+| Variable               | Description                                                  | Example                                                 |
+| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------- |
+| `SITE_HOST`            | Full URL where the site is hosted (no path)                  | `https://<owner>.github.io` or `https://yourdomain.com` |
+| `ELEVENTY_PATH_PREFIX` | Path prefix for project pages; `/` when served from the root | `/letstalkcdc` or `/`                                   |
+
+Moving to your own domain is a change to these two variables plus a few
+GitHub settings; see [DOMAIN-MIGRATION.md](DOMAIN-MIGRATION.md).
 
 ### 3. Automatic Deployment
 

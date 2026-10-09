@@ -40,7 +40,7 @@ Nothing in this repo loads a `.env` file: `npm run dev` and `npm run build` read
 SUPABASE_URL=https://<project-ref>.supabase.co SUPABASE_PUBLISHABLE_KEY=sb_publishable_... npm run dev
 
 # Site configuration (for GitHub Pages deployment)
-SITE_HOST=https://letstalkcdc.github.io npm run build
+SITE_HOST=https://your-site.example npm run build
 # ELEVENTY_PATH_PREFIX is auto-detected from GITHUB_REPOSITORY
 # Only set manually if needed for custom deployments
 # ELEVENTY_PATH_PREFIX=/letstalkcdc
@@ -255,7 +255,7 @@ The site deploys automatically to GitHub Pages via GitHub Actions.
 1. Go to **Settings → Pages**
 2. Select **GitHub Actions** as source
 3. Configure repository variables (Settings → Secrets and variables → Actions → Variables):
-   - `SITE_HOST`: `https://letstalkcdc.github.io` or your custom domain
+   - `SITE_HOST`: your site URL (scheme and domain, no path), e.g. `https://<owner>.github.io` or your custom domain
    - `ELEVENTY_PATH_PREFIX`: `/letstalkcdc` (or blank for root deployment)
    - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (optional): enable assistant feedback storage
 
