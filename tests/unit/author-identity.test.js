@@ -51,8 +51,8 @@ const context = (overrides = {}) => ({
 const renderJsonLd = (overrides) => {
   const html = env.renderString(jsonLdFragment, context(overrides));
   const body = html
-    .replace(/^<script[^>]*>/, "")
-    .replace(/<\/script>$/, "")
+    .replace(/^<script\b[^>]*>/i, "")
+    .replace(/<\/script\b[^>]*>$/i, "")
     .trim();
   return JSON.parse(body); // throws if the template emitted invalid JSON
 };
