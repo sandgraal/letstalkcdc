@@ -271,7 +271,10 @@ curl -X PUT -H "Content-Type: application/json" \
 curl $REGISTRY_URL/config/your-subject
 </code></pre>
         <p class="muted">
-          Automate these in CI so topics can’t drift to unsafe modes.
+          Automate these in CI so topics can’t drift to unsafe modes. For which
+          <code>ALTER TABLE</code> each mode accepts, and a gate to run on a
+          proposed change, see
+          <a href="{{ '/cdc-data-contracts/' | url }}">Data Contracts for Database Events</a>.
         </p>
 
         <h2 id="cdc-notes">CDC-specific wrinkles</h2>

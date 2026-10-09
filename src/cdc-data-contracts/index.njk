@@ -1,0 +1,758 @@
+---
+layout: base.njk
+title: "Data Contracts for Database Events"
+description: "What a consumer may rely on in a Debezium change event, which ALTER TABLE changes break it, registry compatibility modes, and a DDL gate you can run."
+canonicalPath: "/cdc-data-contracts/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section id="contract" aria-labelledby="contract-title">
+    <h2 id="contract-title">A schema nobody designed</h2>
+    <p>
+      When a service publishes an event through an API, someone decides which fields exist and what
+      they mean. In change data capture the producer is a database table. The fields of an event are
+      the table's columns at the moment of the change, so every <code>ALTER TABLE</code> is also an
+      edit to a published schema, made by whoever ran the migration, often without a consumer in mind.
+      The schema is a side effect of DDL, not a deliberate interface.
+    </p>
+    <p>
+      Confluent's data-contracts documentation defines a data contract as a formal agreement between an
+      upstream and a downstream component on the structure and semantics of data in motion, and says a
+      schema is only one element of it: structure, integrity constraints, metadata, rules, and a way to
+      change over time. This page applies that idea where the upstream component is a database you may
+      not control, and stays on the parts that are specific to CDC: what the envelope promises, what
+      each kind of DDL does to it, how to enforce it, and who owns it. It builds on
+      <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a> (registry modes, subject naming,
+      rollout) and <a href="{{ '/event-envelope/' | url }}">Event Envelope</a> (the fields one by one)
+      and does not repeat them.
+    </p>
+    <table>
+      <caption>Why a database changes the contract problem</caption>
+      <thead>
+        <tr>
+          <th scope="col"></th>
+          <th scope="col">An API or service that publishes events</th>
+          <th scope="col">A table captured by CDC</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Who decides the fields</th>
+          <td>The team that owns the event.</td>
+          <td>Whoever owns the table's DDL, which may be an application framework's migration tool.</td>
+        </tr>
+        <tr>
+          <th scope="row">What a change looks like</th>
+          <td>A new schema version, reviewed as an API change.</td>
+          <td>A migration that was reviewed as a database change.</td>
+        </tr>
+        <tr>
+          <th scope="row">A rename</th>
+          <td>A deliberate version, often with both names for a while.</td>
+          <td>One field gone and another present. The Debezium pages describe no rename marker in the event.</td>
+        </tr>
+        <tr>
+          <th scope="row">What you can set at the source</th>
+          <td>Anything the publisher builds.</td>
+          <td>Which columns are captured, how types are mapped, and transformations on the way out (below).</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="callout">
+      <strong>What a contract does not do.</strong> It describes shape and meaning. It does not change
+      delivery. Debezium documents at-least-once delivery, so a compatible schema can still be delivered
+      twice, late, or replayed. The sink still upserts on the primary key and applies a change only if
+      its source log position is newer. Nothing on this page makes a hop exactly-once; see
+      <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once, per hop</a>.
+    </p>
+    <p class="callout">
+      <strong>As of:</strong> 2026-10-09, against the Debezium 3.7 documentation (the &ldquo;stable&rdquo;
+      pages), the Confluent Platform Schema Registry documentation, and the Avro 1.12.0 specification.
+      Setting names and defaults move between releases; where a setting below matters to you, check your
+      version's page.
+    </p>
+  </section>
+
+  <section id="surface" aria-labelledby="surface-title">
+    <h2 id="surface-title">The contract surface: what the envelope promises</h2>
+    <p>
+      A Debezium change event has a key and a value. The value carries <code>before</code>,
+      <code>after</code>, <code>source</code>, <code>op</code> and timestamps. Your consumers depend on
+      some of that by design and on the rest by accident. Write down which is which. The table uses the
+      PostgreSQL connector page; other connectors differ in the position fields, so read yours.
+    </p>
+    <table>
+      <caption>What a consumer may rely on, and what it should not</caption>
+      <thead>
+        <tr>
+          <th scope="col">Element</th>
+          <th scope="col">May rely on (documented)</th>
+          <th scope="col">Do not rely on</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Message key</th>
+          <td>The primary key columns, or the unique key if there is no primary key. They stay in the key even when <code>column.include.list</code> or <code>column.exclude.list</code> filters the value. <code>message.key.columns</code> can override the key.</td>
+          <td>A key on every record. With no primary or unique key the key is null, and a truncate event has a null key.</td>
+        </tr>
+        <tr>
+          <th scope="row">A primary-key change</th>
+          <td>A delete event and a tombstone for the old key, then an event with the new key.</td>
+          <td>That the row keeps one identity. To a keyed sink a key change is a delete plus an insert.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>op</code></th>
+          <td><code>c</code>, <code>u</code>, <code>d</code>, <code>r</code> (snapshot reads only), and on PostgreSQL <code>t</code> (truncate) and <code>m</code> (logical decoding message).</td>
+          <td>Three values only. A sink that treats everything that is not <code>d</code> as an upsert will upsert a <code>t</code>.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>before</code> and <code>after</code></th>
+          <td><code>after</code> holds the new row for create, update and read. <code>before</code> exists as the PostgreSQL <code>REPLICA IDENTITY</code> setting allows.</td>
+          <td>A full <code>before</code> image. With the default replica identity, an update carries only the key columns in <code>before</code>, so this part of the contract is a database setting.</td>
+        </tr>
+        <tr>
+          <th scope="row">Source position</th>
+          <td>The position fields your connector documents (<code>lsn</code> and <code>txId</code> on PostgreSQL). This is what a sink orders by.</td>
+          <td>The top-level <code>ts_ms</code>. It is the connector's processing time from the Connect task's JVM clock; <code>source.ts_ms</code> is the time of the change in the database. Neither is a unique position.</td>
+        </tr>
+        <tr>
+          <th scope="row">Tombstone</th>
+          <td>With <code>tombstones.on.delete=true</code> (the default) a delete event is followed by a record with the same key and a null value.</td>
+          <td>It still being there: an SMT can drop it, and Kafka compaction removes it after <code>delete.retention.ms</code>. See <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes that stay deleted</a>.</td>
+        </tr>
+        <tr>
+          <th scope="row">Field order</th>
+          <td>Avro readers match record fields by name, and the specification says the order may differ between writer and reader.</td>
+          <td>Column order in the value. Nothing in the Debezium pages promises one, and a column added in the middle of a table is a DDL change, not a promise.</td>
+        </tr>
+        <tr>
+          <th scope="row">Optional flags, types and defaults</th>
+          <td>What the connector documents for your version and settings.</td>
+          <td>Staying the same. DDL changes them, and so do connector settings (below).</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3>Two ways the contract changes without a migration</h3>
+    <ul>
+      <li>
+        <strong>Connector settings.</strong> The PostgreSQL page maps temporal types through
+        <code>time.precision.mode</code> and decimals through <code>decimal.handling.mode</code>, so
+        changing either changes the field type consumers see. <code>field.name.adjustment.mode</code>
+        (<code>none</code> by default) can replace characters that Avro names do not allow, so a column
+        called <code>first-name</code> may reach consumers under a different field name depending on it.
+      </li>
+      <li>
+        <strong>Connector upgrades.</strong> Debezium's page warns that with
+        <code>include.unknown.datatypes=true</code> the binary representation of an unsupported type may
+        change between releases, and that once a type is supported it is sent as a logical type, which
+        &ldquo;would require adjustments by consumers&rdquo;. Treat the connector version as part of the
+        contract, and run the contract test (below) before an upgrade reaches production.
+      </li>
+    </ul>
+  </section>
+
+  <section id="ddl-map" aria-labelledby="ddl-map-title">
+    <h2 id="ddl-map-title">Which DDL breaks which consumer</h2>
+    <p>
+      The registry cannot see your DDL; it sees the schema the converter derives from it. Debezium's
+      nullable columns become optional Connect fields, and Confluent's Avro converter writes an optional
+      field as a union with <code>null</code> and a default of <code>null</code>
+      (<a href="https://github.com/confluentinc/schema-registry/blob/master/avro-data/src/main/java/io/confluent/connect/avro/AvroData.java" target="_blank" rel="noopener">AvroData.java</a>,
+      read on 2026-10-09; check the converter version you run). That makes &ldquo;nullable column&rdquo;
+      mean &ldquo;optional field&rdquo; to the registry, and the rest follows from Confluent's
+      compatibility table. The table below uses Avro. Protobuf and JSON Schema follow different rules
+      (Confluent's table shows widening, for one, accepted differently in Protobuf), so check your format.
+    </p>
+    <table>
+      <caption>DDL on a captured table, what consumers see, and whether the registry accepts it (Avro)</caption>
+      <thead>
+        <tr>
+          <th scope="col">DDL</th>
+          <th scope="col">What consumers see</th>
+          <th scope="col">BACKWARD</th>
+          <th scope="col">FORWARD</th>
+          <th scope="col">FULL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>ADD COLUMN</code> nullable</th>
+          <td>A new optional field. Rows that do not change produce no event, so it fills in as rows are updated or re-snapshotted.</td>
+          <td>accepted</td><td>accepted</td><td>accepted</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>ADD COLUMN ... NOT NULL DEFAULT x</code></th>
+          <td>A field with a default, if the connector propagates it. The PostgreSQL page says it tries to, and that the default in the Kafka schema can appear late or early.</td>
+          <td>accepted</td><td>accepted</td><td>accepted</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>DROP COLUMN</code> that was nullable</th>
+          <td>The field disappears. Anything that read it gets nothing.</td>
+          <td>accepted</td><td>accepted</td><td>accepted</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>DROP COLUMN</code> that was <code>NOT NULL</code> with no default</th>
+          <td>The same, but old readers have no default to fall back on.</td>
+          <td>accepted</td><td>rejected</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>RENAME COLUMN</code>, nullable</th>
+          <td>One optional field gone, another optional field present. Nothing links them.</td>
+          <td>accepted</td><td>accepted</td><td>accepted</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>RENAME COLUMN</code>, <code>NOT NULL</code> with no default</th>
+          <td>A required field gone and a required field added.</td>
+          <td>rejected</td><td>rejected</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row">Widen a type (<code>int</code> to <code>bigint</code>)</th>
+          <td>The Connect type goes from int32 to int64.</td>
+          <td>accepted</td><td>rejected</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row">Narrow a type</th>
+          <td>The reverse.</td>
+          <td>rejected</td><td>accepted</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row">Change to an unrelated type (<code>int</code> to <code>text</code>)</th>
+          <td>No Avro promotion between them.</td>
+          <td>rejected</td><td>rejected</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>SET NOT NULL</code></th>
+          <td>The optional flag goes away: the union loses its <code>null</code> branch.</td>
+          <td>rejected</td><td>accepted</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>DROP NOT NULL</code></th>
+          <td>The field may now be null.</td>
+          <td>accepted</td><td>rejected</td><td>rejected</td>
+        </tr>
+        <tr>
+          <th scope="row">Change or drop a default</th>
+          <td>The default in the schema changes (PostgreSQL with <code>pgoutput</code> refreshes on a default change; other plug-ins may not notice until a later refresh).</td>
+          <td colspan="3">Not a row in Confluent's table. By the Avro rules a default is used only when the writer lacks the field, so this alone is accepted; it can still hurt later (see transitive modes).</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small">
+      Sources and what was checked. Rows 1, 3, 4, 7 and 8 are rows of Confluent's Avro table
+      (&ldquo;add optional field&rdquo;, &ldquo;remove optional field&rdquo;, &ldquo;remove required
+      field&rdquo;, &ldquo;widen a scalar type&rdquo;, &ldquo;narrow a scalar type&rdquo;). The others are
+      derived: rows 2, 5 and 6 by combining rows, the type-change row from the Avro schema-resolution
+      rules (numeric promotion goes <code>int</code> to <code>long</code> to <code>float</code> to
+      <code>double</code>; no other numeric or string pairs), and the nullability rows from the
+      table's union-variant rows, because Confluent says Avro expresses nullability as a union with
+      <code>null</code>. This repository's tests check every cell above against a small model of the Avro
+      resolution rules, and the model reproduces all 24 cells of Confluent's Avro table. That is a check
+      of the page against the documentation, not a run of a real Schema Registry. The registry's own check
+      is the authority for your subject.
+    </p>
+    <h3>The rename is the dangerous one</h3>
+    <p>
+      A nullable column renamed is accepted in every mode, because to the registry it is a removed
+      optional field and an added optional field, both of which are always allowed. The connector keeps
+      running, the registry stays green, and every consumer that reads <code>email</code> now reads
+      nothing while <code>email_address</code> fills with data nobody asked for. A sink that stores what
+      it reads keeps its old column, which stops changing, and ignores the new one. No exception is
+      raised. Only a contract test on the consumer's side (below) or a reconciliation check on the data
+      notices.
+    </p>
+    <p>
+      Avro has aliases for exactly this, but the specification describes them as a reader-side
+      mapping: a reader's schema names the old name as an alias. The Debezium pages I read do not
+      describe the connector emitting aliases. Treat a rename as a drop plus an add and migrate with the
+      sequence in <a href="#versioning">the versioning section</a>.
+    </p>
+    <p class="muted small">
+      Inference, not a measurement: that a rename reaches consumers this way follows from the event
+      being built from the table's current columns and from the absence of a rename field in the
+      envelope on the connector pages. It was not run against a live database for this page. SQL Server
+      is different, below.
+    </p>
+  </section>
+
+  <section id="registry" aria-labelledby="registry-title">
+    <h2 id="registry-title">Registry modes, and which one fits a CDC topic</h2>
+    <p>
+      <a href="{{ '/schema-evolution/#compatibility' | url }}">Schema Evolution</a> explains the modes.
+      Here is the part that matters for a database producer, from Confluent's documentation.
+    </p>
+    <table>
+      <caption>Compatibility types, what a new schema is checked against, and who upgrades first</caption>
+      <thead>
+        <tr>
+          <th scope="col">Type</th>
+          <th scope="col">New schema is checked against</th>
+          <th scope="col">Upgrade order, per Confluent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>BACKWARD</code> (the default)</th>
+          <td>The latest version only.</td>
+          <td>Consumers first, then producers.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>BACKWARD_TRANSITIVE</code></th>
+          <td>Every earlier version.</td>
+          <td>Consumers first.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>FORWARD</code>, <code>FORWARD_TRANSITIVE</code></th>
+          <td>The latest version, or every earlier version.</td>
+          <td>Producers first, after making sure data written with older schemas is not available to consumers.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>FULL</code>, <code>FULL_TRANSITIVE</code></th>
+          <td>The latest version, or every earlier version, in both directions.</td>
+          <td>Either order.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>NONE</code></th>
+          <td>Nothing.</td>
+          <td>Upgrade producers and consumers together, or use a new topic.</td>
+        </tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>
+        <strong>Why BACKWARD is the default.</strong> Confluent says it is so you can rewind consumers to
+        the beginning of the topic: a reader on the new schema can read old data. CDC topics get replayed
+        (a new sink, a re-snapshot, an offset reset), so this fits. Confluent also notes that Protobuf's
+        best practice is <code>BACKWARD_TRANSITIVE</code>.
+      </li>
+      <li>
+        <strong>Non-transitive lets drift through.</strong> Suppose a table gets
+        <code>ADD COLUMN tier text NOT NULL DEFAULT 'standard'</code> and later
+        <code>ALTER COLUMN tier DROP DEFAULT</code>. Version 2 can be read by a version 3 reader, because
+        version 2 data contains <code>tier</code>, so <code>BACKWARD</code> accepts version 3. But
+        version 1 data has no <code>tier</code> and version 3 has no default to supply, so a replay from
+        the start of the topic fails on the oldest records. <code>BACKWARD_TRANSITIVE</code> rejects
+        version 3 at registration. This is the model's result for the schemas as described; it assumes
+        the connector propagates the dropped default, which the PostgreSQL page says it tries to do.
+      </li>
+      <li>
+        <strong>BACKWARD puts consumers first.</strong> That order is easy to say and hard to get when the
+        DDL is run by a team that does not know your consumers. It is the reason for the process section
+        below. <code>FULL</code> removes the ordering constraint at the price of rejecting more changes
+        (see the table above).
+      </li>
+      <li>
+        <strong>Per table.</strong> With the default subject naming each table's topic has its own subject,
+        so compatibility is enforced and set per table. Set the mode on purpose per subject
+        (<code>PUT /config/&lt;subject&gt;</code>), not by inheriting the global one.
+      </li>
+      <li>
+        <strong>Where it bites.</strong> With <code>auto.register.schemas</code> at its default of
+        <code>true</code>, the serializer tries to register a schema it has not seen as it serializes a
+        record that uses it. The API reference lists <code>409 Conflict</code> (&ldquo;Incompatible
+        schema&rdquo;) for a register call, so an incompatible schema is refused, the converter throws,
+        and the connector task fails (next sections).
+      </li>
+    </ul>
+    <p>
+      Confluent's data-contracts feature goes further: tags, ownership metadata, domain rules and
+      migration rules that transform data between versions. The documentation says rules need Confluent
+      Platform Enterprise (7.4 or later) or Confluent Cloud with the Advanced Stream Governance package,
+      and that Kafka Connect on Confluent Cloud does not run rules. Nothing on this page depends on it.
+    </p>
+  </section>
+
+  <section id="debezium" aria-labelledby="debezium-title">
+    <h2 id="debezium-title">How Debezium learns about DDL, by engine</h2>
+    <p>
+      How a connector finds out that a table changed differs by database, and so does what breaks.
+    </p>
+    <ul>
+      <li>
+        <strong>MySQL: the schema history topic.</strong> The MySQL page says the binlog contains DDL, the
+        connector parses it, and it records every DDL statement with its binlog position in a separate
+        schema history topic (<code>schema.history.internal.kafka.topic</code>,
+        <code>schema.history.internal.kafka.bootstrap.servers</code>) so it can rebuild each table's
+        structure at the point where it restarts. The page says that topic is for the connector's internal
+        use only, that it must have a single partition, and that you should not partition it. If it is lost
+        or corrupted, <code>snapshot.mode=recovery</code> rebuilds it from the source tables. Consumers that want to be told
+        about DDL should read the separate schema change topic, controlled by
+        <code>include.schema.changes</code> (default <code>true</code>). The page also says the format of
+        that topic is &ldquo;in an incubating state and is subject to change without notice&rdquo;, so it
+        is a signal, not a contract to parse.
+      </li>
+      <li>
+        <strong>PostgreSQL: no DDL in the stream.</strong> The page says logical decoding does not support
+        DDL changes, so the connector cannot report them to consumers. It refreshes its schema from the
+        database when it detects a change during streaming, and says <code>pgoutput</code> is more eager
+        about it than the other plug-ins (a default change triggers a refresh with
+        <code>pgoutput</code> but not with others). There is no schema history topic to read or to
+        lose, and also no DDL event to react to: the first sign of a change is a different shape of event.
+      </li>
+      <li>
+        <strong>SQL Server: capture instances.</strong> The SQL Server page says that, because of how SQL
+        Server CDC works, a Debezium user cannot update the capture tables and has to coordinate with a
+        database operator, who creates a new capture instance after the schema change (offline or online).
+        It also says SQL Server does not allow some schema changes on a table with CDC enabled, naming a column rename and a column
+        type change, and that after a change between <code>NULL</code> and <code>NOT NULL</code> the
+        emitted records do not show the change until a new capture instance exists. For that engine the
+        DDL runbook is part of the contract.
+      </li>
+    </ul>
+    <h3>Shape the contract at the source: column lists</h3>
+    <p>
+      <code>column.include.list</code> captures only the columns you name, and
+      <code>column.exclude.list</code> captures every column except the ones you name; set one, not both.
+      Key columns are always included in the key. An include list turns the contract into an allow-list:
+      a column added to the table later does not appear in events until you add it to the list, which is
+      a useful property for a column that might hold personal data (see
+      <a href="{{ '/security/' | url }}">Security &amp; PII</a>). An exclude list does the opposite, and
+      a new column flows to consumers on its own. On PostgreSQL,
+      <code>skip.messages.without.change</code> only applies when the table's replica identity is
+      <code>FULL</code>.
+    </p>
+  </section>
+
+  <section id="shape" aria-labelledby="shape-title">
+    <h2 id="shape-title">Shaping the contract on the way out: SMTs and the outbox</h2>
+    <p>
+      A <a href="{{ '/glossary/#smt' | url }}">single message transform</a> sits between the database's
+      shape and the consumer's. Two are worth knowing, and they pull in opposite directions.
+    </p>
+    <h3>Flattening with <code>ExtractNewRecordState</code></h3>
+    <p>
+      The event flattening SMT replaces the envelope with the <code>after</code> row. That is a simpler
+      contract and a smaller one: <code>op</code>, <code>before</code> and <code>source</code> are gone
+      unless you ask for them. Debezium's page shows
+      <code>add.fields=op,table,lsn,source.ts_ms</code> producing <code>__op</code>, <code>__table</code>,
+      <code>__lsn</code> and <code>__source_ts_ms</code>. If your sink orders by source position, put the
+      position into the flattened record on purpose:
+    </p>
+<pre><code>transforms=unwrap
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+transforms.unwrap.add.fields=op,lsn
+transforms.unwrap.delete.tombstone.handling.mode=rewrite</code></pre>
+    <p>
+      With <code>rewrite</code> the SMT keeps the delete as a record with <code>__deleted: true</code>
+      (and removes the tombstone), which keeps a delete marker a position-guarded sink can use. The
+      option's default is a version trap: in the 3.7 page the options table gives
+      <code>delete.tombstone.handling.mode</code> a default of <code>tombstone</code>, while the
+      &ldquo;Behavior&rdquo; paragraph of the same page still says the SMT drops delete records by default.
+      Do not rely on a default; set it, and check your version. <code>drop</code> removes both the delete
+      event and the tombstone, and a target that never receives a delete never removes the row. Metadata
+      for a delete is added only with <code>rewrite</code>. The Debezium page recommends applying the SMT
+      selectively with a predicate, because heartbeat, schema-change and transaction messages have a
+      different structure.
+    </p>
+    <h3>The outbox event router</h3>
+    <p>
+      The outbox pattern turns the problem round: the contract is a table you designed for the purpose,
+      not your domain tables. Debezium's router assumes an outbox table with <code>id</code>,
+      <code>aggregatetype</code>, <code>aggregateid</code>, <code>type</code> and <code>payload</code>
+      columns (the page lists options for taking them from other columns). The router puts <code>aggregateid</code> in the message key, the
+      <code>id</code> in a header (the page suggests using it to remove duplicates), and routes by
+      <code>aggregatetype</code>. Its documentation expects outbox rows to be inserts only: an update is
+      handled according to <code>table.op.invalid.behavior</code> (<code>warn</code> by default; the other
+      settings are <code>error</code> and <code>fatal</code>), and deletes are filtered out. Your domain tables can then change without the event changing, and the payload and
+      <code>type</code> become the versioned contract. Two caveats from the page: the routed message in
+      its example carries a key, an id header and the payload, not the <code>source</code> block, and
+      <code>table.fields.additional.placement</code> adds columns of the outbox table, not the log
+      position. So a sink that must order by log position has no position to read unless your
+      application writes a per-aggregate sequence into the outbox row. The delivery side of the outbox is
+      the subject of <a href="{{ '/exactly-once/#outbox' | url }}">Exactly-Once Semantics</a>.
+    </p>
+  </section>
+
+  <section id="versioning" aria-labelledby="versioning-title">
+    <h2 id="versioning-title">Evolve the topic or version it</h2>
+    <p>
+      Evolve in place when the change is compatible with every consumer you are willing to break, which
+      for a long-retention topic means the transitive modes. For a change the registry rejects, Confluent
+      says to upgrade all producers and consumers at once or, more likely, to create a new topic and move
+      applications to it, rather than hold two incompatible versions in one topic. For a database producer
+      the practical version of that is expand and contract:
+    </p>
+    <ol>
+      <li><strong>Expand.</strong> Add the new column as nullable (accepted in every mode). Consumers ignore it.</li>
+      <li><strong>Backfill.</strong> Populate it from the old column. Every updated row is a change event, so a big backfill is a burst of traffic on the topic; do it in batches.</li>
+      <li><strong>Move consumers</strong> to read the new field, one at a time, each checking its own contract test.</li>
+      <li><strong>Wait out the replay window.</strong> Old events stay in the topic for the retention period. A consumer that rewinds will read records with the old shape.</li>
+      <li><strong>Contract.</strong> Drop the old column only when nothing reads it, including any consumer that could replay history.</li>
+    </ol>
+    <p>
+      A rename is steps 1 to 5 with a copy in the middle. If the change cannot be expanded (a type change
+      to an unrelated type), the new topic is the honest answer, and a re-snapshot on the new topic is
+      part of the cost.
+    </p>
+  </section>
+
+  <section id="gate" aria-labelledby="gate-title">
+    <h2 id="gate-title">A DDL gate you can run</h2>
+    <p>
+      <a href="{{ '/test-your-pipeline/#contract' | url }}">Testing a CDC pipeline</a> shows a contract
+      test that checks each recorded event against the envelope. The gate below is the other half: it
+      runs when someone proposes a DDL change, before it ships. It compares the field list of the
+      <code>after</code> struct before and after the change (the shape of
+      <code>schema.fields</code> in a Debezium JSON-with-schema record) with the columns <em>one
+      consumer</em> reads and assumes. It is a consumer-driven check: it does not ask whether the schema is
+      valid in general, it asks whether this consumer still works. Everything in it is deliberately
+      small.
+    </p>
+    <details>
+      <summary>ddl-gate.mjs (Node 20+, no dependencies)</summary>
+<pre><code class="language-js">// ddl-gate.mjs  (Node 20+, no dependencies)  run: node ddl-gate.mjs
+// Compares the "after" struct of a Debezium JSON-with-schema record before and
+// after a proposed DDL change with the columns one consumer actually reads.
+// A field is { field, type, optional, default? }, as in the Connect schema.
+const before = [
+  { field: "id", type: "int32", optional: false },
+  { field: "email", type: "string", optional: false },
+  { field: "name", type: "string", optional: true },
+  { field: "tier", type: "string", optional: false, default: "standard" },
+];
+
+// What this consumer reads, and what it assumes about each column.
+const reads = {
+  id: { type: "int32", nullable: false },
+  email: { type: "string", nullable: false },
+  name: { type: "string", nullable: true },
+  tier: { type: "string", nullable: false },
+};
+
+function gate(beforeFields, afterFields, consumerReads) {
+  const byName = (fields) =&gt; new Map(fields.map((f) =&gt; [f.field, f]));
+  const was = byName(beforeFields);
+  const now = byName(afterFields);
+  const added = [...now.values()].filter((f) =&gt; !was.has(f.field));
+  const findings = [];
+  for (const [column, want] of Object.entries(consumerReads)) {
+    const f = now.get(column);
+    if (!f) {
+      // A rename reaches the consumer as one field gone and another present.
+      const twin = added.find(
+        (a) =&gt; a.type === was.get(column).type &amp;&amp; !(a.field in consumerReads),
+      );
+      const hint = twin ? `; "${twin.field}" is new with the same type (rename?)` : "";
+      findings.push(["BREAK", column, `removed${hint}`]);
+      continue;
+    }
+    if (f.type !== want.type) {
+      findings.push(["BREAK", column, `type ${want.type} -&gt; ${f.type}`]);
+    } else if (f.optional &amp;&amp; !want.nullable) {
+      findings.push(["BREAK", column, "can now be null; the consumer assumes it cannot"]);
+    }
+    const old = was.get(column);
+    if (old.default !== f.default) {
+      findings.push(["WARN", column, `default ${old.default} -&gt; ${f.default}`]);
+    }
+  }
+  for (const f of added) {
+    if (!(f.field in consumerReads)) findings.push(["OK", f.field, "added, not read"]);
+  }
+  return findings;
+}
+
+const rewrite = (fields, change) =&gt; change(structuredClone(fields));
+const scenarios = {
+  "add nullable phone": (f) =&gt; [...f, { field: "phone", type: "string", optional: true }],
+  "drop name": (f) =&gt; f.filter((c) =&gt; c.field !== "name"),
+  "rename email": (f) =&gt; f.map((c) =&gt; (c.field === "email" ? { ...c, field: "email_address" } : c)),
+  "widen id to bigint": (f) =&gt; f.map((c) =&gt; (c.field === "id" ? { ...c, type: "int64" } : c)),
+  "email becomes nullable": (f) =&gt; f.map((c) =&gt; (c.field === "email" ? { ...c, optional: true } : c)),
+  "change tier default": (f) =&gt; f.map((c) =&gt; (c.field === "tier" ? { ...c, default: "basic" } : c)),
+};
+
+let broken = 0;
+for (const [name, change] of Object.entries(scenarios)) {
+  const findings = gate(before, rewrite(before, change), reads);
+  broken += findings.filter(([level]) =&gt; level === "BREAK").length;
+  console.log(`${name}:`);
+  for (const [level, column, message] of findings) console.log(`  ${level.padEnd(5)} ${column}: ${message}`);
+}
+process.exitCode = broken &gt; 0 ? 1 : 0;</code></pre>
+    </details>
+    <p>Run it with <code>node ddl-gate.mjs</code>. The six scenarios are the table above. Expected output, and an exit code of 1 because at least one scenario breaks:</p>
+<pre><code>add nullable phone:
+  OK    phone: added, not read
+drop name:
+  BREAK name: removed
+rename email:
+  BREAK email: removed; "email_address" is new with the same type (rename?)
+  OK    email_address: added, not read
+widen id to bigint:
+  BREAK id: type int32 -> int64
+email becomes nullable:
+  BREAK email: can now be null; the consumer assumes it cannot
+change tier default:
+  WARN  tier: default standard -> basic</code></pre>
+    <p>
+      This repository's test runs the script exactly as printed and compares the output. The rename hint
+      is a heuristic (a removed field and an added field of the same type), and it is a hint. The
+      script never talks to a database or a registry.
+    </p>
+    <h3>Getting the &ldquo;after DDL&rdquo; schema</h3>
+    <p>
+      The hard part is the second field list. Two honest options. Exact: apply the migration to a scratch
+      database with a connector attached, record the first event, and take the schema from it. Cheap:
+      derive it from the migration by hand, as the script's scenarios do, and accept that the connector's
+      type mapping could differ from your reading. A registry check complements either:
+    </p>
+<pre><code># Written from the Schema Registry API reference; not run against a registry for this page.
+# candidate.json is {"schema": "&lt;the proposed Avro schema, as an escaped string&gt;"}
+curl -s -X POST \
+  -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+  --data @candidate.json \
+  "http://localhost:8081/compatibility/subjects/dbserver1.public.customers-value/versions?verbose=true"
+# {"is_compatible": false, "messages": [...]}   (messages only with verbose=true)</code></pre>
+    <p>
+      The command is written from the API reference and was not run against a registry. The reference
+      describes this endpoint as performing the same check as a register call for that
+      subject, using the subject's configured level (or the global level if the subject has none): against the latest
+      version for the non-transitive modes, and against all earlier versions for the transitive ones.
+      To make the registry the gate rather than the converter, the Confluent converter documentation
+      describes <code>auto.register.schemas=false</code> with <code>use.latest.version=true</code>: the
+      serializer then uses the latest registered version instead of registering one, and while
+      <code>latest.compatibility.strict</code> stays at its default (<code>true</code>) it raises an error
+      if that version is not backward compatible with the schema of the object being serialized. That
+      was not tried with a Debezium connector here; check how your converter version behaves before you
+      depend on it.
+    </p>
+  </section>
+
+  <section id="process" aria-labelledby="process-title">
+    <h2 id="process-title">Who owns it: the process around DDL</h2>
+    <p>
+      Confluent's page says the upstream component enforces the contract and the downstream component can
+      assume the data conforms. For a database producer, upstream is the team that runs the migrations. The
+      points below are practice, not a documented rule, and are where a contract usually breaks.
+    </p>
+    <table>
+      <caption>A minimum process for DDL on a captured table</caption>
+      <thead>
+        <tr>
+          <th scope="col">Question</th>
+          <th scope="col">A workable answer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Who owns the table's events?</th>
+          <td>One named team per captured table, written next to the connector's <code>table.include.list</code>, not &ldquo;the platform team&rdquo;.</td>
+        </tr>
+        <tr>
+          <th scope="row">Who approves DDL on it?</th>
+          <td>The owner, plus one person from each consuming team listed for that topic. Additive changes need a notice; anything the table above rejects needs sign-off.</td>
+        </tr>
+        <tr>
+          <th scope="row">What runs on the pull request?</th>
+          <td>The gate above for each consumer's declared reads, and the registry compatibility check for the subject.</td>
+        </tr>
+        <tr>
+          <th scope="row">What mode is each subject in, and why?</th>
+          <td>Recorded in the repository. Transitive where consumers can replay from the start. With <code>BACKWARD</code>, consumers upgrade before the DDL lands, so the DDL date is a consumer deadline.</td>
+        </tr>
+        <tr>
+          <th scope="row">What happens after it ships?</th>
+          <td>Watch connector state and lag for a fixed period. A failed task is the first sign of a rejected schema.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="failures" aria-labelledby="failures-title">
+    <h2 id="failures-title">What goes wrong, and what catches it</h2>
+    <table>
+      <caption>Failure modes for the contract, and what to do</caption>
+      <thead>
+        <tr>
+          <th scope="col">Failure</th>
+          <th scope="col">What happens</th>
+          <th scope="col">What catches it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">A column rename that the registry accepts</th>
+          <td>Consumers read nothing from the old field; nothing errors.</td>
+          <td>A consumer-side contract test on the fixture or the gate; a reconciliation check on counts of non-null values. The registry cannot.</td>
+        </tr>
+        <tr>
+          <th scope="row">The registry rejects the schema</th>
+          <td>The register call returns <code>409</code>; the converter throws; by default the Connect task fails, because Connect's documentation says an error in conversion fails the connector unless you tolerate errors. The Confluent error-handling article says there is no dead letter queue for source connectors.</td>
+          <td>A task state alert. While the task is down it reads nothing: on PostgreSQL the slot stops advancing and WAL is kept for it, as <a href="{{ '/postgres-replication-slots/' | url }}">Replication slots and WAL growth</a> explains. Roll back the DDL or move to a new topic.</td>
+        </tr>
+        <tr>
+          <th scope="row">A consumer cannot decode a record</th>
+          <td>For a sink connector, <code>errors.tolerance=all</code> with <code>errors.deadletterqueue.topic.name</code> sends it to a DLQ and carries on. The record is out of position order from then on.</td>
+          <td>A DLQ depth alert, and <a href="{{ '/dlq-triage/' | url }}">DLQ triage</a>. Re-driven records arrive late, which only a sink that applies a change when its position is newer absorbs.</td>
+        </tr>
+        <tr>
+          <th scope="row">A type widened for new consumers only</th>
+          <td>Accepted under <code>BACKWARD</code>; a consumer still on the old type cannot read new records.</td>
+          <td>Upgrade order (consumers first), or <code>FULL</code> modes. The gate flags the type change.</td>
+        </tr>
+        <tr>
+          <th scope="row">A default that arrives late or early</th>
+          <td>The PostgreSQL page says the Kafka schema's default can lag the database's, or lead it if a refresh happens while records are queued.</td>
+          <td>Do not make a consumer depend on a default being current; test both shapes.</td>
+        </tr>
+        <tr>
+          <th scope="row">Nullability not reflected (SQL Server)</th>
+          <td>After <code>NULL</code> to <code>NOT NULL</code> or back, records keep the old optional flag until a new capture instance exists.</td>
+          <td>Make the capture-instance step part of the DDL runbook.</td>
+        </tr>
+        <tr>
+          <th scope="row">A lost or corrupt schema history (MySQL)</th>
+          <td>The connector cannot rebuild table structures at its restart position.</td>
+          <td>Retain and monitor the topic; <code>snapshot.mode=recovery</code> rebuilds it from the source tables.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Every row above is about shape. Duplicates and late records are a separate failure, covered by the
+      sink: the same change delivered twice, or an older change arriving after a newer one, is harmless to
+      a sink that upserts on the primary key and applies a change only if its source log position is
+      newer. A schema contract does not replace that, and a stricter registry mode does not remove it.
+    </p>
+  </section>
+
+  <section id="try-it" aria-labelledby="try-it-title">
+    <h2 id="try-it-title">See a schema change</h2>
+    <p>
+      The <a href="{{ '/playground/' | url }}">Change Feed Playground</a> has a Schema Evolution scenario
+      with a schema walkthrough that adds or drops a column while events stream. From its source, it has
+      add and drop buttons only: no rename and no registry. It shows that a column appears or disappears
+      in the events; it does not show a compatibility check or a failed connector, and it was not run for
+      this page. The <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a> page links the same
+      scenario.
+    </p>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <ul>
+      <li><a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a>: registry modes, subject naming, rollouts, consumer defenses.</li>
+      <li><a href="{{ '/event-envelope/#schema' | url }}">Event Envelope: schema contracts and validation</a>, and <a href="{{ '/strategy/' | url }}">Strategy</a> for where contracts sit in an operating model.</li>
+      <li><a href="{{ '/test-your-pipeline/#contract' | url }}">Testing a CDC pipeline: contract tests</a>, and <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once, per hop</a>.</li>
+      <li>Glossary: <a href="{{ '/glossary/#schema-registry' | url }}">schema registry</a>, <a href="{{ '/glossary/#schema-evolution' | url }}">schema evolution</a>, <a href="{{ '/glossary/#smt' | url }}">SMT</a>, <a href="{{ '/glossary/#outbox' | url }}">outbox</a>, <a href="{{ '/glossary/#tombstone' | url }}">tombstone</a>, <a href="{{ '/glossary/#dead-letter-queue' | url }}">dead letter queue</a>, <a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a>, <a href="{{ '/glossary/#convergence-test' | url }}">convergence test</a>.</li>
+      <li><a href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/schema-evolution.html" target="_blank" rel="noopener">Confluent: Schema evolution and compatibility</a>: types, the Avro and Protobuf table, transitive, upgrade order.</li>
+      <li><a href="https://docs.confluent.io/platform/current/schema-registry/fundamentals/data-contracts.html" target="_blank" rel="noopener">Confluent: Data contracts</a>: what a contract contains, rules, requirements.</li>
+      <li><a href="https://docs.confluent.io/platform/current/schema-registry/develop/api.html" target="_blank" rel="noopener">Confluent: Schema Registry API reference</a>: the compatibility and config endpoints, the 409 on register.</li>
+      <li><a href="https://docs.confluent.io/platform/current/schema-registry/connect.html" target="_blank" rel="noopener">Confluent: Schema Registry and Kafka Connect</a>: <code>auto.register.schemas</code>, <code>use.latest.version</code>.</li>
+      <li><a href="https://www.confluent.io/blog/kafka-connect-deep-dive-error-handling-dead-letter-queues/" target="_blank" rel="noopener">Confluent: Kafka Connect error handling and dead letter queues</a>.</li>
+      <li><a href="https://kafka.apache.org/41/kafka-connect/user-guide/" target="_blank" rel="noopener">Kafka Connect user guide</a>: error reporting in Connect.</li>
+      <li><a href="https://avro.apache.org/docs/1.12.0/specification/" target="_blank" rel="noopener">Avro 1.12.0 specification</a>: schema resolution, aliases.</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/connectors/postgresql.html" target="_blank" rel="noopener">Debezium PostgreSQL connector</a>, <a href="https://debezium.io/documentation/reference/stable/connectors/mysql.html" target="_blank" rel="noopener">MySQL</a> and <a href="https://debezium.io/documentation/reference/stable/connectors/sqlserver.html" target="_blank" rel="noopener">SQL Server</a>: events, schema history, schema changes.</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/transformations/event-flattening.html" target="_blank" rel="noopener">Debezium event flattening</a> and <a href="https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html" target="_blank" rel="noopener">outbox event router</a>.</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/configuration/avro.html" target="_blank" rel="noopener">Debezium: Avro serialization</a>.</li>
+    </ul>
+  </section>
+</div>

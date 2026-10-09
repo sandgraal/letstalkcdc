@@ -291,7 +291,9 @@ scripts:
     <p class="callout">
       Build a contract test that fetches a production envelope, validates it
       against the schema, and asserts critical fields are non-null. Run it in
-      CI before promoting connector changes.
+      CI before promoting connector changes. What a consumer may rely on in the
+      envelope, and which DDL breaks it, is on
+      <a href="{{ '/cdc-data-contracts/' | url }}">Data Contracts for Database Events</a>.
     </p>
   </section>
 
