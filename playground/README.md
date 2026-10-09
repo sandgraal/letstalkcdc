@@ -167,6 +167,34 @@ The comparator mount (`#simShellRoot`) streams the Polling/Trigger/Log engines i
 | ts_ms against log position  | Showing why ordering uses log position, not ts_ms            | A skewed clock and a tied ts_ms fool a timestamp guard; a position guard is right |
 | Delete followed by a late update | Showing why a delete needs a marker                     | An older change arrives after a delete; only guard plus delete marker keeps the row deleted |
 
+### Deep links: `?try=<scenario-id>`
+
+Opening the playground with `?try=<scenario-id>` switches to the **Compare methods** tab, loads that scenario and starts it. For example, on the deployed site:
+
+```
+https://sandgraal.github.io/letstalkcdc/playground/?try=replay-guard#simulator
+```
+
+- The ids are the `id` fields in `assets/shared-scenarios.js` (for example `crud-basic`, `replay-guard`, `ts-vs-position`, `delete-then-late-update`).
+- The value is used only as a lookup key. It must be lowercase letters, digits and hyphens (64 characters at most) **and** equal the id of a scenario; anything else is ignored and the page opens as usual. It is never written into the page.
+- It is separate from `?scenario=<share id>`, which loads a saved scenario from the shared database.
+- A link skips the first-visit onboarding, and it overrides the scenario filter and the scenario saved in your browser for that visit.
+- The link works under any path prefix because the page reads its own query string; the lessons build it with the site's `| url` filter.
+
+### Delivery repeats and destination guards
+
+Scenarios can contain `{ "op": "redeliver", "ref": <index into ops> }`, a delivery-layer step rather than a source write: the **log** lane sends the record produced by `ops[ref]` a second time, with the position of its first delivery (shown as the event's log position; the bus still stamps the copy a new offset). Polling and trigger lanes ignore it. A write may also carry `ts_ms` to stamp a different `ts_ms` on its event than `t` (a skewed clock).
+
+A scenario may set `sink: { guard, deleteMarkers }` for how the log lane's destination starts, and the reader can change it (which resets the run):
+
+| Guard                      | The destination applies a change only if…                           |
+| -------------------------- | ------------------------------------------------------------------- |
+| No guard (default)         | always: every delivery is applied in arrival order                  |
+| Timestamp guard (`ts_ms`)  | its `ts_ms` is strictly newer than the last one applied for the key |
+| Position guard (log position) | its source log position is higher than the last one applied for the key |
+
+"Keep delete markers" makes a delete leave a marker with its position instead of forgetting the key. Without a marker a later older change looks like a new key and brings the row back, whichever guard is on. These are models of the idea in the lessons (order by log position, keep deletes as markers), not a description of any product. They act on the log lane only.
+
 ## Hacktoberfest 2025
 
 - This repository is registered for Hacktoberfest 2025. Make sure you have signed up at [hacktoberfest.com](https://hacktoberfest.com/).

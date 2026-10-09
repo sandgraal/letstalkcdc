@@ -29,6 +29,7 @@ import {
   type SinkOptions,
   type SinkStats,
   type SinkTombstone,
+  resolveTryScenario,
 } from "../src";
 import {
   EventLog,
@@ -1299,14 +1300,22 @@ export function App() {
   }, [safeLocalStorage]);
 
   const [liveScenario, setLiveScenario] = useState<ShellScenario | null>(null);
+  // ?try=<scenario-id>: resolved once, against the known scenario ids only.
+  const tryScenarioRef = useRef<ShellScenario | null | undefined>(undefined);
+  if (tryScenarioRef.current === undefined) {
+    tryScenarioRef.current =
+      typeof window === "undefined" ? null : resolveTryScenario(window.location.search, SCENARIOS);
+  }
+  const tryScenario = tryScenarioRef.current;
+  const pendingTryStartRef = useRef<string | null>(tryScenario?.name ?? null);
   const [scenarioId, setScenarioId] = useState<string>(
-    () => storedPrefs?.scenarioId ?? SCENARIOS[0].name,
+    () => tryScenario?.name ?? storedPrefs?.scenarioId ?? SCENARIOS[0].name,
   );
   const [scenarioFilter, setScenarioFilter] = useState<string>(
-    () => initialScenarioFilterDetail.query,
+    () => (tryScenario ? "" : initialScenarioFilterDetail.query),
   );
   const [scenarioTags, setScenarioTags] = useState<string[]>(
-    () => initialScenarioFilterDetail.tags,
+    () => (tryScenario ? [] : initialScenarioFilterDetail.tags),
   );
   const [activeMethods, setActiveMethods] = useState<MethodOption[]>(() => initialActiveMethods);
   const [laneEvents, setLaneEvents] = useState<Partial<Record<MethodOption, CdcEvent[]>>>(
@@ -1998,7 +2007,7 @@ export function App() {
     generatorRateRef.current = generatorRate;
   }, [generatorRate]);
 
-  const userSelectedScenarioRef = useRef(storedPrefs?.userPinnedScenario ?? false);
+  const userSelectedScenarioRef = useRef(tryScenario ? true : (storedPrefs?.userPinnedScenario ?? false));
   const scenarioPreferencesAppliedRef = useRef<string | null>(null);
 
   const scenarioOptions = useMemo(
@@ -3568,6 +3577,14 @@ export function App() {
     startLoop();
     trackClockControl("play", { scenario: scenario.name });
   }, [resetRunnerState, startLoop, scenario.name]);
+
+  // ?try=<id>: start the linked scenario once its runner exists.
+  useEffect(() => {
+    const pending = pendingTryStartRef.current;
+    if (!pending || scenario.name !== pending || !runnerRef.current) return;
+    pendingTryStartRef.current = null;
+    handleStart();
+  }, [handleStart, scenario.name]);
 
   const handlePause = useCallback(() => {
     runnerRef.current?.pause();
