@@ -48,14 +48,13 @@ end
 $$;
 
 -- ---------------------------------------------------------------------------
--- Least privilege (PROPOSED HARDENING, apply deliberately)
+-- Least privilege (APPLIED to the live database on 2026-10-09 UTC)
 --
--- The live table currently carries broader grants for anon/authenticated
--- (select/update/delete as well as insert). That is harmless today because
--- RLS has no policy for those commands, so they match zero rows, but the
--- grants are unnecessary. Narrowing them to INSERT is a change to the live
--- database, so the maintainer should review and run it on purpose rather
--- than as a side effect of applying this file, so it is commented out.
+-- This is the applied state, not a proposal. The two statements below were
+-- run against the live project on 2026-10-09 (UTC, migration version 20261009024217) as the migration
+-- `assistant_feedback_least_privilege`. After them, anon and authenticated
+-- hold INSERT on public.assistant_feedback and nothing else. Re-running this
+-- file is safe: revoke and grant are idempotent.
 -- ---------------------------------------------------------------------------
--- revoke all on public.assistant_feedback from anon, authenticated;
--- grant insert on public.assistant_feedback to anon, authenticated;
+revoke all on public.assistant_feedback from anon, authenticated;
+grant insert on public.assistant_feedback to anon, authenticated;

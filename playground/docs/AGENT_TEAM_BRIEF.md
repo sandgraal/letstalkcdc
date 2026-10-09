@@ -6,6 +6,8 @@
 
 This brief is the entry point for a team of agents. Read it first — especially §0 (Scope & boundaries), which exists to stop this repo from duplicating its sibling.
 
+> **2026-10: Appwrite references are historical.** Persistence and realtime now run on Supabase; see [`supabase-setup.md`](./supabase-setup.md). The W1 items that name Appwrite are marked obsolete below.
+
 ---
 
 ## 0. Scope & boundaries — READ THIS FIRST
@@ -82,9 +84,9 @@ Two independent breakages made the two flagship interactive tools fail **on the 
 Priority order: **W1 → (W2 ∥ W3) → W4.** All are scoped to the playground's lane per §0 — none of them re-author `letstalkcdc`'s education content.
 
 ### W1 — Reliability & deploy correctness (mostly done — verify + extend)
-- [ ] **Verify the fix on the real deploy target.** Run `npm run package:appwrite`, deploy to Appwrite Sites, confirm both widgets mount live. Repeat for any GitHub Pages mirror.
+- [ ] **Verify the fix on the real deploy target.** ~~Run `npm run package:appwrite`, deploy to Appwrite Sites, confirm both widgets mount live. Repeat for any GitHub Pages mirror.~~ *Obsolete 2026-10: Appwrite Sites is no longer used and `package:appwrite` is not in `package.json`. Re-scope this against the current deploy target.*
 - [ ] **Run the failure-aware Docker pipeline live** (`cd scenarios/01-canonical-reference && make preflight && make up && make status`). Capture actual vs `docs/expected-behavior.md`; file any drift.
-- [ ] **Reconsider the hardcoded `PLAYGROUND_CFG.assetHeaders`** in `index.html` — is `X-Appwrite-Project` even required to fetch public static assets? If not, removing it simplifies the loader path. Acceptance: documented decision + smoke test still green.
+- [ ] ~~**Reconsider the hardcoded `PLAYGROUND_CFG.assetHeaders`** in `index.html` — is `X-Appwrite-Project` even required to fetch public static assets? If not, removing it simplifies the loader path. Acceptance: documented decision + smoke test still green.~~ *Obsolete 2026-10: `index.html` no longer sets `assetHeaders` or an `X-Appwrite-Project` header. The loaders read `assetHeaders` only as an optional fallback (see [configuration-guide.md](./configuration-guide.md)).*
 - [ ] Wire the new smoke spec into `ci:preflight` (it already runs under `test:e2e`).
 
 ### W2 — Wayfinding & lightweight context (NOT content authoring)
