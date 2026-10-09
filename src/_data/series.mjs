@@ -1,6 +1,7 @@
 export default [
   {
     key: "intro",
+    related: ["event-envelope", "snapshotting", "use-cases"],
     title: "Interactive Introduction to CDC",
     description:
       "An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.",
@@ -13,6 +14,7 @@ export default [
   },
   {
     key: "event-envelope",
+    related: ["intro", "exactly-once", "materialization", "schema-evolution"],
     title: "Event Envelope & Delivery Guarantees",
     description:
       "Keys vs payload, before/after images, tombstones; ALO vs EOS scope and per-key ordering.",
@@ -22,6 +24,7 @@ export default [
   },
   {
     key: "materialization",
+    related: ["which-row-wins", "deletes-stay-deleted", "event-envelope"],
     title: "Materialization 101 (Upsert/Delete)",
     description:
       "Practical MERGE patterns for upserts & deletes; compaction vs history tables; late-arrivals 101.",
@@ -31,6 +34,7 @@ export default [
   },
   {
     key: "snapshotting",
+    related: ["backfill-resnapshot", "postgres-replication-slots", "intro"],
     title: "Snapshotting: The First Sync",
     description:
       "Learn how CDC pipelines perform the initial, consistent snapshot of a database before streaming live changes.",
@@ -40,6 +44,7 @@ export default [
   },
   {
     key: "exactly-once",
+    related: ["is-cdc-exactly-once", "transactional-outbox", "which-row-wins"],
     title: "Exactly-Once Semantics",
     description: "Visual walkthrough of ALO vs EOS + transactional outbox.",
     href: "exactly-once/",
@@ -48,6 +53,7 @@ export default [
   },
   {
     key: "is-cdc-exactly-once",
+    related: ["exactly-once", "ops-offsets", "test-your-pipeline", "errata"],
     title: "Is CDC Exactly-Once? Per Hop",
     description:
       "Check any exactly-once claim hop by hop: Kafka Connect and Debezium opt-in settings, Kafka transactions, offsets in the sink, and how to verify.",
@@ -58,6 +64,7 @@ export default [
   },
   {
     key: "non-kafka-cdc",
+    related: ["tooling", "ops-offsets", "connector-builder"],
     title: "CDC Without Kafka",
     description:
       "Debezium Server, the embedded engine, managed services and search-index sync: what each guarantees, what a crash repeats, and why the log position is the version.",
@@ -68,6 +75,7 @@ export default [
   },
   {
     key: "transactional-outbox",
+    related: ["exactly-once", "non-kafka-cdc", "cdc-data-contracts"],
     title: "Transactional Outbox and Relay",
     description:
       "The outbox pattern with Debezium's Outbox Event Router: why dual writes fail, what at-least-once means for the relay, and how consumers dedupe and order.",
@@ -78,6 +86,7 @@ export default [
   },
   {
     key: "multi-tenancy",
+    related: ["partitioning", "security", "schema-evolution"],
     title: "Multi-Tenancy",
     description: "Isolation patterns, topic math, and rough egress estimates.",
     href: "multi-tenancy/",
@@ -86,6 +95,7 @@ export default [
   },
   {
     key: "partitioning",
+    related: ["which-row-wins", "multi-tenancy", "ops-offsets"],
     title: "Partitioning",
     description: "Partition keys, skew, late-arrivals, and audit loops.",
     href: "partitioning/",
@@ -94,6 +104,7 @@ export default [
   },
   {
     key: "which-row-wins",
+    related: ["materialization", "deletes-stay-deleted", "partitioning"],
     title: "Which Row Wins in Your Target",
     description:
       "Ordering and delete markers in BigQuery, Databricks, Hudi, Iceberg, Delta and Snowflake: what decides the winner and what to set.",
@@ -103,6 +114,7 @@ export default [
   },
   {
     key: "schema-evolution",
+    related: ["cdc-data-contracts", "event-envelope", "backfill-resnapshot"],
     title: "Schema Evolution",
     description:
       "Handle schema changes gracefully with forward/backward compatibility and schema registries.",
@@ -112,6 +124,7 @@ export default [
   },
   {
     key: "cdc-data-contracts",
+    related: ["schema-evolution", "event-envelope", "transactional-outbox"],
     title: "Data Contracts for Database Events",
     description:
       "What a consumer may rely on when the producer is a database: the envelope, which DDL breaks it, registry modes, and a gate that catches it.",
@@ -122,6 +135,7 @@ export default [
   },
   {
     key: "ops-offsets",
+    related: ["reconciliation-surgery", "observability", "is-cdc-exactly-once"],
     title: "Ops: Offsets & Replays",
     description:
       "Offset stores, safe rewind, idempotency, and resync drills when things go sideways.",
@@ -131,6 +145,7 @@ export default [
   },
   {
     key: "observability",
+    related: ["ops-offsets", "postgres-replication-slots", "failure-drills"],
     title: "Observability Basics",
     description:
       "Golden signals (lag, throughput, error rate), alerting, and minimal dashboards to keep.",
@@ -140,6 +155,7 @@ export default [
   },
   {
     key: "postgres-replication-slots",
+    related: ["snapshotting", "observability", "sql-server-mysql-cdc"],
     title: "Postgres Replication Slots & WAL Growth",
     description:
       "A runbook for a Postgres disk filling behind a CDC slot: the checks, max_slot_wal_keep_size, Debezium heartbeats, and safe recovery.",
@@ -149,6 +165,7 @@ export default [
   },
   {
     key: "sql-server-mysql-cdc",
+    related: ["postgres-replication-slots", "backfill-resnapshot", "tooling"],
     title: "SQL Server & MySQL CDC Specifics",
     description:
       "Positions, retention and what breaks for Debezium on MySQL and SQL Server: binlog purge, GTIDs, CDC cleanup jobs, LSNs, triage queries and runbooks.",
@@ -158,6 +175,7 @@ export default [
   },
   {
     key: "backfill-resnapshot",
+    related: ["snapshotting", "reconciliation-surgery", "deletes-stay-deleted"],
     title: "Backfill and Re-Snapshot Safely",
     description:
       "Reload history into a sink without overwriting newer changes: snapshot modes, incremental snapshots, Kafka replay, the position guard and a runbook.",
@@ -167,6 +185,7 @@ export default [
   },
   {
     key: "non-relational",
+    related: ["intro", "tooling", "event-envelope"],
     title: "CDC Beyond Relational Databases",
     description:
       "MongoDB change streams, DynamoDB Streams, and Cassandra CDC — and where each one breaks the WAL/binlog mental model.",
@@ -179,6 +198,7 @@ export default [
   },
   {
     key: "security",
+    related: ["multi-tenancy", "cdc-data-contracts", "strategy"],
     title: "Security, PII & Access Control",
     description:
       "Mask columns before they reach the broker, size the privileges CDC actually needs, and plan for a log that outlives the row.",
@@ -191,6 +211,7 @@ export default [
   },
   {
     key: "deletes-stay-deleted",
+    related: ["which-row-wins", "backfill-resnapshot", "materialization"],
     title: "Deletes That Stay Deleted",
     description:
       "Delete events, Kafka tombstones and sink delete markers; why a late update can resurrect a row; and where a deleted row can still live (compaction, time travel, snapshots, backups).",
@@ -203,6 +224,7 @@ export default [
   },
   {
     key: "reconciliation-surgery",
+    related: ["ops-offsets", "backfill-resnapshot", "test-your-pipeline"],
     title: "Reconciliation & Offset Surgery",
     description:
       "Repair out-of-sync sinks and safely reset offsets. SQL diff patterns, checksum verification, and Kafka Connect REST API offset operations.",
@@ -215,6 +237,7 @@ export default [
   },
   {
     key: "use-cases",
+    related: ["intro", "strategy", "case-study", "non-relational"],
     title: "Real-World Use Cases",
     description:
       "Explore practical applications of CDC, from real-time analytics to cache invalidation.",
@@ -224,6 +247,7 @@ export default [
   },
   {
     key: "strategy",
+    related: ["use-cases", "case-study", "tooling"],
     title: "The Strategic Value of CDC",
     description:
       "Understand the business case and philosophical shift behind adopting an event-driven data culture.",
@@ -233,6 +257,7 @@ export default [
   },
   {
     key: "tooling",
+    related: ["quickstarts", "non-kafka-cdc", "connector-builder"],
     title: "The CDC Ecosystem",
     description:
       "A curated overview of the most popular open-source and commercial tools in the landscape (Debezium, Fivetran, etc).",
@@ -242,6 +267,7 @@ export default [
   },
   {
     key: "case-study",
+    related: ["use-cases", "strategy", "lab-kafka-debezium"],
     title: "Real-World Case Study",
     description:
       "Follow a mid-sized e-commerce company's journey from batch ETL to real-time CDC, including architecture decisions, implementation challenges, and business outcomes.",
@@ -254,6 +280,7 @@ export default [
   },
   {
     key: "lab-kafka-debezium",
+    related: ["quickstarts", "cloud-labs", "tests"],
     title: "Hands-On Lab: Kafka + Debezium + Sinks",
     description:
       "Stand up Kafka, Connect, Postgres source & sink with guided copy-paste commands. Includes upsert patterns and schema evolution.",
@@ -264,6 +291,7 @@ export default [
   },
   {
     key: "quickstarts",
+    related: ["lab-kafka-debezium", "cloud-labs", "tooling"],
     title: "Quickstarts",
     description:
       "Pick your source database and follow a 10–20 minute setup with checks and commands.",
@@ -274,6 +302,7 @@ export default [
   },
   {
     key: "tests",
+    related: ["test-your-pipeline", "failure-drills", "lab-kafka-debezium"],
     title: "Acceptance Tests",
     description:
       "Run shell scripts that confirm your lab stack is up, the connector is healthy, and events keep flowing after restarts.",
@@ -284,6 +313,7 @@ export default [
   },
   {
     key: "test-your-pipeline",
+    related: ["tests", "failure-drills", "reconciliation-surgery"],
     title: "Testing a CDC Pipeline",
     description:
       "Contract, duplicate, out-of-order and replay tests for your own pipeline, with runnable examples and what not to test for.",
@@ -297,6 +327,7 @@ export default [
   },
   {
     key: "failure-drills",
+    related: ["test-your-pipeline", "observability", "dlq-triage"],
     title: "Failure Scenario Drills",
     description:
       "Hands-on drills to build troubleshooting fluency: backpressure, DLQ handling, schema drift, and offset replays.",
@@ -307,6 +338,7 @@ export default [
   },
   {
     key: "cloud-labs",
+    related: ["quickstarts", "lab-kafka-debezium", "tooling"],
     title: "Cloud CDC Labs",
     description:
       "End-to-end CDC implementations with cloud-native platforms: AWS DMS, Snowflake, and Matillion.",
@@ -317,6 +349,7 @@ export default [
   },
   {
     key: "connector-builder",
+    related: ["tooling", "debezium-decoder", "quickstarts"],
     title: "Connector Config Builder",
     description:
       "Generate Debezium configs for Postgres, MySQL, or Oracle in minutes.",
@@ -327,6 +360,7 @@ export default [
   },
   {
     key: "dlq-triage",
+    related: ["failure-drills", "debezium-decoder", "observability"],
     title: "DLQ Triage Assistant",
     description:
       "Guided commands and playbooks for decoding and re-driving Kafka DLQ events.",
@@ -337,6 +371,7 @@ export default [
   },
   {
     key: "debezium-decoder",
+    related: ["event-envelope", "connector-builder", "dlq-triage"],
     title: "Debezium Event Decoder",
     description:
       "Paste Kafka events to get before/after diffs and MERGE-ready SQL templates.",
@@ -347,6 +382,7 @@ export default [
   },
   {
     key: "errata",
+    related: ["exactly-once", "is-cdc-exactly-once", "event-envelope"],
     title: "Nuances & Errata",
     description:
       "Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.",
