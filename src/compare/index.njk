@@ -27,7 +27,8 @@ canonicalPath: "/compare/"
       Correctness comes from an <strong>idempotent sink</strong>: upsert on the
       primary key, ordered by the source log position (LSN/SCN), not
       <code>ts_ms</code>. Where a vendor markets "exactly-once", the table
-      states the honest version.
+      states the honest version; <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a>
+      lists the questions that scope such a claim.
     </p>
   </aside>
 
