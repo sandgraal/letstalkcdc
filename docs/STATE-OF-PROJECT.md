@@ -118,7 +118,7 @@ BreadcrumbList, sitemap, three README badges).
 
 ## A11y & perf
 
-LHCI thresholds in [`.lighthouserc.json`](../.lighthouserc.json)
+LHCI thresholds in [`lighthouse-ci.config.json`](../lighthouse-ci.config.json)
 unchanged: warn-level 0.9 floor across all sampled URLs;
 `/intro/` error-level perf ≥ 0.82 and a11y ≥ 0.93.
 

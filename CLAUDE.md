@@ -323,10 +323,10 @@ without asking. The mines that catch new agents:
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.
-4. **The LHCI baseline is honest as of May 2026** (perf 0.86 on
+4. **The Lighthouse baseline is honest as of May 2026** (perf 0.86 on
    `/intro/`). Earlier `1.0` scores measured an unstyled DOM; ignore
    any pre-May docs claiming higher numbers and trust the threshold
-   in `.lighthouserc.json`.
+   in `lighthouse-ci.config.json`.
 5. **The `viteAsset` filter falls back to source paths in dev.** If
    you're seeing 404s for hashed JS in dev, that's a `.vite/manifest.json`
    absence, not a real bug. Run `npm run build:js` once or use `npm run dev`.

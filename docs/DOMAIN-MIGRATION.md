@@ -109,7 +109,7 @@ window in between where one of the two URLs is broken.
   the same way), so for a root-domain site set `ELEVENTY_PATH_PREFIX` to `/`,
   not to an empty value.
 - `npm run build:lhci` already builds with `ELEVENTY_PATH_PREFIX=/` and needs no
-  change. Lighthouse CI audits a local build, not the live domain.
+  change. The Lighthouse run audits a local build, not the live domain.
 - `lib/site-host.mjs` holds `DEFAULT_SITE_HOST`, used only when `SITE_HOST` is
   unset (local builds). Change it to the new origin once the move is done so a
   bare `npm run build` produces the right URLs.
