@@ -104,7 +104,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 \
       <h2>Acceptance (target/sink)</h2>
       <ul class="checklist">
         <li>No duplicate PKs after a connector restart.</li>
-        <li>Per key, the row reflects the greatest <code>op_ts/version</code>.</li>
+        <li>Per key, the row reflects the greatest log position (<code>lsn</code>).</li>
         <li>DLQ empty or only expected test errors.</li>
       </ul>
       <pre><code>-- duplicates (generic)

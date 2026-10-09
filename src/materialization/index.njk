@@ -68,13 +68,15 @@ scripts:
         the <strong>primary</strong> sort, with <code>ts_ms</code> only as a secondary
         tie-break.</li>
       <li>Merge updates and inserts using the latest event per key.</li>
-      <li>Apply deletes as tombstones that remove or flag the row.</li>
+      <li>Apply deletes as delete markers (a <code>deleted</code> flag plus the delete&rsquo;s log position)
+        so a late, older update cannot bring the row back. Physically removing the row is safe only when
+        nothing can replay older events.</li>
       <li>Record the processed offset so restarts can resume safely.</li>
       <li>Publish metrics: rows inserted, updated, deleted, skipped duplicates.</li>
     </ol>
     <p class="callout">
-      When duplicates land, the <em>last change wins</em> rule keeps results stable. Do not rely on arrival order; rely on source
-      timestamps or change versions.
+      When duplicates land, the <em>last change wins</em> rule keeps results stable. Do not rely on arrival order or timestamps; rely on the
+      source log position.
     </p>
     <p>
       Capture merge SQL in version control and tag it with the connector
@@ -89,18 +91,27 @@ scripts:
       <summary>Snowflake MERGE</summary>
       <pre><code class="language-sql">-- staging.orders_src must already be deduped to ONE row per order_id
 -- (latest by log position, e.g. LSN/SCN) before this MERGE runs.
+-- Deletes are kept as delete markers (deleted = TRUE plus the delete's
+-- position), so a replayed older update cannot resurrect the row. Readers
+-- filter deleted = FALSE; amount/status are NULL on a delete, so those
+-- columns must be nullable. Assumes src.lsn is unique per change for a key.
 MERGE INTO analytics.orders tgt
 USING staging.orders_src src
   ON tgt.order_id = src.order_id
-WHEN MATCHED AND src.op = 'd' THEN DELETE
-WHEN MATCHED THEN UPDATE SET
+WHEN MATCHED AND tgt.source_lsn < src.lsn THEN UPDATE SET
   amount = src.amount,
   status = src.status,
-  updated_at = src.ts_ms
-WHEN NOT MATCHED AND src.op IN ('c', 'u') THEN
-  INSERT (order_id, amount, status, updated_at)
-  VALUES (src.order_id, src.amount, src.status, src.ts_ms);
+  deleted = (src.op = 'd'),
+  source_lsn = src.lsn,
+  processed_ts_ms = src.ts_ms  -- metric only, never used for ordering
+WHEN NOT MATCHED THEN
+  INSERT (order_id, amount, status, deleted, source_lsn, processed_ts_ms)
+  VALUES (src.order_id, src.amount, src.status, (src.op = 'd'), src.lsn, src.ts_ms);
 </code></pre>
+      <p class="muted">
+        Why <code>source_lsn</code> and a delete marker, and what makes a position safe to compare:
+        <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>.
+      </p>
     </details>
     <details>
       <summary>BigQuery change-applier</summary>
@@ -159,7 +170,7 @@ where rnk = 1 and op != 'd';
   <section id="late-arrivals" aria-labelledby="late-arrivals-title">
     <h2 id="late-arrivals-title">Handle late-arriving and out-of-order events</h2>
     <ul>
-      <li>Track a <em>watermark</em> timestamp in your staging table and ignore events older than your replay budget.</li>
+      <li>Track a <em>watermark</em> timestamp in your staging table to bound your replay budget; which version of a row wins is decided by log position, never by that timestamp.</li>
       <li>Store raw envelopes for N days so you can reprocess with updated merge logic.</li>
       <li>Document how to reconcile when the source database is manually patched (backfills, deletes).</li>
     </ul>
@@ -200,7 +211,7 @@ where rnk = 1 and op != 'd';
     <ol>
       <li>Compare row counts between source and target using time-bounded windows.</li>
       <li>Verify key uniqueness and detect primary-key churn with a duplicate audit query.</li>
-      <li>Validate soft deletes by ensuring tombstones propagate to downstream marts within SLA.</li>
+      <li>Validate soft deletes by ensuring delete markers propagate to downstream marts within SLA.</li>
     </ol>
     <p>
       Embed these checks in orchestration (Airflow, Dagster, dbt) so they run

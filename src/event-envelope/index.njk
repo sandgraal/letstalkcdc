@@ -1,7 +1,7 @@
 ---
 layout: base.njk
 title: "Event Envelope & Delivery Guarantees"
-description: "Break down the structure of CDC change events and learn how at-least-once or exactly-once delivery affects consumers."
+description: "Break down the structure of CDC change events and learn how at-least-once delivery and exactly-once processing affect consumers."
 canonicalPath: "/event-envelope/"
 scripts:
   - "/assets/js/lib/quiz.js"
@@ -64,9 +64,14 @@ scripts:
           <td>Should I upsert or tombstone this record?</td>
         </tr>
         <tr>
-          <th scope="row"><code>ts_ms</code> / source time</th>
-          <td>The source commit timestamp or log position.</td>
+          <th scope="row"><code>source.lsn</code> / log position</th>
+          <td>The change&rsquo;s position in the source&rsquo;s transaction log (LSN, SCN, or binlog file + position).</td>
           <td>Was this change applied before or after another event?</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>ts_ms</code> / <code>source.ts_ms</code></th>
+          <td>When the connector processed the event, and when the source committed it. Millisecond-coarse and clock-dependent.</td>
+          <td>How late is this event? (Lag metrics only, never ordering.)</td>
         </tr>
         <tr>
           <th scope="row">Transaction identifiers</th>
@@ -120,8 +125,10 @@ scripts:
     <h2 id="delivery-title">Delivery guarantees set your expectations</h2>
     <p>
       CDC stacks normally promise <strong>at-least-once (ALO)</strong>
-      delivery; <strong>exactly-once (EOS)</strong> is a design you layer on
-      top with idempotency and transactional sinks.
+      delivery. End-to-end exactly-once delivery across independent systems is
+      not achievable; what you layer on top is <strong>exactly-once
+      processing</strong>: at-least-once transport plus an idempotent sink (or
+      a sink that commits offsets with the data).
     </p>
     <div class="grid">
       <article>
@@ -134,7 +141,7 @@ scripts:
         </ul>
       </article>
       <article>
-        <h3>Exactly-once patterns</h3>
+        <h3>Exactly-once processing patterns</h3>
         <ul>
           <li>Persist offsets in the same transaction as your target writes.</li>
           <li>Use sink-side dedupe keys (primary-key + log position).</li>
@@ -153,7 +160,8 @@ scripts:
     </p>
     <ol>
       <li>
-        Include a monotonically increasing per-key version or change number.
+        Carry the source log position (LSN, SCN, or binlog position) as the
+        per-key version, not a timestamp.
       </li>
       <li>
         Store soft deletes as explicit tombstones; compaction depends on it.
@@ -303,9 +311,15 @@ scripts:
         </tr>
         <tr>
           <th scope="row">Source position</th>
-          <td><code>source.lsn</code> / <code>source.ts_ms</code></td>
+          <td><code>source.lsn</code> (or <code>source.scn</code>, or binlog file + position)</td>
           <td><code>source_lsn</code> / <code>source_commit</code></td>
           <td>High-water mark stored beside offsets</td>
+        </tr>
+        <tr>
+          <th scope="row">Source commit time (metrics only)</th>
+          <td><code>source.ts_ms</code></td>
+          <td>Commit-time column, if the connector exposes one</td>
+          <td>Commit time kept beside the position, for lag only</td>
         </tr>
         <tr>
           <th scope="row">Transaction envelope</th>

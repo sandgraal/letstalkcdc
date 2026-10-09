@@ -91,7 +91,7 @@ SHOW MASTER STATUS;
       <h2>Acceptance (target/sink)</h2>
       <ul class="checklist">
         <li>No duplicate PKs after connector restart.</li>
-        <li>Latest-wins per key using <code>op_ts/version</code>.</li>
+        <li>Latest-wins per key by log position (binlog file + position), not a timestamp.</li>
       </ul>
       <pre><code>SELECT COUNT(*) AS rows, COUNT(DISTINCT id) AS distinct_keys
 FROM target_customers;</code></pre>

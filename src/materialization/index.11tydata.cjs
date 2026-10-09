@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-10-09",
   seriesKey: "materialization",
   heroConfig: {
     title: "Materialization 101",
@@ -81,7 +81,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "Late-arriving events occur when network delays, retries, or multi-partition ordering cause older events to arrive after newer ones. Materialization logic must handle this by checking timestamps or sequence numbers, potentially discarding stale updates or triggering reconciliation to maintain correctness.",
+          "Late-arriving events occur when network delays, retries, or multi-partition ordering cause older events to arrive after newer ones. Materialization logic must handle this by comparing the source log position (not a timestamp) against what is already stored, discarding stale updates or triggering reconciliation to maintain correctness.",
       },
     ],
   },

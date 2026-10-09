@@ -68,7 +68,7 @@ scripts:
           <th scope="row">Custom sink</th>
           <td>Table in target warehouse</td>
           <td>Application DB with strict RBAC</td>
-          <td>Persist last processed <code>ts_ms</code> per partition with checksum.</td>
+          <td>Persist the last processed offset per partition with checksum. That is consumer progress, not a row version: the sink still <a href="{{ '/partitioning/' | url }}#recon">guards on the source log position</a>.</td>
         </tr>
       </tbody>
     </table>

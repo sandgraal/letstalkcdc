@@ -5,7 +5,7 @@ description: "Run acceptance tests for the Kafka + Debezium lab: stack up, conne
 canonicalPath: "/tests/"
 seriesKey: 'tests'
 datePublished: 2026-02-06
-dateModified: 2026-08-25
+dateModified: 2026-10-09
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/tests.css' | url }}">
 
@@ -91,16 +91,17 @@ bash scripts/test_chaos_smoke.sh</code></pre>
 SELECT COUNT(*) AS rows, COUNT(DISTINCT pk) AS distinct_keys
 FROM target_table;  -- expect rows == distinct_keys</code></pre>
             <h3>Latest-wins check (history vs target)</h3>
-            <pre><code>-- adapt names: business key + timestamp/version
+            <pre><code>-- adapt names: business key + log position (source_lsn, not a timestamp)
+-- if your position is a string or a (file, pos) pair, compare it as a typed value
 WITH last AS (
-  SELECT key_col, MAX(op_ts) AS last_ts
+  SELECT key_col, MAX(source_lsn) AS last_lsn
   FROM history_table
   GROUP BY key_col
 )
 SELECT COUNT(*) AS stale
 FROM target_table t
 JOIN last l ON t.key_col = l.key_col
-WHERE t.op_ts &lt; l.last_ts;   -- expect 0</code></pre>
+WHERE t.source_lsn &lt; l.last_lsn;   -- expect 0</code></pre>
             <h3>Dead-letter queue sanity (Kafka)</h3>
             <pre><code># adjust topic; e.g. "dlq.inventory"
 kafka-console-consumer --bootstrap-server localhost:9092 \

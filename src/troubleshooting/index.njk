@@ -3,7 +3,7 @@ layout: base.njk
 title: "First 15 Minutes — CDC Troubleshooting"
 description: "A repeatable first-15-minutes playbook to triage Change Data Capture incidents across Postgres, MySQL, Oracle, Kafka/Debezium, and common sinks."
 datePublished: 2026-02-06
-dateModified: 2026-08-25
+dateModified: 2026-10-09
 canonicalPath: "/troubleshooting/"
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/troubleshooting.css' | url }}">
@@ -252,16 +252,16 @@ FROM target_table;</code></pre>
           </div>
           <div>
             <h3>Latest-Wins Check</h3>
-            <pre><button class="copy">copy</button><code>-- per business key, do we keep the latest op_ts/version?
-SELECT key_col, MAX(op_ts) AS last_ts, COUNT(*) AS events
+            <pre><button class="copy">copy</button><code>-- per business key, do we keep the latest log position (source_lsn)?
+SELECT key_col, MAX(source_lsn) AS last_lsn, COUNT(*) AS events
 FROM staging_or_history
 GROUP BY key_col
-HAVING COUNT(*) &lt;&gt; 1 AND MAX(op_ts) &lt; NOW() - INTERVAL '0 seconds';</code></pre>
+HAVING COUNT(*) &lt;&gt; 1;</code></pre>
           </div>
         </div>
         <p class="muted">
           If duplicates exist, convert the sink write to an idempotent MERGE
-          keyed on a stable id + version/op_ts and re-run the last N events.
+          keyed on the primary key and guarded on the source log position, then re-run the last N events.
         </p>
       </section>
       <section class="box callout warn">
