@@ -446,6 +446,8 @@ remove the matching regex from `.lycheeignore`.
 
   Fix iteratively; raise the `/intro/` perf threshold to match.
 
+  _2026-10-09 (evening): stays open, for `dom-size` only. Checked against `main` at `bd5a2a4`: #404 (fonts deterministic, metric-matched fallbacks), #413 (render-blocking stylesheet; CLS 0.33 to 0 on `/intro/` under Slow 4G plus 4x CPU) and #420 (floor ratcheted to 0.84) settle every other sub-item in this box: CLS, `layout-shifts`, `render-blocking-resources`, `mainthread-work-breakdown`, `unsized-images`, and the "raise the threshold" line. None of the three changes the DOM, so the `dom-size` line is not met by them (no PR has brought it under a threshold; #293 and others trimmed it partially, 965 to 917 elements, and #404, #413 and #420 did not touch it): `/intro/` has 1,040 elements now against 1,035 in P13-5 (3 local runs on `bd5a2a4`, Lighthouse 13.5.0, `npm run build:lhci` then `npm run lighthouse`). What changed is the audit: the P13-5 run used Lighthouse 12.6.1 and its `dom-size` audit scored 0.5; Lighthouse 13.5.0 reports it as `dom-size-insight`, which scores 1 at the same element count in 3 of 3 runs (performance 0.91, 0.91, 0.92; CLS 0). So the box now rests on a choice, not a failing score: trim the DOM, or the maintainer accepts 1,040 elements and ticks it._
+
 - [x] **`/intro/` a11y debt** — both sub-items closed by Phase 7:
   - `color-contrast` — fixed in PR #274 (legacy CSS variable
     aliases + `--color-text-muted` token swap, score 0 → 1.0 on
@@ -1345,13 +1347,14 @@ dependencies).
 
 ### Tier D — documentation hygiene
 
-- [ ] **P13-9 · Refresh `STATE-OF-PROJECT.md`.** The snapshot is dated
+- [x] **P13-9 · Refresh `STATE-OF-PROJECT.md`.** The snapshot is dated
       2026-05-19 and describes 274 tests and 16 open boxes. Do this last,
       once the queue above has landed. Accept: a new dated snapshot
       supersedes it (the old one stays reachable through Git history, as
       its header already promises) and quotes numbers produced by
       commands, not recollection. Size: M. Role: `scribe` drafts,
       `reviewer` checks the numbers.
+      _2026-10-09: done. `docs/STATE-OF-PROJECT.md` is rewritten for `main` at `bd5a2a4`, with the command beside each number (36 modules, 87 HTML files, 56 sitemap entries locally and 57 live, 32 glossary terms, 14 playground scenarios; 1,727 unit tests in 58 files, 229 playground unit tests, 368 chromium e2e tests; `npm audit --omit=dev` 0, full tree 9; CSS hash `c5806349…`), and `docs/AUTOPSY-BRIEF.md` is re-derived to match. The reviewer check is the numbers-versus-commands table in the PR description._
 
 ### Done in this phase
 
@@ -1557,6 +1560,7 @@ production CSS hashes.
       Buttondown account and set `BUTTONDOWN_USERNAME`. Size: M. Role:
       `implementer`, `css-refactor`, then `reviewer`.
       _2026-10-09: code complete in #395; maintainer step pending (create the Buttondown account and set `BUTTONDOWN_USERNAME`; until then the form and footer link are not rendered, `/newsletter/` says it is not open yet, is `noindex` and is out of the sitemap). Proof: `verify-all` (1075 tests, build), `smoke:core`, Chromium accessibility e2e 184 passed with the variable set and 193 layout/accessibility passed unset, a unit test for both branches._
+      _2026-10-09 (evening): the maintainer step is done and every part of the Accept is met in production. `gh variable list` shows `BUTTONDOWN_USERNAME` set 13:53 UTC; the live `/newsletter/` answers 200, its form posts to `buttondown.com/api/emails/embed-subscribe/letstalkcdc`, and the live `sitemap.xml` lists it (57 URLs against 56 in a build without the variable). The maintainer signed up through the live form successfully._
 - [x] **P15-10 · Analytics (GoatCounter).** Outcome: cookie-less visit counts,
       off until configured. Accept: a `GOATCOUNTER_CODE` build variable
       renders the single async GoatCounter script (no cookies, no consent
@@ -1567,6 +1571,7 @@ production CSS hashes.
       score, `/verify-all`. **Maintainer step:** create the GoatCounter
       site and set `GOATCOUNTER_CODE`. Size: S. Role: `implementer`.
       _2026-10-09: code complete in #394; maintainer step pending (create the GoatCounter site and set `GOATCOUNTER_CODE`; until then no script is rendered). Proof: `verify-all` (1109 tests), `smoke:core`, built twice: unset gave 0 matches for `gc.zgo.at` in `/intro/` and `/privacy/`, set gave exactly 1 loader. The "does not move the `/intro/` score" check is a deliberate substitute: `scripts/perf-budget.mjs` caps the inline loader at 1 KB and exactly one, because the offline Lighthouse run cannot fetch the third-party script._
+      _2026-10-09 (evening): the maintainer step is done. `GOATCOUNTER_CODE` was set 13:24 UTC and the live home page loads exactly the one `gc.zgo.at/count.js` loader (checked with `curl`); counting started on 2026-10-09, so the first meaningful numbers are weeks away (see P16-12). The code value is not recorded here._
 - [x] **P15-11 · Assistant beginner intents and gap review.** Outcome: the
       question that scored the first real 👎 ("help me learn cdc") gets a
       useful answer. Accept: new intents for "where do I start", "learn
@@ -1598,6 +1603,7 @@ production CSS hashes.
       Verify: that test plus `/verify-all`. Size: M. Role: `implementer`,
       then `reviewer`.
       _2026-10-09: mostly shipped in #354, kept open. Met: code derives the host from `SITE_HOST` (`lib/site-host.mjs`; `grep -rn "sandgraal.github.io" src scripts lib` finds only its `DEFAULT_SITE_HOST` fallback), `docs/DOMAIN-MIGRATION.md` exists, and `tests/unit/site-host.test.js` builds production with another `SITE_HOST` (root and sub-directory) and asserts the old host appears nowhere. Remaining gap: "docs say your site URL" is not true yet. Occurrences of `sandgraal.github.io` today: `README.md` 44; `docs/` excluding `docs/archive` and this plan: `SETUP.md` 1, `DEVELOPMENT.md` 3, `STATE-OF-PROJECT.md` 1, `seo-audit-2026-10.md` 3. That remainder counts as covered by the runbook's hand-edited checklist only if the maintainer says so._
+      _2026-10-09 (evening): stays open. The maintainer plans to move to an own domain (name not chosen yet), which is the case this item prepares for, so it is kept open until the move shows whether the runbook is enough. Re-count with `grep -c "sandgraal.github.io" README.md`: 55 lines today (71 occurrences) (the figure above, 44, was an earlier count)._
 
       _2026-10-09 re-check after #354: still open. `README.md` still has 44 occurrences of `sandgraal.github.io`; `docs/` (excluding `archive` and this plan): `SETUP.md` 2, `DEVELOPMENT.md` 3, `STATE-OF-PROJECT.md` 1, `seo-audit-2026-10.md` 3._
 
@@ -1844,6 +1850,7 @@ production CSS hashes.
       README table) name a Node 24 image; the harness builds and the scenario
       starts. **Needs Docker to test**, and the playground owner coordinates
       the change under `playground/`. Size: S. Role: `implementer`.
+      _2026-10-09: stays open, left for the autopsy team. The maintainer has no Docker, and the Accept ("the harness builds and the scenario starts") cannot be shown without it. A change made blind would be unproven._
 - [x] **P15-38 · README module count and module list are stale.** Outcome:
       the README matches the site. Evidence: it says "All 26 modules", and
       `src/_data/series.mjs` has 36 entries on `main` (counted 2026-10-09
@@ -1862,6 +1869,7 @@ production CSS hashes.
       page carries a note on this. Accept: the maintainer decides whether to
       file an upstream docs issue; if yes, a `scribe` drafts it with both
       citations. **Maintainer decision.** Size: S. Role: `scribe`.
+      _2026-10-09: the maintainer decided to file it upstream. The draft is [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md): the Debezium 3.7 PostgreSQL connector docs say "Or you can set `wal_keep_size` to limit the maximum WAL size of a replication slot." (`documentation/modules/ROOT/pages/connectors/postgresql.adoc` line 2741 on `debezium/debezium` `main`, re-read through `gh api` the same day); the PostgreSQL 18 docs call `wal_keep_size` a minimum kept for standbys and `max_slot_wal_keep_size` (default -1, unlimited) the cap for slots, both since PostgreSQL 13. No existing report in `debezium/dbz` issues or the DBZ Jira on 2026-10-09. Stays open until the maintainer files it at <https://github.com/debezium/dbz/issues> (an agent does not file it); then record the issue URL here and tick the box._
 
 - [x] **P15-40 · Lighthouse gate tolerates `NO_LCP` runs.** Outcome: a page
       whose Lighthouse run cannot record an LCP no longer fails the gate by
@@ -1898,7 +1906,7 @@ production CSS hashes.
       measured CI runs, not local ones. Split from P13-6. Size: S. Role:
       `implementer`.
       _2026-10-09: floor ratcheted 0.82 to 0.84 (`/intro/` performance, `error`; accessibility 0.93 and every other URL unchanged). Data: the 10 CI `lighthouse` jobs after #413 (0506f67) on main and PR runs (37946299023, 37946323877, 37947264218, 37948092281, 37949624607, 37952657743, 37952783456, 37952792167, 37953912025, 37954004408), 3 runs each = 30 scores. Individual: min 0.78, 5th percentile 0.81, median 0.88, max 0.92. The gate asserts the best of 3 (`aggregation: optimistic`), so the quantity that matters is best-of-3 per job: 0.86 to 0.92, minimum 0.86, 5th percentile 0.87, median of job medians 0.88. Floor = median 0.88 minus 0.04 = 0.84, which is 0.02 below the lowest observed best-of-3 (a false failure needs all three runs at or below 0.83; 5 of 30 individual runs were). Applying the 5th percentile of the 30 individual scores instead would give about 0.79, a loosening, so it was not used. Local reference, not used for the floor: 10 invocations of 3 runs (30 scores) of `npm run build:lhci` output, all 0.91 to 0.92 (CI is noisier and slower). Badge in `docs/DEVELOPMENT.md` bumped to 84. Re-check after the next ~10 CI runs; raise only if best-of-3 minimum stays at or above 0.90._
-- [ ] **P15-45 · Large layout shift when the async preloaded stylesheet
+- [x] **P15-45 · Large layout shift when the async preloaded stylesheet
       applies.** Outcome: no big shift when styles arrive late. Evidence (found
       in the #404 review): `/intro/` CLS is 0.25 under Slow 4G plus 4x CPU
       throttling, about 0.227 of it from one shift on `.page-wrap` at about
@@ -1909,6 +1917,7 @@ production CSS hashes.
       under the same throttling and record before and after; add a throttled
       e2e bound. Likely routes to `css-refactor` for the CSS part. Size: M.
       Role: `implementer`, `css-refactor`, `reviewer`.
+      _2026-10-09: shipped in #413. The main stylesheet is a plain render-blocking `<link rel="stylesheet">` again (CSS bytes unchanged, hash `83943ab3…` before and after). Before and after, from the PR: `/intro/` CLS under CDP Slow 4G plus 4x CPU at 1350 px, 0.33 / 0.32 / 0.34 to 0 / 0 / 0; at 412 px, 0.038 to 0; `/overview/`, `/` and `/glossary/` also 0. The price, recorded there: throttled FCP/LCP rise from about 430/570 ms to 1250/1430 ms because first paint waits for the CSS; Lighthouse's simulated LCP is unchanged. The throttled bound the Accept asks for is `tests/e2e/cls.spec.js` (chromium only, asserts CLS under 0.1; 0.31 against the old markup, 0 against the new), pinned by `tests/unit/head-stylesheet.test.js`. Re-verified on `main` at `bd5a2a4`: `npx playwright test cls --project=chromium` passed (1 test), and a local Lighthouse run gives CLS 0 on `/intro/`._
 - [ ] **P15-46 · Labs pin old tool versions while the pages teach Debezium
       3.x.** Outcome: the labs run what the lessons describe. Evidence (from
       the review of PR #408, still open when this was written): the lab
@@ -1924,6 +1933,7 @@ production CSS hashes.
       files), then re-run each lab; until then every page that depends on a 3.x
       feature must say "check your version". **Needs Docker.** Size: L. Role:
       `implementer`, `reviewer`.
+      _2026-10-09: stays open, left for the autopsy team. The maintainer has no Docker, and "re-run each lab" cannot be done or shown without it. Until then the pages that depend on a 3.x feature keep saying "check your version" and `toolVersions.mjs` `tested` keeps naming what the compose files pin._
 - [x] **P15-47 · Dead scripts and config found by the script audit.**
       Outcome: nothing in the repo that nothing calls. Accept: remove
       `playground/scenarios/01-canonical-reference/scripts/logging.sh` (no
@@ -1982,6 +1992,7 @@ production CSS hashes.
       nothing runs it; then remove `.codacy/cli.sh` and re-check the build.
       **Maintainer step** for the confirmation. Size: S. Role: maintainer,
       `implementer`.
+      _2026-10-09: stays open. The only evidence is negative (no repo file calls `.codacy/cli.sh`), and the launcher is the one the Codacy tooling itself runs, so removing it on that evidence could break the integration silently. It needs the maintainer's look at the Codacy dashboard._
 
 ### Ordering
 
@@ -2153,6 +2164,7 @@ ready to start; the first job is to turn it into measured, specific items.
       move).
       _Approved by the maintainer 2026-10-09._
       _2026-10-09: left open. #410 shipped the maintained audit script and `docs/seo-baseline-2026-10-after.md` (the before/after numbers), which is the measurable part; the Accept also needs GoatCounter installed, Search Console verified with the sitemap submitted, the 10-page Lighthouse run, and a 28-day snapshot, none of which exist yet (`docs/seo-baseline-2026-10-after.md` section 4 says so)._
+      _2026-10-09 (evening): still open, on the waiting. Done since: GoatCounter is installed and live (variable `GOATCOUNTER_CODE` set 13:24 UTC; the home page loads `gc.zgo.at/count.js`), so **GoatCounter started counting on 2026-10-09**. Search Console: the verification file `googleeb5f2ebb27afc761.html` answers 200 on the live site, and the maintainer reports the property is verified and the sitemap submitted (not checkable from the repo). Google first showed "Sitemap could not be read", which is transient: the live `sitemap.xml` is valid and lists 57 URLs. Still missing: the Lighthouse run for the 10 key pages, and the **28-day snapshot of impressions, clicks and indexed pages, due 2026-11-06** (28 days after 2026-10-09). Write that snapshot here, dated, then tick the box._
 - [x] **P16-13 · Differentiate `/tooling/` and `/compare/`.** Outcome: two
       pages with two jobs. Accept: a one-paragraph decision (consolidate,
       or re-scope: `/compare/` = decision matrix, `/tooling/` = tool
@@ -2229,6 +2241,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       and fallback questions, group them by cluster, update section 4 and the
       priorities. **Maintainer step** to read the table. Size: S. Role:
       `scout`, maintainer.
+      _2026-10-09: stays open. `assistant_feedback` had 2 rows (figure from the project's Supabase notes of the same day; the browser key cannot read the table, so this PR did not re-query it) against the 30 needed, and Search Console has no data yet (see P16-12)._
 
 ### Follow-ups found in review (2026-10-09)
 
@@ -2286,3 +2299,4 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       over the playground's gradient background (same class as P15-35).
       **Needs maintainer approval: it changes CI behaviour.** Size: M. Role:
       `implementer`.
+      _2026-10-09: awaiting the maintainer's decision, so no agent should start it. It makes `ci.yml` (or the e2e job) publish the playground and audit it, which lengthens CI and adds a new way for a PR to fail. The one-off measurement that motivated it is in P16-29._
