@@ -22,9 +22,11 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   83943ab39baf798fdd5cfd1dc726035d030b0bd3d0dc4dc6bb322934d2d060b6
+   f59f964fe388ee151653e9a075eea653e243e72e66e234bb5b0099cd36aa0ea2
    ```
-   (re-baselined 2026-10-09 for P13-6: metric-matched fallback `@font-face`
+   (re-baselined 2026-10-09 for P16-9: `.h-as-3` / `.h-as-4` heading-level
+   helpers in 05-utilities.css, nothing else; previously `83943ab3…`,
+   re-baselined the same day for P13-6: metric-matched fallback `@font-face`
    rules and the `--font-*` tokens that list them, nothing else; previously
    `7ba70b50…`, re-baselined the same day for P13-8: cssnano 7 to 9 tool upgrade, no
    source CSS change, output proven computed-style and pixel equivalent;

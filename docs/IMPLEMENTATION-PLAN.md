@@ -2067,7 +2067,7 @@ ready to start; the first job is to turn it into measured, specific items.
       _Approved by the maintainer 2026-10-09._
       _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
       _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
-- [ ] **P16-9 · Heading and fragment fixes.** Outcome: every content page has
+- [x] **P16-9 · Heading and fragment fixes.** Outcome: every content page has
       one `<h1>` and no skipped levels. Accept: `/merge-cookbook/` has an
       `<h1>`; the 10 pages with skips are corrected; the `#setup` link on
       `/cloud-labs/snowflake-cdc/` resolves; a test asserts one `<h1>` and
@@ -2077,6 +2077,7 @@ ready to start; the first job is to turn it into measured, specific items.
       _Approved by the maintainer 2026-10-09._
       _2026-10-09: PR #376 (open) covers the fragment half. Still open after it: 10 heading-level skips need a CSS hook (route to `css-refactor`), and 2 pages still lack an `<h1>`: `/merge-cookbook/` (#366 pending) and `/mermaid-sandbox/`. Tracked with the SEO leftovers in P16-28._
       _2026-10-09: #376 merged; the fragment half is done (`#setup` resolves). Still open: 10 heading-level skips (CSS hook), and `/merge-cookbook/` still has no `<h1>` after #366 (it is on `KNOWN_NO_H1` in the new test), as does `/mermaid-sandbox/`._
+      _2026-10-09: the 10 skips fixed and `/merge-cookbook/` given an `<h1>`; script [02] heading problems 12 -> 1 (only the non-indexed `/mermaid-sandbox/`). New `.h-as-3`/`.h-as-4` helpers in `05-utilities.css`; computed style, position and size of every heading on the 11 pages identical before/after at 375 and 1280 px in both themes (CSS hash re-baselined to `f59f964f…`). `tests/unit/internal-links-headings.test.js` now reuses `scripts/seo-audit.mjs`. P16-28 (a) and the merge-cookbook half of (b) are done by this._
 - [x] **P16-10 · Honest modification dates and a fuller feed.** Outcome:
       "updated" dates reflect real edits and the feed does not drop modules.
       Accept: the 21 pages in script [05] are reviewed and `dateModified`
