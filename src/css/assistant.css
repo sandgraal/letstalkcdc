@@ -308,5 +308,10 @@
     width: auto;
     /* Keep the header on screen: never taller than the space above the lift. */
     max-height: min(75vh, calc(100vh - 6rem));
+    /* iOS Safari: `vh` is the large viewport (toolbars retracted) but `bottom`
+       is measured from the visible one, so with the toolbars showing the
+       panel can overflow the top of the screen and hide the close button.
+       `svh` is the small viewport; browsers without it keep the `vh` line. */
+    max-height: min(75svh, calc(100svh - 6rem));
   }
 }
