@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-10-09",
   seriesKey: "lab-kafka-debezium",
   heroConfig: {
     title: "Hands-On Lab: Kafka + Debezium + Postgres (with Sinks)",
