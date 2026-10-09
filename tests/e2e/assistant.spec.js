@@ -179,8 +179,13 @@ test.describe("assistant panel", () => {
     const note = panel.locator(".assistant-fb-note");
     await expect(note).toBeVisible();
     await expect(note).toHaveText(
-      "Your question is sent with your vote to help improve answers.",
+      "Your question is sent with your vote to help improve answers. Privacy details",
     );
+    // The notice links to the privacy page, reachable by keyboard.
+    const privacyLink = note.getByRole("link", { name: "Privacy details" });
+    await expect(privacyLink).toHaveAttribute("href", /\/privacy\/$/);
+    await privacyLink.focus();
+    await expect(privacyLink).toBeFocused();
     await expect(thumbsUp).toHaveAttribute(
       "aria-describedby",
       (await note.getAttribute("id")) ?? "",

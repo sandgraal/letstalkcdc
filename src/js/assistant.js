@@ -112,6 +112,7 @@ function esc(s) {
 let feedbackNoteSeq = 0;
 const FEEDBACK_NOTICE =
   "Your question is sent with your vote to help improve answers.";
+const PRIVACY_LINK_TEXT = "Privacy details";
 
 function buildPanelHTML() {
   return `
@@ -179,7 +180,7 @@ function renderMessageBubble(msg) {
         <button class="assistant-fb-btn" data-helpful="true" type="button" aria-label="Helpful" aria-describedby="${noteId}">👍</button>
         <button class="assistant-fb-btn" data-helpful="false" type="button" aria-label="Not helpful" aria-describedby="${noteId}">👎</button>
       </div>
-      <p class="assistant-fb-note text-xs text-secondary" id="${noteId}">${FEEDBACK_NOTICE}</p>`;
+      <p class="assistant-fb-note text-xs text-secondary" id="${noteId}">${FEEDBACK_NOTICE} <a href="${withBasePath("/privacy/")}">${PRIVACY_LINK_TEXT}</a></p>`;
   }
 
   div.innerHTML = html;
