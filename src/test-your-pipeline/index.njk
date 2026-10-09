@@ -944,7 +944,7 @@ FAIL  control: last arrival wins: 414/500 cases failed
     </p>
     <p>
       Be clear about what the playground does not show yet: as far as that inventory records, no scenario there reproduces a stale or duplicate row
-      that a position guard would reject. <strong>Snapshot Replay</strong> looks like it might, but its second
+      that a position guard would reject. <strong>Re-insert after Update</strong> (formerly Snapshot Replay) looks like it might, but its second
       insert of <code>LED-100</code> is an ordinary later source write with a later log position, so a position
       guard applies it. The repository's playground demos inventory (docs/playground-demos-inventory-2026-10.md) describes it the same way. Scenarios cannot be linked to by
       name either (the <code>?scenario=</code> parameter is for shared copies), so open the gallery and pick them.

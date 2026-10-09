@@ -52,7 +52,6 @@ Use these knobs to illustrate specific CDC behaviours:
 - **Trigger**: **Extract interval** plus **Trigger overhead** to demonstrate write amplification vs. latency trade-offs.
 - **Log**: **Fetch interval** to control WAL/binlog polling cadence.
 - **Apply on commit**: Keeps multi-table writes atomic downstream; disable to surface drift when events arrive out of order.
-- **Drop snapshot rows / Dedupe on PK** (Event Log toolbar): Show how sinks avoid replaying snapshot data or reprocessing after resume.
 - **Schema walkthrough**: Add/remove columns mid-run to show how each method propagates DDL vs. DML.
 - **Metrics dashboard**: Backlog + lag percentiles per lane; open it when tweaking knobs so stakeholders see quantitative impact.
 
