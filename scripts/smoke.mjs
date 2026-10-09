@@ -180,6 +180,31 @@ if (!existsSync(assistantDataPath)) {
       failures.push(
         "Assistant knowledge base JSON does not include any intents.",
       );
+    } else {
+      // Every citation link must land on a built page, and every anchor must
+      // be a real id on that page (12 of the first 22 were dead before this).
+      for (const intent of assistantData.intents) {
+        for (const link of intent.links ?? []) {
+          const rel = String(link.url ?? "").replace(/^\//, "");
+          const pagePath = join(outputDir, rel, "index.html");
+          if (!existsSync(pagePath)) {
+            failures.push(
+              `Assistant intent "${intent.id}" links to ${link.url}, which has no built page.`,
+            );
+            continue;
+          }
+          if (link.anchor) {
+            const id = link.anchor.replace(/^#/, "");
+            const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const idPattern = new RegExp(`\\sid=["']${escaped}["']`);
+            if (!idPattern.test(readFileSync(pagePath, "utf8"))) {
+              failures.push(
+                `Assistant intent "${intent.id}" links to ${link.url}${link.anchor}, but that page has no id="${id}".`,
+              );
+            }
+          }
+        }
+      }
     }
   } catch (error) {
     failures.push(

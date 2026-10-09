@@ -1,3 +1,16 @@
+# Matching (src/js/assistant-matcher.js): every trigger that appears in the
+# visitor's question scores 1, an intent listed for the current module scores
+# +10, highest wins. On a TIE THE EARLIER INTENT WINS. The original intents keep
+# their order; the newer, broader ones (start_here, cdc_methods, tool_choice,
+# glossary ...) sit at the bottom so they never steal a tie from an older,
+# more specific intent. outbox and idempotent_sink sit above exactly_once and
+# materialization on purpose: they are the more specific answer there. A phrase
+# can be given extra weight by listing it twice at different lengths (for
+# example "learn change data" and "learn change data capture"). Triggers are lower case, must not contain apostrophes
+# (they are parsed as JSON), and answers must not contain angle brackets or
+# ampersands (they are rendered as HTML). Link urls are site-absolute
+# (/intro/); the browser adds the base path. tests/unit/modules/
+# assistant-knowledge-base.test.js pins the phrasings below.
 intents:
   - id: cdc_basics
     triggers:
@@ -5,8 +18,15 @@ intents:
         "what is cdc",
         "change data capture",
         "how cdc works",
+        "how does cdc work",
+        "how does change data capture work",
         "what does cdc do",
         "cdc explained",
+        "cdc basics",
+        "basics of cdc",
+        "cdc 101",
+        "introduction to cdc",
+        "intro to cdc",
       ]
     modules: ["intro", "overview", "strategy"]
     answer: >
@@ -17,14 +37,13 @@ intents:
     links:
       - label: Interactive Introduction
         url: /intro/
-        anchor: "#what-is-cdc"
         preview: Start with the visual walkthrough of CDC core concepts.
       - label: Series Overview
         url: /overview/
         preview: Browse all available learning modules.
       - label: Strategic Value of CDC
         url: /strategy/
-        anchor: "#why-cdc"
+        anchor: "#business-case"
         preview: Understand the business case for adopting CDC.
 
   - id: lag_handling
@@ -47,7 +66,7 @@ intents:
     links:
       - label: Observability Basics
         url: /observability/
-        anchor: "#golden-signals"
+        anchor: "#signals-title"
         preview: Learn the golden signals for CDC monitoring.
       - label: Ops Offsets and Replays
         url: /ops-offsets/
@@ -72,7 +91,7 @@ intents:
     links:
       - label: Snapshotting Deep Dive
         url: /snapshotting/
-        anchor: "#lifecycle"
+        anchor: "#snapshot-lifecycle-title"
         preview: Full lifecycle walkthrough with interactive timeline.
       - label: Quickstart Postgres
         url: /quickstarts/quickstart-postgres/
@@ -90,7 +109,7 @@ intents:
     links:
       - label: Ops Offsets and Replays
         url: /ops-offsets/
-        anchor: "#offset-stores"
+        anchor: "#storage-title"
         preview: Learn about offset storage and safe rewind procedures.
       - label: Reconciliation and Offset Surgery
         url: /reconciliation-surgery/
@@ -116,8 +135,76 @@ intents:
     links:
       - label: Schema Evolution
         url: /schema-evolution/
-        anchor: "#compatibility-levels"
+        anchor: "#compatibility"
         preview: Compatibility levels and migration strategies.
+
+  - id: outbox
+    triggers:
+      [
+        "outbox",
+        "transactional outbox",
+        "outbox pattern",
+        "dual write",
+        "dual-write",
+      ]
+    modules: []
+    answer: >
+      The transactional outbox solves the dual-write problem. The application
+      writes its business data and an event row to an outbox table in one
+      atomic database transaction, and a log-based CDC process reads the
+      committed outbox row from the log and publishes it to a message bus such
+      as Kafka. An event is published if and only if the business transaction
+      committed. It does not make delivery exactly-once, though. The publish
+      step is still at-least-once, so the sinks still need to be idempotent.
+    links:
+      - label: The Transactional Outbox Pattern
+        url: /exactly-once/
+        anchor: "#outbox"
+        preview: The dual-write problem and how the outbox solves it.
+      - label: Transactional outbox in practice
+        url: /intro/
+        anchor: "#core-components"
+        preview: Write, publish and consume idempotently, with sample SQL.
+
+  - id: idempotent_sink
+    triggers:
+      [
+        "idempotent sink",
+        "idempotent write",
+        "idempotent upsert",
+        "ts_ms",
+        "order by lsn",
+        "ordered by log position",
+        "order by log position",
+        "ordering by log position",
+        "out of order",
+        "out-of-order",
+        "late arriving",
+        "late-arriving",
+        "arrival order",
+      ]
+    modules: []
+    answer: >
+      CDC delivery is at-least-once, and end-to-end exactly-once across
+      systems is not achievable in general, so correctness comes from an
+      idempotent sink. Upsert or MERGE on the primary key, and keep one row per
+      key by ordering on the source log position (LSN or SCN), not on ts_ms,
+      which is only a millisecond commit time and can tie for the same key. Do
+      not rely on arrival order. Apply deletes as tombstones, and record the
+      processed offset so restarts can resume safely.
+    links:
+      - label: Build idempotent merge logic
+        url: /materialization/
+        anchor: "#merge-title"
+        preview: Order by log position, ts_ms only as a tie-break.
+      - label: The Solution - Idempotent Consumers
+        url: /exactly-once/
+        anchor: "#idempotency"
+        preview: Deterministic event IDs and deduplication at the sink.
+      - label: Delivery guarantees set your expectations
+        url: /event-envelope/
+        anchor: "#delivery-title"
+        preview: At-least-once, and the sink-side dedupe key.
 
   - id: exactly_once
     triggers:
@@ -129,6 +216,13 @@ intents:
         "deduplication",
         "at least once",
         "delivery guarantee",
+        "at-least-once",
+        "idempotency",
+        "dedupe",
+        "effectively once",
+        "same event twice",
+        "what guarantees does cdc",
+        "delivery guarantees",
       ]
     modules: ["exactly-once", "event-envelope"]
     answer: >
@@ -139,11 +233,10 @@ intents:
     links:
       - label: Exactly-Once Semantics
         url: /exactly-once/
-        anchor: "#alo-vs-eos"
         preview: Visual walkthrough of ALO vs EOS plus transactional outbox.
       - label: Event Envelope and Delivery
         url: /event-envelope/
-        anchor: "#delivery-guarantees"
+        anchor: "#delivery-title"
         preview: Keys, payloads, tombstones, and ordering guarantees.
 
   - id: multi_tenancy
@@ -164,8 +257,8 @@ intents:
     links:
       - label: Multi-Tenancy Patterns
         url: /multi-tenancy/
-        anchor: "#isolation-patterns"
-        preview: Isolation patterns, topic math, and egress estimates.
+        anchor: "#mt-primer"
+        preview: Why multi-tenancy matters - the isolation ladder, egress and storage formulas, and guardrails.
 
   - id: partitioning
     triggers:
@@ -186,7 +279,7 @@ intents:
     links:
       - label: Partitioning
         url: /partitioning/
-        anchor: "#key-strategies"
+        anchor: "#key-choice"
         preview: Partition keys, skew detection, and audit loops.
 
   - id: connector_setup
@@ -287,12 +380,20 @@ intents:
     links:
       - label: Materialization 101
         url: /materialization/
-        anchor: "#merge-patterns"
+        anchor: "#merge-title"
         preview: Practical MERGE patterns for upserts and deletes.
 
   - id: observability
     triggers:
-      ["monitor", "alert", "metrics", "dashboard", "golden signals", "observe"]
+      [
+        "monitor",
+        "alert",
+        "metrics",
+        "dashboard",
+        "golden signals",
+        "observe",
+        "observability",
+      ]
     modules: ["observability"]
     answer: >
       The three golden signals for CDC observability are replication lag,
@@ -302,5 +403,323 @@ intents:
     links:
       - label: Observability Basics
         url: /observability/
-        anchor: "#golden-signals"
+        anchor: "#signals-title"
         preview: Golden signals, alerting rules, and dashboard setup.
+
+  - id: event_envelope
+    triggers:
+      [
+        "envelope",
+        "change event look",
+        "event look like",
+        "event format",
+        "event structure",
+        "before image",
+        "after image",
+        "before and after",
+        "before/after",
+        "tombstone",
+      ]
+    modules: []
+    answer: >
+      A change event is an envelope, not just the new row. It carries op
+      (insert, update or delete), ts_ms, a source block with the log position
+      such as lsn, the primary key, and before and after images of the row. The
+      primary key is the stable identifier for idempotent upserts, and the log
+      position or transaction identifier is where you resume when reprocessing.
+      The before image matters for audit pipelines, SCD Type 2 tables and cache
+      invalidation. Soft deletes are stored as explicit tombstones, because
+      compaction depends on them.
+    links:
+      - label: What lives inside the envelope
+        url: /event-envelope/
+        anchor: "#anatomy-title"
+        preview: Field-by-field tour of a change event.
+      - label: Why before/after images matter
+        url: /event-envelope/
+        anchor: "#images-title"
+        preview: Audit, SCD Type 2, rollbacks and deduplication.
+      - label: See a change become an event
+        url: /intro/
+        anchor: "#ced-title"
+        preview: Edit a table and watch the change event it emits.
+
+  - id: security_pii
+    triggers:
+      [
+        "pii",
+        "security",
+        "sensitive",
+        "mask",
+        "mask a column",
+        "masking",
+        "gdpr",
+        "right to erasure",
+        "right-to-erasure",
+        "erasure",
+        "crypto-shredding",
+        "privilege",
+        "permissions",
+        "encrypt",
+        "access control",
+      ]
+    modules: []
+    answer: >
+      CDC copies your most sensitive tables into systems with different access
+      control and a longer memory. Filter sensitive columns at the connector -
+      exclude them, or capture them as a salted hash - rather than downstream.
+      The CDC user needs replication-level privileges that usually cannot be
+      scoped per table, so give it a dedicated account. Use TLS on every hop
+      and tight ACLs on the topics, including the dead-letter queue. A delete
+      event does not retract the earlier events that carried the data, so plan
+      for erasure (never carry the identifier in the clear, compaction plus
+      tombstones, or crypto-shredding) before the first production topic
+      exists.
+    links:
+      - label: Filter at the connector, not downstream
+        url: /security/
+        anchor: "#filter-early-title"
+        preview: Exclude or hash sensitive columns before they reach the broker.
+      - label: CDC privileges are broader than read-only
+        url: /security/
+        anchor: "#privileges-title"
+        preview: What Postgres, MySQL and Oracle need, and why it is wide.
+      - label: Deletion requests and an append-only log
+        url: /security/
+        anchor: "#erasure-title"
+        preview: Three ways to honour a right-to-erasure request.
+
+  - id: non_relational
+    triggers:
+      [
+        "mongo",
+        "dynamodb",
+        "dynamo db",
+        "cassandra",
+        "change stream",
+        "oplog",
+        "nosql",
+        "non-relational",
+        "nonrelational",
+        "beyond relational",
+      ]
+    modules: []
+    answer: >
+      The log-based idea carries to MongoDB, DynamoDB and Cassandra, but each
+      relaxes a guarantee relational CDC gave you. MongoDB change streams read
+      the oplog and give an ordered stream with a resume token on every event,
+      but the oplog is capped by size, not time. DynamoDB Streams provides
+      before and after images (set the view type), but retention is a fixed
+      24 hours. Cassandra has
+      no cluster-wide ordered log - CDC is per node, duplicates are structural
+      and there is no before-image. In all three, assume at-least-once and keep
+      an idempotent sink.
+    links:
+      - label: What transfers, and what does not
+        url: /non-relational/
+        anchor: "#what-transfers-title"
+        preview: Ordering, key and before-image across the three sources.
+      - label: MongoDB change streams
+        url: /non-relational/
+        anchor: "#mongodb-title"
+        preview: Resume tokens as offsets, and the size-capped oplog.
+      - label: DynamoDB Streams
+        url: /non-relational/
+        anchor: "#dynamodb-title"
+        preview: A hard 24-hour horizon.
+      - label: Cassandra CDC
+        url: /non-relational/
+        anchor: "#cassandra-title"
+        preview: No cluster-wide ordered log.
+
+  - id: transports
+    triggers:
+      [
+        "pulsar",
+        "kinesis",
+        "pub/sub",
+        "google pub/sub",
+        "pubsub",
+        "other than kafka",
+        "instead of kafka",
+        "without kafka",
+        "transports",
+      ]
+    modules: []
+    answer: >
+      The change event envelope travels over other transports, but the ordering
+      and retention guarantees underneath it differ, and your sink depends on
+      them. Pulsar is the closest analogue to Kafka: ordering per partition,
+      with Key_Shared keeping a key on one consumer, but a Shared subscription
+      breaks per-key order. Kinesis orders per shard with a fixed retention
+      window (24 hours by default) and no compaction, and resharding moves keys
+      between shards. Google Pub/Sub has no ordering by default, so ordering
+      must come from the event's log position, never from arrival. All four are
+      at-least-once and none gives exactly-once into an external sink, so
+      upsert on the primary key and break ties on log position, not ts_ms.
+    links:
+      - label: Transports other than Kafka
+        url: /event-envelope/
+        anchor: "#transports-title"
+        preview: Ordering unit and retention for Kafka, Pulsar, Kinesis, Pub/Sub.
+      - label: The Golden Rule of Kafka Ordering
+        url: /partitioning/
+        anchor: "#ordering"
+        preview: Why all changes for one entity share a partition.
+
+  - id: cdc_methods
+    triggers:
+      [
+        "log-based",
+        "log based",
+        "trigger-based",
+        "trigger based",
+        "query-based",
+        "query based",
+        "polling",
+        "types of cdc",
+        "cdc methods",
+        "cdc approaches",
+        "ways to do cdc",
+        "kinds of cdc",
+        "which cdc method",
+      ]
+    modules: []
+    answer: >
+      There are three ways to capture changes. Log-based CDC reads committed
+      changes from the database transaction log (PostgreSQL WAL, MySQL binlog,
+      SQL Server transaction log, Oracle redo). It has the lowest impact on the
+      source and captures inserts, updates and deletes in order, but it needs
+      elevated privileges and tuned log retention. Trigger-based CDC writes
+      changes into shadow tables with database triggers. It works when log
+      access is impossible, but it adds overhead to every transaction. Query-based
+      CDC (polling) re-queries tables for changed rows. It is the simplest to
+      start with, but it misses intermediate updates and hard deletes and its
+      load on the source grows with polling frequency. This site treats
+      log-based CDC as the default.
+    links:
+      - label: CDC methods
+        url: /intro/
+        anchor: "#cdc-methods"
+        preview: Log-based, trigger-based and query-based CDC side by side.
+      - label: Methods at a glance
+        url: /intro/
+        anchor: "#methods-comparison"
+        preview: Scorecard of the three methods across six criteria.
+
+  - id: tool_choice
+    triggers:
+      [
+        "which tool",
+        "which cdc tool",
+        "best cdc tool",
+        "cdc tools",
+        "cdc platform",
+        "debezium vs",
+        "vs debezium",
+        "fivetran",
+        "airbyte",
+        "aws dms",
+        "goldengate",
+        "datastream",
+        "build vs buy",
+        "buy vs build",
+      ]
+    modules: []
+    answer: >
+      Every platform compared here delivers at-least-once at the wire, and none
+      gives end-to-end exactly-once across systems. Correctness comes from an
+      idempotent sink - upsert on the primary key, ordered by the source log
+      position, not ts_ms. The comparison matrix covers Debezium with Kafka
+      Connect, AWS DMS, Fivetran, Airbyte, Oracle GoldenGate and Qlik Replicate
+      across deployment, method, delivery semantics, latency and cost, with a
+      decision guide; treat the figures as order-of-magnitude guidance, not
+      benchmarks. The tooling page groups tools into open source, managed cloud
+      and commercial platforms and lists what to check before you choose.
+    links:
+      - label: The comparison matrix
+        url: /compare/
+        anchor: "#matrix-title"
+        preview: Six platforms across nine dimensions.
+      - label: Decision guide
+        url: /compare/
+        anchor: "#decide-title"
+        preview: Read the delivery semantics row first.
+      - label: What to check before you choose
+        url: /tooling/
+        anchor: "#capabilities"
+        preview: The capability checklist to run before you pick a platform.
+
+  - id: glossary
+    triggers: ["glossary", "terminology", "jargon", "vocabulary", "definitions"]
+    modules: []
+    answer: >
+      The CDC Glossary defines the vocabulary vendor-agnostically and notes the
+      specific name each database or broker uses. Every entry has a stable
+      anchor, so you can link straight to one term, and entries list aliases
+      and see-also cross-references.
+    links:
+      - label: CDC Glossary
+        url: /glossary/
+        anchor: "#glossary-terms"
+        preview: Definitions with aliases and cross-references.
+
+  - id: start_here
+    triggers:
+      [
+        "learn cdc",
+        "learn about cdc",
+        "learning cdc",
+        "learn change data",
+        "learn change data capture",
+        "learn about change data",
+        "learn about change data capture",
+        "teach me cdc",
+        "new to cdc",
+        "new to change data",
+        "new to change data capture",
+        "new to this",
+        "beginner",
+        "newbie",
+        "start here",
+        "where do i start",
+        "where should i start",
+        "where to start",
+        "where do i begin",
+        "where to begin",
+        "starting point",
+        "get started with cdc",
+        "what should i read first",
+        "what do i read first",
+        "read first",
+        "order to read",
+        "order should i read",
+        "curriculum",
+        "learning path",
+        "what to learn",
+        "what to learn after",
+        "what comes after",
+        "learning roadmap",
+        "roadmap",
+        "from scratch",
+      ]
+    modules: []
+    answer: >
+      New to CDC? Follow the learning path in the introduction's 'How to use
+      this series' section. Step 1 is the Series Overview, to align on
+      terminology and the CDC value proposition. Step 2 is the Interactive
+      Introduction, which anchors you on methods, architecture and the tooling
+      landscape. Step 3 is the advanced patterns (Exactly-Once, Snapshotting,
+      Schema Evolution). Step 4 is the labs and troubleshooting guides, to
+      validate your setup.
+    links:
+      - label: Interactive Introduction to CDC
+        url: /intro/
+        preview: The foundation - methods, architecture, and the tooling map.
+      - label: Learning path - How to use this series
+        url: /intro/
+        anchor: "#series-roadmap"
+        preview: The recommended reading order through the modules.
+      - label: Series Overview
+        url: /overview/
+        preview: Every module with its skill level.
