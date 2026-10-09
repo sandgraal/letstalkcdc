@@ -232,23 +232,31 @@
   align-items: center;
   padding: 0.75rem 1.5rem;
   background: var(--color-primary, #3cc8f0);
-  color: white;
+  /* Inverse of the primary/secondary fills in each theme (white on the dark
+     cyan/indigo was 1.45-1.96:1). */
+  color: var(--color-text-inverse, #06131a);
   text-decoration: none;
   border-radius: 6px;
   font-weight: 500;
   transition: background 0.2s;
 }
 
+/* `--color-primary-dark` / `--color-secondary-dark` were never defined, so the
+   fallbacks (#22b3e0 / #475569) were used in both themes and failed against
+   the inverse text in one of them. Derive the hover fill from the live fill. */
 .actions .button:hover {
-  background: var(--color-primary-dark, #22b3e0);
+  background: var(--color-accent-hover, #22b3e0);
 }
 
 .actions .button.secondary {
   background: var(--color-secondary, #64748b);
+  /* The shared `.button.secondary` (accent text on transparent) ties on
+     specificity with `.actions .button`, so restate the text colour. */
+  color: var(--color-text-inverse, #06131a);
 }
 
 .actions .button.secondary:hover {
-  background: var(--color-secondary-dark, #475569);
+  background: color-mix(in srgb, var(--color-secondary, #64748b) 90%, #000);
 }
 
 /* Responsive adjustments */

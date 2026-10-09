@@ -154,6 +154,42 @@ blockquote cite::before {
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* Community box (components/discussion-link.njk). Self-contained on purpose:
+   `.callout` is redefined later by components/panels.css (green success
+   look, 1rem padding) so it is not a stable base, and the box sits directly
+   in <main>, outside any container, so it also needs its own horizontal
+   inset and the page-meta reading width. Look = the `.callout--info`
+   intent above: 4px accent left border, tint, --radius-lg, --space-lg. */
+.discussion-callout {
+  width: calc(100% - 2 * var(--space-md));
+  max-width: 72ch;
+  margin: var(--space-xl) auto;
+  padding: var(--space-lg);
+  border-left: 4px solid var(--color-accent-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-info-subtle);
+}
+
+.discussion-callout .callout__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.discussion-callout .callout__header .callout__title {
+  margin-bottom: 0;
+}
+
+.discussion-callout .callout__icon {
+  flex: none;
+  color: var(--color-accent-primary);
+}
+
+.discussion-callout .callout__content p:last-child {
+  margin-bottom: 0;
+}
+
 .callout__title {
   font-weight: 600;
   font-size: var(--text-base);

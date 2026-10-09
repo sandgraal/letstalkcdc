@@ -247,3 +247,170 @@ test.describe("accessibility", () => {
     expect(await nav.count()).toBeGreaterThan(0);
   });
 });
+
+// Buttons inside `.prose` regressed twice at rest because a link-colour rule
+// with higher specificity than `.button` repainted their text: `html[data-theme=
+// "dark"] .prose a` (cyan on the cyan gradient, 1.08:1 on /snapshotting/) and
+// the inline `html[data-theme="light"] a` (link blue on the cyan gradient,
+// 1.55:1 on /tooling/ and /cloud-labs/). A third hole was the base `a:hover`
+// rule (0,1,1), which beat `.button` (0,1,0) and painted link-hover colour on
+// the button gradient in :hover and :active. axe's color-contrast cannot score
+// a gradient background (it reports "needs review"), so measure it directly:
+// the worst case is the text colour against each gradient stop.
+const BUTTON_PAGES = [
+  ...PAGES_TO_AUDIT,
+  "/snapshotting/",
+  "/cloud-labs/",
+  "/cloud-labs/goldengate/",
+  "/dashboard/",
+  "/strategy/",
+  "/troubleshooting/failure-drills/",
+];
+
+/**
+ * Runs in the browser (via `locator.evaluate`): the contrast of an element's
+ * text colour against its own background, using every gradient stop when the
+ * background is an image.
+ * @param {Element} el
+ */
+function contrastOf(el) {
+  const lum = (c) => {
+    const f = (v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  };
+  const ratio = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  // Computed values are rgb()/rgba(), except colour-mix() results, which
+  // serialise as `color(srgb r g b [/ a])` with channels in 0-1.
+  const rgbs = (s) =>
+    [...s.matchAll(/rgba?\(([^)]+)\)|color\(srgb ([^)]+)\)/g)].map((m) =>
+      m[1]
+        ? m[1].split(",").map(Number)
+        : m[2].split("/").flatMap((part, i) =>
+            part
+              .trim()
+              .split(/\s+/)
+              .map((v) => (i === 0 ? Number(v) * 255 : Number(v))),
+          ),
+    );
+  const opaque = (c) => c && (c.length === 3 || c[3] > 0.9);
+  const cs = getComputedStyle(el);
+  const fg = rgbs(cs.color)[0];
+  let stops = rgbs(cs.backgroundImage);
+  if (!stops.length) {
+    let bg = rgbs(cs.backgroundColor)[0];
+    for (let n = el; !opaque(bg) && n; n = n.parentElement) {
+      bg = rgbs(getComputedStyle(n).backgroundColor)[0];
+    }
+    stops = [opaque(bg) ? bg : [255, 255, 255]];
+  }
+  return {
+    label: `${el.textContent.trim()} [${el.className}] ${cs.color}`,
+    ratio: Math.min(...stops.map((s) => ratio(fg, s))),
+    focusVisible: el.matches(":focus-visible"),
+  };
+}
+
+/**
+ * @param {import("@playwright/test").Page} page
+ * @param {string} pagePath
+ * @param {string} theme
+ */
+async function openInTheme(page, pagePath, theme) {
+  await page.addInitScript((t) => {
+    window.localStorage.setItem("theme", t);
+  }, theme);
+  await page.goto(pagePath);
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+  // Sample the settled colours, not a mid-transition frame.
+  await page.addStyleTag({
+    content:
+      "*,*::before,*::after{transition:none!important;animation:none!important}",
+  });
+}
+
+test.describe("buttons inside .prose meet 4.5:1", () => {
+  for (const theme of ["light", "dark"]) {
+    for (const pagePath of BUTTON_PAGES) {
+      test(`${pagePath} (${theme} theme)`, async ({ page }) => {
+        await openInTheme(page, pagePath, theme);
+
+        const buttons = await Promise.all(
+          (await page.locator(".prose a.button").all()).map((b) =>
+            b.evaluate(contrastOf),
+          ),
+        );
+
+        const failures = buttons
+          .filter((b) => b.ratio < 4.5)
+          .map((b) => `${b.label}: ${b.ratio.toFixed(2)}:1`);
+        expect(
+          failures,
+          `.prose a.button contrast failures on ${pagePath} (${theme}):\n${failures.join("\n")}`,
+        ).toEqual([]);
+      });
+    }
+  }
+});
+
+// Same measurement in the interactive states, with real input: page.hover for
+// :hover, a held mouse button for :active and a keyboard-initiated focus for
+// :focus-visible. Covers every `.button` variant on the page, not just plain
+// ones, because the regression was in how variants interact with `a:hover`.
+test.describe("buttons keep 4.5:1 on hover, active and focus-visible", () => {
+  for (const theme of ["light", "dark"]) {
+    for (const pagePath of BUTTON_PAGES) {
+      test(`${pagePath} (${theme} theme)`, async ({ page }) => {
+        await openInTheme(page, pagePath, theme);
+        // Releasing the mouse on a link is a click; stay on the page.
+        await page.evaluate(() =>
+          document.addEventListener("click", (e) => e.preventDefault(), true),
+        );
+
+        const buttons = page.locator(
+          "main :is(a.button, button.button, .btn):visible",
+        );
+        const count = await buttons.count();
+        const failures = [];
+        const check = async (state, button) => {
+          const r = await button.evaluate(contrastOf);
+          if (state === "focus-visible" && !r.focusVisible) {
+            failures.push(`${r.label} [${state}]: not :focus-visible`);
+          } else if (r.ratio < 4.5) {
+            failures.push(`${r.label} [${state}]: ${r.ratio.toFixed(2)}:1`);
+          }
+        };
+
+        for (let i = 0; i < count; i++) {
+          const button = buttons.nth(i);
+          await button.scrollIntoViewIfNeeded();
+
+          await button.hover();
+          await check(":hover", button);
+
+          await page.mouse.down();
+          await check(":active", button);
+          await page.mouse.up();
+
+          // Move away first so the focus check isn't also a hover check.
+          await page.mouse.move(0, 0);
+          await page.keyboard.press("Shift");
+          await button.focus();
+          await check("focus-visible", button);
+          await button.evaluate((el) => el.blur());
+        }
+
+        expect(
+          failures,
+          `a.button interactive-state contrast failures on ${pagePath} (${theme}):\n${failures.join("\n")}`,
+        ).toEqual([]);
+      });
+    }
+  }
+});
