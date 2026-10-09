@@ -74,10 +74,10 @@ head_extra: |
           <details open="">
             <summary><strong>Commands</strong></summary>
             <p><span class="pill">Kafka (Consumer Lag)</span></p>
-            <pre><button class="copy">copy</button><code>kafka-consumer-groups --bootstrap-server &lt;host:port&gt; \
+            <pre><code>kafka-consumer-groups --bootstrap-server &lt;host:port&gt; \
   --describe --group &lt;your-sink-group&gt;</code></pre>
             <p><span class="pill">Connect (Connector Status)</span></p>
-            <pre><button class="copy">copy</button><code>curl -s http://&lt;connect-host:8083&gt;/connectors | jq
+            <pre><code>curl -s http://&lt;connect-host:8083&gt;/connectors | jq
 curl -s http://&lt;connect-host:8083&gt;/connectors/&lt;name&gt;/status | jq</code></pre>
           </details>
         </div>
@@ -104,7 +104,7 @@ curl -s http://&lt;connect-host:8083&gt;/connectors/&lt;name&gt;/status | jq</co
           <h2>Postgres Quick Checks</h2>
           <details open="">
             <summary><strong>Configuration + Health</strong></summary>
-            <pre><button class="copy">copy</button><code>-- WAL &amp; slots
+            <pre><code>-- WAL &amp; slots
 SHOW wal_level;                -- should be 'logical'
 SHOW max_wal_senders;          -- &gt;= number of replication clients
 SHOW max_replication_slots;    -- &gt;= slots in use
@@ -145,7 +145,7 @@ FROM pg_replication_slots WHERE slot_name='&lt;slot&gt;';</code></pre>
           <h2>MySQL Quick Checks</h2>
           <details open="">
             <summary><strong>Configuration + Health</strong></summary>
-            <pre><button class="copy">copy</button><code>-- binlog mode
+            <pre><code>-- binlog mode
 SHOW VARIABLES LIKE 'binlog_format';       -- should be ROW
 SHOW VARIABLES LIKE 'binlog_row_image';    -- FULL or MINIMAL (know your connector's needs)
 SHOW VARIABLES LIKE 'gtid_mode';           -- ON preferred
@@ -182,7 +182,7 @@ SHOW GLOBAL STATUS LIKE 'Binlog_cache_disk_use';</code></pre>
           <p>Background and tuning: <a href="{{ '/oracle-notes/' | url }}">Vendor Nuances — Oracle CDC</a>.</p>
           <details open="">
             <summary><strong>Configuration + Health</strong></summary>
-            <pre><button class="copy">copy</button><code>-- supplemental logging
+            <pre><code>-- supplemental logging
 SELECT supplemental_log_data_min, supplemental_log_data_all FROM v$database;
 -- database log mode
 SELECT log_mode FROM v$database;            -- ARCHIVELOG recommended for CDC
@@ -213,7 +213,7 @@ SELECT * FROM dba_log_groups WHERE LOG_GROUP_TYPE IN ('ALL COLUMN LOGGING','PRIM
           <h2>Kafka / Connect Quick Checks</h2>
           <details open="">
             <summary><strong>Status &amp; Lag</strong></summary>
-            <pre><button class="copy">copy</button><code># list &amp; inspect
+            <pre><code># list &amp; inspect
 curl -s http://&lt;connect:8083&gt;/connectors | jq
 curl -s http://&lt;connect:8083&gt;/connectors/&lt;name&gt;/status | jq
 
@@ -250,14 +250,14 @@ curl -s -XPOST http://&lt;connect:8083&gt;/connectors/&lt;name&gt;/tasks/0/resta
         <div class="two">
           <div>
             <h3>Duplicate Primary Keys</h3>
-            <pre><button class="copy">copy</button><code>-- generic template (replace table/pk)
+            <pre><code>-- generic template (replace table/pk)
 SELECT COUNT(*) AS rows,
        COUNT(DISTINCT pk) AS distinct_keys
 FROM target_table;</code></pre>
           </div>
           <div>
             <h3>Latest-Wins Check</h3>
-            <pre><button class="copy">copy</button><code>-- is the target behind the newest log position seen in history?
+            <pre><code>-- is the target behind the newest log position seen in history?
 WITH last AS (
   SELECT key_col, MAX(source_lsn) AS last_lsn
   FROM history_table

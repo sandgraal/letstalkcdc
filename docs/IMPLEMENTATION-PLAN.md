@@ -1955,7 +1955,7 @@ production CSS hashes.
       asserts the announcement and `tests/e2e/code-blocks.spec.js` checks it
       on one page. Size: S. Role: `implementer`, `reviewer`.
       _2026-10-09: done. `showToast` now announces the title and message (joined with a space after terminal punctuation, else ". ") through one visually hidden polite live region (`.toast-live-region.sr-only`, `role="status"`, `aria-live="polite"`) created when the module loads and reused, with the text set 50 ms later so the first message is not dropped; each message replaces the child node so a repeat is read again. The visible toast is unchanged (it holds buttons and is not a live region), the copy button's `aria-label` is unchanged, and no CSS was touched (`.sr-only` already exists). Unit tests: 7 in `toast.test.js` (fake timers) and 1 in `code-blocks.test.js` (real toast, region text contains "SQL code copied to clipboard", label still "Copy SQL code"). E2E: the clipboard test in `tests/e2e/code-blocks.spec.js` asserts the live region after each copy._
-- [ ] **P15-50 · Dead copy-button CSS.** Outcome: no rule for markup that no
+- [x] **P15-50 · Dead copy-button CSS.** Outcome: no rule for markup that no
       longer exists. Evidence (review of #409): the `.copy-snippet` rules in
       `src/assets/css/components/code-block.css` and `.copy-btn` in
       `src/assets/css/pages/snapshotting.css` have no matching element after
@@ -1963,6 +1963,7 @@ production CSS hashes.
       (it will change) and recorded in `CLAUDE.md` and
       `.claude/commands/css-byte-check.md`. Size: S. Role: `css-refactor`.
       _2026-10-09: half done, item stays open. Removed the `.copy-snippet` selectors and rule from `components/code-block.css` (no element carries that class in any template, script or built page; the JS only lists it in `LEGACY_COPY_SELECTOR`), hash re-baselined to `fceb82df…`; the production diff is deletions only. NOT removed: `.copy-btn` in `pages/snapshotting.css` and `button.copy` in `pages/failure-drills.css`, `troubleshooting.css` and friends. The evidence was wrong for them: the static markup is still in `src/snapshotting/index.njk` (6 `<button class="copy-btn">`) and `src/troubleshooting/failure-drills.njk` plus `index.njk` (about 30 `<button class="copy">`); `code-blocks.js` only deletes those at runtime, so the rules style a dead no-JS button. Remaining work: delete the static buttons from those templates, then the page CSS rules (page CSS is outside the bundle hash). `.copy` in `connector-builder.css`, `debezium-decoder.css` and `dlq-triage.css` is for those tools' own controls, a different job._
+      _2026-10-09: done. The 47 static buttons are gone from the templates (6 `copy-btn` in `src/snapshotting/index.njk`, 33 `copy` in `failure-drills.njk`, 8 in `troubleshooting/index.njk`), so a code block has no dead button without JS. Deleted the dead page CSS: 7 `.copy-btn` rules in `pages/snapshotting.css`, 2 `button.copy` rules in `pages/failure-drills.css`, `button.copy` and its `@media print` rule in `pages/troubleshooting.css`. `grep` over the built `_site`: 0 HTML files with `class="copy`/`copy-btn`/`copy-snippet`, 0 CSS selectors left for them. `code-blocks.js` keeps its runtime removal as a guard (comment updated) and the unit tests still cover it; `tests/e2e/code-blocks.spec.js` still asserts exactly one visible copy control per block, including `/troubleshooting/` and `/troubleshooting/failure-drills/`. Bundle hash re-baselined with the P16-8 change below (`c5806349…`); the page CSS is outside the bundle._
 - [x] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
       Outcome: the one-copy-button test covers every page with code blocks.
       Evidence (review of #409): the `PAGES` list in
@@ -2097,9 +2098,17 @@ ready to start; the first job is to turn it into measured, specific items.
       Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
       does not yet link out to the owning lesson; that needs a curated
       `lesson` field on the 33 entries._
-  - [ ] Related-lessons list has no styling (bullets/indent: `.series-nav*`
+      _2026-10-09: the related-list styling is done (sub-item below). The
+      box stays open: the glossary still does not link out to the owning
+      lesson and the reciprocal `/tooling/` and `/compare/` links are not
+      confirmed, so the Accept list is not fully met. Audit numbers as of
+      the last status: 0 broken fragments, 2 pages under 3 content inbound
+      links (`/` and `/privacy/`), minimum 4 inbound for every cloud lab
+      and quickstart page._
+  - [x] Related-lessons list has no styling (bullets/indent: `.series-nav*`
         classes have no rules in the shipped stylesheet); needs a
         `css-refactor` pass.
+        _2026-10-09: done. The section is now `.series-related` (was `.prose`, a 663px column centred in the 1232px container) with rules in `components/progress.css`: it spans the same container as the progress card (left edge 309 -> 24 px at 1280, 16 px at 375, same as the card), the list has no indent or bullets, the h2 keeps its level and uses `.h-as-4` (45.8 -> 24.5 px at 1280, 34.9 -> 21.3 px at 375). Checked on `/which-row-wins/`, `/exactly-once/` and `/case-study/` at 375 and 1280 in both themes: no horizontal overflow, axe reports 0 violations in the section (page-level findings elsewhere are unchanged). The `.series-nav*` prev/next links still stack: not part of this change. Hash re-baselined to `c5806349…`._
         _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
         _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
 - [x] **P16-9 · Heading and fragment fixes.** Outcome: every content page has

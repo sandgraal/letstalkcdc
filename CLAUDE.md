@@ -88,8 +88,12 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: fceb82dffad4130b8b4cd8100a93d8aa679299796681e528391b13b2a3d568b5
-# (re-baselined 2026-10-09 (P15-50): the dead `.copy-snippet` selectors and
+# baseline at HEAD of main is: c5806349294d3bc295a07c93054684a70545d291216916e45cef1c154017f944
+# (re-baselined 2026-10-09 (P16-8, P15-50): `.series-related` list rules
+#  added to components/progress.css (the Related lessons list under the
+#  progress card), the only addition; plus the `.copy-btn` / `button.copy`
+#  page-CSS rules removed with their static buttons (those are page CSS,
+#  not in the bundle). Previously fceb82df… from the same day (P15-50): the dead `.copy-snippet` selectors and
 #  rule removed from components/code-block.css, the only CSS difference
 #  (deletions only). Previously f59f964f… from the same day (P16-9): `.h-as-3` / `.h-as-4` presentational
 #  heading-level helpers appended to 05-utilities.css, the only CSS

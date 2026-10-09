@@ -4,11 +4,10 @@ import { expectHittable } from "./helpers/hit-test.js";
 
 /**
  * P15-34: every code block has exactly one visible, labelled, reachable copy
- * control. The three markup variants in the content are a bare `pre > code`
- * (most pages), a `button.copy-btn` written inside the `pre`
- * (/snapshotting/) and a `button.copy` written inside the `pre`
- * (/troubleshooting/failure-drills/). Before the fix each block showed the
- * header button plus a second, overlapping one (three on failure-drills).
+ * control. The static `button.copy` / `button.copy-btn` markup that used to
+ * sit inside the `pre` on /troubleshooting/ and /snapshotting/ was removed
+ * from the templates (P15-50); the legacy selectors stay in COPY_BUTTONS so
+ * that reintroducing one fails this test.
  */
 
 const PAGES = [

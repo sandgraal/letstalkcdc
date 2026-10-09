@@ -33,12 +33,12 @@ const initHeadingAnchors = () => {
 };
 
 /**
- * Static markup in a few templates puts its own copy control inside the
- * `pre` (`button.copy` on /troubleshooting/failure-drills/, `button.copy-btn`
- * on /snapshotting/). None of them has ever been wired up by a page script
- * of its own, and each would sit beside the header button below. The header
- * button is the one copy control for every block, so the in-`pre` ones are
- * dropped rather than left as a second, duplicate or dead, control.
+ * Defensive clean-up. The templates used to put their own copy control inside
+ * the `pre` (`button.copy` on /troubleshooting/, `button.copy-btn` on
+ * /snapshotting/); P15-50 removed that markup and its CSS, so without JS a
+ * code block now has no dead button. If someone writes one again, the header
+ * button below is still the one copy control, so the in-`pre` one is dropped
+ * rather than left as a duplicate.
  */
 const LEGACY_COPY_SELECTOR = "button.copy, .copy-btn, .copy-snippet";
 
