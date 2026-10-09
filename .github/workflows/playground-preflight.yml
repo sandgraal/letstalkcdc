@@ -1,0 +1,45 @@
+name: Playground Preflight Checks
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths: ["playground/**", ".github/workflows/playground-preflight.yml"]
+  pull_request:
+    paths: ["playground/**", ".github/workflows/playground-preflight.yml"]
+
+defaults:
+  run:
+    working-directory: playground
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: playground/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Security audit (production dependencies)
+        run: npm audit --audit-level=moderate --omit=dev
+        continue-on-error: true
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('playground/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Run preflight suite
+        env:
+          PLAYWRIGHT_DISABLE: "0"
+        run: npm run ci:preflight

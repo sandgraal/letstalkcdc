@@ -39,6 +39,10 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build
 
+      # Publishes the static Change Feed Playground at /playground/.
+      - name: Publish playground to /playground/
+        run: scripts/publish-playground.sh
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

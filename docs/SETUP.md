@@ -93,7 +93,7 @@ Votes land in `public.assistant_feedback`:
 | `helpful`   | `boolean`     | Required; `true` for 👍, `false` for 👎   |
 | `ts`        | `timestamptz` | Defaults to `now()`                       |
 
-Row-level security is on, with an insert-only policy for the `anon` role and no read policy. The reviewable record of the schema is [`supabase/schema.sql`](../supabase/schema.sql); it is not applied automatically.
+Row-level security is on, with an insert-only policy for the `anon` role and no read policy. The reviewable record of the schema is [`supabase/schema.sql`](../supabase/schema.sql); it is not applied automatically. The shared `letstalkcdc` Supabase project also hosts the playground's tables; see [`playground/docs/supabase-setup.md`](../playground/docs/supabase-setup.md) for those.
 
 #### Setup Steps
 

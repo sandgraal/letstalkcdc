@@ -13,3 +13,5 @@ sandbox
 *.njk
 .github/CODEOWNERS
 AGENTS.md
+# Vendored Change Feed Playground has its own toolchain and formatting
+playground

@@ -228,6 +228,9 @@ and no CDN script.
 - Row-level security is on; the `anon` role may `INSERT` only. There is
   no anon read policy.
 
+The playground (`playground/`) uses the same Supabase project for realtime
+sync and shared scenarios; see `playground/docs/supabase-setup.md`.
+
 ## Common Patterns
 
 ### Adding a New Content Page
