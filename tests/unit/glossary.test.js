@@ -130,6 +130,17 @@ describe("glossary data", () => {
   });
 });
 
+// Single pass over a lookup map, so "&amp;lt;" decodes to "&lt;", not "<".
+const ENTITIES = {
+  "&amp;": "&",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&lt;": "<",
+  "&gt;": ">",
+};
+const decode = (s) =>
+  s.replace(/&(?:amp|quot|#39|lt|gt);/g, (entity) => ENTITIES[entity]);
+
 function walkHtml(dir, rel = "") {
   return readdirSync(path.join(dir, rel), { withFileTypes: true }).flatMap(
     (d) => {
@@ -226,7 +237,7 @@ describe("built site", () => {
       ...glossaryHtml.matchAll(
         /<dt id="[^"]+"[^>]*>\s*<a[^>]*>#<\/a>\s*([^<]+?)\s*(?:<span|<\/dt>)/g,
       ),
-    ].map((m) => m[1].replace(/&amp;/g, "&").replace(/&#39;/g, "'"));
+    ].map((m) => decode(m[1]));
     expect(terms.length).toBe(glossary.length);
     const sorted = [...terms].sort((a, b) =>
       a.toLowerCase() < b.toLowerCase()
