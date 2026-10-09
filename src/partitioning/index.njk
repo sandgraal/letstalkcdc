@@ -27,7 +27,7 @@ head_extra: |
             >all changes for that entity must be sent to the same
             partition.</strong
           >
-          This is the fundamental purpose of a partition key.
+          This is the fundamental purpose of a <a href="{{ '/glossary/' | url }}#partition-key">partition key</a>.
         </p>
         <p>
           That ordering is the order in which records were appended to the
@@ -402,7 +402,10 @@ head_extra: |
           flag&rdquo; choice described on
           <a href="{{ '/materialization/' | url }}">Materialization</a>. Ignore
           Kafka null-value tombstone records here: they follow a delete event
-          for log compaction and carry no position.
+          for log compaction and carry no position. How BigQuery, Databricks,
+          Hudi, Iceberg, Delta and Snowflake take the position and keep the
+          delete: <a href="{{ '/which-row-wins/' | url }}">Which Row Wins in
+          Your Target</a>.
         </p>
         <p>
           <strong><a href="{{ '/glossary/#watermark' | url }}">Watermark</a> (aggregates only):</strong> event time is the right

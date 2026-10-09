@@ -202,7 +202,7 @@ curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json
       <ul>
         <li>Trigger and identify serialization errors in the pipeline</li>
         <li>Configure and monitor Dead Letter Queue (DLQ) topics</li>
-        <li>Practice DLQ triage and message recovery</li>
+        <li>Practice DLQ triage and message recovery (the <a href="{{ '/dlq-triage/' | url }}">DLQ Triage Assistant</a> helps)</li>
         <li>Understand error tolerance policies</li>
       </ul>
 
@@ -336,7 +336,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 \
       <ul>
         <li>Understand how schema changes propagate through CDC pipelines</li>
         <li>Identify breaking vs. non-breaking schema changes</li>
-        <li>Practice schema evolution strategies</li>
+        <li>Practice <a href="{{ '/schema-evolution/' | url }}">schema evolution</a> strategies</li>
         <li>Test schema registry integration (if applicable)</li>
       </ul>
 
@@ -489,7 +489,7 @@ docker exec -it postgres psql -U start_data_engineer -d inventory -c \
       <h3>Learning Goals</h3>
       <ul>
         <li>Understand how CDC connectors manage offsets and state</li>
-        <li>Observe snapshot vs. streaming mode behavior</li>
+        <li>Observe <a href="{{ '/snapshotting/' | url }}">snapshot</a> vs. streaming mode behavior</li>
         <li>Practice safe offset resets and replays</li>
         <li>Validate idempotency of sink writes during replays</li>
       </ul>

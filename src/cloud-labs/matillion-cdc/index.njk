@@ -342,7 +342,7 @@ WHEN MATCHED THEN DELETE;      -- or: UPDATE SET is_deleted = TRUE</code></pre>
     <div class="callout callout-info">
       <h4>When deletes must be exact, use log-based CDC</h4>
       <p>
-        Both options above are approximations bolted onto polling. If you need every delete captured promptly and reliably &mdash; and every intermediate change, not just the latest state per interval &mdash; use <strong>log-based CDC</strong>: Matillion's native CDC pipeline (Debezium-based) in the Data Productivity Cloud, or a dedicated log-based tool. It reads committed <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> events directly from the transaction log, so deletes are first-class events rather than something you infer after the fact.
+        Both options above are approximations bolted onto polling (<a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation & Offset Surgery</a> covers how to detect drift). If you need every delete captured promptly and reliably &mdash; and every intermediate change, not just the latest state per interval &mdash; use <strong>log-based CDC</strong>: Matillion's native CDC pipeline (Debezium-based) in the Data Productivity Cloud, or a dedicated log-based tool. It reads committed <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> events directly from the transaction log, so deletes are first-class events rather than something you infer after the fact.
       </p>
     </div>
   </section>
@@ -586,6 +586,9 @@ GROUP BY WAREHOUSE_NAME;</code></pre>
         </tr>
       </tbody>
     </table>
+    <p>
+      See <a href="{{ '/compare/' | url }}">Compare CDC Platforms</a> for log-based alternatives. The <a href="{{ '/cloud-labs/fivetran/' | url }}">Fivetran lab</a> covers a managed connector, and the <a href="{{ '/cloud-labs/snowflake-cdc/' | url }}">Snowflake lab</a> shows a log-based Kafka path into the same warehouse.
+    </p>
   </section>
 
   <section class="box" id="troubleshooting">

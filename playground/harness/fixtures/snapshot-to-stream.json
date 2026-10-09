@@ -1,11 +1,11 @@
 {
   "id": "snapshot-to-stream",
-  "name": "Snapshot ➜ Stream Handoff",
-  "description": "Showing snapshot catch-up handing off to change feed tails.",
+  "name": "Account Changes",
+  "description": "Updates, an insert and a delete across three accounts. It has no snapshot phase and no handoff.",
   "tags": [
-    "snapshot",
-    "resume",
-    "dedupe"
+    "accounts",
+    "updates",
+    "deletes"
   ],
   "schema": [
     {
