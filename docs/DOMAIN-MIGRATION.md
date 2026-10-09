@@ -99,10 +99,15 @@ window in between where one of the two URLs is broken.
 
 ### 6. Other workflows that pin the host
 
-- `.github/workflows/linkcheck.yml` sets `SITE_HOST: https://<owner>.github.io`
-  and `ELEVENTY_PATH_PREFIX: /<repo>` literally, on purpose, so the link check
-  works without repo variables. Update both lines to the new values, or change
-  them to `${{ vars.SITE_HOST || '<fallback>' }}` style expressions.
+- `.github/workflows/linkcheck.yml` reads the same `SITE_HOST` and
+  `ELEVENTY_PATH_PREFIX` repository variables as `deploy.yml`
+  (`${{ vars.SITE_HOST || 'https://<owner>.github.io' }}`, and likewise
+  `vars.ELEVENTY_PATH_PREFIX || '/<repo>'`). Step 5 therefore moves the link
+  check too, and no edit is needed. The literals after `||` are only fallbacks
+  for when a variable is unset; update them at your leisure so they do not
+  point at the old host. An empty variable counts as unset (the build treats it
+  the same way), so for a root-domain site set `ELEVENTY_PATH_PREFIX` to `/`,
+  not to an empty value.
 - `npm run build:lhci` already builds with `ELEVENTY_PATH_PREFIX=/` and needs no
   change. Lighthouse CI audits a local build, not the live domain.
 - `lib/site-host.mjs` holds `DEFAULT_SITE_HOST`, used only when `SITE_HOST` is
@@ -165,8 +170,8 @@ SITE_HOST=https://example.org ELEVENTY_PATH_PREFIX=/ npm run verify:deployment
   submit the sitemap in Search Console and re-point feed subscribers.
 - **Redirect stubs under `src/_redirects/`:** their canonical tags are derived,
   so they follow the new origin. Open two of them.
-- **Link check:** after updating `linkcheck.yml` (step 6) the lychee job should
-  stay green. A new page's own canonical URL does not exist until it deploys, so
+- **Link check:** once the variables from step 5 are set, `linkcheck.yml`
+  builds for the new host and the lychee job should stay green. A new page's own canonical URL does not exist until it deploys, so
   the first run on a fresh domain can flag it. Rerun after the deploy, or add a
   temporary `.lycheeignore` entry with a removal note.
 - **Lighthouse:** `npm run lighthouse` audits a root-prefixed local build. For
@@ -191,8 +196,9 @@ verbatim. None of them derive from `SITE_HOST`. Search for the old host with
 - [ ] `CLAUDE.md` (intro line and the `SITE_HOST` example in "Path prefix").
 - [ ] `docs/STATE-OF-PROJECT.md` (live-site link).
 - [ ] `lib/site-host.mjs` `DEFAULT_SITE_HOST` (fallback for unset `SITE_HOST`).
-- [ ] `.github/workflows/linkcheck.yml` (`SITE_HOST` and
-      `ELEVENTY_PATH_PREFIX` pins).
+- [ ] `.github/workflows/linkcheck.yml` (the fallback literals after `||` for
+      `SITE_HOST` and `ELEVENTY_PATH_PREFIX`; the variables themselves are set
+      in step 5).
 - [ ] `src/resources/drill-bundle/README.md`: five links to the site. It is
       copied verbatim (and packed into `drill-bundle.zip`), so it cannot use
       template variables. After editing it, rebuild `drill-bundle.zip` and

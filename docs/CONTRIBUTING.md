@@ -12,7 +12,7 @@ For prerequisites, every command and the project layout, see
 ```bash
 git clone https://github.com/sandgraal/letstalkcdc.git
 cd letstalkcdc
-npm install
+npm ci
 npm run dev          # http://localhost:8080
 ```
 
@@ -36,6 +36,15 @@ npm run test         # unit tests
   measured score.
 - For new pages, ensure: `<title>`, meta description, `datePublished` /
   `dateModified` in the page data file, and `npm run smoke` passes.
+- **When to bump `dateModified`.** It is the page's "last reviewed" date, the
+  sitemap `<lastmod>` and the feed item date, so it must be true. Bump it, to
+  the date the change merges, when a reader would notice the difference: a
+  corrected fact or code sample, a changed claim or recommendation, a new or
+  removed section, a repaired demo. Do not bump it for formatting, renamed or
+  re-branded titles, front-matter-only edits, link-URL repairs, typo fixes,
+  or site-wide changes to the header, footer, styles or build. Never touch it
+  in a bulk edit across pages. In the PR description, name the commit that
+  justifies each bump.
 
 ## Site conventions
 
