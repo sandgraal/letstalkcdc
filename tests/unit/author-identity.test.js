@@ -42,6 +42,9 @@ const context = (overrides = {}) => ({
   author: { ...author, ...overrides },
   site: { host: HOST, title: "CDC: The Missing Manual" },
   title: "Intro",
+  // Computed earlier in base.njk's <head>; the fragment reads them.
+  pageHeadline: "Intro",
+  ogImageUrl: `${HOST}/images/cdc-cover.jpg`,
   description: "d",
   datePublished: "2026-01-01",
   dateModified: "2026-02-02",

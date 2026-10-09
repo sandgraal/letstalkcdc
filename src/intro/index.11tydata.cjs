@@ -2,10 +2,12 @@ module.exports = {
   datePublished: "2026-02-06",
   dateModified: "2026-05-13",
   seriesKey: "intro",
-  breadcrumbs: [
-    { label: "Home", url: "/" },
-    { label: "The Series", url: "/overview/" },
-    { label: "Interactive Introduction to CDC" },
+  schemaType: "TechArticle",
+  schemaAbout: [
+    "Change Data Capture",
+    "CDC",
+    "Transactional Outbox",
+    "Log-based CDC",
   ],
   heroConfig: {
     title: "Interactive Introduction to CDC",

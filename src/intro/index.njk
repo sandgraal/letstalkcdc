@@ -6,54 +6,8 @@ canonicalPath: "/intro/"
 skillLevel: "Beginner"
 eleventyComputed:
   head_extra: |
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="{{ site.host }}{{ page.url }}">
-    <meta property="og:title" content="{{ title }}">
-    <meta property="og:description" content="{{ description }}">
-    <meta property="og:image" content="{{ site.host }}/images/cdc-cover.jpg">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="{{ site.host }}{{ page.url }}">
-    <meta name="twitter:title" content="{{ title }}">
-    <meta name="twitter:description" content="{{ description }}">
-    <meta name="twitter:image" content="{{ site.host }}/images/cdc-cover.jpg">
     <link rel="stylesheet" href="{{ '/assets/css/pages/intro.css' | url }}">
     <link rel="stylesheet" href="{{ '/assets/css/pages/cdc-simulation.css' | url }}">
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "TechArticle",
-        "headline": "Interactive Introduction to CDC",
-        "description": "Core concepts, methods, architectures, and tools that define modern Change Data Capture.",
-        "url": "{{ site.host }}{{ page.url }}",
-        "inLanguage": "en",
-        "about": [
-          "Change Data Capture",
-          "CDC",
-          "Transactional Outbox",
-          "Log-based CDC"
-        ]
-      }
-    </script>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Series Overview",
-            "item": "{{ site.origin }}{{ '/overview/' | url }}"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Interactive Introduction to CDC",
-            "item": "{{ site.host }}{{ page.url }}"
-          }
-        ]
-      }
-    </script>
 scripts:
   - "/assets/js/pages/intro.js"
   - "/assets/js/pages/cdc-event-demo.js"

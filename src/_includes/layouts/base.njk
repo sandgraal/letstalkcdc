@@ -28,17 +28,65 @@
     <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
     <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ '/feed.xml' | url }}">
     <meta name="theme-color" content="#0f172a">
-    {% if seriesKey and (datePublished or dateModified) %}
+    {# Social cards (P16-4). Everything derives from front matter and
+       site.host; a page can set `ogImage` (root-relative path), plus
+       `ogImageAlt`, `ogImageWidth`, `ogImageHeight`, to override the
+       default in src/_data/seo.mjs. og:url is the canonical URL. #}
+    {# Unquoted YAML dates (`datePublished: 2026-02-06`) reach templates as
+       Date objects, which print as "Thu Feb 05 2026 19:00:00 GMT-0500".
+       Normalise both to YYYY-MM-DD strings once, so the meta tags, the
+       JSON-LD and the visible byline all agree. #}
+    {% if datePublished.toISOString %}{% set datePublished = datePublished.toISOString() %}{% endif %}
+    {% if dateModified.toISOString %}{% set dateModified = dateModified.toISOString() %}{% endif %}
+    {% if datePublished %}{% set datePublished = datePublished | string | truncate(10, true, '') %}{% endif %}
+    {% if dateModified %}{% set dateModified = dateModified | string | truncate(10, true, '') %}{% endif %}
+    {% set isArticle = (datePublished or dateModified) and not seo.noArticle[page.url] %}
+    {% set pageHeadline = title or heroConfig.title or site.title %}
+    {% set cardTitle = title or site.seoTitle %}
+    {% set cardDescription = description | default(site.description) %}
+    {% set ogImagePath = ogImage or seo.ogImage.path %}
+    {% if ogImagePath | startsWith('http') %}
+      {% set ogImageUrl = ogImagePath %}
+    {% else %}
+      {% set ogImageUrl = site.host ~ ogImagePath %}
+    {% endif %}
+    {% set ogImageAltText = ogImageAlt or (seo.ogImage.alt if not ogImage else pageHeadline) %}
+    {% set ogImageW = ogImageWidth or (seo.ogImage.width if not ogImage else '') %}
+    {% set ogImageH = ogImageHeight or (seo.ogImage.height if not ogImage else '') %}
+    <meta property="og:site_name" content="{{ site.title }}">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:type" content="{{ 'article' if isArticle else 'website' }}">
+    <meta property="og:url" content="{{ site.host }}{{ canonicalUrl }}">
+    <meta property="og:title" content="{{ cardTitle }}">
+    <meta property="og:description" content="{{ cardDescription }}">
+    <meta property="og:image" content="{{ ogImageUrl }}">
+    {% if ogImageW and ogImageH %}
+      <meta property="og:image:width" content="{{ ogImageW }}">
+      <meta property="og:image:height" content="{{ ogImageH }}">
+    {% endif %}
+    <meta property="og:image:alt" content="{{ ogImageAltText }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ cardTitle }}">
+    <meta name="twitter:description" content="{{ cardDescription }}">
+    <meta name="twitter:image" content="{{ ogImageUrl }}">
+    <meta name="twitter:image:alt" content="{{ ogImageAltText }}">
+    {% if isArticle %}
       <meta property="article:published_time" content="{{ datePublished | default(dateModified) }}">
       <meta property="article:modified_time" content="{{ dateModified | default(datePublished) }}">
     {% endif %}
-    {% if seriesKey and (datePublished or dateModified) %}
+    {# Structured data (P16-7): one Article block per dated content page
+       (TechArticle where a page sets `schemaType`), a BreadcrumbList on
+       every series page, and an ItemList on the series hub. #}
+    {% if isArticle %}
       <script type="application/ld+json">
         {
           "@context": "https://schema.org",
-          "@type": "Article",
-          "headline": {{ (title or heroConfig.title or site.title) | dump | safe }},
-          "description": {{ (description or site.description) | dump | safe }},
+          "@type": {{ (schemaType or 'Article') | dump | safe }},
+          "headline": {{ pageHeadline | dump | replace("<", "\\u003c") | safe }},
+          "description": {{ (description or site.description) | dump | replace("<", "\\u003c") | safe }},
+          "url": {{ (site.host ~ canonicalUrl) | dump | safe }},
+          "inLanguage": "en",
+          "image": {{ ogImageUrl | dump | safe }},
           "datePublished": {{ (datePublished or dateModified) | dump | safe }},
           "dateModified": {{ (dateModified or datePublished) | dump | safe }},
           "author": {
@@ -57,7 +105,50 @@
           "mainEntityOfPage": {
             "@type": "WebPage",
             "@id": "{{ site.host }}{{ canonicalUrl }}"
-          }
+          }{% if schemaAbout and schemaAbout.length %},
+          "about": {{ schemaAbout | dump | safe }}{% endif %}
+        }
+      </script>
+    {% endif %}
+    {% if seriesKey %}
+      {% set crumbs = breadcrumbs or [
+        { label: 'Series Overview', url: '/overview/' },
+        { label: pageHeadline }
+      ] %}
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {% for crumb in crumbs %}
+            {
+              "@type": "ListItem",
+              "position": {{ loop.index }},
+              "name": {{ crumb.label | dump | replace("<", "\\u003c") | safe }},
+              "item": {{ (site.host ~ (crumb.url or canonicalUrl)) | dump | safe }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+          ]
+        }
+      </script>
+    {% endif %}
+    {% if seriesItemList %}
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": {{ seriesItemList | dump | safe }},
+          "numberOfItems": {{ series.length }},
+          "itemListElement": [
+            {% for module in series %}
+            {
+              "@type": "ListItem",
+              "position": {{ loop.index }},
+              "name": {{ module.title | dump | replace("<", "\\u003c") | safe }},
+              "url": {{ (site.host ~ '/' ~ module.href) | dump | safe }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+          ]
         }
       </script>
     {% endif %}
@@ -186,20 +277,19 @@
       </div>
     </header>
 
-    {% if breadcrumbs %}
+    {% if crumbs %}
+    {# The visible trail mirrors the BreadcrumbList JSON-LD in <head>; no
+       microdata here, so the page carries one BreadcrumbList, not two. #}
     <nav aria-label="Breadcrumb" class="breadcrumb-nav">
       <div class="breadcrumb-container">
-        <ol class="breadcrumb" vocab="https://schema.org/" typeof="BreadcrumbList">
-          {% for crumb in breadcrumbs %}
-          <li property="itemListElement" typeof="ListItem">
+        <ol class="breadcrumb">
+          {% for crumb in crumbs %}
+          <li>
             {% if crumb.url %}
-            <a property="item" typeof="WebPage" href="{{ crumb.url | url }}">
-              <span property="name">{{ crumb.label }}</span>
-            </a>
+            <a href="{{ crumb.url | url }}">{{ crumb.label }}</a>
             {% else %}
-            <span property="name">{{ crumb.label }}</span>
+            <span aria-current="page">{{ crumb.label }}</span>
             {% endif %}
-            <meta property="position" content="{{ loop.index }}">
           </li>
           {% endfor %}
         </ol>
