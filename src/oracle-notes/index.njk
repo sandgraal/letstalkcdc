@@ -4,7 +4,7 @@ title: "Vendor Nuances — Oracle CDC"
 description: "Oracle Change Data Capture: prerequisites, quick checks, performance knobs, and troubleshooting playbook for log-based CDC (LogMiner/replication readers)."
 canonicalPath: "/oracle-notes/"
 datePublished: 2026-02-06
-dateModified: 2026-08-25
+dateModified: 2026-10-09
 head_extra: |
   <link rel="stylesheet" href="{{ '/assets/css/pages/oracle-notes.css' | url }}">
 
@@ -126,7 +126,7 @@ ORDER BY bytes DESC FETCH FIRST 20 ROWS ONLY;</code></pre>
             <li>
               <em>Duplicates after restarts:</em> switch the sink to
               <strong>idempotent</strong> <code>MERGE/UPSERT</code> keyed by a
-              stable id + version/op_ts; then replay last N events.
+              primary key and guarded on the source log position (SCN); then replay last N events.
             </li>
             <li>
               <em>Missed updates:</em> enable table-level supplemental logging
@@ -168,7 +168,7 @@ ORDER BY bytes DESC FETCH FIRST 20 ROWS ONLY;</code></pre>
 SELECT COUNT(*) AS rows, COUNT(DISTINCT pk) AS distinct_keys FROM target;
 
 -- latest-wins (replace names)
-SELECT business_id, MAX(op_ts) AS last_seen, COUNT(*) AS events
+SELECT business_id, MAX(source_scn) AS last_seen, COUNT(*) AS events
 FROM history_or_stage GROUP BY business_id;</code></pre>
         </div>
       </section>

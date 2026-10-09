@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-10-09",
   seriesKey: "event-envelope",
   heroConfig: {
     title: "Design the Event Envelope",
@@ -43,7 +43,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "At-least-once delivery means events may be redelivered due to retries, failures, or replays. Consumers must implement idempotency (using unique keys or timestamps) to handle duplicate processing gracefully.",
+          "At-least-once delivery means events may be redelivered due to retries, failures, or replays. Consumers must implement idempotency (upserting on the primary key and guarding on the source log position) to handle duplicate processing gracefully.",
       },
       {
         question: "What is a tombstone event in CDC?",
