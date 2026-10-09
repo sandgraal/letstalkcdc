@@ -43,13 +43,17 @@ head_extra: |
         <ul>
           <li>
             <strong>Initial snapshots</strong> can interleave with live changes;
-            design consumers to reconcile using version columns or
-            <code>op_ts</code>.
+            design consumers to reconcile by <strong>log position</strong>:
+            key the sink on the primary key and apply a change only if its
+            source log position (LSN, SCN or binlog position) is greater than
+            the one stored. Do not use <code>op_ts</code>, <code>ts_ms</code>
+            or any other timestamp as the version; timestamps tie and can run
+            backwards.
           </li>
           <li>
             <strong>Incremental snapshots</strong> (signal‑based) are powerful
-            but can produce duplicates; always merge on keys + highest version
-            and keep idempotent sinks.
+            but can produce duplicates; always merge on the primary key and
+            the highest log position, and keep idempotent sinks.
           </li>
           <li>
             <strong>Backfills</strong> are just another snapshot; isolate them
@@ -66,8 +70,11 @@ head_extra: |
             consumers.
           </li>
           <li>
-            <strong>Soft‑delete models</strong> still need physical deletes or a
-            retention strategy in the sink to avoid data resurrection.
+            <strong>Soft‑delete models</strong> (a delete marker plus the
+            delete&rsquo;s log position) are what stop a replayed older change
+            resurrecting a row. They need a retention and cleanup policy so
+            markers do not pile up, and a marker must not be purged while
+            older events can still be replayed.
           </li>
         </ul>
       {% endcall %}
