@@ -120,6 +120,13 @@ describe("privacy page, rendered", () => {
     );
   });
 
+  it("names the privacy-enhanced YouTube host for click-to-play", () => {
+    const thirdParties = section(rendered, "third-parties");
+    expect(thirdParties).toContain("<strong>www.youtube-nocookie.com</strong>");
+    expect(thirdParties).not.toContain("<strong>www.youtube.com</strong>");
+    expect(thirdParties).toContain("<strong>img.youtube.com</strong>");
+  });
+
   it("qualifies the cookie claim and lists the event fields", () => {
     const cookies = section(rendered, "cookies");
     expect(cookies).toContain("site's own code does not set cookies");
