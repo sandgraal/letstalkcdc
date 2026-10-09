@@ -137,7 +137,7 @@ It works on a phone, and has a light and a dark theme:
 
 If something is wrong, unclear or out of date, please [open an issue](https://github.com/sandgraal/letstalkcdc/issues) or start a [discussion](https://github.com/sandgraal/letstalkcdc/discussions). Corrections with a source are the most useful kind.
 
-**Developers and contributors: start with [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** for running the site locally, then [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
+**Developers and contributors: start with [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** for running the site locally, then [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md). Reviewing the whole project? Start with the [autopsy briefing pack](docs/AUTOPSY-BRIEF.md).
 
 ## Author and license
 
