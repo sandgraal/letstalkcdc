@@ -1068,11 +1068,7 @@ dependencies).
       the `linkcheck` workflow passes on the PR. Verify: all six URLs
       return 200 in production (checked 2026-10-08); `npm run build`;
       CI `linkcheck`. Size: S. Role: `scribe`.
-      **Resolved 2026-10-08:** removed the six stale entries from
-      `.lycheeignore` (glossary, methodology, cloud-labs, compare,
-      non-relational, security) and kept the Snowflake, Oracle and
-      Fivetran entries; all six URLs returned 200 in production.
-- [ ] **P13-2 · Make link-check tolerate transient 5xx.** Outcome: a
+- [x] **P13-2 · Make link-check tolerate transient 5xx.** Outcome: a
       single flaky 503 (as on the Dependabot PR's run of 2026-09-01,
       1 error in 519 links, healthy a moment later) no longer fails
       the check. Accept: `linkcheck.yml` passes `--max-retries` and

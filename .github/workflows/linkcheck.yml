@@ -26,4 +26,9 @@ jobs:
           # --exclude-loopback skips localhost/127.0.0.1 URLs that appear
           # inside <code> blocks documenting curl commands (Kafka Connect REST
           # examples). Those aren't reachable links.
-          args: --no-progress --verbose --exclude-loopback "_site/**/*.html"
+          # --max-retries / --retry-wait-time make lychee retry a failed
+          # request (a transient 5xx or timeout, e.g. the lone 503 from
+          # GitHub Pages /versions/ that was healthy moments later) with a
+          # longer pause than the 1s default. Retries, not --accept, are the
+          # fix: a real 404 still fails the job.
+          args: --no-progress --verbose --exclude-loopback --max-retries 5 --retry-wait-time 10 "_site/**/*.html"
