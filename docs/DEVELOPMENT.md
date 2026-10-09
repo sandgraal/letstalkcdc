@@ -6,7 +6,7 @@ rules (pull requests, voice, conventions) are in [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Prerequisites
 
-- **Node.js 22.19 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
+- **Node.js 22.22.3 or newer** (`engines.node` in `package.json`; cssnano 9 sets the floor). `.nvmrc` pins
   `24` (the LTS CI runs on), so `nvm use` picks a matching version.
 - npm, which ships with Node.
 - Optional: Chromium for the accessibility smoke test (`npm run smoke:a11y`),
