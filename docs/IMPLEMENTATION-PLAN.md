@@ -529,6 +529,11 @@ first so the threshold can ratchet up as we land them.
       set keeps the default theme background/font stable before the
       full CSS arrives. Verify via `/css-byte-check` after — bundled
       output should be unchanged.
+      **Superseded for `styles.css`:** the preload swap caused a 0.28
+      `.page-wrap` shift on /intro/ (CLS 0.33, Slow 4G + 4x CPU, desktop);
+      the main sheet is a plain blocking `<link>` again (pinned by
+      `tests/unit/head-stylesheet.test.js` and `tests/e2e/cls.spec.js`).
+      Page-level `head_extra` sheets stay deferred.
 
 - [x] Re-measured `target-size` against the styled LHCI build. Of
       the previously-flagged elements, only `.assistant-send` (the
