@@ -88,8 +88,12 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: c32d01ac29ef3f3ea5fe6448aa5414d559e980ce265c5e52ffb8f575bc42ce7e
-# (re-baselined 2026-10-09 (P15-21, contrast debt): new
+# baseline at HEAD of main is: 7ba70b5050df87cee4b5d9c7c2b4ca195d0b0861c0fe707b236100e3cda904a3
+# (re-baselined 2026-10-09 (P13-8): cssnano 7 -> 9 tool upgrade, no source
+#  CSS change; output proven computed-style/pixel equivalent (declaration
+#  order is no longer alphabetised, `transition ... ease` and similar
+#  default tokens dropped, calc() rewritten). Previously c32d01ac… from
+#  earlier the same day (P15-21, contrast debt): new
 #  `components/code-block.css` (the code-block header / copy-button
 #  classes were essentially unstyled), light-theme
 #  `--color-success/-warning/-error` (+ hovers) darkened to 4.5:1, the
@@ -324,7 +328,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`c32d01ac29ef…`).
+3. **`/css-byte-check` baseline is in this file** (`7ba70b5050df…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.
