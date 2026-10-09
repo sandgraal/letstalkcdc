@@ -17,6 +17,8 @@ The running checklist for in-flight work is
 - **[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)** — Phased
   checklist for the revitalization work. Agents flip `- [ ]` to `- [x]`
   in the same commit that closes the task.
+- **[AUTOPSY-BRIEF.md](AUTOPSY-BRIEF.md)** — Briefing pack for a team doing
+  an evidence-based site autopsy: measurements to re-run, risks, open work
 
 ---
 

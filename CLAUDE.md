@@ -306,6 +306,7 @@ next turn finishes, but in practice that's seconds, not minutes.
 ## Where to read more
 
 - `docs/CONTRIBUTING.md` — human-contributor workflow
+- `docs/AUTOPSY-BRIEF.md` — briefing pack for a site autopsy (measurements, risks, open work)
 - `docs/SETUP.md` — full setup incl. Supabase feedback, tracing, env vars
 - `docs/HOSTING.md` — deploy pipeline + CI runbook
 - `docs/adding-modules.md` — how to add a new content section
