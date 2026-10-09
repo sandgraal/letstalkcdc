@@ -197,6 +197,9 @@ describe("assistant knowledge base – module boosts never let a new intent stea
       "troubleshooting",
       "materialization",
       "observability",
+      // Module-specific intents boosted only on their own page.
+      "target_ordering",
+      "delete_markers",
     ]);
     for (const intent of kb.intents.filter((i) => !original.has(i.id))) {
       expect(intent.modules, intent.id).toEqual([]);
@@ -502,3 +505,79 @@ describe("assistant knowledge base – is CDC exactly-once, per hop (M2)", () =>
 function mine2() {
   return ["exactly_once_claims", "kafka_transactions_sink_offsets"];
 }
+
+describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
+  it.each([
+    "how do I test my cdc pipeline",
+    "test a cdc pipeline",
+    "how do I test debezium",
+    "cdc testing strategy",
+    "cdc contract test",
+    "how to test kafka connect",
+    "does testcontainers work with debezium",
+  ])("%j reaches the pipeline-testing answer", (query) => {
+    expect(idOf(query)).toBe("pipeline_testing");
+  });
+
+  it.each([
+    "how do i test for duplicate events",
+    "cdc idempotency test",
+    "how do i test out of order events",
+    "how do i test replay",
+    "property based testing for a sink",
+    "kill the connector",
+    "how to test connector restart",
+    "what is a late older update test",
+    "how do i test idempotency",
+  ])("%j reaches the duplicate and replay test answer", (query) => {
+    expect(idOf(query)).toBe("duplicate_replay_tests");
+  });
+
+  it("leaves unrelated how-to-test questions to nobody", () => {
+    expect(idOf("how do i test the dlq")).toBeNull();
+    expect(idOf("how to test retention")).toBeNull();
+  });
+
+  it("does not share a trigger with another intent, so no ambiguous ties", () => {
+    const mine = ["pipeline_testing", "duplicate_replay_tests"];
+    const others = kb.intents.filter((i) => !mine.includes(i.id));
+    for (const id of mine) {
+      for (const t of byId(id).triggers) {
+        for (const o of others) {
+          expect(o.triggers, `${t} is also in ${o.id}`).not.toContain(t);
+        }
+      }
+    }
+  });
+
+  it("the crash link points at the crash section of the page", () => {
+    const link = byId("duplicate_replay_tests").links.find(
+      (l) => l.label === "Crash and restart",
+    );
+    expect(link.url).toBe("/test-your-pipeline/");
+    expect(link.anchor).toBe("#crash-title");
+  });
+
+  it("does not steal the plain delivery questions", () => {
+    expect(idOf("why do i get duplicate events")).toBe("exactly_once");
+    expect(idOf("events arrive out of order")).toBe("idempotent_sink");
+  });
+
+  it("both intents carry no boost, enough triggers and a link to the page", () => {
+    for (const id of ["pipeline_testing", "duplicate_replay_tests"]) {
+      expect(byId(id).modules).toEqual([]);
+      expect(byId(id).triggers.length).toBeGreaterThanOrEqual(5);
+      expect(byId(id).links.map((l) => l.url)).toContain(
+        "/test-your-pipeline/",
+      );
+    }
+  });
+
+  it("neither answer promises exactly-once or timestamp ordering", () => {
+    for (const id of ["pipeline_testing", "duplicate_replay_tests"]) {
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).not.toMatch(/order(ed)? by (ts_ms|timestamp)/);
+    }
+  });
+});

@@ -17,6 +17,10 @@ body {
   color: #e6eefc;
 }
 
+a {
+  color: #9cc9ff;
+}
+
 .wrap {
   padding: 12px;
 }

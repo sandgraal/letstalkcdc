@@ -207,6 +207,80 @@ intents:
         anchor: "#delivery-title"
         preview: At-least-once, and the sink-side dedupe key.
 
+  - id: target_ordering
+    triggers:
+      [
+        "which row wins",
+        "_change_sequence_number",
+        "change sequence number",
+        "sequence by",
+        "auto cdc",
+        "ordering field",
+        "precombine",
+        "merge mode",
+        "commit time ordering",
+        "event time ordering",
+        "equality delete",
+        "upsert-dedup-column",
+        "bigquery cdc",
+        "hudi ordering",
+        "iceberg upsert",
+        "delta merge",
+        "snowflake stream",
+      ]
+    modules: ["which-row-wins"]
+    answer: >
+      Each warehouse or lakehouse target decides which version of a row wins in
+      its own way, and several default to arrival or commit order. Name three
+      things per target: the key, the ordering column and the delete marker. Make
+      the ordering column the source log position, for example
+      _CHANGE_SEQUENCE_NUMBER in BigQuery, SEQUENCE BY in Databricks, the
+      ordering field in Hudi, or a position guard in a MERGE for Iceberg, Delta
+      and Snowflake. Check each setting against your version of the vendor
+      documentation.
+    links:
+      - label: Which row wins in your target
+        url: /which-row-wins/
+        anchor: "#at-a-glance-title"
+        preview: Key, ordering and delete handling for six targets.
+      - label: Making Sinks Bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Why the log position, not a timestamp, is the version.
+
+  - id: delete_markers
+    triggers:
+      [
+        "delete marker",
+        "soft delete",
+        "deleted flag",
+        "resurrect",
+        "row came back",
+        "deleted row came back",
+        "zombie row",
+        "apply as delete",
+        "_change_type",
+        "physical delete",
+        "hard delete",
+      ]
+    modules: ["which-row-wins"]
+    answer: >
+      A physical delete removes the version along with the row, so a replayed
+      older update can bring the key back. Keep a delete marker, which is a
+      deleted flag plus the delete's log position, or rely on a target feature
+      that remembers the delete for a stated time (two days by default in
+      BigQuery CDC ingestion and Databricks AUTO CDC) and know that time. Act on
+      the delete change event, not on the Kafka tombstone alone.
+    links:
+      - label: Delete markers
+        url: /which-row-wins/
+        anchor: "#deletes-title"
+        preview: Why a physical delete is not enough.
+      - label: Build idempotent merge logic
+        url: /materialization/
+        anchor: "#merge-title"
+        preview: Delete markers in a MERGE.
+
   - id: exactly_once
     triggers:
       [
@@ -517,6 +591,135 @@ intents:
         url: /observability/
         anchor: "#signals-title"
         preview: Golden signals, alerting rules, and dashboard setup.
+
+  - id: pipeline_testing
+    triggers:
+      [
+        "test my cdc pipeline",
+        "test a cdc pipeline",
+        "test cdc pipeline",
+        "testing a cdc pipeline",
+        "testing cdc pipeline",
+        "test my pipeline",
+        "test my debezium",
+        "test debezium",
+        "testing debezium",
+        "cdc testing strategy",
+        "cdc test plan",
+        "how do i test cdc",
+        "how to test cdc",
+        "how do i test debezium",
+        "how to test debezium",
+        "debezium testing",
+        "contract test",
+        "contract tests",
+        "testcontainers",
+        "testcontainers work",
+        "test containers",
+        "test kafka connect",
+        "testing kafka connect",
+        "how to test kafka connect",
+        "how do i test kafka connect",
+      ]
+    modules: []
+    answer: >
+      Test the contract, not the absence of duplicates. A CDC test plan has
+      three parts. Contract tests assert the change-event envelope on a
+      recorded fixture: op codes, before and after images, the key, the source
+      position fields and the tombstone after a delete. Sink tests replay the
+      same batch twice, shuffle events within a key and deliver a delete before
+      an older update, and require the final table to equal in-order
+      application by log position. Reconciliation checks (counts, checksums by
+      key range, max position per key) catch what injected events cannot. The
+      acceptance tests page checks the lab stack; this plan checks your
+      pipeline.
+    links:
+      - label: Testing a CDC Pipeline
+        url: /test-your-pipeline/
+        anchor: "#what-to-test-title"
+        preview: Seven tests, what each catches, and what each needs.
+      - label: Contract tests for the envelope
+        url: /test-your-pipeline/
+        anchor: "#contract-title"
+        preview: What to assert on op, before and after, key and source position.
+      - label: Acceptance Tests (lab stack)
+        url: /tests/
+        preview: Scripts that confirm the lab stack is up and events flow.
+
+  - id: duplicate_replay_tests
+    triggers:
+      [
+        "duplicate delivery test",
+        "test duplicate delivery",
+        "test for duplicate",
+        "test duplicate",
+        "idempotency test",
+        "test idempotency",
+        "test idempotent",
+        "cdc idempotency",
+        "replay test",
+        "test a replay",
+        "test replay",
+        "test for out of order",
+        "test out of order",
+        "test out-of-order",
+        "out of order test",
+        "property based",
+        "property based test",
+        "property-based test",
+        "property-based",
+        "convergence test",
+        "late older update",
+        "delete then late",
+        "kill the connector",
+        "kill the",
+        "kill",
+        "sigkill",
+        "test connector restart",
+        "test connector crash",
+        "test connector",
+        "connector restart test",
+        "crash test",
+        "how do i test for duplicate",
+        "how to test for duplicate",
+        "how do i test out of order",
+        "how to test out of order",
+        "how do i test replay",
+        "how to test replay",
+        "how do i test idempotency",
+        "how to test idempotency",
+      ]
+    modules: []
+    answer: >
+      To test a sink against at-least-once delivery, apply the same batch twice
+      and assert the table is unchanged, then deliver every event twice in a
+      shuffled order many times and assert the result equals in-order
+      application by source log position. Add a case where the delete arrives
+      before an older update for the same key: a sink that keeps the delete as
+      a marker with its position stays deleted, while one that removes the row
+      brings it back. Give the fixture two changes in the same millisecond, or
+      a sink ordered by a timestamp will pass. Do not assert that the topic has
+      no duplicates; Debezium documents that a crash can produce them.
+    links:
+      - label: Duplicate-delivery test
+        url: /test-your-pipeline/
+        anchor: "#duplicates-title"
+        preview: Apply the same batch twice and compare the state.
+      - label: Out-of-order and resurrection tests
+        url: /test-your-pipeline/
+        anchor: "#reorder-title"
+        preview: Shuffle events, deliver a delete before an older update.
+      - label: Property-based sketch
+        url: /test-your-pipeline/
+        anchor: "#property-title"
+        preview: Random logs against a reference model, with shrinking.
+      - label: Crash and restart
+        url: /test-your-pipeline/
+        anchor: "#crash-title"
+        preview: Kill the connector mid-flight and count the duplicates.
+      - label: Offsets and replays
+        url: /ops-offsets/
+        preview: The operational side of the crash test.
 
   - id: event_envelope
     triggers:

@@ -73,6 +73,15 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "which-row-wins",
+    title: "Which Row Wins in Your Target",
+    description:
+      "Ordering and delete markers in BigQuery, Databricks, Hudi, Iceberg, Delta and Snowflake: what decides the winner and what to set.",
+    href: "which-row-wins/",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "schema-evolution",
     title: "Schema Evolution",
     description:
@@ -223,6 +232,19 @@ export default [
     href: "tests/",
     ctaLabel: "Verify Your Stack",
     tags: [{ label: "Lab", variant: "tag-labs" }],
+    skillLevel: "Intermediate",
+  },
+  {
+    key: "test-your-pipeline",
+    title: "Testing a CDC Pipeline",
+    description:
+      "Contract, duplicate, out-of-order and replay tests for your own pipeline, with runnable examples and what not to test for.",
+    href: "test-your-pipeline/",
+    ctaLabel: "Write the Tests",
+    tags: [
+      { label: "Ops", variant: "tag-ops" },
+      { label: "Advanced Pattern", variant: "tag-pattern" },
+    ],
     skillLevel: "Intermediate",
   },
   {
