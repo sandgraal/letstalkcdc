@@ -39,4 +39,4 @@ When a visitor clicks 👍 or 👎 in the assistant, their last typed question, 
 ## Recent Security Update
 
 - In October 2025, an Appwrite API key was inadvertently committed to the repository. The key was rotated and removed. Please ensure future contributions do not expose secrets.
-- The Appwrite integration has since been removed from the repository (assistant feedback now uses Supabase). **Maintainer action:** rotate or revoke that Appwrite API key if it is still active, and delete the Appwrite project in the Appwrite console so no live credentials or data remain there.
+- The Appwrite integration has since been removed from the repository (assistant feedback now uses Supabase). The maintainer deleted the Appwrite project and its API key in October 2026.
