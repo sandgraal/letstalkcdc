@@ -170,17 +170,36 @@ Provides an AI assistant with predefined answers to common CDC questions.
 Edit `src/data/assistant.yml` to add new intents:
 
 ```yaml
-- id: your-intent-id
-  triggers:
-    - "your trigger phrase"
-    - "alternative phrase"
-  answer: "Your answer text here"
+# modules: series keys whose pages get a +10 boost for this intent.
+# anchor: optional, but must be a real id on that page (smoke:core checks).
+- id: your_intent_id
+  triggers: ["your trigger phrase", "alternative phrase"]
+  modules: ["page-key"]
+  answer: >
+    Your answer text here.
   links:
-    - text: "Related Doc"
-      href: "/path/to/doc/"
+    - label: Related Doc
+      url: /path/to/doc/
+      anchor: "#heading-id"
+      preview: One-line hover text.
 ```
 
-The site automatically converts YAML → JSON during build.
+The site converts YAML → JSON during build (`lib/assistant-yaml.mjs`, a
+purpose-built parser, not general YAML). Rules that bite:
+
+- Each trigger found in the visitor's question scores 1; an intent listed for
+  the current page scores +10; the highest score wins and **a tie goes to the
+  earlier intent**. Put a new, broad intent (one with generic triggers like
+  "beginner") below the specific ones so it cannot steal a tie.
+- Triggers are lower case and must not contain apostrophes (they are parsed as
+  JSON). Answers are rendered as HTML: no angle brackets or ampersands.
+- No trailing comments after a value (`modules: [...] # note` breaks the
+  build), and no comments inside a `links:` list. Put a comment on its own line
+  above the intent. `npm test` parses the example above, so it cannot rot.
+- Ground every answer in the page it links to, and keep the site's thesis:
+  delivery is at-least-once, correctness comes from an idempotent sink keyed on
+  the primary key and ordered by log position (not `ts_ms`).
+- `tests/unit/modules/assistant-knowledge-base.test.js` pins the phrasings.
 
 #### Documentation
 

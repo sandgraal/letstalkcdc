@@ -270,7 +270,7 @@ remove the matching regex from `.lycheeignore`.
 
 ### CSS `@layer` migration
 
-- [ ] Decide whether to wrap `src/assets/css/main.css` imports in
+- [x] Decide whether to wrap `src/assets/css/main.css` imports in
       `@layer reset, tokens, base, layout, components, utilities, page`
       to make the cascade explicit and stop relying on import order.
       **Verification is the byte-identity check** (see
@@ -279,6 +279,7 @@ remove the matching regex from `.lycheeignore`.
       is intentional. CHANGELOG `[Unreleased]` previously flagged this
       as "needs visual diffs" — pair with browser screenshot QA on the
       assistant-modal, dashboard, and a representative module page.
+      _2026-10-09: decided **won't do** (maintainer). Reopen only if a real specificity bug appears._
 
 ### Tracing-lite review
 
@@ -630,7 +631,7 @@ narrative, edit affordances. Each item is sized to one PR.
       the link is present and correctly-shaped on those three
       representative outputs.
 
-- [ ] **Author photo.** Two steps, neither currently done: (1) add
+- [x] **Author photo.** Two steps, neither currently done: (1) add
       the asset under `src/static/author/` and flip the `image`
       field in `src/_data/author.mjs` from `null` to the public
       path; (2) add an `<img>` to the page-meta aside in
@@ -639,6 +640,7 @@ narrative, edit affordances. Each item is sized to one PR.
       optional `url`, so the data flip alone is a no-op. Content
       decision blocks step 1; the template work is
       straightforward once the asset lands.
+      _2026-10-09: shipped in #337, #342 and #345 (P15-2)._
 
 - [x] **`/methodology/` page shipped.** New
       `src/methodology/index.njk` covers: who writes the site
@@ -686,11 +688,12 @@ narrative, edit affordances. Each item is sized to one PR.
       unchanged and keeps its hand-written prose; the data file
       handles only the per-page surfacing.
 
-- [ ] **Author identity expansion.** `src/_data/author.mjs`
+- [x] **Author identity expansion.** `src/_data/author.mjs`
       `sameAs: ["https://github.com/sandgraal"]` is the only
       cross-platform link. Add LinkedIn, conference talks, podcast
       appearances when they exist. `advisoryUrl: null` keeps the
       footer CTA hidden — set when ready to surface it.
+      _2026-10-09: LinkedIn added to `sameAs` and the footer call to action now links to it (#337). Conference talks and podcast appearances are not added because none exist yet; add them when they do._
 
 ---
 
@@ -850,14 +853,15 @@ inline `<svg>` across all module pages.
       license badges from that item are tracked as explicit
       follow-ups below so the roadmap doesn't lose track.
 
-- [ ] **README badge: license.** Skipped above because there is
+- [x] **README badge: license.** Skipped above because there is
       no `LICENSE` file at the repo root. Pick a license (MIT,
       Apache-2.0, CC-BY for content + MIT for code are the
       common choices for an educational repo), commit the file,
       then add a shields.io static badge linked to the license
       file.
+      _2026-10-09: shipped in #336 together with the license files (P15-1)._
 
-- [ ] **README badge: Lighthouse perf.** Skipped above because
+- [x] **README badge: Lighthouse perf.** Skipped above because
       a static shield would rot as scores drift and the project
       has no hosted LHCI store. Two ways to unblock: (1) wire
       LHCI's GitHub-token mode so each PR run uploads a public
@@ -865,6 +869,7 @@ inline `<svg>` across all module pages.
       manually each time the threshold raises in
       `.lighthouserc.json`. Option 2 is cheaper if option 1
       keeps slipping.
+      _2026-10-09: shipped in #336 as a static badge stating the enforced floor (option 2), per the maintainer's decision; P15-6._
 
 - [x] **`BreadcrumbList` JSON-LD audit — found and fixed a real
       shipping bug.** Sampled the three pages with BreadcrumbList
@@ -904,9 +909,10 @@ inline `<svg>` across all module pages.
       `description` field, and SEO crawlers see conflicting
       duplicate meta as a smell.
 
-- [ ] **CSS `@layer` migration** (Phase 4 carry-over). Pure
+- [x] **CSS `@layer` migration** (Phase 4 carry-over). Pure
       refactor with byte-identity verification. Defer unless
       a real specificity bug forces it; no user value otherwise.
+      _2026-10-09: **won't do** (maintainer decision). Reopen only if a real specificity bug appears._
 
 - [x] **e2e coverage of the assistant FAB panel** —
       `tests/e2e/assistant.spec.js` opens the panel via the FAB
@@ -1262,6 +1268,7 @@ dependencies).
       both CSS parts, `implementer` for the preload markup, `reviewer` on each
       diff. Needs: the Phase 15 Tier 1 PRs merged first (they also edit
       `base.njk`).
+      _2026-10-09 status: the contrast half shipped in #340 (event-demo text now 4.75:1, and the pale-on-pale body in the light theme fixed, with an e2e guard). Still open: (1) make the four late font weights deterministic and add a metric-matched fallback, (2) ratchet the `/intro/` performance floor and bump the README badge in the same PR. The light-theme accent colour is split out as P15-16 / D8._
 - [x] **P13-7 · Triage the mobile-chrome assistant e2e quarantine.**
       `tests/e2e/assistant.spec.js:31` skips three FAB tests on
       mobile-chrome for a "pointer-intercept flake" with no tracking (the
@@ -1390,6 +1397,12 @@ where the work now lives:
 | —   | Order                    | **Housekeeping bundle first**, then privacy page + retention, then newsletter and analytics, then perf fixes and major upgrades. | see Phase 15 ordering |
 | —   | Appwrite                 | **Deleted by the maintainer** (project and key).                                                                                 | P15-4 records it      |
 
+### New decision (2026-10-09)
+
+| #   | Decision                          | Recommended default                                                                                                                                                                                                                                                                              | Unblocks |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| D8  | Light-theme accent blue `#0c8dbd` | **Darken it just enough to pass WCAG AA on white** (≥ 4.5:1; it measures 3.77:1 today, so something near `#0a7aa3`, to be computed against the real backgrounds). It is the brand colour for links, the eyebrow, inline code chips and primary buttons in the light theme, so this is your call. | P15-16   |
+
 ---
 
 ## Adding new phases
@@ -1410,7 +1423,7 @@ production CSS hashes.
 
 ### Tier 1 — housekeeping bundle (do first)
 
-- [ ] **P15-1 · License.** Outcome: the repo states what others may do with
+- [x] **P15-1 · License.** Outcome: the repo states what others may do with
       it. Accept: `LICENSE` (MIT, copyright Christopher Ennis, current
       year); `LICENSE-CONTENT.md` carrying CC BY 4.0 (summary, link, and
       the attribution wording to use) and a precise statement of which paths
@@ -1422,7 +1435,8 @@ production CSS hashes.
       `npm run smoke:core`, and `rg -n "license" _site/index.html`. Size: M.
       Role: `implementer`, then `reviewer` (legal wording is copied from the
       canonical CC text, not paraphrased).
-- [ ] **P15-2 · Author identity.** Outcome: the byline shows a photo and
+      _2026-10-09: shipped in #336 and #341 (the review fixes: attribution uses the displayed title "CDC: The Missing Manual", IBM Plex OFL notice at `/fonts/OFL.txt`, code samples also MIT, `.gitattributes`). Maintainer still to confirm image ownership, docs classification and `playground/` provenance (listed in #341)._
+- [x] **P15-2 · Author identity.** Outcome: the byline shows a photo and
       verifiable profiles. Accept: the supplied image
       (`~/Downloads/1783647301211.jpeg`, 400×400) is copied to
       `src/static/author/christopher.jpg` and checked in; `author.mjs` sets
@@ -1437,7 +1451,8 @@ production CSS hashes.
       `smoke:core`, e2e, an LHCI-style check that `unsized-images` and CLS do
       not regress, JSON-LD validated. Size: M. Role: `implementer` (data,
       templates), then `css-refactor`, then `reviewer`.
-- [ ] **P15-3 · iPhone Safari panel height.** Outcome: the open assistant
+      _2026-10-09: shipped in #337 (data, markup, JSON-LD), #342 (metadata stripped from the 128px copy) and #345 (circular styling; CSS hash re-baselined to `e54f4182…`). Conference talks and podcasts are not added because none exist yet._
+- [x] **P15-3 · iPhone Safari panel height.** Outcome: the open assistant
       panel header stays on screen on short iPhones with the toolbars
       showing. Accept: in `src/css/assistant.css`'s `max-width: 640px` block,
       add the `svh` form after the existing `vh` declaration
@@ -1447,7 +1462,8 @@ production CSS hashes.
       top ≥ 0. Production CSS hash is unchanged (the file ships on its own).
       Verify: the review's measurement script, `npm run test:e2e`. Size: S.
       Role: `css-refactor`.
-- [ ] **P15-4 · Docs match reality.** Outcome: no document describes a state
+      _2026-10-09: shipped in #339, verified with Safari's large-vs-visible viewport mismatch emulated in Chromium (panel top −27/−54/−80 → 50/27/37). Emulation proves the arithmetic, not WebKit: see P15-14 for the real-device check._
+- [x] **P15-4 · Docs match reality.** Outcome: no document describes a state
       that no longer exists. Accept: `supabase/schema.sql` lists the
       insert-only grants as applied (the revoke is no longer commented out,
       and a note records the 2026-10-09 migration
@@ -1457,7 +1473,8 @@ production CSS hashes.
       records that production delivery was verified with a real vote
       (2026-10-09 02:29 UTC). Verify: `rg -in appwrite SECURITY.md supabase`
       shows only the history note. Size: S. Role: `scribe`.
-- [ ] **P15-5 · `playground/**` documentation cleanup.** Outcome: the
+      _2026-10-09: shipped in #334. The migration is `20261009024217` (2026-10-09 02:42 UTC), stated in UTC on purpose._
+- [x] **P15-5 · `playground/**` documentation cleanup.** Outcome: the
       playground docs no longer instruct anyone to use Appwrite. Accept:
       only wording and links in the Markdown files under `playground/docs/`
       (about 20 mentions in 7 files, including
@@ -1468,7 +1485,8 @@ production CSS hashes.
       `rg -il appwrite playground` lists nothing but intentional history
       notes, and `git diff --stat` shows only `.md` files. Size: S. Role:
       `scribe`, then `reviewer`.
-- [ ] **P15-6 · Lighthouse badge.** Outcome: the README shows the enforced
+      _2026-10-09: shipped in #338 (wording and links only; two review nits fixed). `rg -il appwrite playground` now lists only history under banners._
+- [x] **P15-6 · Lighthouse badge.** Outcome: the README shows the enforced
       performance floor, honestly. Accept: a static shields.io badge whose
       text states the floor CI enforces for `/intro/` (0.82 now) and that
       links to `.lighthouserc.json`; a one-line comment in
@@ -1476,9 +1494,11 @@ production CSS hashes.
       the badge whenever the threshold is raised. Closes the Phase 11
       "README badge: Lighthouse perf" box. Verify: render check of the
       README. Size: S. Role: `scribe`.
-- [ ] **P15-7 · Close the `@layer` boxes as "won't do".** Accept: the Phase 4
+      _2026-10-09: shipped in #336 (static badge, kept in sync with `.lighthouserc.json` by a unit test)._
+- [x] **P15-7 · Close the `@layer` boxes as "won't do".** Accept: the Phase 4
       and Phase 11 `@layer` boxes are ticked with a dated "won't do — reopen
       only if a real specificity bug appears" note. Size: S. Role: `scribe`.
+      _2026-10-09: done in this change; both `@layer` boxes below are closed as "won't do"._
 
 ### Tier 2 — feedback data privacy
 
@@ -1533,6 +1553,7 @@ production CSS hashes.
       `select intent_id, helpful, count(*) from assistant_feedback group by 1,2`
       to watch the effect. Size: M. Role: `implementer` (data, tests),
       `scout` (gap list), `reviewer`.
+      _2026-10-09: in progress as draft PR #343; an independent review found page-boost regressions (fix under way), so the box stays open._
 
 ### Tier 4 — structural
 
@@ -1548,6 +1569,56 @@ production CSS hashes.
       build with a different `SITE_HOST` emits no `sandgraal.github.io`.
       Verify: that test plus `/verify-all`. Size: M. Role: `implementer`,
       then `reviewer`.
+
+### Tier 5 — found along the way (2026-10-09)
+
+- [ ] **P15-14 · Check the phone fixes on a real iPhone.** Outcome: the two
+      assistant-panel fixes (#332, #339) are proven on WebKit, not only in
+      Chromium. Accept: on a real iPhone (or BrowserStack Safari), with the
+      toolbars showing, the open panel's header, close button and Send are all
+      reachable on a module page; short landscape is noted. **Maintainer
+      step** (needs a device). Size: S.
+- [ ] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
+      defects found in reviews are fixed. Accept: (a) the desktop close button
+      measures at least 44×44 (it is about 22×30); (b) closing the panel
+      returns focus to the floating button (`closePanel()` does not today —
+      a JS change); (c) on very short landscape viewports (≤ 640px wide and
+      ≤ 320px tall, and the 667×375 case above the 640px breakpoint) the header
+      and input row stay on screen. Verify: the hit-test e2e on every project,
+      the reviewer's viewport matrix. Size: M. Role: `css-refactor` for (a)
+      and (c), `implementer` for (b), `reviewer`.
+- [ ] **P15-16 · Light-theme accent contrast.** Needs D8. Outcome: the
+      light theme meets WCAG AA for accent-coloured text and controls.
+      Accept: `--color-accent-primary` (or its light-theme value) reaches
+      ≥ 4.5:1 on its real backgrounds; axe reports no `color-contrast` on the
+      event demo's eyebrow, `code` chips, "+ Insert row" button, LSN and tier
+      badges in the light theme; the per-page audit's global `color-contrast`
+      exemption is removed or narrowed. Side effect: the CSS hash changes and
+      is re-baselined. Verify: axe in both themes, `/css-byte-check`, e2e,
+      screenshots. Size: M. Role: `css-refactor`, `reviewer`.
+- [ ] **P15-17 · Tighten `/partitioning/#recon` to the site's thesis.**
+      Outcome: no page contradicts the standing rule. Accept: the section
+      says a sink's version guard orders by **log position**, not a timestamp
+      (it currently says "a transaction ID or a precise timestamp"); every
+      statement on the page is re-read against the thesis (at-least-once;
+      idempotent sinks keyed on the primary key; order by log position, not
+      `ts_ms`; no end-to-end exactly-once). Then the assistant's
+      `idempotent_sink` intent may link there. Size: S. Role: `implementer`,
+      `reviewer`.
+- [ ] **P15-18 · Give the reviewing roles room to finish.** Outcome: a
+      thorough review is not cut off mid-experiment. Accept: `maxTurns` on
+      `reviewer` and `implementer` is raised (60 → 100 and 30 → 60 are the
+      values that were hit), the `reviewer` brief template in
+      `docs/CONDUCTOR.md` says "write findings first, then run extra
+      experiments", and the roster test still passes. Size: S. Role: `scribe`.
+- [ ] **P15-19 · Triage `npm audit` for the dev tooling.** Outcome: known
+      advisories are either fixed or consciously accepted. Accept: `npm audit`
+      currently reports 27 vulnerabilities (2 low, 5 moderate, 20 high) in the
+      full tree while `npm audit --omit=dev` reports 0 for what ships; list
+      each advisory with the package that pulls it in, whether it is
+      reachable from our scripts, and whether a P13-8 major upgrade fixes it;
+      fix what is cheap and record the rest as accepted with the reason.
+      Size: M. Role: `scout` (inventory), `implementer`.
 
 ### Ordering
 
