@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-08-25",
   seriesKey: "tooling",
   heroConfig: {
     title: "The Modern CDC Toolkit",

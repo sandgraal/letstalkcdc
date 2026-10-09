@@ -7,7 +7,7 @@
   Usage:
   {% from "components/video-embed.njk" import videoEmbed %}
   {{ videoEmbed({
-    src: "https://www.youtube.com/embed/VIDEO_ID",
+    src: "https://www.youtube-nocookie.com/embed/VIDEO_ID",
     title: "Video Title",
     description: "Optional description for context",
     thumbnail: "/path/to/thumbnail.jpg" (optional - for lazy loading)
@@ -89,7 +89,7 @@
 
 {% macro youtubeEmbed(videoId, config={}) -%}
   {% set embedConfig = {
-    src: 'https://www.youtube.com/embed/' ~ videoId,
+    src: 'https://www.youtube-nocookie.com/embed/' ~ videoId,
     title: config.title,
     description: config.description,
     caption: config.caption,

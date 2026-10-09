@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-02-06",
+  dateModified: "2026-08-25",
   seriesKey: "exactly-once",
   heroConfig: {
     title: "Exactly-Once Processing, For Real",
