@@ -35,4 +35,9 @@ jobs:
           # GitHub Pages /versions/ that was healthy moments later) with a
           # longer pause than the 1s default. Retries, not --accept, are the
           # fix: a real 404 still fails the job.
-          args: --no-progress --verbose --exclude-loopback --max-retries 5 --retry-wait-time 10 "_site/**/*.html"
+          # --exclude skips the YouTube player embed only: youtube-nocookie.com
+          # answers 404 to non-browser clients from CI runners while the same
+          # URL returns 200 in a browser (checked with a browser User-Agent).
+          # The video is still real; thumbnails and every other link are
+          # still checked.
+          args: --no-progress --verbose --exclude-loopback --exclude '^https://www\.youtube-nocookie\.com/embed/' --max-retries 5 --retry-wait-time 10 "_site/**/*.html"
