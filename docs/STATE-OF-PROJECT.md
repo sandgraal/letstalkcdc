@@ -18,11 +18,13 @@ page does not repeat it.
 - 36 lessons ("modules"), 56 pages in the sitemap (57 live), a glossary of 32
   terms, and a separate playground app at `/playground/`.
 - 108 PRs merged on 2026-10-09 alone. The PR queue is empty (`gh pr list`).
-- 1,727 unit tests in 58 files pass. CI passed on the commit before
-  `bd5a2a4`; the run for `bd5a2a4` had not finished when this was written
-  (`gh run list --workflow=ci.yml --branch main -L 3`).
-- 9 plan boxes are open. Two need Docker, four need the maintainer, one
-  waits for 28 days of data, one is a performance sub-item, one changes CI.
+- 1,727 unit tests in 58 files pass locally. The CI run for `bd5a2a4`
+  (run 37968897711) finished successfully. This is as of `bd5a2a4`; newer
+  commits are not reflected.
+- 9 plan boxes are open, each in exactly one bucket: two need Docker
+  (P15-37, P15-46); four need a maintainer action or decision (P15-13,
+  P15-39, P15-52, P16-30); two wait for data (P16-12, P16-25); one is the
+  `/intro/` performance box.
 - Newsletter (Buttondown) and visit counts (GoatCounter) went live today.
   Search Console is verified and the sitemap is submitted (maintainer's report).
 - No audience data exists yet. Do not choose the next phase's content from
@@ -53,8 +55,10 @@ claimed. Code is MIT, written content CC BY 4.0 (`LICENSE-CONTENT.md`).
 | Assistant intents             |          45 | `grep -c '^  - id:' src/data/assistant.yml`                                         |
 | Playground scenarios (shared) |          14 | `import("./playground/assets/shared-scenarios.js")` then `.default.length`          |
 
-The 87 HTML files are content pages, 26 legacy redirect stubs and the 404;
-the split is in `npm run audit:seo` (`inventory.*`).
+The 87 HTML files are 59 content pages, 26 legacy redirect stubs, the 404 and
+the Search Console verification file (`googleeb5f2ebb27afc761.html`), which
+`npm run audit:seo` does not count (it reports 86); the split is in
+`inventory.*`.
 
 ## Tests
 
@@ -196,23 +200,25 @@ data are in [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md) section 5.
 9 unticked boxes (`grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`); 148
 ticked. All nine decisions in Phase 14 are answered.
 
-| ID                            | One line                                                                                                                                                                                           |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/intro/` perf debt (Phase 5) | Every sub-item is met except the `dom-size` line, which no merged PR addressed (1,040 elements; scores 1 under Lighthouse 13.5). Trim, or the maintainer accepts and ticks                         |
-| P15-13                        | One place for the host: code and runbook done; README still has `sandgraal.github.io` 55 times; kept open for the own-domain move                                                                  |
-| P15-37                        | Playground Docker images are `node:20-alpine`; move to Node 24. Needs Docker                                                                                                                       |
-| P15-39                        | Debezium docs say `wal_keep_size` caps a slot; PostgreSQL says `max_slot_wal_keep_size` does. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md); the maintainer files it |
-| P15-46                        | Labs run Debezium 2.7 / Confluent 7.7 / PostgreSQL 15 while pages teach 3.x. Needs Docker                                                                                                          |
-| P15-52                        | Confirm in the Codacy dashboard that nothing runs `.codacy/cli.sh`, then delete it                                                                                                                 |
-| P16-12                        | SEO baseline: Lighthouse on the 10 key pages, and the 28-day snapshot due 2026-11-06                                                                                                               |
-| P16-25                        | Re-run the content-gap plan once `assistant_feedback` has 30 rows (2 now) and Search Console has data                                                                                              |
-| P16-30                        | Put `/playground/` under the contrast check in CI. Awaiting the maintainer's decision: it changes CI                                                                                               |
+| ID                            | One line                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/intro/` perf debt (Phase 5) | Every sub-item is met except the `dom-size` line, which no PR has brought under a threshold (#293 and others trimmed it partially, 965 to 917 elements; #404, #413 and #420 did not touch it; now 1,040 against 1,035 in P13-5; scores 1 under Lighthouse 13.5). Trim, or the maintainer accepts and ticks |
+| P15-13                        | One place for the host: code and runbook done; README still has `sandgraal.github.io` on 55 lines (71 occurrences); kept open for the own-domain move                                                                                                                                                      |
+| P15-37                        | Playground Docker images are `node:20-alpine`; move to Node 24. Needs Docker                                                                                                                                                                                                                               |
+| P15-39                        | Debezium docs say `wal_keep_size` caps a slot; PostgreSQL says `max_slot_wal_keep_size` does. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md); the maintainer files it                                                                                                         |
+| P15-46                        | Labs run Debezium 2.7 / Confluent 7.7 / PostgreSQL 15 while pages teach 3.x. Needs Docker                                                                                                                                                                                                                  |
+| P15-52                        | Confirm in the Codacy dashboard that nothing runs `.codacy/cli.sh`, then delete it                                                                                                                                                                                                                         |
+| P16-12                        | SEO baseline: Lighthouse on the 10 key pages, and the 28-day snapshot due 2026-11-06                                                                                                                                                                                                                       |
+| P16-25                        | Re-run the content-gap plan once `assistant_feedback` has 30 rows (2 now) and Search Console has data                                                                                                                                                                                                      |
+| P16-30                        | Put `/playground/` under the contrast check in CI. Awaiting the maintainer's decision: it changes CI                                                                                                                                                                                                       |
 
-**Maintainer-only:** P15-39 (file the issue), P15-52 (Codacy dashboard),
-P16-12 and P16-25 (accounts and the table), P16-30 (approve a CI change),
-P15-13 (the domain name).
+**Maintainer action or decision:** P15-13 (the domain name), P15-39 (file the
+issue), P15-52 (Codacy dashboard), P16-30 (approve a CI change).
+**Waiting for data:** P16-12 (28-day snapshot, due 2026-11-06) and P16-25
+(30 feedback rows, Search Console data).
 **Docker-only, left for the autopsy team:** P15-37 and P15-46; the
 maintainer has no Docker and neither can be proven without it.
+**Performance:** the `/intro/` box.
 
 ## Known flakes
 

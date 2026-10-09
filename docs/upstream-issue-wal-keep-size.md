@@ -13,59 +13,76 @@ here has been sent. Drafted 2026-10-09.
   readers to cap it with `max_slot_wal_keep_size`. The Debezium docs suggest
   a different setting for the same job, so the page carries a note on the
   disagreement.
+- **Facts re-read 2026-10-09:** Debezium sentence and line numbers through
+  `gh api`; PostgreSQL quotes from the PostgreSQL 18 pages above; the 13
+  release-note titles as given by the maintainer's review.
 
 ## Title
 
-PostgreSQL connector docs: `wal_keep_size` does not limit WAL retained by a
-replication slot; `max_slot_wal_keep_size` does
+PostgreSQL connector docs suggest `wal_keep_size` to limit a slot's WAL;
+PostgreSQL documents `max_slot_wal_keep_size` for that
 
 ## Body
 
-The PostgreSQL connector documentation says, in the section on a connector
-that stops while its replication slot keeps retaining WAL:
+The PostgreSQL connector documentation has a section headed "Replication
+parameters and performance considerations". After a sentence about raising
+`max_wal_senders` and `max_replication_slots`, it says:
 
 > Or you can set `wal_keep_size` to limit the maximum WAL size of a
 > replication slot.
 
-Source: `documentation/modules/ROOT/pages/connectors/postgresql.adoc`, line
-2741 on `main` (the 3.7 documentation).
+Source: `documentation/modules/ROOT/pages/connectors/postgresql.adoc` on
+`main` (3.8.0-SNAPSHOT); the same sentence is at line 2741 in v3.7.0.Final.
 
-The PostgreSQL documentation describes the two settings differently:
+The PostgreSQL 18 documentation (Replication configuration parameters) words
+the two settings differently:
 
-- `wal_keep_size` "sets only the minimum size of segments retained in
-  `pg_wal`" for the benefit of standby servers. It is a floor for standbys.
-  It does not cap how much WAL a replication slot can hold back.
-- `max_slot_wal_keep_size` is the setting that limits the WAL a replication
-  slot may retain. The default is `-1`, which means no limit. A slot that
-  falls further behind than the limit is invalidated.
+- `wal_keep_size`: "Specifies the minimum size of past WAL files kept in the
+  `pg_wal` directory, in case a standby server needs to fetch them for
+  streaming replication", and "This sets only the minimum size of segments
+  retained in `pg_wal`". My reading is that this is a floor for standby
+  servers and does not cap what a replication slot retains; the page does not
+  say so in those words.
+- `max_slot_wal_keep_size`: "Specify the maximum size of WAL files that
+  replication slots are allowed to retain in the `pg_wal` directory at
+  checkpoint time. If `max_slot_wal_keep_size` is -1 (the default),
+  replication slots may retain an unlimited amount of WAL files." When a slot
+  falls further behind than the limit, "the standby using the slot may no
+  longer be able to continue replication due to removal of required WAL
+  files". `pg_replication_slots.wal_status` shows `lost` for a slot that is
+  no longer usable.
 
-Both settings exist since PostgreSQL 13 (`wal_keep_size` replaced
-`wal_keep_segments` there). The quotes above are from the PostgreSQL 18
-documentation, "Replication" configuration parameters.
+PostgreSQL 13 introduced both names. Its release notes list "Rename
+configuration parameter `wal_keep_segments` to `wal_keep_size`" and "Allow WAL
+storage for replication slots to be limited by `max_slot_wal_keep_size`".
 
 As written, a reader can follow the Debezium page, set `wal_keep_size`, and
-believe the slot is now bounded when it is not.
+believe a slot's retention is now bounded. On the PostgreSQL wording above, the
+setting that bounds it is `max_slot_wal_keep_size`.
 
 ### Suggested replacement wording
 
 > To limit how much WAL a replication slot can retain, set
-> `max_slot_wal_keep_size` (PostgreSQL 13 and later; the default is `-1`,
-> unlimited). `wal_keep_size` is a minimum kept for standby servers and does
-> not cap slot retention. Monitor `pg_replication_slots` for a stopped
-> consumer.
+> `max_slot_wal_keep_size` (PostgreSQL 13 and later; default -1, unlimited).
+> `wal_keep_size` is a minimum kept for standby servers and does not cap slot
+> retention. Monitor `pg_replication_slots` for a stopped consumer.
 
-Setting a cap trades disk safety for the risk of invalidating the slot, which
-forces a new snapshot. That trade-off may deserve a sentence of its own in the
-docs, since it is the reason many operators leave the default.
+Optional, for the maintainers to judge: a slot that exceeds the cap can become
+`lost`, and a lost slot cannot resume, so the connector would need a new
+snapshot. That trade-off may deserve a sentence of its own.
 
 ### Sources
 
-- Debezium PostgreSQL connector, line 2741 of `postgresql.adoc` on
-  `debezium/debezium` `main`:
+- Debezium PostgreSQL connector, `postgresql.adoc`, section "Replication
+  parameters and performance considerations" (line 2737 heading, line 2741
+  sentence on `main` 3.8.0-SNAPSHOT and in v3.7.0.Final):
   <https://github.com/debezium/debezium/blob/main/documentation/modules/ROOT/pages/connectors/postgresql.adoc>
-- PostgreSQL 18, "Replication" parameters (`wal_keep_size`,
-  `max_slot_wal_keep_size`):
+- PostgreSQL 18, Replication configuration parameters:
   <https://www.postgresql.org/docs/18/runtime-config-replication.html>
+- PostgreSQL 18, `pg_replication_slots` (`wal_status`):
+  <https://www.postgresql.org/docs/18/view-pg-replication-slots.html>
+- PostgreSQL 13 release notes:
+  <https://www.postgresql.org/docs/13/release-13.html>
 
 ## Before filing
 

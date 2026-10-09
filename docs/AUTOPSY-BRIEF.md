@@ -468,14 +468,14 @@ and P13-9 (the dashboard refresh).
 
 **Maintainer-only steps and decisions**
 
-| ID     | What                                                                     | Why it is open                                                                                                                                                     |
-| ------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| P16-12 | Baseline measurement: Lighthouse on 10 key pages and the 28-day snapshot | GoatCounter started 2026-10-09; Search Console is verified and the sitemap submitted (maintainer's report). The snapshot is due 2026-11-06                         |
-| P16-25 | Re-run `content-gap-plan` when `assistant_feedback` has at least 30 rows | 2 rows on 2026-10-09; Search Console has no data yet                                                                                                               |
-| P15-39 | File the upstream Debezium docs issue about `wal_keep_size`              | The maintainer decided to file. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md). Stays open until it is filed; the maintainer files it |
-| P15-52 | Confirm in Codacy that nothing runs `.codacy/cli.sh`, then delete it     | Non-use is unproven without the dashboard                                                                                                                          |
-| P15-13 | One place for the host (own-domain move)                                 | Code and runbook done (#354); README has `sandgraal.github.io` 55 times (`grep -c`). The maintainer plans an own domain; the name is undecided                     |
-| P16-30 | Put `/playground/` under the contrast check in CI                        | Awaiting the maintainer's decision: it changes CI behaviour                                                                                                        |
+| ID     | What                                                                     | Why it is open                                                                                                                                                                 |
+| ------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P16-12 | Baseline measurement: Lighthouse on 10 key pages and the 28-day snapshot | GoatCounter started 2026-10-09; Search Console is verified and the sitemap submitted (maintainer's report). The snapshot is due 2026-11-06                                     |
+| P16-25 | Re-run `content-gap-plan` when `assistant_feedback` has at least 30 rows | 2 rows on 2026-10-09; Search Console has no data yet                                                                                                                           |
+| P15-39 | File the upstream Debezium docs issue about `wal_keep_size`              | The maintainer decided to file. Draft: [`upstream-issue-wal-keep-size.md`](upstream-issue-wal-keep-size.md). Stays open until it is filed; the maintainer files it             |
+| P15-52 | Confirm in Codacy that nothing runs `.codacy/cli.sh`, then delete it     | Non-use is unproven without the dashboard                                                                                                                                      |
+| P15-13 | One place for the host (own-domain move)                                 | Code and runbook done (#354); README has `sandgraal.github.io` on 55 lines, 71 occurrences (`grep -c` counts lines). The maintainer plans an own domain; the name is undecided |
+| P16-30 | Put `/playground/` under the contrast check in CI                        | Awaiting the maintainer's decision: it changes CI behaviour                                                                                                                    |
 
 **Needs Docker (cannot be proven in CI as it stands; the maintainer has no Docker, so these are left for the autopsy team)**
 
@@ -486,9 +486,9 @@ and P13-9 (the dashboard refresh).
 
 **Performance**
 
-| ID                          | What                                              | Why                                                                                                                                                                                                                                                    |
-| --------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase 5 `/intro/` perf debt | The `dom-size` line, which no merged PR addressed | 1,040 elements at `bd5a2a4`. It scored 0.5 under Lighthouse 12.6; Lighthouse 13.5 reports `dom-size-insight` at 1 in 3 of 3 runs. Every other sub-item is met (CLS 0, fonts deterministic, floor ratcheted). Trim, or the maintainer accepts and ticks |
+| ID                          | What                                                                                                                                          | Why                                                                                                                                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 5 `/intro/` perf debt | The `dom-size` line, which no PR has brought under a threshold (#293 and others trimmed it, 965 to 917; #404, #413 and #420 did not touch it) | 1,040 elements at `bd5a2a4`. It scored 0.5 under Lighthouse 12.6; Lighthouse 13.5 reports `dom-size-insight` at 1 in 3 of 3 runs. Every other sub-item is met (CLS 0, fonts deterministic, floor ratcheted). Trim, or the maintainer accepts and ticks |
 
 **Found while writing this brief, not in the plan**
 
