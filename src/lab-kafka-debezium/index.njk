@@ -146,7 +146,7 @@ services:
                 </li>
                  <li>
                     <h3>Register the Postgres Connector</h3>
-                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the Kafka Connect REST API. Create a file named <code>register-postgres.json</code>:</p>
+                    <p>Once the services are running, we need to tell Debezium to start monitoring our Postgres database. We do this by posting a JSON configuration to the <a href="{{ '/glossary/#kafka-connect' | url }}">Kafka Connect</a> REST API. Create a file named <code>register-postgres.json</code>:</p>
                     <pre><code>{
   "name": "inventory-connector",
   "config": {

@@ -32,7 +32,7 @@ head_extra: |
         <p>
           The industry-standard solution is to treat your data's schema like a
           formal API contract. This is managed by a
-          <strong>Schema Registry</strong>. Think of it as the 'OpenAPI' or
+          <strong><a href="{{ '/glossary/#schema-registry' | url }}">Schema Registry</a></strong>. Think of it as the 'OpenAPI' or
           'Swagger' for your event streams. It's a centralized service that
           ensures all data producers and consumers agree on the 'shape' of the
           data, even as that shape evolves over time.
@@ -249,7 +249,7 @@ message User { int64 id = 1; string email = 2; string full_name = 3; }</code></p
           </li>
           <li>
             <strong>Two-phase add:</strong> add optional fields with defaults →
-            backfill downstream → switch producers to start populating.
+            <a href="{{ '/glossary/#backfill' | url }}">backfill</a> downstream → switch producers to start populating.
           </li>
           <li>
             <strong>Type widening:</strong> e.g., <code>int→long</code> or
