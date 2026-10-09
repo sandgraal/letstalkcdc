@@ -18,21 +18,94 @@ eleventyComputed:
 <div class="page-wrap prose">
       <article class="prose">
         <p>
-          End-to-end "exactly-once <em>delivery</em>" across <em>heterogeneous</em> systems
-          (DB → Kafka → warehouse/search) is not achievable in general. What we actually ship is
+          Whether a CDC pipeline is "exactly-once" depends on <em>which hop</em> you ask about. Exactly-once
+          <em>delivery</em> across <em>independent</em> systems (DB → Kafka → warehouse/search) is not
+          achievable end to end, but individual hops can be, under conditions. What we actually ship is
           <strong>Exactly-Once <em>Processing</em> (EOP)</strong>: combine <strong>At-Least-Once (ALO)</strong>
-          transport with <strong>idempotent</strong> sinks so replays don’t create duplicates.
+          transport with <strong>idempotent</strong> sinks so replays don’t create duplicates. ALO stays the
+          default stance on this site, and EOP is still required even when one hop is exactly-once.
         </p>
+        <h2 id="per-hop">Exactly-once, hop by hop</h2>
+        <table>
+          <caption>
+            Can each hop of a CDC pipeline be exactly-once?
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Hop</th>
+              <th scope="col">Can it be exactly-once?</th>
+              <th scope="col">How</th>
+              <th scope="col">Caveat</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Source database → Kafka (a Kafka Connect source connector such as Debezium)</th>
+              <td>Only if you opt in</td>
+              <td>
+                Kafka Connect exactly-once source support
+                (<a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-618%3A+Exactly-Once+Support+for+Source+Connectors">KIP-618</a>,
+                built on Kafka transactions, <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging">KIP-98</a>).
+                Needs distributed mode and Kafka Connect 3.3.0 or later, <code>exactly.once.source.support=enabled</code>
+                on the workers, <code>exactly.once.support=required</code> on the connector, and
+                <code>transaction.boundary=poll</code> (the default for Debezium). Debezium documents it from 3.3
+                for MariaDB, MongoDB, MySQL, Oracle, PostgreSQL and SQL Server.
+              </td>
+              <td>
+                Off by default. Debezium's own page still opens with "at-least-once" and says it has no internal
+                deduplication layer. It also says it is unclear whether the implementation is fully correct, that no
+                comprehensive study exists, and that Jepsen reports on Redpanda and Bufstream raise concerns about
+                Kafka transactions. It lists KAFKA-17734, KAFKA-17754 and KAFKA-17582 as open; as of 2026-10-09
+                KAFKA-17754 (a delayed EndTxn causing aborted reads and lost writes) is marked resolved in Apache
+                JIRA via KIP-890, and the other two remain open.
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Kafka → Kafka (Kafka Streams, transactional consume-process-produce)</th>
+              <td>Yes, inside Kafka, when enabled</td>
+              <td>
+                Kafka Streams with <code>processing.guarantee=exactly_once_v2</code>, or transactional producers
+                using <code>sendOffsetsToTransaction</code>, make the output writes and the consumer offsets atomic.
+              </td>
+              <td>
+                The scope is Kafka topics only, and consumers must set <code>isolation.level=read_committed</code>
+                (the default is <code>read_uncommitted</code>). Related transaction issues remain open.
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Kafka → an external sink (database, warehouse load, search index, HTTP call)</th>
+              <td>No, not as delivery</td>
+              <td>
+                Exactly-once <em>processing</em>: an idempotent upsert keyed on the primary key, applied only if the
+                change's source log position is newer than the one stored, with deletes kept as delete markers.
+                Optionally also store the offsets in the sink's own transaction with the data, where the sink supports one.
+              </td>
+              <td>
+                Kafka's transaction does not reach into the sink. If you commit offsets separately from the sink
+                write, a crash between the two replays the event and the sink must absorb it. Storing the offsets in
+                the sink's own transaction closes that window for this hop when the sink supports it. An idempotent,
+                position-ordered upsert is still the default because it also covers replays, backfills and duplicates
+                from the first hop, so it is required even if the first hop is exactly-once.
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">End to end, across independent systems</th>
+              <td>No</td>
+              <td>
+                Compose the hops: ALO (or opt-in EOS) transport, then an idempotent, position-ordered sink, so the
+                <em>observable effect</em> is exactly-once.
+              </td>
+              <td>
+                No single transaction spans the source database, Kafka and the destination, so the guarantee is
+                per sink, not global.
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <p>
-          Scope matters:
-          <ul>
-            <li><strong>Source connectors (e.g., Debezium):</strong> ALO into Kafka. They can’t make the
-              external database “transactional” with Kafka.</li>
-            <li><strong>Within Kafka→Kafka topologies:</strong> EOS is possible using Kafka transactions
-              (idempotent producers + transactional offsets), but the scope is limited to Kafka topics.</li>
-            <li><strong>Kafka → external sinks:</strong> Effective EOS comes from <em>idempotent upserts</em>
-              (or staging+MERGE) at the destination, not from transport guarantees alone.</li>
-          </ul>
+          Read the full caveats on
+          <a href="https://debezium.io/documentation/reference/stable/configuration/eos.html">Debezium's exactly-once delivery page</a>
+          before relying on the first row.
         </p>
         <p>
           How a CDC pipeline behaves during failures is defined by its data
@@ -251,9 +324,10 @@ WHEN MATCHED THEN
         <p>
           <strong>Important scope note:</strong> Outbox makes the write <em>atomic</em> — an event is published
           if and only if the business transaction committed, so no events are lost or invented. But the publish
-          step itself is still <em>at-least-once</em>: a relay that crashes after publishing but before recording
-          its own progress will re-emit the event. So outbox does <em>not</em> make delivery exactly-once — you
-          still need idempotent consumers at the sinks to absorb the duplicates.
+          step itself is <em>at-least-once</em> by default: a relay that crashes after publishing but before recording
+          its own progress will re-emit the event. (Opting in to Kafka Connect exactly-once source support, above,
+          narrows that first hop, with the caveats listed there.) Either way, outbox does <em>not</em> make delivery
+          exactly-once into your sinks — you still need idempotent consumers to absorb the duplicates.
         </p>
       </article>
 
