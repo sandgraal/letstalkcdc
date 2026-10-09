@@ -45,7 +45,7 @@
     "@vitest/coverage-v8": "^5.0.3",
     "autoprefixer": "^10.4.20",
     "chrome-launcher": "^1.2.2",
-    "cssnano": "^7.1.2",
+    "cssnano": "^9.4.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
