@@ -508,3 +508,72 @@ describe("/sql-server-mysql-cdc/ registration", () => {
     expect(linking.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe("/sql-server-mysql-cdc/ pinned details (review follow-ups)", () => {
+  it("pins the quiz answers to the options they explain", () => {
+    const qs = data.quizConfig.questions;
+    expect(qs.map((q) => q.correct)).toEqual(["2", "3", "3", "2"]);
+    expect(qs[0].options[1]).toMatch(
+      /fails, and the way back is a re-snapshot/,
+    );
+    expect(qs[1].options[2]).toBe("(commit_lsn, change_lsn, event_serial_no)");
+    expect(qs[2].options[2]).toMatch(
+      /stored commit LSN can now be below the low end/,
+    );
+    expect(qs[3].options[1]).toMatch(
+      /\(binlog file number, position, row index\)/,
+    );
+  });
+
+  it("orders the guard on source_epoch then src_pos, never on a timestamp", () => {
+    expect(sql).toMatch(
+      /ON CONFLICT \(id\) DO UPDATE[\s\S]*WHERE \(t\.source_epoch, t\.src_pos\) < \(EXCLUDED\.source_epoch, EXCLUDED\.src_pos\)/,
+    );
+    expect(sql).toMatch(/src_pos\s+text\s+NOT NULL/);
+    expect(sql).not.toMatch(/ts_ms/);
+  });
+
+  it("builds the SQL Server key from all three fields", () => {
+    expect(sql).toMatch(/coalesce\(commit_lsn,/);
+    expect(sql).toMatch(/coalesce\(change_lsn,/);
+    expect(sql).toMatch(
+      /lpad\(coalesce\(event_serial_no, 0\)::text, 10, '0'\)/,
+    );
+  });
+
+  it("labels the status statement by version: 8.2 and later, removed in 8.4", () => {
+    expect(sql).toMatch(
+      /SHOW BINARY LOG STATUS;\s+-- 8\.2 and later \(the only form in 8\.4\)/,
+    );
+    expect(sql).toMatch(
+      /-- SHOW MASTER STATUS;\s+-- 8\.0 and 8\.1; deprecated in 8\.2 and 8\.3, removed in 8\.4/,
+    );
+  });
+
+  it("checks the oldest start_lsn across all capture instances, as Debezium does", () => {
+    expect(sql).toMatch(/SELECT MIN\(start_lsn\) FROM cdc\.change_tables/);
+    expect(text).toMatch(/all instances, which is query 4b/);
+  });
+
+  it("does not tell anyone to drop a capture instance the connector may not have finished", () => {
+    expect(text).not.toMatch(/drop the old one first/i);
+    expect(text).toMatch(
+      /wait for the connector's\s+notification that it has finished the older instance/,
+    );
+    expect(text).toMatch(
+      /stored\s+commit_lsn is past the newer\s+instance's start_lsn/,
+    );
+  });
+
+  it("says how an event gets its epoch, scopes the AG row, and cites the command-id comment", () => {
+    expect(text).toMatch(
+      /Each event needs its epoch at the moment it is produced/,
+    );
+    expect(text).toMatch(/events still queued in Kafka/);
+    expect(text).toMatch(/CDC without replication/);
+    expect(text).toMatch(
+      /every command id observed so far maps to exactly one/,
+    );
+    expect(text).toMatch(/schema history topic is separate state/);
+  });
+});

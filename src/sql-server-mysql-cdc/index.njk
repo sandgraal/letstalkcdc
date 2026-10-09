@@ -171,7 +171,10 @@ scripts:
         block, and the source orders by <code>__$start_lsn</code>, then
         <code>__$command_id</code>, then <code>__$seqval</code>. I did not
         verify whether the command id can ever disagree with the change LSN
-        within one transaction. The tuple above is what the site's version
+        within one transaction. A comment in
+        <code>SqlServerConnection.java</code> on <code>main</code> says every
+        command id observed so far maps to exactly one <code>__$seqval</code>,
+        but that this is not documented. The tuple above is what the site's version
         guard uses; if you can reproduce a disagreement on your version, treat
         the position as unique-per-change but not strictly ordered inside a
         transaction.
@@ -397,7 +400,13 @@ scripts:
       the switch would skip or accept changes by accident. Treat each server's
       binlog as its own lineage and bump a lineage number you control at the
       switch (see <a href="#guard">the guard</a>); do not derive it from
-      <code>server_id</code>, which is not ordered by time. Second, the
+      <code>server_id</code>, which is not ordered by time. Each event needs
+      its epoch at the moment it is produced, not when it is applied: stamp it
+      in the consumer from a value you change at the switch, and expect events
+      still queued in Kafka from before the bump to carry the old epoch (they
+      are older, so they lose to anything already applied from the new
+      lineage, which is the safe direction; the new server re-sends the same
+      changes under the new epoch). Second, the
       connector may re-send changes after the switch, now with the new
       server's coordinates. That is the at-least-once rule again. (MySQL's own
       docs describe, for replicas, an error when the replica holds
@@ -427,9 +436,9 @@ SELECT @@global.server_id            AS server_id,
 -- 2. The oldest file still on the server. If the connector's stored file is older, it is gone.
 SHOW BINARY LOGS;
 
--- 3. The server's current position. MySQL 8.4 removed SHOW MASTER STATUS:
-SHOW BINARY LOG STATUS;       -- 8.4 and later
--- SHOW MASTER STATUS;        -- 8.0 and earlier (deprecated there)
+-- 3. The server's current position. MySQL 8.4 removed SHOW MASTER STATUS (SHOW BINARY LOG STATUS exists from 8.2.0):
+SHOW BINARY LOG STATUS;       -- 8.2 and later (the only form in 8.4)
+-- SHOW MASTER STATUS;        -- 8.0 and 8.1; deprecated in 8.2 and 8.3, removed in 8.4
 
 -- 4. GTID mode: what was purged, and is the connector's set still serviceable?
 SELECT @@global.gtid_executed AS gtid_executed, @@global.gtid_purged AS gtid_purged;
@@ -465,7 +474,10 @@ SELECT GTID_SUBSET(@@global.gtid_purged, 'PASTE-THE-CONNECTORS-GTID-SET-HERE') A
           <td>
             The position is lost. Stop the connector, re-snapshot into the
             idempotent sink (<code>snapshot.mode=when_needed</code>, or clear
-            the stored offset and run a snapshot), then reconcile deletes.
+            the stored offset and run a snapshot; the schema history topic is
+            separate state, so keep it or rebuild it deliberately, see
+            <a href="#mysql-schema">schema history</a>), then reconcile
+            deletes.
             Raise retention so it does not recur.
           </td>
         </tr>
@@ -764,12 +776,21 @@ SELECT sys.fn_cdc_get_min_lsn(N'dbo_customers') AS low_endpoint,
        CASE WHEN @stored_lsn >= sys.fn_cdc_get_min_lsn(N'dbo_customers')
             THEN 'inside' ELSE 'PURGED' END     AS verdict;
 SELECT sys.fn_cdc_map_lsn_to_time(sys.fn_cdc_get_min_lsn(N'dbo_customers')) AS oldest_change_committed_at;
+-- 4b. What Debezium itself checks (per its source on main): the oldest start_lsn across ALL capture instances.
+DECLARE @oldest binary(10) = (SELECT MIN(start_lsn) FROM cdc.change_tables);
+SELECT @oldest AS oldest_start_lsn,
+       CASE WHEN @oldest IS NULL THEN 'no change tables'
+            WHEN @oldest &lt;= @stored_lsn THEN 'inside' ELSE 'PURGED' END AS debezium_verdict;
 
 -- 5. Is the log being held back?
 SELECT name, recovery_model_desc, log_reuse_wait_desc FROM sys.databases WHERE name = DB_NAME();
 SELECT total_log_size_in_bytes, used_log_space_in_percent FROM sys.dm_db_log_space_usage;</code></pre>
     <p>
-      Query 4 is my construction from the documented functions; the hex
+      Query 4 is my construction from the documented functions. It checks one
+      capture instance; Debezium's source validates the stored commit LSN
+      against <code>min(start_lsn)</code> over <code>cdc.change_tables</code>,
+      all instances, which is query 4b. Run both: a table whose own instance
+      was purged is not caught by the minimum over the others. The hex
       conversion uses style 1, which keeps the <code>0x</code> prefix. The
       CDC functions return <code>0x00000000000000000000</code> when the
       capture instance does not exist or the caller is not authorised, so a
@@ -834,7 +855,12 @@ SELECT total_log_size_in_bytes, used_log_space_in_percent FROM sys.dm_db_log_spa
           <td>Query 2: only the old instance exists.</td>
           <td>
             Create the second capture instance, let the connector move, drop the
-            old one. If two already exist, drop the old one first.
+            old one. If two already exist, wait for the connector's
+            notification that it has finished the older instance (or check
+            that its stored <code>commit_lsn</code> is past the newer
+            instance's <code>start_lsn</code>), then drop the older one and
+            create the new one. Dropping it earlier discards changes the
+            connector has not read.
           </td>
         </tr>
         <tr>
@@ -850,8 +876,8 @@ SELECT total_log_size_in_bytes, used_log_space_in_percent FROM sys.dm_db_log_spa
           </td>
         </tr>
         <tr>
-          <th scope="row">After an availability-group failover, change tables stop filling</th>
-          <td>Query 1 on the new primary: no capture or cleanup job.</td>
+          <th scope="row">After an availability-group failover, change tables stop filling (CDC without replication)</th>
+          <td>Query 1 on the new primary: no capture or cleanup job. If replication is also enabled, the log reader does the capture and nothing more is needed (Microsoft).</td>
           <td>
             <code>EXEC sys.sp_cdc_add_job @job_type = N'capture'</code> and
             <code>N'cleanup'</code> on the new primary; disable the old
