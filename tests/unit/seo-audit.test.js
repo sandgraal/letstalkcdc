@@ -70,6 +70,7 @@ const SAME_DESC = "Same description on two pages.";
  *  /b/        no <h1>, no og tags, unparseable JSON-LD, Article without image
  *  /c/        clean; reachable only through the header (chrome)
  *  /old.html  meta-refresh redirect stub to /a/
+ *  /google0123456789abcdef.html  Search Console ownership file, not a page
  */
 function writeFixture(dir) {
   const put = (rel, body) => {
@@ -127,6 +128,11 @@ function writeFixture(dir) {
   put(
     "404.html",
     "<!doctype html><html><head><title>nope</title></head><body></body></html>",
+  );
+  // Search Console ownership file: plain text, must not count as a page.
+  put(
+    "google0123456789abcdef.html",
+    "google-site-verification: google0123456789abcdef.html",
   );
   put(
     "sitemap.xml",

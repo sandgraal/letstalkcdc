@@ -1597,12 +1597,14 @@ production CSS hashes.
 
 ### Tier 5 — found along the way (2026-10-09)
 
-- [ ] **P15-14 · Check the phone fixes on a real iPhone.** Outcome: the two
+- [x] **P15-14 · Check the phone fixes on a real iPhone.** Outcome: the two
       assistant-panel fixes (#332, #339) are proven on WebKit, not only in
       Chromium. Accept: on a real iPhone (or BrowserStack Safari), with the
       toolbars showing, the open panel's header, close button and Send are all
       reachable on a module page; short landscape is noted. **Maintainer
       step** (needs a device). Size: S.
+      _2026-10-09: maintainer reported "site looks good on iPhone"; closed on
+      that report._
 - [ ] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
       defects found in reviews are fixed. Accept: (a) the desktop close button
       measures at least 44×44 (it is about 22×30); (b) closing the panel
@@ -2017,6 +2019,11 @@ ready to start; the first job is to turn it into measured, specific items.
       Size: S. Role: `implementer`, `reviewer`. Depends on domain: yes for
       the robots host (re-check after P15-13).
       _2026-10-09: shipped in #363. Approved by the maintainer 2026-10-09._
+      _2026-10-09: the Search Console HTML-file verification file
+      (`googleeb5f2ebb27afc761.html`) is added in the PR
+      `claude/search-console-verification` and must never be removed. Still
+      the maintainer's: click Verify in Search Console after it deploys, then
+      submit `https://sandgraal.github.io/letstalkcdc/sitemap.xml`._
 - [x] **P16-6 · Titles and descriptions pass.** Outcome: snippets say what
       each lesson is. Accept: `/partitioning/` title has one brand suffix;
       `/schema-evolution/`, `/strategy/`, `/tooling/` and `/use-cases/` have

@@ -25,6 +25,10 @@ Build Eleventy Site (npm run build)
 Deploy to GitHub Pages (_site/ directory)
 ```
 
+### Site-root verification file (keep it)
+
+`src/static/googleeb5f2ebb27afc761.html` is the Google Search Console ownership file, served at `/googleeb5f2ebb27afc761.html`. Never delete, edit or reformat it (a unit test pins its exact 53-byte content); removing it un-verifies the property.
+
 ### Change Feed Playground (`/playground/`)
 
 The interactive Change Feed Playground lives in `playground/` (imported with its
