@@ -180,6 +180,31 @@ if (!existsSync(assistantDataPath)) {
       failures.push(
         "Assistant knowledge base JSON does not include any intents.",
       );
+    } else {
+      // Every citation link must land on a built page, and every anchor must
+      // be a real id on that page (12 of the first 22 were dead before this).
+      for (const intent of assistantData.intents) {
+        for (const link of intent.links ?? []) {
+          const rel = String(link.url ?? "").replace(/^\//, "");
+          const pagePath = join(outputDir, rel, "index.html");
+          if (!existsSync(pagePath)) {
+            failures.push(
+              `Assistant intent "${intent.id}" links to ${link.url}, which has no built page.`,
+            );
+            continue;
+          }
+          if (link.anchor) {
+            const id = link.anchor.replace(/^#/, "");
+            const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const idPattern = new RegExp(`\\sid=["']${escaped}["']`);
+            if (!idPattern.test(readFileSync(pagePath, "utf8"))) {
+              failures.push(
+                `Assistant intent "${intent.id}" links to ${link.url}${link.anchor}, but that page has no id="${id}".`,
+              );
+            }
+          }
+        }
+      }
     }
   } catch (error) {
     failures.push(
@@ -437,11 +462,38 @@ if (existsSync(join(outputDir, methodologyFile))) {
   );
 }
 
+// /privacy/ discloses what the assistant and playground store; assert the
+// page exists, has a single h1 and its section anchors, and that the footer
+// links to it.
+const privacyFile = "privacy/index.html";
+if (existsSync(join(outputDir, privacyFile))) {
+  const html = read(privacyFile);
+  if ((html.match(/<h1\b/g) || []).length !== 1) {
+    failures.push(`${privacyFile}: expected exactly one <h1>`);
+  }
+  for (const anchor of [
+    'id="stores"',
+    'id="playground"',
+    'id="third-parties"',
+    'id="retention"',
+    'id="delete"',
+  ]) {
+    if (!html.includes(anchor)) {
+      failures.push(`${privacyFile}: expected anchor ${anchor} missing`);
+    }
+  }
+  if (!/href="[^"]*\/privacy\/">Privacy<\/a>/.test(html)) {
+    failures.push(`${privacyFile}: footer Privacy link missing`);
+  }
+} else {
+  failures.push(`${privacyFile}: page missing — /privacy/ build broken`);
+}
+
 if (failures.length) {
   console.error("Smoke test failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
 console.log(
-  "Smoke test passed: critical canvases, CSP, fonts, edit links, errata callout, glossary, methodology.",
+  "Smoke test passed: critical canvases, CSP, fonts, edit links, errata callout, glossary, methodology, privacy.",
 );

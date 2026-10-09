@@ -3,7 +3,7 @@ name: implementer
 description: Use for real engineering changes — JavaScript, Nunjucks templates, Eleventy / Vite / workflow config, tests, dependency upgrades, performance fixes. Works to written acceptance criteria and proves them with commands. Not for src/assets/css/ (use css-refactor).
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: claude-sonnet-5-5
-maxTurns: 60
+maxTurns: 100
 color: blue
 ---
 
