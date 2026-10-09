@@ -11,17 +11,6 @@ pre {
   position: relative;
   overflow: auto;
 }
-.copy-btn {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  font: inherit;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  cursor: pointer;
-}
 code,
 pre code {
   white-space: pre-wrap;
@@ -82,21 +71,6 @@ html[data-theme="dark"] mark {
 html[data-theme="dark"] .prose code::before,
 html[data-theme="dark"] .prose code::after {
   content: "";
-}
-.copy-btn {
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-html[data-theme="dark"] .copy-btn {
-  background: #0b1220;
-  border-color: #374151;
-  color: #e5e7eb;
-}
-html[data-theme="dark"] .copy-btn:hover {
-  background: #111827;
-  border-color: #4b5563;
 }
 html[data-theme="dark"] details {
   background: rgba(255, 255, 255, 0.04);
@@ -275,21 +249,6 @@ html[data-theme="dark"] code {
 html[data-theme="dark"] .prose code::before,
 html[data-theme="dark"] .prose code::after {
   content: "";
-}
-.copy-btn {
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-html[data-theme="dark"] .copy-btn {
-  background: var(--cdc-surface);
-  border-color: var(--cdc-border);
-  color: var(--cdc-text);
-}
-html[data-theme="dark"] .copy-btn:hover {
-  background: #111827;
-  border-color: #4b5563;
 }
 html[data-theme="dark"] figure figcaption {
   color: var(--cdc-muted);

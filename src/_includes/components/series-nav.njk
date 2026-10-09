@@ -61,9 +61,9 @@
     </div>
     {# Related lessons: curated `related` keys in src/_data/series.mjs, rendered in that order. #}
     {% if current.related and current.related | length %}
-      <section class="prose" aria-labelledby="related-lessons-heading">
-        <h2 id="related-lessons-heading">Related lessons</h2>
-        <ul>
+      <section class="series-related" aria-labelledby="related-lessons-heading">
+        <h2 id="related-lessons-heading" class="h-as-4">Related lessons</h2>
+        <ul class="series-related__list">
           {%- for relatedKey in current.related -%}
             {%- for candidate in navModules -%}
               {%- if candidate.key == relatedKey and candidate.key != current.key -%}
