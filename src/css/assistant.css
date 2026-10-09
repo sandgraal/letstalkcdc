@@ -41,7 +41,7 @@
   /* Never taller than the room above the lifted bottom edge (5rem) minus a
      1.5rem gutter, so a short landscape viewport (667x375) keeps the header on
      screen. `dvh` follows the visible viewport; the `px` line is the fallback. */
-  max-height: 520px;
+  max-height: min(520px, calc(100vh - 6.5rem));
   max-height: min(520px, calc(100dvh - 6.5rem));
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #ddd);
@@ -334,5 +334,8 @@
        panel can overflow the top of the screen and hide the close button.
        `svh` is the small viewport; browsers without it keep the `vh` line. */
     max-height: min(75svh, calc(100svh - 6rem));
+    /* `dvh` tracks the visible viewport as the toolbars move; same cascade
+       as the base rule above. */
+    max-height: min(75dvh, calc(100dvh - 6rem));
   }
 }

@@ -361,6 +361,7 @@ test.describe("assistant panel polish (P15-15)", () => {
     // 3. Close button, opened by keyboard, closed by keyboard.
     await page.keyboard.press("Space");
     await expect(panel).toBeVisible();
+    await expect(panel.locator(".assistant-input")).toBeFocused();
     await panel.locator(".assistant-close").focus();
     await page.keyboard.press("Enter");
     await expect(panel).toBeHidden();
@@ -369,6 +370,7 @@ test.describe("assistant panel polish (P15-15)", () => {
     // 4. The floating button toggles it closed; focus stays there.
     await page.keyboard.press("Enter");
     await expect(panel).toBeVisible();
+    await expect(panel.locator(".assistant-input")).toBeFocused();
     await fab.focus();
     await page.keyboard.press("Enter");
     await expect(panel).toBeHidden();
