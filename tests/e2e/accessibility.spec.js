@@ -32,11 +32,17 @@ const SITEMAP_PAGES = [
   ).matchAll(/<loc>([^<]+)<\/loc>/g),
 ]
   .map(([, loc]) => new URL(loc).pathname.replace(/^\/letstalkcdc(?=\/)/, ""))
-  // Entries served by a separate app build (e.g. /playground/) are not in
-  // _site, so there is nothing to audit here.
+  // Entries served by a separate app build (e.g. /playground/) are only in
+  // _site after scripts/publish-playground.sh (CI's e2e job runs it); skip
+  // what is absent.
   .filter((p) =>
     existsSync(new URL(`../../_site${p}index.html`, import.meta.url)),
   )
+  // /playground/ has its own block below. This generic loop sets the site's
+  // `theme` key and `html[data-theme]`, but the playground reads
+  // `cdc_theme_preference_v1` and themes `body[data-theme]`, so its "light"
+  // run here would silently audit the dark theme twice.
+  .filter((p) => p !== "/playground/")
   .sort();
 
 // Built pages that are deliberately not in the sitemap (noindex) but are
@@ -254,6 +260,132 @@ test.describe("accessibility", () => {
           failures,
           `color-contrast failures in the CDC event demo panel (${theme}, ${state}):\n${failures.join("\n")}`,
         ).toEqual([]);
+      });
+    }
+  }
+
+  // The playground is a separate app published into _site/playground/ by
+  // scripts/publish-playground.sh (CI's e2e job runs it; without it these
+  // tests fail rather than skip, so CI cannot silently stop auditing it).
+  // Its dark/light switch is `body[data-theme]`, set from
+  // `cdc_theme_preference_v1`. Reduced motion is emulated because the
+  // `:root` ticker text fades in and axe would otherwise measure a mid-fade
+  // frame. Every state below is reachable by clicking only, no typed data.
+  // axe cannot score text over the playground's gradient background (it
+  // reports those nodes as "incomplete", not as violations); that gap is
+  // tracked separately (P16-30 / P15-35), so this proves "no violations",
+  // not "every node measured".
+  const PLAYGROUND = "/playground/";
+  const PLAYGROUND_LABS = [
+    "replay-guard",
+    "ts-vs-position",
+    "delete-then-late-update",
+  ];
+
+  /**
+   * @param {import("@playwright/test").Page} page
+   * @param {string} theme
+   */
+  async function openPlayground(page, theme, search = "") {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addInitScript((t) => {
+      window.localStorage.setItem("cdc_theme_preference_v1", t);
+    }, theme);
+    await page.goto(`${PLAYGROUND}${search}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("body")).toHaveAttribute("data-theme", theme);
+  }
+
+  /** @param {import("@playwright/test").Page} page */
+  async function dismissOnboarding(page) {
+    await expect(page.locator("#onboardingOverlay")).toBeVisible();
+    await page.locator("#onboardingDismiss").click();
+    await expect(page.locator("#onboardingOverlay")).toBeHidden();
+  }
+
+  /**
+   * @param {import("@playwright/test").Page} page
+   * @param {string} label
+   */
+  async function expectPlaygroundContrast(page, label) {
+    const results = await new AxeBuilder({ page })
+      .withRules(["color-contrast"])
+      .analyze();
+    const failures = results.violations.flatMap((v) =>
+      v.nodes.map(
+        (n) => `${n.target.join(" ")}: ${n.any[0]?.message ?? v.description}`,
+      ),
+    );
+    expect(
+      failures,
+      `color-contrast failures on ${PLAYGROUND} (${label}):\n${failures.join("\n")}`,
+    ).toEqual([]);
+  }
+
+  for (const theme of ["light", "dark"]) {
+    test(`/playground/ onboarding overlay passes color-contrast (${theme} theme)`, async ({
+      page,
+    }) => {
+      await openPlayground(page, theme);
+      await expect(page.locator("#onboardingOverlay")).toBeVisible();
+      await expectPlaygroundContrast(page, `${theme}, onboarding`);
+    });
+
+    test(`/playground/ Feed passes color-contrast (${theme} theme)`, async ({
+      page,
+    }) => {
+      await openPlayground(page, theme);
+      await dismissOnboarding(page);
+      await expect(page.locator("#simTabFeed")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await expectPlaygroundContrast(page, `${theme}, Feed`);
+    });
+
+    test(`/playground/ Feed after Seed and Emit Snapshot passes color-contrast (${theme} theme)`, async ({
+      page,
+    }) => {
+      await openPlayground(page, theme);
+      await dismissOnboarding(page);
+      await page.locator("#seedRows").click();
+      await page.locator("#emitSnapshot").click();
+      await expectPlaygroundContrast(page, `${theme}, Feed after Seed`);
+    });
+
+    test(`/playground/ Compare (idle) passes color-contrast (${theme} theme)`, async ({
+      page,
+    }) => {
+      await openPlayground(page, theme);
+      await dismissOnboarding(page);
+      await page.locator("#simTabCompare").click();
+      await expect(page.locator("#simTabCompare")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await expect(page.locator("#simPanelCompare")).toBeVisible();
+      await expectPlaygroundContrast(page, `${theme}, Compare idle`);
+    });
+
+    for (const lab of PLAYGROUND_LABS) {
+      test(`/playground/?try=${lab} passes color-contrast (${theme} theme)`, async ({
+        page,
+      }) => {
+        await openPlayground(page, theme, `?try=${lab}#simulator`);
+        await expect(page.locator("#simTabCompare")).toHaveAttribute(
+          "aria-selected",
+          "true",
+          { timeout: 15000 },
+        );
+        // The link starts the lab itself; wait for the run to settle.
+        await expect(page.getByTestId("sink-counters").last()).toHaveText(
+          /Applied \d+ · Skipped \d+ · Stale applies \d+/,
+          { timeout: 15000 },
+        );
+        if (await page.locator("#onboardingOverlay").isVisible()) {
+          await page.locator("#onboardingDismiss").click();
+        }
+        await expectPlaygroundContrast(page, `${theme}, ?try=${lab}`);
       });
     }
   }

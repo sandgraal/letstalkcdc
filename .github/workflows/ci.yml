@@ -230,6 +230,14 @@ jobs:
           name: site-build
           path: _site/
 
+      # The build job's artifact has no /playground/ (only deploy.yml and
+      # linkcheck.yml published it), so the contrast check on it was
+      # invisible to CI (P16-30). The playground's bundles are committed, so
+      # this is a file copy, not a build: no playground `npm ci`, a second
+      # or two. The e2e accessibility spec fails, not skips, if it is absent.
+      - name: Publish playground to /playground/
+        run: scripts/publish-playground.sh
+
       - name: Run E2E tests
         run: npx playwright test --project=chromium
 
