@@ -115,11 +115,11 @@ scripts:
         <tr>
           <th scope="row"><code>before</code> and <code>after</code></th>
           <td><code>after</code> holds the new row for create, update and read. <code>before</code> exists as the PostgreSQL <code>REPLICA IDENTITY</code> setting allows.</td>
-          <td>A full <code>before</code> image. With the default replica identity, an update carries only the key columns in <code>before</code>, so this part of the contract is a database setting.</td>
+          <td>A full <code>before</code> image. With the default replica identity, the PostgreSQL page's update example carries only the key columns whose values changed in <code>before</code>, so this part of the contract is a database setting.</td>
         </tr>
         <tr>
           <th scope="row">Source position</th>
-          <td>The position fields your connector documents (<code>lsn</code> and <code>txId</code> on PostgreSQL). This is what a sink orders by.</td>
+          <td>The position fields your connector documents (<code>lsn</code> and <code>txId</code> on PostgreSQL). This is what a sink orders by, with one exception: in Debezium's PostgreSQL source (<code>PostgresSourceInfoStructMaker</code> on the main branch, read 2026-10-09; check your version) <code>lsn</code> and <code>txId</code> are left out when <code>source.snapshot</code> is <code>incremental</code>. Those reads (<code>op</code> <code>r</code>) carry no position, so the sink needs an explicit rule for them; see <a href="{{ '/test-your-pipeline/#contract' | url }}">Testing a CDC pipeline</a>.</td>
           <td>The top-level <code>ts_ms</code>. It is the connector's processing time from the Connect task's JVM clock; <code>source.ts_ms</code> is the time of the change in the database. Neither is a unique position.</td>
         </tr>
         <tr>
@@ -145,8 +145,9 @@ scripts:
         <strong>Connector settings.</strong> The PostgreSQL page maps temporal types through
         <code>time.precision.mode</code> and decimals through <code>decimal.handling.mode</code>, so
         changing either changes the field type consumers see. <code>field.name.adjustment.mode</code>
-        (<code>none</code> by default) can replace characters that Avro names do not allow, so a column
-        called <code>first-name</code> may reach consumers under a different field name depending on it.
+        and <code>schema.name.adjustment.mode</code> (both <code>none</code> by default) can replace
+        characters that Avro names do not allow, so a column called <code>first-name</code> may reach
+        consumers under a different field name depending on them.
       </li>
       <li>
         <strong>Connector upgrades.</strong> Debezium's page warns that with
@@ -250,7 +251,9 @@ scripts:
       field&rdquo;, &ldquo;widen a scalar type&rdquo;, &ldquo;narrow a scalar type&rdquo;). The others are
       derived: rows 2, 5 and 6 by combining rows, the type-change row from the Avro schema-resolution
       rules (numeric promotion goes <code>int</code> to <code>long</code> to <code>float</code> to
-      <code>double</code>; no other numeric or string pairs), and the nullability rows from the
+      <code>double</code>, and <code>string</code> and <code>bytes</code> promote to each other, so a
+      PostgreSQL <code>text</code> to <code>bytea</code> change passes every mode; there are no other
+      promotions, so <code>int</code> to <code>text</code> is rejected), and the nullability rows from the
       table's union-variant rows, because Confluent says Avro expresses nullability as a union with
       <code>null</code>. This repository's tests check every cell above against a small model of the Avro
       resolution rules, and the model reproduces all 24 cells of Confluent's Avro table. That is a check
@@ -381,7 +384,12 @@ scripts:
         <code>schema.history.internal.kafka.bootstrap.servers</code>) so it can rebuild each table's
         structure at the point where it restarts. The page says that topic is for the connector's internal
         use only, that it must have a single partition, and that you should not partition it. If it is lost
-        or corrupted, <code>snapshot.mode=recovery</code> rebuilds it from the source tables. Consumers that want to be told
+        or corrupted, <code>snapshot.mode=recovery</code> rebuilds it from the source tables, but the
+        page warns: &ldquo;Do not use this mode to perform a snapshot if schema changes were committed
+        to the database after the last connector shutdown.&rdquo; If DDL ran while the connector was
+        down, the recovered history would describe the new tables for older binlog events; the page
+        does not give an alternative in that warning, so check your version's page for the supported
+        route before you rely on recovery after DDL. Consumers that want to be told
         about DDL should read the separate schema change topic, controlled by
         <code>include.schema.changes</code> (default <code>true</code>). The page also says the format of
         that topic is &ldquo;in an incubating state and is subject to change without notice&rdquo;, so it
@@ -432,7 +440,9 @@ scripts:
       unless you ask for them. Debezium's page shows
       <code>add.fields=op,table,lsn,source.ts_ms</code> producing <code>__op</code>, <code>__table</code>,
       <code>__lsn</code> and <code>__source_ts_ms</code>. If your sink orders by source position, put the
-      position into the flattened record on purpose:
+      position into the flattened record on purpose. On PostgreSQL the position is absent for
+      incremental-snapshot reads (see the source position row above), so <code>__lsn</code> is absent or null
+      for those and the sink needs a rule for them:
     </p>
 <pre><code>transforms=unwrap
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
@@ -577,7 +587,7 @@ for (const [name, change] of Object.entries(scenarios)) {
 }
 process.exitCode = broken &gt; 0 ? 1 : 0;</code></pre>
     </details>
-    <p>Run it with <code>node ddl-gate.mjs</code>. The six scenarios are the table above. Expected output, and an exit code of 1 because at least one scenario breaks:</p>
+    <p>Run it with <code>node ddl-gate.mjs</code>. The six scenarios are the script's own, a sample of the rows in the DDL table above. Expected output, and an exit code of 1 because at least one scenario breaks:</p>
 <pre><code>add nullable phone:
   OK    phone: added, not read
 drop name:
@@ -710,7 +720,7 @@ curl -s -X POST \
         <tr>
           <th scope="row">A lost or corrupt schema history (MySQL)</th>
           <td>The connector cannot rebuild table structures at its restart position.</td>
-          <td>Retain and monitor the topic; <code>snapshot.mode=recovery</code> rebuilds it from the source tables.</td>
+          <td>Retain and monitor the topic. <code>snapshot.mode=recovery</code> rebuilds it from the source tables, but not if DDL was committed after the last shutdown (the MySQL page's warning, above); then check your version's page for the supported route.</td>
         </tr>
       </tbody>
     </table>

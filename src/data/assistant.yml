@@ -134,7 +134,6 @@ intents:
         "ddl approval",
         "ddl review",
         "breaking schema change",
-        "breaking change",
         "consumer contract",
         "contract break",
       ]
@@ -176,7 +175,6 @@ intents:
         "column rename",
         "rename column",
         "renaming a column",
-        "rename",
         "drop a column",
         "dropped a column",
         "dropping a column",

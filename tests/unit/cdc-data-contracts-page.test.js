@@ -397,7 +397,7 @@ describe("the DDL gate on the page runs and prints what the page says", () => {
     expect(run.status).toBe(1);
   });
 
-  it("flags the five breaking scenarios and passes the additive one", () => {
+  it("flags four BREAK scenarios, one WARN and one OK, as the page's six scenarios say", () => {
     const out = run.stdout;
     const block = (name) =>
       out.slice(out.indexOf(`${name}:`)).split(/\n(?=\S)/)[0];
@@ -465,6 +465,25 @@ describe("claims carry their sources and their limits", () => {
     ]) {
       expect(prose.toLowerCase(), s).toContain(s.toLowerCase());
     }
+  });
+
+  it("pins the name-adjustment defaults and the single-partition schema history", () => {
+    expect(prose).toMatch(
+      /field\.name\.adjustment\.mode and schema\.name\.adjustment\.mode \(both none by default\)/,
+    );
+    expect(prose).toMatch(/must have a single partition/);
+    expect(prose).toMatch(/you should not partition it/);
+  });
+
+  it("carries the incremental-snapshot position exception and the recovery warning", () => {
+    expect(prose).toMatch(
+      /lsn and txId are left out when source\.snapshot is incremental/,
+    );
+    expect(prose).toMatch(/needs an explicit rule for them/);
+    expect(prose).toContain(
+      "Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.",
+    );
+    expect(prose).toMatch(/string and bytes promote to each other/);
   });
 
   it("states the version trap in the unwrap default rather than picking a side", () => {

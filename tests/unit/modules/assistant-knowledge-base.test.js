@@ -589,7 +589,7 @@ describe("assistant knowledge base – data contracts for database events (modul
     "what is a data contract for cdc",
     "do I need a data contract for database events",
     "who approves ddl on a captured table",
-    "what is a breaking change in a change event",
+    "what is a breaking schema change in a change event",
     "cdc schema contract",
   ])("%j reaches the data contract answer", (query) => {
     expect(idOf(query)).toBe("cdc_data_contract");
@@ -611,6 +611,19 @@ describe("assistant knowledge base – data contracts for database events (modul
     expect(idOf("how do I handle a schema change")).toBe("schema_changes");
     expect(idOf("what is schema evolution")).toBe("schema_changes");
     expect(idOf("alter table add column")).toBe("schema_changes");
+  });
+
+  it("does not hijack other rename or breaking-change questions", () => {
+    for (const q of [
+      "how do i rename a connector",
+      "can i rename a replication slot",
+      "how do i rename a table",
+      "rename a kafka topic",
+      "is there a breaking change in the debezium upgrade",
+    ]) {
+      expect(idOf(q), q).not.toBe("ddl_breaks_consumers");
+      expect(idOf(q), q).not.toBe("cdc_data_contract");
+    }
   });
 
   it("does not steal the testing questions", () => {
