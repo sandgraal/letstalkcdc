@@ -51,42 +51,54 @@ Take it in this order if you are new to CDC:
 6. [Failure Drills](https://sandgraal.github.io/letstalkcdc/troubleshooting/failure-drills/): break it on purpose and recover.
 
 <details>
-<summary>All 26 modules, by stage</summary>
+<summary>All 36 modules, by stage</summary>
 
-| Module                                                                                             | Level        | What it covers                                             |
-| -------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
-| **Core concepts**                                                                                  |              |                                                            |
-| [Interactive Introduction](https://sandgraal.github.io/letstalkcdc/intro/)                         | Beginner     | The core ideas, methods, architectures and tooling         |
-| [Event Envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/)                          | Beginner     | Keys, before/after images, tombstones, delivery guarantees |
-| [Materialization 101](https://sandgraal.github.io/letstalkcdc/materialization/)                    | Intermediate | MERGE patterns for upserts and deletes                     |
-| [Snapshotting](https://sandgraal.github.io/letstalkcdc/snapshotting/)                              | Intermediate | The initial consistent snapshot before live changes        |
-| [CDC Beyond Relational Databases](https://sandgraal.github.io/letstalkcdc/non-relational/)         | Intermediate | MongoDB, DynamoDB Streams and Cassandra                    |
-| **Advanced patterns**                                                                              |              |                                                            |
-| [Exactly-Once Semantics](https://sandgraal.github.io/letstalkcdc/exactly-once/)                    | Advanced     | At-least-once versus exactly-once, the outbox              |
-| [Partitioning](https://sandgraal.github.io/letstalkcdc/partitioning/)                              | Advanced     | Partition keys, skew, late arrivals                        |
-| [Schema Evolution](https://sandgraal.github.io/letstalkcdc/schema-evolution/)                      | Advanced     | Compatibility rules and schema registries                  |
-| [Multi-Tenancy](https://sandgraal.github.io/letstalkcdc/multi-tenancy/)                            | Advanced     | Isolation patterns, topic math, egress estimates           |
-| [Reconciliation & Offset Surgery](https://sandgraal.github.io/letstalkcdc/reconciliation-surgery/) | Advanced     | Repairing sinks, resetting offsets safely                  |
-| **Running it**                                                                                     |              |                                                            |
-| [Offsets & Replays](https://sandgraal.github.io/letstalkcdc/ops-offsets/)                          | Intermediate | Offset stores, safe rewind, resync drills                  |
-| [Observability](https://sandgraal.github.io/letstalkcdc/observability/)                            | Intermediate | Lag, throughput, error rate, minimal dashboards            |
-| [Security, PII & Access Control](https://sandgraal.github.io/letstalkcdc/security/)                | Intermediate | Masking, least privilege, logs that outlive rows           |
-| **Context**                                                                                        |              |                                                            |
-| [Use Cases](https://sandgraal.github.io/letstalkcdc/use-cases/)                                    | Beginner     | Real-time analytics to cache invalidation                  |
-| [The Strategic Value of CDC](https://sandgraal.github.io/letstalkcdc/strategy/)                    | Beginner     | The business case                                          |
-| [The CDC Ecosystem](https://sandgraal.github.io/letstalkcdc/tooling/)                              | Beginner     | Open-source and commercial tools                           |
-| [Real-World Case Study](https://sandgraal.github.io/letstalkcdc/case-study/)                       | Intermediate | From batch ETL to CDC, with the trade-offs                 |
-| **Hands-on**                                                                                       |              |                                                            |
-| [Quickstarts](https://sandgraal.github.io/letstalkcdc/quickstarts/)                                | Beginner     | Pick a source database, 10 to 20 minutes                   |
-| [Kafka + Debezium Lab](https://sandgraal.github.io/letstalkcdc/lab-kafka-debezium/)                | Intermediate | Kafka, Connect, a Postgres source and sink                 |
-| [Cloud CDC Labs](https://sandgraal.github.io/letstalkcdc/cloud-labs/)                              | Intermediate | AWS DMS, Snowflake and Matillion end to end                |
-| [Acceptance Tests](https://sandgraal.github.io/letstalkcdc/tests/)                                 | Intermediate | Scripts that check your lab survives restarts              |
-| [Failure Scenario Drills](https://sandgraal.github.io/letstalkcdc/troubleshooting/failure-drills/) | Advanced     | Backpressure, DLQs, schema drift, offset replays           |
-| **Tools and errata**                                                                               |              |                                                            |
-| [Connector Config Builder](https://sandgraal.github.io/letstalkcdc/connector-builder/)             | Intermediate | Debezium configs for Postgres, MySQL or Oracle             |
-| [Debezium Event Decoder](https://sandgraal.github.io/letstalkcdc/debezium-decoder/)                | Intermediate | Before/after diffs and MERGE-ready SQL                     |
-| [DLQ Triage Assistant](https://sandgraal.github.io/letstalkcdc/dlq-triage/)                        | Advanced     | Commands and playbooks for re-driving DLQ events           |
-| [Nuances & Errata](https://sandgraal.github.io/letstalkcdc/errata/)                                | Advanced     | Corrections and sharp edges                                |
+| Module                                                                                                         | Level        | What it covers                                                     |
+| -------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ |
+| **Core concepts**                                                                                              |              |                                                                    |
+| [Interactive Introduction](https://sandgraal.github.io/letstalkcdc/intro/)                                     | Beginner     | The core ideas, methods, architectures and tooling                 |
+| [Event Envelope](https://sandgraal.github.io/letstalkcdc/event-envelope/)                                      | Beginner     | Keys, before/after images, tombstones, delivery guarantees         |
+| [Materialization 101](https://sandgraal.github.io/letstalkcdc/materialization/)                                | Intermediate | MERGE patterns for upserts and deletes                             |
+| [Snapshotting](https://sandgraal.github.io/letstalkcdc/snapshotting/)                                          | Intermediate | The initial consistent snapshot before live changes                |
+| [CDC Beyond Relational Databases](https://sandgraal.github.io/letstalkcdc/non-relational/)                     | Intermediate | MongoDB, DynamoDB Streams and Cassandra                            |
+| **Advanced patterns**                                                                                          |              |                                                                    |
+| [Exactly-Once Semantics](https://sandgraal.github.io/letstalkcdc/exactly-once/)                                | Advanced     | At-least-once versus exactly-once, the outbox                      |
+| [Is CDC Exactly-Once? Per Hop](https://sandgraal.github.io/letstalkcdc/is-cdc-exactly-once/)                   | Advanced     | Check any exactly-once claim hop by hop                            |
+| [CDC Without Kafka](https://sandgraal.github.io/letstalkcdc/non-kafka-cdc/)                                    | Advanced     | Debezium Server, the embedded engine, managed services             |
+| [Transactional Outbox and Relay](https://sandgraal.github.io/letstalkcdc/transactional-outbox/)                | Advanced     | Why dual writes fail, and how consumers dedupe and order           |
+| [Partitioning](https://sandgraal.github.io/letstalkcdc/partitioning/)                                          | Advanced     | Partition keys, skew, late arrivals                                |
+| [Which Row Wins in Your Target](https://sandgraal.github.io/letstalkcdc/which-row-wins/)                       | Advanced     | Ordering and delete markers in BigQuery, Iceberg, Delta, Snowflake |
+| [Schema Evolution](https://sandgraal.github.io/letstalkcdc/schema-evolution/)                                  | Advanced     | Compatibility rules and schema registries                          |
+| [Data Contracts for Database Events](https://sandgraal.github.io/letstalkcdc/cdc-data-contracts/)              | Advanced     | What a consumer may rely on, and a gate that catches breaks        |
+| [Deletes That Stay Deleted](https://sandgraal.github.io/letstalkcdc/deletes-stay-deleted/)                     | Advanced     | Tombstones, delete markers and late-update resurrection            |
+| [Multi-Tenancy](https://sandgraal.github.io/letstalkcdc/multi-tenancy/)                                        | Advanced     | Isolation patterns, topic math, egress estimates                   |
+| [Reconciliation & Offset Surgery](https://sandgraal.github.io/letstalkcdc/reconciliation-surgery/)             | Advanced     | Repairing sinks, resetting offsets safely                          |
+| **Running it**                                                                                                 |              |                                                                    |
+| [Offsets & Replays](https://sandgraal.github.io/letstalkcdc/ops-offsets/)                                      | Intermediate | Offset stores, safe rewind, resync drills                          |
+| [Observability](https://sandgraal.github.io/letstalkcdc/observability/)                                        | Intermediate | Lag, throughput, error rate, minimal dashboards                    |
+| [Postgres Replication Slots & WAL Growth](https://sandgraal.github.io/letstalkcdc/postgres-replication-slots/) | Intermediate | A runbook for a disk filling behind a CDC slot                     |
+| [SQL Server & MySQL CDC Specifics](https://sandgraal.github.io/letstalkcdc/sql-server-mysql-cdc/)              | Intermediate | Positions, retention, binlog purge, GTIDs and LSNs                 |
+| [Backfill and Re-Snapshot Safely](https://sandgraal.github.io/letstalkcdc/backfill-resnapshot/)                | Advanced     | Reload history without overwriting newer changes                   |
+| [Security, PII & Access Control](https://sandgraal.github.io/letstalkcdc/security/)                            | Intermediate | Masking, least privilege, logs that outlive rows                   |
+| **Context**                                                                                                    |              |                                                                    |
+| [Use Cases](https://sandgraal.github.io/letstalkcdc/use-cases/)                                                | Beginner     | Real-time analytics to cache invalidation                          |
+| [The Strategic Value of CDC](https://sandgraal.github.io/letstalkcdc/strategy/)                                | Beginner     | The business case                                                  |
+| [The CDC Ecosystem](https://sandgraal.github.io/letstalkcdc/tooling/)                                          | Beginner     | Open-source and commercial tools                                   |
+| [Real-World Case Study](https://sandgraal.github.io/letstalkcdc/case-study/)                                   | Intermediate | From batch ETL to CDC, with the trade-offs                         |
+| **Hands-on**                                                                                                   |              |                                                                    |
+| [Quickstarts](https://sandgraal.github.io/letstalkcdc/quickstarts/)                                            | Beginner     | Pick a source database, 10 to 20 minutes                           |
+| [Kafka + Debezium Lab](https://sandgraal.github.io/letstalkcdc/lab-kafka-debezium/)                            | Intermediate | Kafka, Connect, a Postgres source and sink                         |
+| [Cloud CDC Labs](https://sandgraal.github.io/letstalkcdc/cloud-labs/)                                          | Intermediate | AWS DMS, Snowflake and Matillion end to end                        |
+| [Acceptance Tests](https://sandgraal.github.io/letstalkcdc/tests/)                                             | Intermediate | Scripts that check your lab survives restarts                      |
+| [Testing a CDC Pipeline](https://sandgraal.github.io/letstalkcdc/test-your-pipeline/)                          | Intermediate | Contract, duplicate, out-of-order and replay tests                 |
+| [Failure Scenario Drills](https://sandgraal.github.io/letstalkcdc/troubleshooting/failure-drills/)             | Advanced     | Backpressure, DLQs, schema drift, offset replays                   |
+| **Tools and errata**                                                                                           |              |                                                                    |
+| [Connector Config Builder](https://sandgraal.github.io/letstalkcdc/connector-builder/)                         | Intermediate | Debezium configs for Postgres, MySQL or Oracle                     |
+| [Debezium Event Decoder](https://sandgraal.github.io/letstalkcdc/debezium-decoder/)                            | Intermediate | Before/after diffs and MERGE-ready SQL                             |
+| [DLQ Triage Assistant](https://sandgraal.github.io/letstalkcdc/dlq-triage/)                                    | Advanced     | Commands and playbooks for re-driving DLQ events                   |
+| [Nuances & Errata](https://sandgraal.github.io/letstalkcdc/errata/)                                            | Advanced     | Corrections and sharp edges                                        |
+
+The [merge cookbook](https://sandgraal.github.io/letstalkcdc/merge-cookbook/) is a reference page with sink MERGE templates. It sits alongside the modules and is not counted among them.
 
 </details>
 
