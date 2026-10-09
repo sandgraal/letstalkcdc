@@ -60,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Main stylesheet is render-blocking again.** The preload+onload swap
+  shifted `.page-wrap` when it landed: first paint now waits for the
+  stylesheet (FCP up ~0.8 s on Slow 4G + 4x CPU), CLS 0.33 -> 0 on /intro/.
+
 - **Dependencies: in-range updates (P13-4).** All packages are at the
   newest version their current semver range allows (Eleventy 3.1.6, Vite
   8.3.4, ESLint 10.12, Prettier 3.9.9, Playwright 1.64, and others); no
