@@ -100,6 +100,15 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "postgres-replication-slots",
+    title: "Postgres Replication Slots & WAL Growth",
+    description:
+      "A runbook for a Postgres disk filling behind a CDC slot: the checks, max_slot_wal_keep_size, Debezium heartbeats, and safe recovery.",
+    href: "postgres-replication-slots/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Intermediate",
+  },
+  {
     key: "non-relational",
     title: "CDC Beyond Relational Databases",
     description:
@@ -122,6 +131,18 @@ export default [
       { label: "Strategy", variant: "tag-strategy" },
     ],
     skillLevel: "Intermediate",
+  },
+  {
+    key: "deletes-stay-deleted",
+    title: "Deletes That Stay Deleted",
+    description:
+      "Delete events, Kafka tombstones and sink delete markers; why a late update can resurrect a row; and where a deleted row can still live (compaction, time travel, snapshots, backups).",
+    href: "deletes-stay-deleted/",
+    tags: [
+      { label: "Advanced Pattern", variant: "tag-pattern" },
+      { label: "Ops", variant: "tag-ops" },
+    ],
+    skillLevel: "Advanced",
   },
   {
     key: "reconciliation-surgery",
