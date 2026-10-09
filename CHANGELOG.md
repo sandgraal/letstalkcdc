@@ -60,6 +60,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`/intro/` Lighthouse performance floor ratcheted from 0.82 to 0.84.**
+  Set from ten CI `lighthouse` jobs after the render-blocking stylesheet fix
+  (median score 0.88, best-of-3 per job 0.86 to 0.92). The badge in
+  `docs/DEVELOPMENT.md` and the methodology page state the new floor.
+
 - **Main stylesheet is render-blocking again.** The preload+onload swap
   shifted `.page-wrap` when it landed: first paint now waits for the
   stylesheet (FCP up ~0.8 s on Slow 4G + 4x CPU), CLS 0.33 -> 0 on /intro/.

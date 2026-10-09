@@ -552,7 +552,7 @@ describe("lighthouse-ci.config.json", () => {
     expect(validateConfig(bad)).toHaveLength(8);
   });
 
-  it("keeps the /intro/ floors: performance >= 0.82 and accessibility >= 0.93 are errors", () => {
+  it("keeps the /intro/ floors: performance >= 0.84 and accessibility >= 0.93 are errors", () => {
     const intro = "/intro/index.html";
     const at = (perf, a11y) =>
       evaluateAssertions(
@@ -566,12 +566,12 @@ describe("lighthouse-ci.config.json", () => {
         },
         config.aggregation,
       );
-    expect(summarizeResults(at(0.82, 0.93)).errors).toHaveLength(0);
+    expect(summarizeResults(at(0.84, 0.93)).errors).toHaveLength(0);
     expect(
-      summarizeResults(at(0.81, 0.93)).errors.map((r) => r.auditId),
+      summarizeResults(at(0.83, 0.93)).errors.map((r) => r.auditId),
     ).toEqual(["categories:performance"]);
     expect(
-      summarizeResults(at(0.82, 0.92)).errors.map((r) => r.auditId),
+      summarizeResults(at(0.84, 0.92)).errors.map((r) => r.auditId),
     ).toEqual(["categories:accessibility"]);
   });
 
