@@ -1147,6 +1147,32 @@ dependencies).
       root-cause finding and the plan carries a follow-up. Verify:
       `npx playwright test assistant --repeat-each=10 --project=mobile-chrome`.
       Size: S. Role: `implementer`.
+  - **Triage 2026-10-08 (outcome: real product bug, not flake).**
+    Un-skipped on mobile-chrome (Pixel 5, 393×727, `--repeat-each=10`):
+    the three tests that never click Send (FAB opens panel, close
+    button, Escape) pass 30/30 and are un-skipped. The thumbs-up
+    test (P13-10) clicks Send and fails 10/10 with
+    `<button id="askBtn"> intercepts pointer events`. Cause: at
+    ≤640px `#askPanel` is position fixed, inset 0.5rem, z-index 1000
+    (box x8 y407, 377×312) while `#askBtn` stays position fixed,
+    bottom/right 1.5rem, 56×56, z-index 1001 (x313 y647; x310–372
+    y644–706 once scaled 1.1), sitting on top of the 44×44
+    `.assistant-send` (x332–376 y666–710). `elementFromPoint` at the
+    Send centre returns `#askBtn`. A real tap on Send hits the FAB,
+    which closes the panel. Not a Playwright artefact.
+  - [ ] **Follow-up (css-refactor, not implementer):** stop the FAB
+        overlapping the open panel at ≤640px, e.g. hide the FAB or
+        lift the panel above it while `#askBtn[aria-expanded="true"]`,
+        or reserve space for it (panel `bottom` ≥ FAB bottom + 56px +
+        gap, or inset the input row's right padding). Edit
+        `src/css/assistant.css` (`#askBtn`, `#askPanel`, `@media (max-width: 640px)`)
+        and/or the "Assistant/Chat Button Mobile Position" block in
+        `src/assets/css/09-mobile-responsive.css`. Byte-identity hash in
+        CLAUDE.md will change (re-baseline). Then delete the
+        `test.skip` in the thumbs-up test in
+        `tests/e2e/assistant.spec.js`, run
+        `npx playwright test assistant --project=mobile-chrome --repeat-each=10`
+        (and `--workers=1`), and flip P13-7 to `[x]`.
 
 ### Tier C — larger upgrades (one PR each, never batched)
 

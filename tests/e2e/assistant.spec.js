@@ -17,27 +17,20 @@ import { test, expect } from "@playwright/test";
  * Phase 11 "assistant-send visible-state e2e" item closed by this.
  */
 
-// The mobile-chrome project (Pixel 5 viewport) has consistent
-// pointer-intercept flake in headless Playwright: a fixed-position
-// element on the page (sticky subnav on /intro/, footer fold on /)
-// covers the FAB hit area more often than not. The assistant behavior
-// itself is the same across viewports; desktop chromium + webkit
-// coverage is sufficient for what this spec asserts. CSS rules that
-// reposition the FAB on narrow viewports live in
-// `src/assets/css/09-mobile-responsive.css:321-336` and
-// `src/css/assistant.css:295-307`.
+// P13-7 triage (2026-10-08): the old blanket "flaky pointer-intercept"
+// mobile-chrome skip was not flaky and not a test artefact. The three
+// tests that never click Send pass 30/30 on mobile-chrome and are no
+// longer skipped. The thumbs-up test must click Send and fails 10/10:
+// at <=640px the open panel is `left/right/bottom: 0.5rem` (z-index
+// 1000) while the FAB stays `fixed; bottom/right: 1.5rem` (z-index
+// 1001), so on a Pixel 5 (393x727) the FAB covers ~40x40 of the 44x44
+// Send button and a real tap on Send hits the FAB instead. That is a
+// real layout bug; the CSS fix is tracked under P13-7 in
+// docs/IMPLEMENTATION-PLAN.md (selectors: `#askBtn`/`#askPanel` in
+// `src/css/assistant.css` and the `max-width: 640px` block in
+// `src/assets/css/09-mobile-responsive.css`).
 test.describe("assistant panel", () => {
-  function skipMobileChrome(testInfo) {
-    test.skip(
-      testInfo.project.name === "mobile-chrome",
-      "mobile-chrome viewport has flaky pointer-intercept on the FAB; covered by chromium + webkit",
-    );
-  }
-
-  test("FAB opens the panel and assistant-send is 44×44", async ({
-    page,
-  }, testInfo) => {
-    skipMobileChrome(testInfo);
+  test("FAB opens the panel and assistant-send is 44×44", async ({ page }) => {
     // Home page (not /intro/) — /intro/'s .sticky-subnav overlaps the
     // FAB on mobile viewports, intercepting clicks. The FAB renders
     // on every page via base.njk; home is simpler.
@@ -72,10 +65,7 @@ test.describe("assistant panel", () => {
     }
   });
 
-  test("the close button inside the panel closes it", async ({
-    page,
-  }, testInfo) => {
-    skipMobileChrome(testInfo);
+  test("the close button inside the panel closes it", async ({ page }) => {
     await page.goto("/");
 
     const fab = page.locator("#askBtn");
@@ -95,8 +85,7 @@ test.describe("assistant panel", () => {
     await expect(fab).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("Escape inside the panel closes it", async ({ page }, testInfo) => {
-    skipMobileChrome(testInfo);
+  test("Escape inside the panel closes it", async ({ page }) => {
     await page.goto("/");
 
     const fab = page.locator("#askBtn");
@@ -119,7 +108,12 @@ test.describe("assistant panel", () => {
   test("a thumbs-up sends one request to the Supabase endpoint", async ({
     page,
   }, testInfo) => {
-    skipMobileChrome(testInfo);
+    // Real bug, not flake: the FAB covers the Send button at <=640px
+    // (see the P13-7 note above). Remove this skip when the CSS fix lands.
+    test.skip(
+      testInfo.project.name === "mobile-chrome",
+      "P13-7: FAB (z-index 1001) covers the 44x44 Send button on a 393px viewport; CSS fix pending",
+    );
 
     // Configure the client BEFORE any page script runs (base.njk only emits
     // these when the build has SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY).
