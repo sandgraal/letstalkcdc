@@ -47,8 +47,8 @@ describe("front matter and registration", () => {
   const title = fm.match(/^title: "(.+)"$/m)[1];
   const description = fm.match(/^description: "(.+)"$/m)[1];
 
-  it("has a title of 50 characters or fewer and a description of 120 to 160", () => {
-    expect(title.length).toBeLessThanOrEqual(50);
+  it("has a title of 34 characters or fewer (the site adds a suffix) and a description of 120 to 160", () => {
+    expect(title.length).toBeLessThanOrEqual(34);
     expect(description.length).toBeGreaterThanOrEqual(120);
     expect(description.length).toBeLessThanOrEqual(160);
   });
@@ -117,7 +117,6 @@ describe("required sections", () => {
       "src/materialization/index.njk",
       "src/observability/index.njk",
       "src/lab-kafka-debezium/index.njk",
-      "src/merge-cookbook/index.njk",
     ].filter((f) => read(f).includes("{{ '/test-your-pipeline/' | url }}"));
     expect(from.length).toBeGreaterThanOrEqual(3);
   });
@@ -213,7 +212,10 @@ describe("wording", () => {
 
 describe("SQL examples (structural; not run here)", () => {
   const sink = codeAfter("sink.sql (events, target table, apply function)");
-  const sqlBlocks = allCode.filter((c) => /\b(SELECT|INSERT|CREATE)\b/.test(c));
+  const sqlBlocks = allCode.filter(
+    (c) =>
+      /\b(SELECT|INSERT|CREATE)\b/.test(c) && !/broken on purpose/i.test(c),
+  );
 
   it("guards the update on log position and keeps the delete as a marker", () => {
     expect(sink).toMatch(
@@ -221,7 +223,7 @@ describe("SQL examples (structural; not run here)", () => {
     );
     expect(sink).toMatch(/op = 'd'/);
     expect(sink).toMatch(/SELECT DISTINCT ON \(id\)/);
-    expect(sink).toMatch(/ORDER BY id, lsn DESC/);
+    expect(sink).toMatch(/ORDER BY id, coalesce\(lsn, -1\) DESC/);
     expect(sink).not.toMatch(/DELETE FROM target_customers/);
   });
 
@@ -253,7 +255,7 @@ describe("SQL examples (structural; not run here)", () => {
       .filter((r) => r.value);
     const lsns = fixture.map((r) => r.value.source.lsn);
     for (const lsn of lsns) {
-      expect(sink).toMatch(new RegExp(`\\b${lsn},\\s+\\d+\\)`));
+      expect(sink).toMatch(new RegExp(`\\b${lsn ?? "NULL"},\\s+\\d+\\)`));
     }
   });
 });
@@ -300,6 +302,72 @@ describe("JavaScript examples run", () => {
     const sh = codeAfter("crash.sh (lab stack; untested, see below)");
     expect(sh).toContain("docker kill connect");
     expect(sh).toMatch(/uniq -d/);
-    expect(sh).toMatch(/\[ "\$dupes" -ge 1 \]/);
+    expect(sh).toMatch(/\[ "\$after" -gt "\$before" \]/);
+  });
+});
+
+describe("review fixes", () => {
+  const fixtureLines = codeAfter("Save this as <code>fixture.jsonl</code>")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
+  const sink = codeAfter("sink.sql (events, target table, apply function)");
+  const variants = codeAfter("variants.sql (broken on purpose");
+  const flatPage = flat(page);
+
+  it("source.snapshot is a string in the fixture, with positionless incremental reads", () => {
+    const values = fixtureLines.filter((r) => r.value).map((r) => r.value);
+    for (const v of values) expect(typeof v.source.snapshot).toBe("string");
+    const incremental = values.filter(
+      (v) => v.source.snapshot === "incremental",
+    );
+    expect(incremental.length).toBeGreaterThanOrEqual(2);
+    for (const v of incremental) {
+      expect(v.op).toBe("r");
+      expect(v.source.lsn).toBeNull();
+      expect(v.source.txId).toBeNull();
+    }
+  });
+
+  it("the sink stores a missing position as -1 and the SQL rows match", () => {
+    expect(sink).toMatch(/coalesce\(lsn, -1\)/);
+    expect(sink).toMatch(/NULL, 1030\)/);
+    expect(flatPage).toMatch(/incremental-snapshot reads/);
+    expect(flatPage).toMatch(/no position/);
+  });
+
+  it("publishes all three broken variants and every number matches the table", () => {
+    for (const label of ["-- A. ", "-- B. ", "-- C. "]) {
+      expect(variants).toContain(label);
+    }
+    expect(variants).toMatch(/ORDER BY id, arrival DESC/);
+    expect(variants).toMatch(/ADD COLUMN ts_ms/);
+    expect(variants).toMatch(/target_customers\.ts_ms <= EXCLUDED\.ts_ms/);
+    expect(variants).toMatch(/DELETE FROM target_customers/);
+    for (const n of ["188 differ", "141 differ", "130 differ", "65 of 200"]) {
+      expect(flatPage).toContain(n);
+    }
+  });
+
+  it("recon_positions starts from the log with a left join", () => {
+    const recon = codeAfter("recon.sql (run after sink.sql");
+    expect(recon).toMatch(/LEFT JOIN target_customers t USING \(id\)/);
+  });
+
+  it("owns up to the stale-row gap in the playground and to the crash replay", () => {
+    expect(flatPage).toMatch(/no scenario there reproduces/);
+    expect(flatPage).not.toMatch(/never goes backwards/);
+    expect(flatPage).toMatch(
+      /after a crash it resumes from its last recorded offset/,
+    );
+    expect(flatPage).not.toMatch(/reorder does not come from the broker/);
+  });
+
+  it("crash.sh needs the count to grow, bounds its waits and does not claim to run the sink checks", () => {
+    const sh = codeAfter("crash.sh (lab stack; untested, see below)");
+    expect(sh).toMatch(/before=\$\(count_dupes\)/);
+    expect(sh).toMatch(/seq 1 60/);
+    expect(sh).toMatch(/FAILED/);
+    expect(flatPage).toMatch(/run the sink checks yourself afterwards/);
   });
 });

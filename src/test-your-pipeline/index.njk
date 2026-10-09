@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "Testing a CDC Pipeline: Duplicate and Replay Tests"
+title: "Testing a CDC Pipeline"
 description: "Test your own CDC pipeline: envelope contracts, duplicate, reorder and delete-then-late-update tests, crash replay, reconciliation and property checks."
 canonicalPath: "/test-your-pipeline/"
 scripts:
@@ -81,7 +81,7 @@ scripts:
   <section id="fixture" aria-labelledby="fixture-title">
     <h2 id="fixture-title">One fixture for every test</h2>
     <p>
-      Save this as <code>fixture.jsonl</code>. It is a table, <code>customers</code>, with three
+      Save this as <code>fixture.jsonl</code>. It is a table, <code>customers</code>, with four
       keys, written in the Debezium envelope shape (message key and value, <code>op</code>,
       <code>before</code>, <code>after</code>, <code>source</code>). It is hand-written and trimmed to the
       fields the tests read, not captured from a live connector, so replace it with events recorded from
@@ -89,26 +89,29 @@ scripts:
       one looks like). It assumes <code>REPLICA IDENTITY FULL</code>, so updates and deletes carry the
       whole before image; with the default, Debezium sends only key columns there.
     </p>
-    <pre><code class="language-json">{"key":{"id":3},"value":{"op":"r","before":null,"after":{"id":3,"email":"c@x.io"},"source":{"snapshot":true,"txId":499,"lsn":90,"ts_ms":990},"ts_ms":1010}}
-{"key":{"id":1},"value":{"op":"c","before":null,"after":{"id":1,"email":"a@x.io"},"source":{"snapshot":false,"txId":500,"lsn":100,"ts_ms":1000},"ts_ms":1011}}
-{"key":{"id":2},"value":{"op":"c","before":null,"after":{"id":2,"email":"b@x.io"},"source":{"snapshot":false,"txId":501,"lsn":110,"ts_ms":1001},"ts_ms":1012}}
-{"key":{"id":1},"value":{"op":"u","before":{"id":1,"email":"a@x.io"},"after":{"id":1,"email":"a2@x.io"},"source":{"snapshot":false,"txId":503,"lsn":120,"ts_ms":1002},"ts_ms":1013}}
-{"key":{"id":1},"value":{"op":"u","before":{"id":1,"email":"a@x.io"},"after":{"id":1,"email":"a2@x.io"},"source":{"snapshot":false,"txId":503,"lsn":120,"ts_ms":1002},"ts_ms":1020}}
-{"key":{"id":1},"value":{"op":"u","before":{"id":1,"email":"a2@x.io"},"after":{"id":1,"email":"a3@x.io"},"source":{"snapshot":false,"txId":504,"lsn":130,"ts_ms":1002},"ts_ms":1014}}
-{"key":{"id":2},"value":{"op":"d","before":{"id":2,"email":"b@x.io"},"after":null,"source":{"snapshot":false,"txId":505,"lsn":140,"ts_ms":1003},"ts_ms":1015}}
+    <pre><code class="language-json">{"key":{"id":3},"value":{"op":"r","before":null,"after":{"id":3,"email":"c@x.io"},"source":{"snapshot":"true","txId":499,"lsn":90,"ts_ms":990},"ts_ms":1010}}
+{"key":{"id":1},"value":{"op":"c","before":null,"after":{"id":1,"email":"a@x.io"},"source":{"snapshot":"false","txId":500,"lsn":100,"ts_ms":1000},"ts_ms":1011}}
+{"key":{"id":2},"value":{"op":"c","before":null,"after":{"id":2,"email":"b@x.io"},"source":{"snapshot":"false","txId":501,"lsn":110,"ts_ms":1001},"ts_ms":1012}}
+{"key":{"id":1},"value":{"op":"u","before":{"id":1,"email":"a@x.io"},"after":{"id":1,"email":"a2@x.io"},"source":{"snapshot":"false","txId":503,"lsn":120,"ts_ms":1002},"ts_ms":1013}}
+{"key":{"id":1},"value":{"op":"u","before":{"id":1,"email":"a@x.io"},"after":{"id":1,"email":"a2@x.io"},"source":{"snapshot":"false","txId":503,"lsn":120,"ts_ms":1002},"ts_ms":1020}}
+{"key":{"id":1},"value":{"op":"u","before":{"id":1,"email":"a2@x.io"},"after":{"id":1,"email":"a3@x.io"},"source":{"snapshot":"false","txId":504,"lsn":130,"ts_ms":1002},"ts_ms":1014}}
+{"key":{"id":2},"value":{"op":"d","before":{"id":2,"email":"b@x.io"},"after":null,"source":{"snapshot":"false","txId":505,"lsn":140,"ts_ms":1003},"ts_ms":1015}}
 {"key":{"id":2},"value":null}
-{"key":{"id":2},"value":{"op":"u","before":{"id":2,"email":"b@x.io"},"after":{"id":2,"email":"b2@x.io"},"source":{"snapshot":false,"txId":502,"lsn":115,"ts_ms":1001},"ts_ms":1016}}</code></pre>
+{"key":{"id":2},"value":{"op":"u","before":{"id":2,"email":"b@x.io"},"after":{"id":2,"email":"b2@x.io"},"source":{"snapshot":"false","txId":502,"lsn":115,"ts_ms":1001},"ts_ms":1016}}
+{"key":{"id":4},"value":{"op":"r","before":null,"after":{"id":4,"email":"d@x.io"},"source":{"snapshot":"incremental","txId":null,"lsn":null,"ts_ms":1030},"ts_ms":1031}}
+{"key":{"id":1},"value":{"op":"r","before":null,"after":{"id":1,"email":"a-old@x.io"},"source":{"snapshot":"incremental","txId":null,"lsn":null,"ts_ms":1001},"ts_ms":1033}}</code></pre>
     <ol>
-      <li>Line 1: a snapshot read of key 3 (<code>op: "r"</code>, <code>source.snapshot: true</code>).</li>
+      <li>Line 1: a snapshot read of key 3 (<code>op: "r"</code>, <code>source.snapshot: "true"</code>; the field is a string in Debezium, with values such as <code>"true"</code>, <code>"last"</code>, <code>"false"</code> and <code>"incremental"</code>).</li>
       <li>Lines 2 and 3: creates for keys 1 and 2. Line 4: an update to key 1 at position 120.</li>
       <li>Line 5: the <strong>same change redelivered</strong>. The top-level <code>ts_ms</code> differs (1020, not 1013) because it is the connector's processing time; the change itself, including <code>source</code>, is identical.</li>
       <li>Line 6: a second update to key 1 at position 130, in the <strong>same millisecond</strong> (<code>source.ts_ms</code> 1002) as the one at 120. A timestamp cannot order these two.</li>
       <li>Line 7: the delete of key 2 at position 140. Line 8: its tombstone (same key, null value).</li>
       <li>Line 9: an update to key 2 at position 115, <strong>arriving after the delete</strong> although it is older in the log.</li>
+      <li>Lines 10 and 11: two <strong>incremental-snapshot reads</strong> (<code>op: "r"</code>, <code>source.snapshot: "incremental"</code>). The Postgres connector leaves <code>txId</code> and <code>lsn</code> out of these, so they have <strong>no position</strong>. Line 10 is a key the sink has never seen. Line 11 is a stale read of key 1, taken before the updates and delivered after them.</li>
     </ol>
     <p>
       Correct final state, whatever the delivery order: key 1 is <code>a3@x.io</code> (position 130), key 2 is
-      deleted (position 140), key 3 is <code>c@x.io</code> (position 90).
+      deleted (position 140), key 3 is <code>c@x.io</code> (position 90), key 4 is <code>d@x.io</code> (no position, so the sink stores -1).
     </p>
   </section>
 
@@ -124,7 +127,8 @@ scripts:
       <li><strong>Key.</strong> Present, and the primary-key field you expect. Debezium uses the table's primary key as the message key unless you configure a custom one.</li>
       <li><strong>Op codes.</strong> One of <code>c</code>, <code>u</code>, <code>d</code>, <code>r</code> (read, snapshot only). Postgres also emits <code>t</code> (truncate, no message key) and <code>m</code> (logical decoding message); decide on purpose what your sink does with them.</li>
       <li><strong>Before and after.</strong> <code>c</code>/<code>r</code>: before null, after present. <code>u</code>: after present, and before present if the table uses full replica identity. <code>d</code>: before present, after null.</li>
-      <li><strong>Position fields.</strong> <code>source.lsn</code>, <code>source.txId</code>, <code>source.ts_ms</code> present and numeric. The sink orders on the position. If it goes missing, a guard such as <code>source_lsn &lt; lsn</code> compares against NULL and silently never updates.</li>
+      <li><strong>Position fields.</strong> <code>source.lsn</code>, <code>source.txId</code>, <code>source.ts_ms</code> present and numeric. The sink orders on the position. If it goes missing, a guard such as <code>source_lsn &lt; lsn</code> compares against NULL and silently never updates. <strong>Exception:</strong> in the Debezium source for the Postgres connector (checked in 2.7.4, the version the lab image uses, and in main) <code>lsn</code> and <code>txId</code> are not set when <code>source.snapshot</code> is <code>incremental</code>, so those reads have no position. The checker requires one everywhere else and requires its absence there. A position that is missing outside an incremental read is a contract break.</li>
+      <li><strong>Snapshot flag.</strong> <code>source.snapshot</code> is a string in the Debezium source (the schema is an enum of <code>true</code>, <code>last</code>, <code>false</code>, <code>incremental</code>, and the flag can also carry <code>first</code> and similar values), and absent means <code>false</code>. Derive "is a read" from <code>op</code>, and require that an <code>r</code> is not flagged <code>false</code>. The Postgres connector reference shows a boolean in its example; check what your version emits.</li>
       <li><strong>Tombstone.</strong> With the default <code>tombstones.on.delete=true</code>, every delete is followed by a record with the same key and a null value. Assert it, and assert your sink ignores it rather than treating it as a row.</li>
       <li><strong>Same position, same change.</strong> A redelivery may differ in processing time but never in <code>op</code>, images or <code>source</code>.</li>
       <li><strong>Schema evolution.</strong> An added column passes (extra fields are allowed); a missing or renamed required column fails. See <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a> for what to do when it does.</li>
@@ -144,6 +148,7 @@ const records = readFileSync(new URL("./fixture.jsonl", import.meta.url), "utf8"
 // The contract this pipeline relies on. REQUIRED is what the sink reads;
 // extra columns are allowed (additive schema change), missing ones are not.
 const REQUIRED = ["id", "email"];
+const SNAPSHOT = ["true", "first", "first_in_data_collection", "last_in_data_collection", "last", "false", "incremental"];
 
 export function checkRecord(rec, prev) {
   const errors = [];
@@ -176,11 +181,18 @@ export function checkRecord(rec, prev) {
     for (const col of REQUIRED) if (!(col in image)) errors.push(`missing column ${col}`);
     if (image.id !== key.id) errors.push("image.id must equal key.id");
   }
-  if (!Number.isInteger(source?.lsn)) errors.push("source.lsn must be an integer");
-  if (!Number.isInteger(source?.txId)) errors.push("source.txId must be an integer");
+  // source.snapshot is a string enum in Debezium; absent means "false".
+  const snap = source?.snapshot ?? "false";
+  if (!SNAPSHOT.includes(snap)) errors.push(`unexpected source.snapshot ${snap}`);
+  if (value.op === "r" &amp;&amp; snap === "false") errors.push("op r must come from a snapshot");
   if (!Number.isInteger(source?.ts_ms)) errors.push("source.ts_ms must be an integer");
-  if (typeof source?.snapshot !== "boolean") errors.push("source.snapshot must be a boolean");
-  if ((value.op === "r") !== (source?.snapshot === true)) errors.push("op r &lt;=&gt; snapshot true");
+  if (snap === "incremental") {
+    // The Postgres connector leaves lsn and txId out of incremental-snapshot reads.
+    if (source.lsn != null) errors.push("incremental read: lsn should be absent");
+  } else {
+    if (!Number.isInteger(source?.lsn)) errors.push("source.lsn must be an integer");
+    if (!Number.isInteger(source?.txId)) errors.push("source.txId must be an integer");
+  }
   return errors;
 }
 
@@ -193,8 +205,8 @@ test("every fixture record satisfies the envelope contract", () =&gt; {
 test("the same (key, lsn) always carries the same content", () =&gt; {
   const seen = new Map();
   for (const { key, value } of records) {
-    if (!value) continue;
-    const id = `${key.id}@${value.source.lsn}`;
+    if (!value || value.source.lsn == null) continue; // no position, nothing to key on
+    const id =`${key.id}@${value.source.lsn}`;
     // Top-level ts_ms is the connector's processing time, so a re-emission
     // differs there. Compare the change itself.
     const { op, before, after, source } = value;
@@ -246,10 +258,9 @@ test("negative control: a delete with an after image is rejected", () =&gt; {
     <h2 id="sink-title">The sink under test</h2>
     <p>
       Tests 2 to 4 run the same small sink: a Postgres table keyed on the primary key, ordered by the
-      source log position, with deletes kept as markers. It does the job of the Postgres upsert in the
-      <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> with three differences: the version is the log
-      position, not <code>OP_TS</code>; the update is guarded in a <code>WHERE</code> clause; and the delete is
-      recorded as a marker instead of removed (the reasoning is in <a href="{{ '/materialization/' | url }}#merge-title">Materialization 101</a> and
+      source log position, with deletes kept as markers. It matches the Postgres upsert in the
+      <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> (one row per key, a position guard in the
+      <code>ON CONFLICT</code> update, a delete marker), reduced to the minimum needed to run the tests (the reasoning is in <a href="{{ '/materialization/' | url }}#merge-title">Materialization 101</a> and
       <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>). The function dedupes to one
       row per key first because Postgres does not allow one
       <code>INSERT ... ON CONFLICT DO UPDATE</code> to affect the same row twice.
@@ -263,18 +274,20 @@ CREATE TABLE all_events (
   id      int    NOT NULL,
   op      text   NOT NULL,
   email   text,
-  lsn     bigint NOT NULL,   -- source.lsn: the ordering key
+  lsn     bigint,            -- source.lsn: the ordering key; NULL on incremental-snapshot reads
   ts_ms   bigint NOT NULL    -- source.ts_ms: kept as a metric, never ordered on
 );
 INSERT INTO all_events VALUES
-  (1, 3, 'r', 'c@x.io',   90,  990),
-  (2, 1, 'c', 'a@x.io',  100, 1000),
-  (3, 2, 'c', 'b@x.io',  110, 1001),
-  (4, 1, 'u', 'a2@x.io', 120, 1002),
-  (5, 1, 'u', 'a2@x.io', 120, 1002),  -- redelivery of arrival 4
-  (6, 1, 'u', 'a3@x.io', 130, 1002),  -- same millisecond as lsn 120
-  (7, 2, 'd', NULL,      140, 1003),
-  (8, 2, 'u', 'b2@x.io', 115, 1001);  -- late and older than the delete
+  (1,  3, 'r', 'c@x.io',      90,  990),
+  (2,  1, 'c', 'a@x.io',     100, 1000),
+  (3,  2, 'c', 'b@x.io',     110, 1001),
+  (4,  1, 'u', 'a2@x.io',    120, 1002),
+  (5,  1, 'u', 'a2@x.io',    120, 1002),  -- redelivery of arrival 4
+  (6,  1, 'u', 'a3@x.io',    130, 1002),  -- same millisecond as lsn 120
+  (7,  2, 'd', NULL,         140, 1003),
+  (8,  2, 'u', 'b2@x.io',    115, 1001),  -- late and older than the delete
+  (9,  4, 'r', 'd@x.io',    NULL, 1030),  -- incremental-snapshot read: no position
+  (10, 1, 'r', 'a-old@x.io', NULL, 1001); -- read taken before the updates, delivered after
 
 -- The sink: one row per key; a delete is kept as a marker, not removed.
 CREATE TABLE target_customers (
@@ -286,13 +299,15 @@ CREATE TABLE target_customers (
 
 -- Apply the events whose arrival is in [lo, hi]: one row per key (the upsert
 -- may not touch a row twice), then update only if the incoming change is later
--- in the log than the row we already hold.
+-- in the log than the row we already hold. A change with no position (an
+-- incremental-snapshot read) counts as -1: it can create a missing key but
+-- never overwrite a streamed row.
 CREATE FUNCTION apply_range(lo int, hi int) RETURNS void LANGUAGE sql AS $$
   INSERT INTO target_customers (id, email, deleted, source_lsn)
-  SELECT DISTINCT ON (id) id, email, op = 'd', lsn
+  SELECT DISTINCT ON (id) id, email, op = 'd', coalesce(lsn, -1)
   FROM all_events
   WHERE arrival BETWEEN lo AND hi
-  ORDER BY id, lsn DESC
+  ORDER BY id, coalesce(lsn, -1) DESC
   ON CONFLICT (id) DO UPDATE
     SET email = EXCLUDED.email,
         deleted = EXCLUDED.deleted,
@@ -316,6 +331,9 @@ $$;</code></pre>
       with the <a href="{{ '/merge-cookbook/' | url }}">cookbook</a>.
     </p>
     <p>
+      <strong>Reads with no position.</strong> The function stores a missing position as -1. That lets an incremental-snapshot read create a key the sink has never seen, and stops it overwriting anything that streamed in, because every real position is larger. This is the sink's own rule, chosen for this page, not something Debezium prescribes. It is wrong if you use incremental snapshots to repair rows the stream lost: a read can then never replace a stale row, so route repairs through a staging comparison instead (see <a href="{{ '/snapshotting/' | url }}#idempotent">Snapshotting</a> and <a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a>). Check how your connector and version fill the position of an <code>r</code> event.
+    </p>
+    <p>
       This assumes <code>lsn</code> is unique per change for a key. If yours can repeat (Oracle SCN, MySQL
       multi-row events), compare the (position, ordinal) pair and generate ties in the fixture.
     </p>
@@ -333,8 +351,8 @@ $$;</code></pre>
     </p>
     <pre><code class="language-sql">-- 1. Duplicate delivery: the same batch twice leaves the table unchanged.
 TRUNCATE target_customers;
-PERFORM apply_range(1, 8);  once := state();
-PERFORM apply_range(1, 8);
+PERFORM apply_range(1, 10);  once := state();
+PERFORM apply_range(1, 10);
 INSERT INTO test_results VALUES ('duplicate: same batch twice', state() = once AND once = want, state(), want);</code></pre>
     <pre><code class="language-sql">-- 2. Replay: the whole log again, one event at a time, in arrival order.
 FOR r IN SELECT arrival FROM all_events ORDER BY arrival LOOP PERFORM apply_range(r.arrival, r.arrival); END LOOP;
@@ -360,7 +378,7 @@ INSERT INTO test_results VALUES ('replay: whole log again, event by event', stat
     </p>
     <pre><code class="language-sql">-- 3. Reorder: 200 shuffles of every event delivered twice must equal in-order application.
 TRUNCATE target_customers;
-FOR r IN SELECT arrival FROM all_events ORDER BY lsn LOOP PERFORM apply_range(r.arrival, r.arrival); END LOOP;
+FOR r IN SELECT arrival FROM all_events ORDER BY coalesce(lsn, -1) LOOP PERFORM apply_range(r.arrival, r.arrival); END LOOP;
 inorder := state();
 FOR seed IN 1..200 LOOP
   TRUNCATE target_customers;
@@ -372,8 +390,10 @@ FOR seed IN 1..200 LOOP
 END LOOP;
 INSERT INTO test_results VALUES ('reorder: 200 shuffled deliveries', bad = 0, bad || ' differ', '0 differ');</code></pre>
     <p>
-      Kafka keeps order within a partition, so reorder does not come from the broker. It comes from what
-      you do around it: a rewind that replays old events next to new ones, a signalled snapshot that
+      Kafka keeps order within a partition, but a consumer still sees old events behind newer ones. One source is
+      the connector itself: after a crash it resumes from its last recorded offset and re-emits older events
+      behind ones it already produced, in the same partition. Others come from what you do around it: a rewind
+      that replays old events next to new ones, a signalled snapshot that
       overlaps streaming (for a blocking snapshot, Debezium documents that the connector may emit records
       that duplicate the snapshot's), a dead-letter queue re-driven later, two writers on one table. The shuffle is
       deliberately harsher than any of those.
@@ -385,7 +405,7 @@ INSERT INTO test_results VALUES ('reorder: 200 shuffled deliveries', bad = 0, ba
     </p>
     <p>
       <strong>On a broken sink.</strong> Fixture lines 4 and 6 share a millisecond, so a sink that keeps the
-      newest <code>ts_ms</code> cannot tell which is later and takes whichever arrived last. It fails the
+      newest <code>ts_ms</code> cannot tell which is later and takes whichever arrived last. Variant B fails the
       shuffle in 141 of 200 runs. With distinct, increasing timestamps in the fixture the same sink passed all four checks, so keep the tie.
     </p>
   </section>
@@ -422,7 +442,7 @@ INSERT INTO test_results
 
 DO $$
 DECLARE
-  want   constant text := '1:a3@x.io:false:130 2::true:140 3:c@x.io:false:90';
+  want   constant text := '1:a3@x.io:false:130 2::true:140 3:c@x.io:false:90 4:d@x.io:false:-1';
   once   text;
   inorder text;
   bad    int := 0;
@@ -431,8 +451,8 @@ DECLARE
 BEGIN
   -- 1. Duplicate delivery: the same batch twice leaves the table unchanged.
   TRUNCATE target_customers;
-  PERFORM apply_range(1, 8);  once := state();
-  PERFORM apply_range(1, 8);
+  PERFORM apply_range(1, 10);  once := state();
+  PERFORM apply_range(1, 10);
   INSERT INTO test_results VALUES ('duplicate: same batch twice', state() = once AND once = want, state(), want);
 
   -- 2. Replay: the whole log again, one event at a time, in arrival order.
@@ -441,7 +461,7 @@ BEGIN
 
   -- 3. Reorder: 200 shuffles of every event delivered twice must equal in-order application.
   TRUNCATE target_customers;
-  FOR r IN SELECT arrival FROM all_events ORDER BY lsn LOOP PERFORM apply_range(r.arrival, r.arrival); END LOOP;
+  FOR r IN SELECT arrival FROM all_events ORDER BY coalesce(lsn, -1) LOOP PERFORM apply_range(r.arrival, r.arrival); END LOOP;
   inorder := state();
   FOR seed IN 1..200 LOOP
     TRUNCATE target_customers;
@@ -466,8 +486,8 @@ END $$;
 SELECT test, CASE WHEN ok THEN 'PASS' ELSE 'FAIL' END AS result, got FROM test_results;</code></pre>
     </details>
     <p>Run <code>sink.sql</code> then <code>tests.sql</code>. Expected, from the run above:</p>
-    <pre><code>duplicate: same batch twice              PASS  1:a3@x.io:false:130 2::true:140 3:c@x.io:false:90
-replay: whole log again, event by event  PASS  1:a3@x.io:false:130 2::true:140 3:c@x.io:false:90
+    <pre><code>duplicate: same batch twice              PASS  1:a3@x.io:false:130 2::true:140 3:c@x.io:false:90 4:d@x.io:false:-1
+replay: whole log again, event by event  PASS  1:a3@x.io:false:130 2::true:140 3:c@x.io:false:90 4:d@x.io:false:-1
 reorder: 200 shuffled deliveries         PASS  0 differ
 resurrection: key 2 stays deleted        PASS  0 live rows for key 2</code></pre>
   </section>
@@ -475,9 +495,69 @@ resurrection: key 2 stays deleted        PASS  0 live rows for key 2</code></pre
   <section id="broken" aria-labelledby="broken-title">
     <h2 id="broken-title">What the same tests show on a broken sink</h2>
     <p>
-      A test you have never seen fail proves nothing. Three one-change variants of the sink above were run
-      through the same script (same run, same date):
+      A test you have never seen fail proves nothing. Three broken sinks, listed in full below, were run through
+      the same script (same run, same date). Each block replaces <code>apply_range</code> after
+      <code>sink.sql</code> and before <code>tests.sql</code>; apply one at a time on a fresh database. Two details
+      matter, because dropping only the <code>WHERE</code> from the guarded function leaves the duplicate test
+      passing (the <code>DISTINCT ON ... ORDER BY id, lsn DESC</code> still picks the highest position inside a
+      batch): variant A also orders by arrival, and variant B needs an extra <code>ts_ms</code> column, a
+      timestamp ordering and a <code>&lt;=</code> tie rule.
     </p>
+    <details>
+      <summary>variants.sql (broken on purpose; do not copy into a real pipeline)</summary>
+      <pre><code class="language-sql">-- Three sinks that are broken on purpose. Run sink.sql first, then ONE of
+-- these blocks, then tests.sql. Each replaces apply_range and nothing else.
+
+-- A. No guard: whatever was delivered last wins. Two changes from the position
+--    version: order by arrival, and drop the WHERE.
+CREATE OR REPLACE FUNCTION apply_range(lo int, hi int) RETURNS void LANGUAGE sql AS $$
+  INSERT INTO target_customers (id, email, deleted, source_lsn)
+  SELECT DISTINCT ON (id) id, email, op = 'd', coalesce(lsn, -1)
+  FROM all_events
+  WHERE arrival BETWEEN lo AND hi
+  ORDER BY id, arrival DESC
+  ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email,
+        deleted = EXCLUDED.deleted,
+        source_lsn = EXCLUDED.source_lsn;
+$$;
+
+-- B. Keep the newest ts_ms. Needs a ts_ms column on the target, orders the
+--    batch by ts_ms (arrival breaks ties), and guards with &lt;= so a tie takes
+--    the later delivery.
+ALTER TABLE target_customers ADD COLUMN ts_ms bigint;
+CREATE OR REPLACE FUNCTION apply_range(lo int, hi int) RETURNS void LANGUAGE sql AS $$
+  INSERT INTO target_customers (id, email, deleted, source_lsn, ts_ms)
+  SELECT DISTINCT ON (id) id, email, op = 'd', coalesce(lsn, -1), ts_ms
+  FROM all_events
+  WHERE arrival BETWEEN lo AND hi
+  ORDER BY id, ts_ms DESC, arrival DESC
+  ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email,
+        deleted = EXCLUDED.deleted,
+        source_lsn = EXCLUDED.source_lsn,
+        ts_ms = EXCLUDED.ts_ms
+    WHERE target_customers.ts_ms &lt;= EXCLUDED.ts_ms;
+$$;
+
+-- C. Guard on position, but a delete removes the row instead of marking it.
+CREATE OR REPLACE FUNCTION apply_range(lo int, hi int) RETURNS void LANGUAGE sql AS $$
+  DELETE FROM target_customers t
+  USING (SELECT DISTINCT ON (id) id, coalesce(lsn, -1) AS lsn
+         FROM all_events
+         WHERE arrival BETWEEN lo AND hi AND op = 'd'
+         ORDER BY id, coalesce(lsn, -1) DESC) d
+  WHERE t.id = d.id AND t.source_lsn &lt; d.lsn;
+  INSERT INTO target_customers (id, email, deleted, source_lsn)
+  SELECT DISTINCT ON (id) id, email, false, coalesce(lsn, -1)
+  FROM all_events
+  WHERE arrival BETWEEN lo AND hi AND op &lt;&gt; 'd'
+  ORDER BY id, coalesce(lsn, -1) DESC
+  ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email, source_lsn = EXCLUDED.source_lsn
+    WHERE target_customers.source_lsn &lt; EXCLUDED.source_lsn;
+$$;</code></pre>
+    </details>
     <table>
       <caption>Results per sink variant (PASS or FAIL, with the reorder count)</caption>
       <thead>
@@ -495,15 +575,15 @@ resurrection: key 2 stays deleted        PASS  0 live rows for key 2</code></pre
           <td>PASS</td><td>PASS</td><td>PASS (0 differ)</td><td>PASS</td>
         </tr>
         <tr>
-          <th scope="row">Keep the newest <code>ts_ms</code> (a tie takes the later arrival)</th>
+          <th scope="row">B. Keep the newest <code>ts_ms</code> (<code>&lt;=</code>, so a tie takes the later delivery)</th>
           <td>PASS</td><td>PASS</td><td>FAIL (141 differ)</td><td>PASS</td>
         </tr>
         <tr>
-          <th scope="row">No guard: last delivery wins</th>
-          <td>FAIL</td><td>FAIL</td><td>FAIL (185 differ)</td><td>FAIL</td>
+          <th scope="row">A. No guard: last delivery wins</th>
+          <td>FAIL</td><td>FAIL</td><td>FAIL (188 differ)</td><td>FAIL</td>
         </tr>
         <tr>
-          <th scope="row">Guard on position, but delete removes the row</th>
+          <th scope="row">C. Guard on position, but delete removes the row</th>
           <td>FAIL</td><td>FAIL</td><td>FAIL (130 differ)</td><td>FAIL</td>
         </tr>
       </tbody>
@@ -511,7 +591,7 @@ resurrection: key 2 stays deleted        PASS  0 live rows for key 2</code></pre
     <p>
       The timestamp variant is the instructive row. Duplicate and resurrection tests pass it, because
       clocks usually agree with the log. Only the reorder test with a tied millisecond exposes it. A test
-      plan with the first two and without the third would call that sink correct.
+      plan with the first two and without the third would call that sink correct. The tie rule matters: with a strict <code>&lt;</code> in place of <code>&lt;=</code> the same variant fails 65 of 200 shuffles instead of 141, and it still fails.
     </p>
   </section>
 
@@ -522,18 +602,36 @@ resurrection: key 2 stays deleted        PASS  0 live rows for key 2</code></pre
       source offsets periodically (<code>offset.flush.interval.ms</code>, default 60000), so after a hard
       crash the connector resumes from the last recorded offset and re-emits what it produced since. Debezium
       says the number of duplicates depends on the flush period and the volume of changes just before the
-      crash; a graceful stop records offsets and produces none. The test is: burst, SIGKILL, restart, count
-      duplicates on the topic, then run the sink checks.
+      crash; a graceful stop records offsets and produces none. The test is: count the duplicates already on the topic, burst, SIGKILL, restart, require the count to grow,
+      then run the sink checks.
     </p>
     <details>
       <summary>crash.sh (lab stack; untested, see below)</summary>
       <pre><code class="language-bash">#!/usr/bin/env bash
-# crash.sh -- kill the Connect worker without a graceful stop, then count duplicates.
+# crash.sh -- kill the Connect worker without a graceful stop and check that
+# the crash really produced duplicate (key, lsn) pairs on the topic.
 # Names match the Kafka + Debezium lab: containers connect, kafka, postgres;
 # connector inventory-connector; topic dbserver1.public.products.
 set -euo pipefail
 TOPIC=dbserver1.public.products
 CONNECT_URL=http://localhost:8083
+
+# Number of (key, lsn) pairs that appear more than once on the topic. The
+# top-level ts_ms is the connector's processing time and differs on a
+# re-emission, so compare the key and source.lsn, never the whole line.
+count_dupes() {
+  # the consumer exits non-zero when --timeout-ms expires, which is expected
+  { docker-compose exec -T kafka kafka-console-consumer \
+      --bootstrap-server kafka:29092 --topic "$TOPIC" \
+      --from-beginning --timeout-ms 15000 2&gt;/dev/null || true; } \
+    | jq -r '(.payload // .) | select(.op != null and .source.lsn != null)
+             | "\((.after // .before).id)@\(.source.lsn)"' \
+    | sort | uniq -d | wc -l
+}
+
+# 0. Duplicates from earlier runs stay on the topic, so remember the count
+#    now and require it to grow.
+before=$(count_dupes)
 
 # 1. A burst of changes, a few seconds for them to reach Kafka, then SIGKILL.
 #    The wait must be shorter than offset.flush.interval.ms (60000 by default),
@@ -544,39 +642,47 @@ docker-compose exec -T -u postgres postgres psql -U start_data_engineer -d inven
 sleep 5
 docker kill connect
 
-# 2. Restart and wait for the task to be RUNNING again.
+# 2. Restart, then wait (at most 2 minutes) for the task to be RUNNING again.
+#    Stop early if it reports FAILED.
 docker start connect
-until curl -s "$CONNECT_URL/connectors/inventory-connector/status" \
-      | jq -e '.tasks[0].state == "RUNNING"' &gt;/dev/null 2&gt;&amp;1; do sleep 2; done
+for _ in $(seq 1 60); do
+  state=$(curl -s "$CONNECT_URL/connectors/inventory-connector/status" | jq -r '.tasks[0].state // "UNREACHABLE"' 2&gt;/dev/null || echo UNREACHABLE)
+  [ "$state" = "RUNNING" ] &amp;&amp; break
+  [ "$state" = "FAILED" ] &amp;&amp; { echo "task FAILED after restart"; exit 1; }
+  sleep 2
+done
+[ "$state" = "RUNNING" ] || { echo "task not RUNNING after 2 minutes ($state)"; exit 1; }
 
-# 3. Count (key, lsn) pairs that appear more than once on the topic. The
-#    top-level ts_ms is the connector's processing time and differs on a
-#    re-emission, so compare the key and source.lsn, never the whole line.
-dupes=$(docker-compose exec -T kafka kafka-console-consumer \
-          --bootstrap-server kafka:29092 --topic "$TOPIC" \
-          --from-beginning --timeout-ms 15000 2&gt;/dev/null \
-        | jq -r '(.payload // .) | select(.op != null)
-                 | "\((.after // .before).id)@\(.source.lsn)"' \
-        | sort | uniq -d | wc -l)
-echo "duplicated (key, lsn) pairs on the topic: $dupes"
+# 3. A RUNNING status right after the start can be stale, so do not trust it
+#    alone: poll the topic until the duplicate count grows (up to 60 seconds).
+after=$before
+for _ in $(seq 1 12); do
+  after=$(count_dupes)
+  [ "$after" -gt "$before" ] &amp;&amp; break
+  sleep 5
+done
+echo "duplicated (key, lsn) pairs on the topic: before=$before after=$after"
 
-# 4. A pass means nothing unless the crash actually produced duplicates.
-[ "$dupes" -ge 1 ] || { echo "no duplicates: the kill missed the window, rerun"; exit 2; }
+# 4. A pass means nothing unless this crash produced duplicates.
+[ "$after" -gt "$before" ] || { echo "no new duplicates: the kill missed the window, rerun"; exit 2; }
 
-# 5. Now run the sink's own checks (tests.sql, or your equivalent) against
-#    the target and expect them all to pass.</code></pre>
+# 5. The script stops here. Next, run the sink checks (tests.sql or your
+#    equivalent) against the target yourself and expect them all to pass.
+echo "duplicates observed; now run the sink checks"</code></pre>
     </details>
     <p>
       <strong>Untested.</strong> This needs the Docker lab from
-      <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a>, which was not run for this page.
-      Only the <code>jq</code> filter in step 3 was run, against the fixture, and it reports the redelivered
-      change as <code>1@120</code>. Container, connector and topic names are the lab's; change them for yours.
+      <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a>, which was not run for this page
+      (no Docker daemon was available). Only the <code>jq</code> filter in <code>count_dupes</code> was run,
+      against the fixture, and it reports the redelivered change as <code>1@120</code>. The script's timing
+      (the 5-second wait, the polling limits) is a guess. Container, connector and topic names are the lab's; change them for yours.
     </p>
     <p>
       <strong>The half you can run without Kafka</strong> is test 2: applying a batch, losing the consumer's
       offset commit, and applying the same batch again is exactly the duplicate test. The Kafka half
-      checks that duplicates occur at all. Step 4 of the script fails the run when none do, because a pass
-      with no duplicates tested nothing.
+      checks that duplicates occur at all. The script fails the run unless the duplicate count grew (earlier runs leave duplicates on the topic, so
+      an absolute count would pass a missed kill), because a pass with no duplicates tested nothing. It stops
+      there: run the sink checks yourself afterwards.
     </p>
     <p>
       <strong>On a broken sink.</strong> After the restart an unguarded sink shows extra rows or reverted
@@ -596,18 +702,18 @@ echo "duplicated (key, lsn) pairs on the topic: $dupes"
       <a href="{{ '/reconciliation-surgery/' | url }}">Reconciliation &amp; Offset Surgery</a>.)
     </p>
     <details open>
-      <summary>recon.sql (run after sink.sql and the apply)</summary>
+      <summary>recon.sql (run after sink.sql and <code>SELECT apply_range(1, 10);</code>)</summary>
       <pre><code class="language-sql">-- A stand-in for the source database (live rows only).
 CREATE TABLE source_customers (id int PRIMARY KEY, email text);
-INSERT INTO source_customers VALUES (1, 'a3@x.io'), (3, 'c@x.io');
+INSERT INTO source_customers VALUES (1, 'a3@x.io'), (3, 'c@x.io'), (4, 'd@x.io');
 
 -- (a) Counts: live rows only. A delete marker is not a row the source has.
 CREATE VIEW recon_counts AS
-SELECT (SELECT count(*) FROM source_customers)                AS source_rows,
+SELECT (SELECT count(*) FROM source_customers)                   AS source_rows,
        (SELECT count(*) FROM target_customers WHERE NOT deleted) AS target_live_rows;
 
 -- (b) Checksum per key range. Same query shape on both sides, ordered by key.
--- Bucket width 2 so the toy data spans two buckets; use 100000 or so for real.
+-- Bucket width 2 so the toy data spans three buckets; use 100000 or so for real.
 CREATE VIEW recon_digests AS
 WITH s AS (
   SELECT id / 2 AS bucket, count(*) AS n,
@@ -621,21 +727,24 @@ SELECT coalesce(s.bucket, t.bucket) AS bucket
 FROM s FULL JOIN t ON s.bucket = t.bucket
 WHERE s.digest IS DISTINCT FROM t.digest;
 
--- (c) Max position per key: the sink must hold the highest position the log has for each key.
+-- (c) Max position per key. Drive from the log: every key the log knows about
+-- must be in the sink at the log's highest position. A key missing from the
+-- sink shows up with sink_lsn NULL. (Position-less reads count as -1, as in apply_range.)
 CREATE VIEW recon_positions AS
-SELECT t.id, t.source_lsn AS sink_lsn, l.max_lsn AS log_lsn
-FROM target_customers t
-JOIN (SELECT id, max(lsn) AS max_lsn FROM all_events GROUP BY id) l USING (id)
-WHERE t.source_lsn &lt;&gt; l.max_lsn;</code></pre>
+SELECT l.id, t.source_lsn AS sink_lsn, l.max_lsn AS log_lsn
+FROM (SELECT id, coalesce(max(lsn), -1) AS max_lsn FROM all_events GROUP BY id) l
+LEFT JOIN target_customers t USING (id)
+WHERE t.source_lsn IS DISTINCT FROM l.max_lsn;</code></pre>
     </details>
-    <pre><code>in sync: counts 2/2; digest mismatches []; position mismatches []
-source changed an email, sink has not seen it: counts 2/2; digest mismatches [{"bucket":0}]; position mismatches []
-sink stuck on an older update: counts 2/2; digest mismatches [{"bucket":0}]; position mismatches [{"id":1,"sink_lsn":120,"log_lsn":130}]</code></pre>
-    <p>The three cases above are: in sync, the source changed and the sink has not seen it yet, and the sink stuck on an older update. Where each check lies:</p>
+    <pre><code>1 in sync: counts 3/3; bad buckets []; position mismatches []
+2 source changed, sink has not seen it: counts 3/3; bad buckets [0]; position mismatches []
+3 sink stuck on an older update: counts 3/3; bad buckets [0]; position mismatches [1:120/130]
+4 a key lost from the sink: counts 3/2; bad buckets [1]; position mismatches [3:null/90]</code></pre>
+    <p>The four cases above are: in sync; the source changed and the sink has not seen it yet; the sink stuck on an older update; and a key lost from the sink. Where each check lies:</p>
     <ul>
-      <li><strong>Counts</strong> read 2 and 2 in all three cases. Equal counts say nothing about content. Count live rows only: a delete marker is not a row the source has.</li>
-      <li><strong>Checksums per key range</strong> caught both content differences. They lie while data is in flight (the second case is indistinguishable from a normal delay), they need identical formatting on both sides (timestamp precision and float rounding cause false alarms), and a mismatching bucket tells you where to look, not which side is right.</li>
-      <li><strong>Max position per key</strong> compares the sink with the <em>event log</em>, not with the source. It caught the stuck sink and was blind to the second case, because the log did not yet contain the change. It is also wrong once the log has expired: if the log's maximum is lower than the sink's, flag that too (the query uses <code>&lt;&gt;</code>).</li>
+      <li><strong>Counts</strong> read 3 and 3 in the first three cases and only differed when a key was missing. Equal counts say nothing about content. Count live rows only: a delete marker is not a row the source has.</li>
+      <li><strong>Checksums per key range</strong> caught every difference, including the two content ones. They lie while data is in flight (the second case is indistinguishable from a normal delay), they need identical formatting on both sides (timestamp precision and float rounding cause false alarms), and a mismatching bucket tells you where to look, not which side is right.</li>
+      <li><strong>Max position per key</strong> compares the sink with the <em>event log</em>, not with the source. It caught the stuck sink and the lost key (the query starts from the log and uses a left join, so a key the sink lacks is reported with a NULL sink position), and was blind to the second case, because the log did not yet contain the change. It is also wrong once the log has expired: if the log's maximum is lower than the sink's, it flags that too, since it compares for inequality.</li>
       <li>All three compare two systems at slightly different moments. Run the check twice and act only on keys that mismatch both times.</li>
     </ul>
     <p>
@@ -828,13 +937,17 @@ FAIL  control: last arrival wins: 414/500 cases failed
     <h2 id="try-it-title">Try it in the playground</h2>
     <p>
       Open the <a href="{{ '/playground/' | url }}">Change Feed Playground</a> and find
-      <strong>Snapshot Replay</strong> in the scenario gallery (the filter box takes its name). Its operation list
-      contains an update to <code>LED-100</code> (version v2 at t=150), then an insert of the same key carrying
-      the older v1 values at t=190, then v3 at t=230. Between t=190 and t=230, a sink where the last delivery
-      wins shows v1 again; a sink that guards on position never goes backwards. That is test 3 in miniature.
-      <strong>Burst Updates</strong> is five operations on one key (an insert and four updates), a handy
-      sequence to shuffle and check against the property in test 7. Scenarios cannot be linked to by name (the <code>?scenario=</code>
-      parameter is for shared copies), so open the gallery and pick them.
+      <strong>Burst Updates</strong> in the scenario gallery (the filter box takes its name). It is five
+      operations on one key (an insert and four updates in quick succession), a handy sequence to shuffle in
+      your head and check against the property in test 7: whatever the delivery order, the last update by log
+      position is the final state.
+    </p>
+    <p>
+      Be clear about what the playground does not show yet: as far as that inventory records, no scenario there reproduces a stale or duplicate row
+      that a position guard would reject. <strong>Snapshot Replay</strong> looks like it might, but its second
+      insert of <code>LED-100</code> is an ordinary later source write with a later log position, so a position
+      guard applies it. The repository's playground demos inventory (docs/playground-demos-inventory-2026-10.md) describes it the same way. Scenarios cannot be linked to by
+      name either (the <code>?scenario=</code> parameter is for shared copies), so open the gallery and pick them.
     </p>
   </section>
 

@@ -428,11 +428,20 @@ intents:
         "testing debezium",
         "cdc testing strategy",
         "cdc test plan",
-        "how do i test",
-        "how to test",
+        "how do i test cdc",
+        "how to test cdc",
+        "how do i test debezium",
+        "how to test debezium",
+        "debezium testing",
         "contract test",
+        "contract tests",
         "testcontainers",
+        "testcontainers work",
+        "test containers",
         "test kafka connect",
+        "testing kafka connect",
+        "how to test kafka connect",
+        "how do i test kafka connect",
       ]
     modules: []
     answer: >
@@ -481,12 +490,26 @@ intents:
         "property based test",
         "property-based test",
         "property-based",
-        "resurrection",
-        "zombie row",
         "convergence test",
+        "late older update",
+        "delete then late",
         "kill the connector",
-        "how do i test",
-        "how to test",
+        "kill the",
+        "kill",
+        "sigkill",
+        "test connector restart",
+        "test connector crash",
+        "test connector",
+        "connector restart test",
+        "crash test",
+        "how do i test for duplicate",
+        "how to test for duplicate",
+        "how do i test out of order",
+        "how to test out of order",
+        "how do i test replay",
+        "how to test replay",
+        "how do i test idempotency",
+        "how to test idempotency",
       ]
     modules: []
     answer: >
@@ -513,8 +536,12 @@ intents:
         anchor: "#property-title"
         preview: Random logs against a reference model, with shrinking.
       - label: Crash and restart
+        url: /test-your-pipeline/
+        anchor: "#crash-title"
+        preview: Kill the connector mid-flight and count the duplicates.
+      - label: Offsets and replays
         url: /ops-offsets/
-        preview: Offsets and safe replays, the operational side of the crash test.
+        preview: The operational side of the crash test.
 
   - id: event_envelope
     triggers:
