@@ -151,12 +151,11 @@ describe("privacy page, rendered", () => {
     );
   });
 
-  it("names the privacy-enhanced YouTube host for the click-to-play player", () => {
-    const third = section(rendered, "third-parties");
-    const html = third || rendered;
-    expect(html).toContain("<strong>www.youtube-nocookie.com</strong>");
-    expect(html).toContain("<strong>img.youtube.com</strong>");
-    expect(html).not.toContain("<strong>www.youtube.com</strong>");
+  it("describes only the Copy Share Link control, which really exists", () => {
+    const pg = section(rendered, "playground");
+    expect(pg).toMatch(/"Copy Share\s+Link" stores a snapshot/);
+    expect(pg).not.toMatch(/Save\s+scenario/);
+    expect(read("playground/index.html")).not.toContain("btnSaveRemote");
   });
 
   it("qualifies the cookie claim and lists the event fields", () => {
@@ -183,10 +182,14 @@ describe("playground made-up-data notice", () => {
     for (const [note] of notes) {
       expect(note).toContain('role="note"');
       expect(note).toMatch(/Use made-up data only/);
-      expect(note).toMatch(/shared\s+server/);
+      expect(note).toMatch(
+        /Events and shared\s+scenarios are stored on a shared\s+server/,
+      );
+      expect(note).not.toMatch(/saved or shared/);
       expect(note).toMatch(/other visitors can see\s+the live event stream/);
-      expect(note).toMatch(/deleted after 30 days/);
+      expect(note).toMatch(/both are deleted after 30 days/);
       expect(note).toMatch(/share\s+links stop working after about 30 days/);
+      expect(note).toMatch(/browser's\s+copy stays on your device/);
     }
   });
 
