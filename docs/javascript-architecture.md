@@ -17,11 +17,9 @@ All modules use **ES Modules** (ESM) syntax and are bundled by **Vite** for prod
 ```
 src/assets/js/
 ├── app.js                    # Entry point / orchestrator
-├── search.js                 # Standalone search entry (Vite input)
 ├── local-progress.js         # localStorage-based progress
 ├── progress-ui.js            # Progress bar UI components
 ├── video-embed.js            # Lazy video embed loader
-├── web-vitals-dashboard.js   # Web Vitals reporting dashboard
 ├── modules/                  # Core UI modules
 │   ├── theme.js              # Theme (dark/light) management
 │   ├── navigation.js         # Mobile nav & dropdown menus
@@ -106,13 +104,11 @@ onReady(() => {
 
 Entry points defined in `vite.config.mjs`:
 
-| Entry                  | Source                                  | Output                                   |
-| ---------------------- | --------------------------------------- | ---------------------------------------- |
-| `app`                  | `src/assets/js/app.js`                  | `dist/js/app.[hash].js`                  |
-| `search`               | `src/assets/js/search.js`               | `dist/js/search.[hash].js`               |
-| `progress-ui`          | `src/assets/js/progress-ui.js`          | `dist/js/progress-ui.[hash].js`          |
-| `video-embed`          | `src/assets/js/video-embed.js`          | `dist/js/video-embed.[hash].js`          |
-| `web-vitals-dashboard` | `src/assets/js/web-vitals-dashboard.js` | `dist/js/web-vitals-dashboard.[hash].js` |
+| Entry         | Source                         | Output                          |
+| ------------- | ------------------------------ | ------------------------------- |
+| `app`         | `src/assets/js/app.js`         | `dist/js/app.[hash].js`         |
+| `progress-ui` | `src/assets/js/progress-ui.js` | `dist/js/progress-ui.[hash].js` |
+| `video-embed` | `src/assets/js/video-embed.js` | `dist/js/video-embed.[hash].js` |
 
 ### Asset Resolution
 

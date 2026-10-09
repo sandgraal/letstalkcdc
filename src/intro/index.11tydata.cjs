@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-05-13",
+  dateModified: "2026-08-26",
   seriesKey: "intro",
   schemaType: "TechArticle",
   schemaAbout: [

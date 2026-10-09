@@ -11,7 +11,8 @@
  *
  * Filters `collections.all` to items with a `seriesKey` set in their
  * `.11tydata.cjs` (every module page), sorts by `dateModified` desc
- * with `datePublished` as the tiebreaker, caps at 30 entries.
+ * with `datePublished` as the tiebreaker, capped at `feedLimit` (a
+ * ceiling kept above the module count, so no module is dropped).
  */
 const xmlEscape = (s) =>
   String(s ?? "")
@@ -34,11 +35,11 @@ module.exports = class {
     return {
       permalink: "/feed.xml",
       eleventyExcludeFromCollections: true,
-      // Cap how many items appear in the feed. Feed readers and
-      // search aggregators don't want every module on every fetch;
-      // 30 is the common ceiling and well above our current ~24
-      // series count.
-      feedLimit: 30,
+      // Safety ceiling, not a target. It must stay above the number of
+      // series modules (30 today): at exactly 30 the next module published
+      // silently dropped the oldest page from the feed (P16-10). A test
+      // fails if the ceiling is not strictly above the series count.
+      feedLimit: 100,
     };
   }
 
@@ -57,7 +58,7 @@ module.exports = class {
     const items = collections.all
       .filter((item) => item.data?.seriesKey && item.url)
       .sort((a, b) => new Date(itemDate(b)) - new Date(itemDate(a)))
-      .slice(0, feedLimit ?? 30);
+      .slice(0, feedLimit ?? 100);
 
     const newestDate = items.length ? itemDate(items[0]) : new Date();
 
