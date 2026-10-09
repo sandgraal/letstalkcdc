@@ -164,8 +164,8 @@
     {% endif %}
     {% if head_extra %}{{ head_extra | renderHeadExtra | safe }}{% endif %}
     {# Minimal inline critical CSS — sets page background and font defaults
-       so the brief window before the deferred stylesheets apply doesn't
-       flash white. Dark theme is the default; the theme-toggle script
+       so the brief window before the deferred page-level stylesheets apply
+       (head_extra links still use the preload swap) doesn't flash white. Dark theme is the default; the theme-toggle script
        (loaded as part of app.js) flips to light if the user previously
        chose it. ~250 bytes uncompressed. #}
     <style>
@@ -175,7 +175,7 @@
       body { font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; }
       /* Inline an a11y-passing link color so headless inspectors
          (pa11y) that catch the page between the page-load event and
-         the deferred-CSS onload-swap don't measure browser-default
+         a deferred page-level sheet's onload-swap don't measure browser-default
          blue (#0000EE). #6fd6f5 on #0a0e14 is ~9:1; #0a6d8f on the
          light ground #f4f7fb is ~4.7:1 — both clear WCAG AA and match
          the design system's --color-link in each theme. The light rule
@@ -187,14 +187,14 @@
       .skip-link { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
       .skip-link:focus, .skip-link:active { left: 1rem; top: 1rem; width: auto; height: auto; overflow: visible; z-index: 1000; }
     </style>
-    {# Render-blocking-resources fix: load the three site stylesheets via
-       rel=preload + onload, so they don't block first paint. <noscript>
-       provides the blocking fallback for JS-disabled browsers (correctness
-       beats perf score there). Lighthouse `render-blocking-resources`
-       audit on /intro/ was scoring 0 with the previous blocking links;
-       this pattern should clear it. #}
-    <link rel="preload" href="{{ '/assets/css/styles.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}"></noscript>
+    {# The site stylesheet is render-blocking on purpose. It used to load via
+       rel=preload + onload swap, which painted the unstyled page first (full
+       width .page-wrap, default type) and then re-flowed it when the swap
+       ran: one ~0.28 layout shift on /intro/ at a desktop viewport under Slow
+       4G + 4x CPU. styles.css is ~18 KB gzipped and was already fetched at
+       high priority by the preload, so blocking costs almost no FCP and
+       removes the shift. tests/unit/head-stylesheet.test.js pins this. #}
+    <link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
     {# Preload every self-hosted IBM Plex face that paints above the fold
        (P13-6): sans 400 body, 500 nav chips, 600 emphasis, 700 headings and
        the logo (h1 asks for 800, which resolves to 700), plus mono 400.
