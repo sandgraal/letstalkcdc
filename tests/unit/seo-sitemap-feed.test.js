@@ -6,8 +6,10 @@
  * The second half runs one real production Eleventy build into a scratch
  * directory (on a made-up host and prefix, so nothing here depends on the
  * live domain) and checks the three files against the pages they describe.
- * The playground is copied in by the deploy script, not by Eleventy, so it is
- * out of scope here (P16-11).
+ * The playground is copied in by the deploy script, not by Eleventy, so no
+ * built page backs its sitemap entry; it is listed from an explicit extra-URLs
+ * list in the template and checked separately (P16-11). Its published <head>
+ * is covered by tests/unit/playground-head.test.js.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -50,6 +52,9 @@ const parseXml = (xml) => {
 };
 const texts = (doc, tag) =>
   [...doc.getElementsByTagName(tag)].map((el) => el.textContent);
+
+// Not built by Eleventy: published by scripts/publish-playground.sh.
+const PLAYGROUND_LOC = `${BASE}/playground/`;
 
 describe("sitemap template rules", () => {
   const page = (url, data = {}, extra = {}) => ({
@@ -103,12 +108,26 @@ describe("sitemap template rules", () => {
       { ...page("/nourl/"), url: false },
     ]);
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-    expect(locs).toEqual([`${BASE}/keep/`]);
+    expect(locs).toEqual([`${BASE}/keep/`, PLAYGROUND_LOC]);
   });
 
   it("lists a URL once", () => {
     const xml = render([page("/a/"), page("/a/")]);
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    expect(locs).toEqual([`${BASE}/a/`, PLAYGROUND_LOC]);
+  });
+
+  it("lists the playground once, without a lastmod, even with no pages", () => {
+    const xml = render([]);
     expect(xml.match(/<loc>/g)).toHaveLength(1);
+    const entry = xml.match(
+      new RegExp(`<url>\\s*<loc>${PLAYGROUND_LOC}</loc>[\\s\\S]*?</url>`),
+    )[0];
+    expect(entry).not.toContain("lastmod");
+    const twice = render([
+      page("/playground/", { dateModified: "2026-01-01" }),
+    ]);
+    expect(twice.match(/<loc>/g)).toHaveLength(1);
   });
 });
 
@@ -202,6 +221,7 @@ describe("built site", () => {
     it("points every URL at a built page that is indexable and has a title", () => {
       const problems = [];
       for (const loc of texts(parseXml(sitemap), "loc")) {
+        if (loc === PLAYGROUND_LOC) continue; // checked below
         const file = fileFor(loc);
         const html = pages.get(file);
         if (!html) problems.push(`${loc}: no built page ${file}`);
@@ -215,7 +235,9 @@ describe("built site", () => {
 
     it("lists every indexable page the site builds, and only those", () => {
       const listed = new Set(
-        texts(parseXml(sitemap), "loc").map((loc) => fileFor(loc)),
+        texts(parseXml(sitemap), "loc")
+          .filter((loc) => loc !== PLAYGROUND_LOC)
+          .map((loc) => fileFor(loc)),
       );
       const indexable = [...pages]
         .filter(
@@ -225,6 +247,17 @@ describe("built site", () => {
         .map(([file]) => file);
       expect(indexable.filter((f) => !listed.has(f))).toEqual([]);
       expect([...listed].filter((f) => !indexable.includes(f))).toEqual([]);
+    });
+
+    it("lists the playground once, undated, on the configured host and prefix", () => {
+      const doc = parseXml(sitemap);
+      const urls = [...doc.getElementsByTagName("url")].filter(
+        (u) => u.getElementsByTagName("loc")[0].textContent === PLAYGROUND_LOC,
+      );
+      expect(urls).toHaveLength(1);
+      expect(urls[0].getElementsByTagName("lastmod")).toHaveLength(0);
+      // The page itself is not built here; Eleventy must not own that path.
+      expect(pages.has("playground/index.html")).toBe(false);
     });
 
     it("keeps the non-content pages out and marks them noindex", () => {
@@ -247,6 +280,7 @@ describe("built site", () => {
       );
       let checked = 0;
       for (const [loc, lastmod] of mods) {
+        if (loc === PLAYGROUND_LOC) continue; // not an Eleventy page
         const modified = modifiedOf(pages.get(fileFor(loc)));
         if (!modified) continue;
         checked += 1;

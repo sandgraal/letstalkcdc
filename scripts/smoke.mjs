@@ -402,7 +402,8 @@ for (const { file, expectedPath } of editLinkChecks) {
 const errataCalloutChecks = [
   { file: "intro/index.html", expectCallout: true },
   { file: "quickstarts/quickstart-postgres/index.html", expectCallout: true },
-  { file: "exactly-once/index.html", expectCallout: false },
+  { file: "exactly-once/index.html", expectCallout: true },
+  { file: "multi-tenancy/index.html", expectCallout: false },
 ];
 for (const { file, expectCallout } of errataCalloutChecks) {
   if (!existsSync(join(outputDir, file))) continue;
