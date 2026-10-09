@@ -1,0 +1,374 @@
+# Playground demos inventory and first labs — 2026-10 (P16-3)
+
+Scope: which lessons should get a "try it" link into `/playground/`, which
+named scenario each would use, where there is no suitable scenario, and a
+proposal for the first three new labs. **Docs only.** Nothing under
+`playground/`, `src/` or the plan was changed; any change under `playground/`
+needs the playground code owner first (CODEOWNERS has one catch-all entry,
+`* @sandgraal`; no separate playground owner is recorded).
+
+Method, so you can weigh the claims:
+
+- **Read** = I read the source (`playground/assets/shared-scenarios.js`,
+  `assets/app.js`, `web/App.tsx`, `src/modes/*`, `src/domain/storage.ts`,
+  `src/changefeed/model.ts`, `web/changefeed/*`, `index.html`) and the lesson
+  templates in `src/`.
+- **Replayed** = I ran the playground's own mode adapters
+  (`src/modes/logBased|queryBased|triggerBased`) and its sink
+  (`InMemoryTableStorage`) in Node against each scenario's `ops`, with the
+  app's default lane settings (polling 500 ms, trigger 250 ms / 8 ms
+  overhead, log 50 ms). This is **not** a browser run. It skips the React
+  controller layer, so counts could differ at the margins.
+- **Inferred** = reasoning from the above; labelled where it matters.
+- **Unverified pairing** = the scenario exists and I read it, but I did not
+  confirm in code or a replay that it shows what the prompt says.
+- Nothing here was run in a browser, and no anchor was checked in a built
+  `_site/`; anchors were checked as `id="..."` in the lesson `.njk` sources
+  at `48a4ddb`.
+
+## 1. Summary
+
+| #   | Finding                                                                                                                                                                                                                                                                                      | Basis    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1   | **No URL selects a named scenario.** The only scenario query parameter, `?scenario=`, is a _share id_ looked up in the Supabase `scenarios` table. A lesson can link to the page and a section, not to a scenario.                                                                           | Read     |
+| 2   | 11 shared scenarios (Compare methods tab, plus a "Use template" gallery) and 6 separate demo scenarios (Drive one feed tab). **No lesson links to the playground today** (only the nav menu and `/privacy/` do).                                                                             | Read     |
+| 3   | The playground's sink is an unconditional upsert (merge on arrival); a delete removes the row with no marker; no scenario delivers an event twice; no sink guard exists. **None of the three thesis items readers get wrong can be demonstrated, only the "unguarded" half of one of them.** | Read     |
+| 4   | Docs and copy promise controls that are not in the source: **"Drop snapshot rows" and "Dedupe on PK"** (README, `playground/docs/*`, `highlight` text of `snapshot-replay` and `snapshot-to-stream`). `rg -i "dedupe on pk\|drop snapshot"` finds them only in docs, README, tests and copy. | Read     |
+| 5   | The playground's own checks disagree with the site's thesis: the Compare tab's `orderingOk` is `ts_ms`-based, and the Drive-one-feed consumer applies by `commitTs` then `lsn`. A "correct by log position" run can read "Ordering: KO".                                                     | Read     |
+| 6   | The Drive-one-feed "dropped events" counter (`broker.dropped`) is initialised to 0 and never incremented, so "Event Drops & Faults" can never show a drop count even though events are dropped.                                                                                              | Read     |
+| 7   | Seed `rows` are not loaded into the Compare lanes (`startSnapshot([])`), so a scenario that deletes or updates a seed-only row produces an event with no prior state (e.g. `snapshot-replay` deleting `LED-101` yields a delete event with no key; replay: lane emits it, sink ignores it).  | Replayed |
+| 8   | The closest existing "stale write over newer state" is `snapshot-replay`: the log lane's sink goes `LED-100` 12,750 (v2) -> 12,500 (v1, re-inserted snapshot row) -> 12,980 (v3).                                                                                                            | Replayed |
+| 9   | Three new labs (section 5) share one missing primitive: **redeliver an earlier log record**, plus a per-lane **sink guard mode**. Build it once, and each lab is then scenario data.                                                                                                         | Inferred |
+
+## 2. How a reader reaches a scenario today
+
+Published path: `scripts/publish-playground.sh` copies `playground/index.html`
+and `playground/assets/` to `_site/playground/`, so the page is
+`https://sandgraal.github.io/letstalkcdc/playground/`. In a template, use
+`{{ '/playground/' | url }}` (the `base.njk` nav already does); append a
+fragment after the filter as `materialization/index.njk` does:
+`{{ '/playground/' | url }}#simulator`. (Read.)
+
+Fragments that exist in `playground/index.html` (Read): `#templateTitle`
+(scenario gallery heading), `#playground` (workspace), `#simulator`
+(interactive simulator, both tabs). Tabs and scenario choice are **not**
+addressable.
+
+What I searched for and did **not** find (Read): every use of `location`,
+`URLSearchParams`, `hash` and `history` in `assets/*.js`, `web/**`, `src/**`
+and the inline scripts in `index.html`. The only parameters read are:
+
+| Parameter               | Effect                                                                                                                                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `?scenario=<id>`        | **Share id**, resolved by `rpc("get_scenario")` against Supabase (`app.js:850`, `:1968`). Suppresses onboarding. A named id such as `crud-basic` is not a share id; inferred outcome: "Unable to load shared scenario" status (error path read, not executed). |
+| `?resetOnboarding`      | Clears the onboarding flag.                                                                                                                                                                                                                                    |
+| `?flag=` / `?flags=a,b` | Feature flags (`assets/feature-flags.js`).                                                                                                                                                                                                                     |
+
+How a reader launches a scenario by hand (Read):
+
+1. **Compare methods tab** (scenarios from `shared-scenarios.js`): open
+   `#simulator`, choose the **Compare methods** tab, pick the scenario in the
+   dropdown (or a "scenario recommender" button), press **Start**. The choice
+   persists in `localStorage` key `cdc_comparator_prefs_v1`. This is where the
+   scenario `ops` actually run.
+2. **Scenario gallery** ("Use template", `#templateTitle`): loads the scenario's
+   `schema` and seed `rows` into the workspace table. **It does not run the
+   `ops`**: every scenario has `events: []`, and `ops` are used only for the
+   "Preview" list and "Download JSON". (Read: `applyScenarioTemplate`, grep of
+   `.ops`.)
+3. **Drive one feed tab** (default tab): six buttons from
+   `web/changefeed/DemoScenarios.ts`, section 3.2.
+
+Programmatic hooks that already exist (Read; a future link loader could use
+them): `window.dispatchEvent(new CustomEvent("cdc:apply-scenario-template",
+{ detail: { id } }))` loads a template into the workspace. There is no
+equivalent for the Compare tab; the scenario id comes from `localStorage`.
+
+**Proposed link form** (needs the playground owner; not live): add a
+namespaced parameter, `?try=<scenario-id>`, that selects the tab and scenario
+and does nothing else, so the final links are
+`{{ '/playground/' | url }}?try=crud-basic#simulator`. It must not reuse
+`?scenario=` (share ids). Changing `web/App.tsx` means rebuilding the
+committed bundles in `playground/assets/generated/`, which the
+`playground-generated-bundles` workflow guards. **Until then**, every link
+below works as plain `{{ '/playground/' | url }}#simulator`, and the reader
+prompt names the scenario to pick.
+
+## 3. Scenario inventory
+
+### 3.1 The 11 shared scenarios (`playground/assets/shared-scenarios.js`)
+
+`ops` = source operations replayed in the Compare tab; seed rows are not
+loaded into the lanes (finding 7). Lane columns are events each lane emitted
+in a replay at default settings (Replayed). `D` = delete events.
+
+| id                          | Title                       | Difficulty   | Ops (deletes) | Polling / Trigger / Log events | What it actually shows (Replayed unless noted)                                                                                                                                                                                                                                | Copy that overstates                                                                                        |
+| --------------------------- | --------------------------- | ------------ | ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `crud-basic`                | CRUD Basic                  | beginner     | 3 (1)         | 1 / 3 / 3                      | Insert, update, delete of one row. Log and trigger report all three; polling reports one event (the delete happened before the next poll, and soft deletes are off). Sink ends empty.                                                                                         | none                                                                                                        |
+| `omnichannel-orders`        | Omnichannel Orders          | intermediate | 5 (1)         | 2 / 5 / 5                      | Status transitions on one order plus a child table; polling collapses the transitions; the child-table delete is only in log/trigger.                                                                                                                                         | none                                                                                                        |
+| `real-time-payments`        | Real-time Payments          | intermediate | 6 (1)         | 1 / 6 / 6                      | Payment lifecycle with a risk-review row that is created, approved and deleted. Polling sees one event.                                                                                                                                                                       | "Demonstrating idempotent updates": nothing is replayed or repeated                                         |
+| `outbox-relay`              | Outbox Relay                | advanced     | 8 (1)         | 3 / 8 / 8                      | Order updates alongside `outbox_events` rows with stable ids (`EVT-221-1..3`); the first outbox row is later deleted. Log sink ends with 2 outbox rows.                                                                                                                       | "ordering + dedupe safety": no relay, no duplicate, no dedupe                                               |
+| `iot-telemetry`             | IoT Telemetry               | intermediate | 4 (1)         | 1 / 4 / 4                      | Append-style readings, one flagged, the oldest hard-deleted. Keys embed a timestamp (`DEV-5@10`).                                                                                                                                                                             | "soft-delete vs. log consistency and clock controls": the delete is a hard delete; no clock control is used |
+| `retention-erasure`         | Retention & Erasure         | advanced     | 13 (3)        | 5 / 13 / 13                    | Masking updates then a hard delete for `C-300`; `C-301` is "erased" by update with no delete. Earlier events for `C-300` stay in the event list after its delete. The masked email is never in an event, because seed rows are not loaded (finding 7).                        | "drop snapshot and dedupe controls" (finding 4)                                                             |
+| `schema-evolution`          | Schema Evolution            | intermediate | 4 (0)         | 2 / 4 / 4                      | Inserts and updates only. The schema change comes from the **Schema walkthrough** (add/drop column mid-run), which both the log and query adapters turn into a schema-change event (Read: `applySchemaChange`; the log emits it at once, polling queues it to the next poll). | none                                                                                                        |
+| `orders-items-transactions` | Orders + Items Transactions | advanced     | 4 (0)         | 4 / 4 / 4                      | One 3-row transaction (`TX-720`: order + 2 items), then an update. Use the **Apply on commit** toggle.                                                                                                                                                                        | none                                                                                                        |
+| `snapshot-replay`           | Snapshot Replay             | advanced     | 5 (1)         | 2 / 5 / 5                      | `LED-100` update to v2, then a re-insert of the old v1 row, then v3. Log sink regresses 12,750 -> 12,500 -> 12,980. Delete of seed-only `LED-101` emits a keyless delete.                                                                                                     | "Drop-snapshot and dedupe controls for idempotent apply": no such controls (finding 4)                      |
+| `burst-updates`             | Burst Updates               | intermediate | 5 (0)         | 1 / 5 / 5                      | Five changes to one key (`W-1`) within 220 ms. Log shows all five in order; polling shows the last.                                                                                                                                                                           | none                                                                                                        |
+| `snapshot-to-stream`        | Snapshot -> Stream Handoff  | advanced     | 5 (1)         | 2 / 5 / 5                      | Updates, an insert and a delete across three accounts, each row carrying a rising `last_change_id` (`chg-095` ... `chg-107`). No snapshot phase and no handoff is modelled (finding 7).                                                                                       | "drop-snapshot + dedupe toggles; resume semantics" (finding 4)                                              |
+
+Facts across all 11 (Read, plus a script over `ops`): no scenario has an
+operation on a key after that key's delete; none has a non-monotonic `t`; no
+scenario repeats an event. The only repeated key is `LED-100` in
+`snapshot-replay`. `playground/src/data/scenarios.json` (7 older entries) is
+referenced nowhere (`rg "scenarios\.json" playground` finds nothing) and is
+not what the app loads.
+
+### 3.2 The 6 Drive-one-feed demos (`web/changefeed/DemoScenarios.ts`)
+
+A separate reducer (`src/changefeed/model.ts`): source -> 3 broker partitions
+-> consumer. Read only; these were not replayed.
+
+| id                        | Title                   | What it does                                      | Note                                                                                                                                                                                       |
+| ------------------------- | ----------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `multi-table-transaction` | Multi-Table Transaction | apply-on-commit, place an order (order + 3 items) | Transaction atomicity                                                                                                                                                                      |
+| `schema-drift-demo`       | Schema Evolution        | drift on, insert 2 customers, update one          | New column `priority_flag` flows to the consumer                                                                                                                                           |
+| `commit-lag-demo`         | Commit Lag & Drift      | commit drift on, inserts, update, order           | Drift inserts events at the head of a partition queue. **Do not link from `/partitioning/#ordering`**: it looks like within-partition reordering, which the lesson says Kafka does not do. |
+| `backlog-recovery`        | Backlog Recovery        | inject 12 events, throttle apply to 1 per tick    | Shows lag and backlog growing then draining                                                                                                                                                |
+| `fault-injection`         | Event Drops & Faults    | 20% drop probability, 3 customers, an order       | Consumer tables lose rows. The "dropped" counter stays 0 (finding 6)                                                                                                                       |
+| `apply-policy-compare`    | Apply Policies          | apply-as-polled, place an order                   | Partial transactions visible                                                                                                                                                               |
+
+## 4. Lesson map (all 26 entries of `src/_data/series.mjs`)
+
+Link rule: today `{{ '/playground/' | url }}#simulator`; target
+`{{ '/playground/' | url }}?try=<scenario>#simulator` once the owner adds
+`?try=`. "Insert after" is an element id found in the lesson's `.njk`.
+Fit: **Good** = replayed or read and it shows what the prompt claims;
+**Partial** = shows a related effect, caveat given; **Unverified pairing**;
+**None** = no suitable scenario.
+
+| #   | Lesson                             | Insert after                              | Scenario                                                      | Reader prompt (one sentence)                                                                                                                                             | Fit                                                                                                                                 |
+| --- | ---------------------------------- | ----------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `/intro/`                          | `#methods-comparison`                     | `crud-basic`                                                  | Run CRUD Basic with all three lanes and count events: log and trigger each see the insert, update and delete, polling sees one.                                          | Good (Replayed)                                                                                                                     |
+| 2   | `/event-envelope/`                 | `#anatomy-title`                          | `crud-basic`                                                  | In the log lane's event list, open the three events and find which ones have a `before` and which have no `after`.                                                       | Good (Read: `buildRowEvent`)                                                                                                        |
+| 2b  | `/event-envelope/`                 | `#ordering-title`                         | `burst-updates`                                               | Run Burst Updates and read the log lane: five changes to one key arrive in the order they were committed.                                                                | Good (Replayed). The UI's ordering chip is `ts_ms`-based (finding 5); do not point readers at it                                    |
+| 2c  | `/event-envelope/`                 | `#delivery-title`                         | Lab 1 (new)                                                   | Replay the same change twice and watch what an unguarded sink does.                                                                                                      | New lab                                                                                                                             |
+| 3   | `/materialization/`                | `#merge-title`                            | `burst-updates`                                               | Five events, one key: a MERGE that keeps the latest per key leaves exactly the row the sink ends with (`status = ready`).                                                | Good (Replayed sink)                                                                                                                |
+| 3b  | `/materialization/`                | `#merge-title` (step 2, ordering)         | Lab 2 (new)                                                   | Two changes in the same millisecond: which one is newer depends on whether you sort by `ts_ms` or by log position.                                                       | New lab                                                                                                                             |
+| 3c  | `/materialization/`                | `#merge-title` (step 4, delete markers)   | Lab 3 (new)                                                   | Delete a row, then deliver an older update late, with and without a delete marker.                                                                                       | New lab                                                                                                                             |
+| 3d  | `/materialization/`                | `#late-arrivals-title`                    | Lab 2 (new)                                                   | As 3b.                                                                                                                                                                   | New lab                                                                                                                             |
+| 4   | `/snapshotting/`                   | `#idempotent`                             | `snapshot-replay` (stopgap), then Lab 3                       | Watch `LED-100` in the log lane: an old snapshot row is re-applied over a newer update and the sink briefly goes backwards.                                              | Partial: stale overwrite is shown, **not** a resurrected delete or a guard                                                          |
+| 4b  | `/snapshotting/`                   | `#watermarks`                             | none                                                          | (None.) `snapshot-to-stream` has no snapshot phase or watermark; the playground cannot show the low/high-watermark window.                                               | None                                                                                                                                |
+| 5   | `/exactly-once/`                   | `#idempotency`                            | Lab 1 (new)                                                   | Compare an append-only sink, a plain upsert and a guarded sink after a rewind replays the last three changes.                                                            | New lab. The page already has an inline crash/redeliver demo (`#demo`); the lab extends it with the stale-overwrite and guard cases |
+| 5b  | `/exactly-once/`                   | `#outbox`                                 | `outbox-relay`                                                | Run Outbox Relay and compare `orders` with `outbox_events`: each business event has its own stable id, which is what a downstream sink would dedupe on.                  | Partial: shows the ids, not any dedupe or relay                                                                                     |
+| 6   | `/multi-tenancy/`                  | -                                         | none                                                          | (None.) Isolation and topic math; no tenant concept in the playground.                                                                                                   | None                                                                                                                                |
+| 7   | `/partitioning/`                   | `#recon` ("Making Sinks Bulletproof")     | Labs 1 and 2 (new)                                            | See why the version guard needs a log-position column: replay an old change and compare sinks that do and do not check it.                                               | New lab                                                                                                                             |
+| 8   | `/schema-evolution/`               | `#cdc-notes`                              | `schema-evolution` + Schema walkthrough                       | Add a column mid-run and watch the schema-change event appear in the log lane at once and in the polling lane at its next poll; existing rows show `null` until updated. | Good (Read adapters; not replayed with the walkthrough)                                                                             |
+| 9   | `/ops-offsets/`                    | `#drills-title`                           | Lab 1 (new); stopgap `snapshot-replay` + event-log **Replay** | Rewind the consumer and replay the last changes; check the sink still ends correct and never goes backwards.                                                             | New lab. Stopgap: Partial (Read)                                                                                                    |
+| 10  | `/observability/`                  | `#signals-title`                          | Drive-one-feed `backlog-recovery`                             | Throttle the consumer, watch lag and backlog climb, then drain.                                                                                                          | Unverified pairing (Read `deriveLag`; not run)                                                                                      |
+| 11  | `/non-relational/`                 | -                                         | none                                                          | (None.) No resume tokens, shard retention or per-node commitlog model.                                                                                                   | None                                                                                                                                |
+| 12  | `/security/`                       | `#erasure-title`                          | `retention-erasure`                                           | After the delete at t=150, scroll the log lane: the earlier events for `C-300` are still there, so deleting the row did not remove its history.                          | Partial (Replayed): history stays; the events carry no email, so PII in the log is not shown                                        |
+| 13  | `/reconciliation-surgery/`         | `#when-reconciliation-title`              | Drive-one-feed `fault-injection`                              | Run it and compare the source rows with the consumer tables: the rows missing downstream are what a diff would find.                                                     | Unverified pairing (Read reducer; the dropped counter is broken, finding 6)                                                         |
+| 14  | `/use-cases/`                      | -                                         | none                                                          | (None.) Survey page.                                                                                                                                                     | None                                                                                                                                |
+| 15  | `/strategy/`                       | -                                         | none                                                          | (None.)                                                                                                                                                                  | None                                                                                                                                |
+| 16  | `/tooling/`                        | -                                         | none                                                          | (None.) Vendor survey.                                                                                                                                                   | None                                                                                                                                |
+| 17  | `/case-study/`                     | -                                         | none                                                          | (None.)                                                                                                                                                                  | None                                                                                                                                |
+| 18  | `/lab-kafka-debezium/`             | `#verify-sink`                            | Lab 1 (new), secondary link                                   | Reproduce the restart-and-replay result from the Docker lab without the Docker stack.                                                                                    | New lab                                                                                                                             |
+| 19  | `/quickstarts/`                    | -                                         | none                                                          | (None.) Setup instructions.                                                                                                                                              | None                                                                                                                                |
+| 20  | `/tests/`                          | -                                         | none                                                          | (None.) Shell acceptance tests against a real stack.                                                                                                                     | None                                                                                                                                |
+| 21  | `/troubleshooting/failure-drills/` | `#drill-4-title` (offset wipe and replay) | Lab 1 (new)                                                   | Predict the sink after the replay, then compare with the lab.                                                                                                            | New lab                                                                                                                             |
+| 21b | `/troubleshooting/failure-drills/` | `#drill-1-title` (backpressure)           | Drive-one-feed `backlog-recovery`                             | Same as row 10.                                                                                                                                                          | Unverified pairing                                                                                                                  |
+| 21c | `/troubleshooting/failure-drills/` | `#drill-3-title` (schema drift)           | `schema-evolution` + walkthrough                              | As row 8.                                                                                                                                                                | Good (Read)                                                                                                                         |
+| 22  | `/cloud-labs/`                     | -                                         | none                                                          | (None.) Vendor labs.                                                                                                                                                     | None                                                                                                                                |
+| 23  | `/connector-builder/`              | -                                         | none                                                          | (None.) Has its own tool.                                                                                                                                                | None                                                                                                                                |
+| 24  | `/dlq-triage/`                     | -                                         | none                                                          | (None.) Has its own tool.                                                                                                                                                | None                                                                                                                                |
+| 25  | `/debezium-decoder/`               | -                                         | none                                                          | (None.) Has its own tool.                                                                                                                                                | None                                                                                                                                |
+| 26  | `/errata/`                         | -                                         | none                                                          | (None.) Corrections index.                                                                                                                                               | None                                                                                                                                |
+
+Counts (by lesson, 26 in total): 11 lessons get a link to an existing
+scenario (`/intro/`, `/event-envelope/`, `/materialization/`,
+`/snapshotting/`, `/exactly-once/`, `/schema-evolution/`, `/ops-offsets/`
+(stopgap), `/observability/`, `/security/`, `/reconciliation-surgery/`,
+`/troubleshooting/failure-drills/`); 2 more (`/partitioning/`,
+`/lab-kafka-debezium/`) are served only by a new lab; 13 get no link. Of the
+11, five are Good (intro, event-envelope, materialization, schema-evolution,
+failure-drills drill 3), four Partial (snapshotting, exactly-once outbox,
+ops-offsets stopgap, security) and two are unverified pairings
+(observability, reconciliation-surgery).
+
+Also relevant but not in `series.mjs` (not assessed): `/merge-cookbook/`
+("handling hard parts": replays after a crash; soft vs hard deletes) is the
+natural place for Labs 1 and 3 as a second link.
+
+## 5. Gaps
+
+| Lesson claim readers get wrong                                      | Scenario that would be needed (event sequence -> expected observation)                                                                                                         | Covered by                     |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| Delivery is at-least-once, so the same change can arrive twice      | insert, update, update, then re-deliver the last two -> append sink has 5 rows for 3 changes; upsert ends right but shows the old value mid-replay; guarded sink skips 2       | Lab 1                          |
+| Order by log position, not `ts_ms`                                  | two updates to one key with equal `ts_ms`, then a replay of the first with a later `ts_ms` -> a `ts_ms`-ordered sink ends on the wrong value; a position-ordered sink does not | Lab 2                          |
+| A delete needs a marker, or a late older update brings the row back | insert, update, delete, then re-deliver the update -> physical-delete sink shows the row again; marker sink shows none and keeps a marker                                      | Lab 3                          |
+| Watermark-based snapshot (`/snapshotting/#watermarks`)              | snapshot chunk read between a low and a high watermark with concurrent writes -> rows superseded in the window are dropped, the rest kept                                      | Later (not in the first three) |
+| Exactly-once does not extend across systems                         | two hops, each at-least-once, with a crash between sink write and offset commit -> duplicate in the second hop unless the sink is idempotent                                   | Later; Lab 1 covers one hop    |
+| Cassandra last-write-wins, MongoDB `updateLookup` newer state       | cell-level timestamps; event vs re-read state                                                                                                                                  | Later                          |
+| Hard delete invisible to polling                                    | already covered by `crud-basic` (polling emits 1 of 3)                                                                                                                         | Exists                         |
+| Backpressure / lag                                                  | `backlog-recovery` exists; unverified pairing                                                                                                                                  | Exists                         |
+
+## 6. The first three labs (Phase 12 style)
+
+Each lab must hold the site thesis: delivery is **at-least-once**; correctness
+comes from an **idempotent sink keyed on the primary key and ordered by log
+position, not `ts_ms`**; deletes are kept as **markers**; end-to-end
+exactly-once across systems is not achievable. All data is made up.
+
+### 6.0 The shared building block (build once)
+
+Today (Read) a scenario `op` is a _source_ operation, and the sink is an
+unconditional merge. That cannot express "the source did not change but the
+delivery repeated". Proposal, for the playground owner to accept or replace:
+
+1. **A delivery-layer op** in the scenario format:
+   `{ t: 400, op: "redeliver", ref: 1, ts_ms?: 340 }`, meaning "the log lane
+   delivers the record produced by `ops[1]` again at time `t`", with the
+   _original_ log position and optionally a new `ts_ms`. Only the log lane
+   honours it (polling has no log position; show "n/a" there). It touches the
+   closed `SourceOp` union (`sim/core/types.ts`, `src/domain/types.ts`) and
+   `ScenarioRunner`.
+2. **A log position on events.** The domain `Event` has no position (`offset?`
+   is never set by `logBased.ts`); stamp the WAL index as `position`.
+3. **A per-lane sink mode** in `InMemoryTableStorage.applyEvent`, selected by
+   a small control: `append` (naive insert, one row per delivery), `upsert`
+   (today's behaviour), `guarded-ts` (apply only if `ts_ms` is newer),
+   `guarded` (apply only if `position` is newer; skip and count otherwise),
+   and `guarded+marker` (a delete stores a marker with its position instead of
+   removing the row; readers see non-deleted rows).
+4. A "skipped" counter and a "regressed" marker on the sink panel.
+
+Zero-code fallback (data only): add scenarios that use the existing format.
+This gives only the _unguarded_ half and conflates source and delivery (the
+source adapter would also see the "replayed" op), so it is a stopgap, not a lab.
+
+Alternative worth deciding first: build the same three labs as inline lesson
+widgets like `src/assets/js/pages/cdc-event-demo.js`. That avoids the
+playground's database contact on load (section 7), needs no coordination
+under `playground/`, and the pages `/exactly-once/` and `/partitioning/`
+already host inline demos. The cost is a second implementation of the sink
+logic.
+
+### Lab 1 — Replay: unguarded vs guarded sink
+
+- **Outcome:** the reader sees that a consumer restart redelivers changes, and
+  that a plain upsert is correct only at the end, while a position guard is
+  correct throughout.
+- **Scenario** `replay-guard` (difficulty beginner): table `orders`
+  (`id` pk, `status`, `total`). Ops: `t100` insert `ORD-1` (`created`, 40),
+  `t200` update (`paid`), `t300` update (`shipped`), `t400` redeliver `ref 1`,
+  `t410` redeliver `ref 2` (a rewind to before the `paid` change).
+- **Accept:** (a) `append`: after `t410` the sink has 5 rows for 3 changes;
+  (b) `upsert`: final row `shipped`, but the sink showed `paid` between
+  `t400` and `t410` (regressed marker lit); (c) `guarded`: final row
+  `shipped`, no regression, "skipped: 2"; (d) the polling lane shows "n/a".
+- **Built how:** scenario object in `shared-scenarios.js` using the
+  6.0 `redeliver` op and sink modes.
+- **Links from:** `/exactly-once/#idempotency`, `/event-envelope/#delivery-title`,
+  `/ops-offsets/#drills-title`, `/troubleshooting/failure-drills/#drill-4-title`,
+  `/partitioning/#recon`, `/lab-kafka-debezium/#verify-sink` (secondary),
+  `/merge-cookbook/` (secondary).
+
+### Lab 2 — Which change is newer: `ts_ms` or log position?
+
+- **Outcome:** the reader sees that equal or replay-stamped `ts_ms` values
+  pick the wrong winner, and log position does not.
+- **Scenario** `ts-vs-position` (intermediate): table `orders`. Ops: `t100`
+  insert `ORD-7` (`created`), `t205` update (`paid`), `t205` update
+  (`refunded`) (same millisecond, later log position), `t340` redeliver
+  `ref 1` with `ts_ms: 340`.
+- **Accept:** `guarded-ts` ends on `paid` (tie broken arbitrarily, then the
+  replay carries the latest `ts_ms`); `guarded` (position) ends on
+  `refunded` and skips the replay. The Compare tab's "Ordering" chip must not
+  be shown as the verdict here (finding 5).
+- **Open point (Inferred):** the lesson text calls `ts_ms` a commit time that
+  can tie. Whether a real connector stamps a _fresh_ `ts_ms` on a replayed
+  record is Debezium behaviour I did not verify in this repo; confirm
+  against the connector docs, or keep only the tie case.
+- **Built how:** as Lab 1, plus `ts_ms` on the `redeliver` op and the
+  `guarded-ts` mode.
+- **Links from:** `/materialization/#merge-title` (step 2),
+  `/materialization/#late-arrivals-title`, `/partitioning/#recon`,
+  `/event-envelope/#ordering-title`.
+
+### Lab 3 — Delete, then a late older update
+
+- **Outcome:** the reader sees a deleted row come back, and sees a delete
+  marker prevent it.
+- **Scenario** `delete-then-late-update` (intermediate): table `orders`. Ops:
+  `t100` insert `ORD-9` (`created`), `t200` update (`packed`), `t300` delete,
+  `t400` redeliver `ref 1`.
+- **Accept:** `upsert` + physical delete: one visible row (`packed`) after
+  `t400` (resurrected); `guarded+marker`: zero visible rows, one marker with
+  position 3, "skipped: 1". A note beside the control states the lesson's own
+  caveat: physical removal is safe only when nothing can replay older events.
+- **Built how:** as Lab 1, plus the `guarded+marker` mode.
+- **Links from:** `/materialization/#merge-title` (step 4),
+  `/snapshotting/#idempotent`, `/event-envelope/#ordering-title` (tombstone
+  bullet), `/merge-cookbook/` ("soft deletes vs hard deletes").
+
+Order of delivery: 6.0, Lab 1, Lab 3, Lab 2 (Lab 2 carries the open point).
+Size: 6.0 is M (several files plus regenerated bundles); each lab after it is
+S (one scenario object, one lesson link, one test).
+
+## 7. Constraints
+
+- **Shared server, 30 days.** The playground stores visitor-entered events and
+  saved scenarios in a shared Supabase database and deletes them after 30 days
+  (about 31 with the daily job); `/privacy/#playground` and the "Use made-up
+  data only" notes in `playground/index.html` say so (Read).
+- **What writes and what only reads (Read).** Writes go to `events` from the
+  workspace Insert / Update / Delete / Emit snapshot / Autofill buttons
+  (`publishEvent`) and to `scenarios` from Save / Share. **Loading a template,
+  the Compare tab, the Drive-one-feed tab and the event-log Replay button
+  write nothing** (the Compare/Drive code has no Supabase calls; telemetry has
+  no network call). So a "try it" link should land on `#simulator` and the
+  prompt should use only preloaded scenarios, never ask the reader to type
+  data, and never point at "Save" or "Share".
+- **Loading the page already contacts the database** (reachability probe and
+  a realtime subscription) and loads Supabase from jsDelivr; the host sees the
+  visitor's IP. `/privacy/` says this. Any lesson link should say it opens a
+  separate tool that contacts a third-party database, and no link should be
+  made automatic (no iframe, no prefetch).
+- **Inbound stream (Inferred from `initBackend`).** The workspace appends
+  other visitors' `events` to its own event log when they arrive. A learner who
+  lands in the workspace, rather than the simulator, may see strangers'
+  entries. Another reason to deep-link to `#simulator`.
+- **Coordination.** Any `?try=`, `redeliver` op, sink mode or fix to findings
+  4, 5, 6 and 7 is a change under `playground/` and needs the playground code
+  owner first. `playground/docs/` wording is open to the conductor; code is
+  not (plan decisions table).
+- **Generated bundles.** `web/**` and `src/**` changes need the committed
+  bundles in `playground/assets/generated/` rebuilt (CI guards it).
+- **The playground is a separate site in tone.** Its README, docs and copy
+  teach "dedupe on PK" as the answer; the lessons teach version guards on log
+  position. A link into it should not outrun the lessons until findings 4 and 5
+  are reconciled.
+
+## 8. Questions for the playground owner
+
+1. Accept `?try=<scenario-id>` (tab + scenario only), or prefer another form?
+2. Accept the 6.0 primitive (`redeliver` op, `position` on events, sink modes),
+   or should the three labs be inline lesson widgets instead?
+3. Fix, remove or implement the "Drop snapshot rows" / "Dedupe on PK" claims
+   (finding 4)?
+4. Is the `ts_ms`-based `orderingOk` and `commitTs`-first apply order intended
+   (finding 5)? The lessons say position, not timestamp.
+5. Increment `broker.dropped` when `shouldDrop` fires (finding 6)?
+6. Should seed rows be loaded into the Compare lanes (finding 7)?
+
+## 9. Evidence and how to re-run
+
+- Scenario facts: `playground/assets/shared-scenarios.js` (11 entries).
+- Replay table in 3.1: the playground adapters and `InMemoryTableStorage`
+  bundled with esbuild and run in Node 24 over each scenario's `ops`, ticking
+  10 ms to 4 s, config as in the method note above. The script lives in a
+  session scratch directory, not in the repo. A durable version would be a
+  Vitest case beside `playground/src/test/unit/scenarios.test.ts`, which is a
+  change under `playground/` and therefore for the owner.
+- Anchors: `id="..."` in `src/<lesson>/index.njk` at `48a4ddb`; not checked in
+  a built `_site/`.
