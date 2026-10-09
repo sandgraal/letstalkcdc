@@ -562,6 +562,11 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
             comparison and cannot resurrect the row. Delivery is
             at-least-once, so expect to see the same row more than once.
           </aside>
+          <p>
+            Re-running a snapshot later for a new sink, a schema change or a
+            lost slot is a task of its own:
+            <a href="{{ '/backfill-resnapshot/' | url }}">Backfill and Re-Snapshot Safely</a>.
+          </p>
         </section>
 
         <section aria-labelledby="observability">

@@ -1215,6 +1215,115 @@ intents:
         anchor: "#failover"
         preview: Failover slots by Postgres version, with caveats.
 
+  - id: backfill_reload
+    triggers:
+      [
+        "backfill",
+        "how do i backfill",
+        "how to backfill",
+        "back-fill",
+        "re-snapshot",
+        "how do i re-snapshot",
+        "how to re-snapshot",
+        "resnapshot",
+        "re snapshot",
+        "reload history",
+        "reload the sink",
+        "reload a table",
+        "reload a sink",
+        "execute-snapshot",
+        "ad hoc snapshot",
+        "blocking snapshot",
+        "snapshot signal",
+        "signal table",
+        "snapshot.mode",
+        "which snapshot.mode",
+        "what snapshot.mode",
+        "snapshot mode",
+        "when_needed",
+        "chunk size",
+        "data-collections",
+        "rebuild the sink",
+        "rebuild a sink",
+      ]
+    modules: ["backfill-resnapshot"]
+    answer: >
+      To reload history into a sink you can re-snapshot the connector
+      (snapshot.mode), send an execute-snapshot signal for an incremental or
+      blocking snapshot of chosen tables, replay the Kafka topic from an
+      earlier offset, or load from the source with SQL. An incremental
+      snapshot keeps streaming and appends to the existing topic, a blocking
+      snapshot pauses streaming, and a replay is limited by topic retention.
+      Whichever you pick, delivery is at-least-once, so the sink must be keyed
+      on the primary key, apply a row only when its source log position is
+      higher than the stored one, and keep deletes as markers. Check the names
+      and defaults against your Debezium version.
+    links:
+      - label: Backfill and re-snapshot
+        url: /backfill-resnapshot/
+        anchor: "#choices"
+        preview: The five ways to reload, side by side.
+      - label: The runbook
+        url: /backfill-resnapshot/
+        anchor: "#runbook"
+        preview: Steps from naming the reason to verifying the result.
+      - label: Snapshotting
+        url: /snapshotting/
+        anchor: "#watermarks"
+        preview: How incremental snapshots use watermarks.
+
+  - id: backfill_overwrite
+    triggers:
+      [
+        "backfill overwrote",
+        "backfill overwrites",
+        "backfill overwrite",
+        "snapshot overwrote",
+        "snapshot overwrites",
+        "overwrote newer",
+        "overwrites newer",
+        "overwrote the newer",
+        "stale snapshot",
+        "old snapshot rows",
+        "ghost row",
+        "ghost rows",
+        "no longer exist at the source",
+        "deleted at the source",
+        "backfill while streaming",
+        "backfill and live",
+        "backfill duplicates",
+        "safe to rerun a backfill",
+        "rerun a backfill",
+        "re-run a backfill",
+        "run a backfill twice",
+        "run the backfill twice",
+      ]
+    modules: ["backfill-resnapshot"]
+    answer: >
+      A backfill sends old content at the same time as the live stream, so
+      the sink has to decide which version wins. Stamp the backfill rows with
+      the snapshot's source log position and apply a row only when its
+      position is higher than the stored one. A backfill row then cannot
+      overwrite a newer streamed change, and running the backfill twice
+      changes nothing. A snapshot only carries rows that exist now, so rows
+      deleted at the source during a gap stay live in the sink until you sweep
+      them: compare the sink's keys with the source's keys for the backfill
+      scope and mark the extras as deleted with a position. Verify with counts
+      and checksums by key range.
+    links:
+      - label: The correctness rule
+        url: /backfill-resnapshot/
+        anchor: "#rule"
+        preview: The position guard that makes a backfill safe.
+      - label: Rows the snapshot never mentions
+        url: /backfill-resnapshot/
+        anchor: "#ghosts"
+        preview: Sweeping rows that were deleted during a gap.
+      - label: Verify the result
+        url: /backfill-resnapshot/
+        anchor: "#verify"
+        preview: Counts, checksums and suspect rows after a backfill.
+
   - id: start_here
     triggers:
       [

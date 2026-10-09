@@ -118,6 +118,15 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "backfill-resnapshot",
+    title: "Backfill and Re-Snapshot Safely",
+    description:
+      "Reload history into a sink without overwriting newer changes: snapshot modes, incremental snapshots, Kafka replay, the position guard and a runbook.",
+    href: "backfill-resnapshot/",
+    tags: [{ label: "Ops", variant: "tag-ops" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "non-relational",
     title: "CDC Beyond Relational Databases",
     description:
