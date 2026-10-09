@@ -30,8 +30,8 @@ const render = (supabase) => env.renderString(fragment, { supabase });
 /** Run the emitted <script> body against a fake window and return it. */
 function evaluate(html) {
   const body = html
-    .replace(/^[\s\S]*?<script>/, "")
-    .replace(/<\/script>[\s\S]*$/, "");
+    .replace(/^[\s\S]*?<script\b[^>]*>/i, "")
+    .replace(/<\/script\b[^>]*>[\s\S]*$/i, "");
   const win = {};
   new Function("window", body)(win);
   return win;
