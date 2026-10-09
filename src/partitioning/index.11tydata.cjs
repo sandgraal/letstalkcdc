@@ -66,7 +66,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "If a single entity generates massive traffic (e.g., a celebrity user_id), you can use a composite key that adds entropy (user_id + session_id) or implement key salting (appending a hash suffix). This spreads load across partitions, but per-entity order then holds only within each sub-stream; consumers that need the entity's full order must rebuild it from the source log position, which the event carries.",
+          "If a single entity generates massive traffic (e.g., a celebrity user_id), you can use a composite key that adds entropy (user_id + session_id) or implement key salting (appending a hash suffix). This spreads load across partitions, but per-entity order then holds only within each sub-stream; a streaming consumer cannot recreate the intermediate order without unbounded buffering. The sink's log-position guard keeps the final row correct, not the sequence of changes in between.",
       },
       {
         question: "What is an audit loop in the context of CDC partitioning?",

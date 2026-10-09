@@ -68,7 +68,8 @@ head_extra: |
             <code>hash(key) mod partition_count</code>). New events for a key
             can land on a different partition than its older ones, so per-key
             order is no longer guaranteed across that change. Plan the
-            partition count up front, or cut over to a new topic.
+            partition count up front, or cut over to a new topic after the old topic is
+            drained (per-key order across the cutover holds only then).
           </li>
         </ul>
       </section>
@@ -289,7 +290,7 @@ head_extra: |
           rewind, a repartition or a re-snapshot can show your sink an older
           change after a newer one. Correctness comes from an idempotent sink
           keyed on the primary key and ordered by the source's log position,
-          so your target table needs two key columns:
+          so your target table needs a primary key and a log-position column:
         </p>
         <ol>
           <li>
@@ -298,22 +299,82 @@ head_extra: |
           <li>
             <strong><code>source_lsn</code> (the log position):</strong> The
             position of the change in the source's transaction log, copied
-            from the event as-is: the LSN (PostgreSQL, SQL Server), the SCN
-            (Oracle) or the binlog file and position (MySQL, compared as a
-            pair). It increases in commit order for a given key, so it says
-            which change is newer. A Kafka offset is also a position, but it
-            only orders records within one partition of one topic, so use it
-            only when every event for a key is read from that same partition
-            and the topic is never rebuilt.
+            from the event as-is. It increases in commit order for a given
+            key within one source log (row locks serialise writers per key),
+            so it says which change is newer. Pick the field that is unique
+            per change:
+            <ul>
+              <li>
+                <strong>PostgreSQL:</strong> <code>source.lsn</code>, where the
+                connector provides a per-change position (positions are
+                unique in practice, but verify this for your connector
+                version).
+              </li>
+              <li>
+                <strong>SQL Server:</strong> <code>change_lsn</code>, not
+                <code>commit_lsn</code>, which every change in a transaction
+                shares; optionally with the event's index within the
+                transaction.
+              </li>
+              <li>
+                <strong>Oracle:</strong> <code>scn</code> plus the event's
+                position in the transaction, not <code>commit_scn</code>
+                (shared), because <code>scn</code> can repeat across changes in
+                one transaction.
+              </li>
+              <li>
+                <strong>MySQL:</strong> binlog file, <code>pos</code> and the
+                row index, because several rows can share one binlog row
+                event.
+              </li>
+            </ul>
           </li>
         </ol>
         <p>
-          Do <em>not</em> use a timestamp such as <code>ts_ms</code> as the
-          version. Clocks on different hosts disagree (clock skew); several
-          changes to one row can share the same millisecond, so the comparison
-          ties; and a replayed or re-snapshotted event can carry a later time
-          than changes already applied, so a stale value would win. A log
-          position has none of those problems. Keep <code>ts_ms</code> for
+          <strong>Uniqueness.</strong> The guard below assumes the position is
+          unique per change for a key, or is paired with a sequence (as the
+          BigQuery example does with <code>seq</code>). If an INSERT and an
+          UPDATE of one key in one transaction share a position, a strict
+          <code>&lt;</code> skips the UPDATE and the row stays stale. An equal
+          position is skipped as a replay only when it is the same change.
+        </p>
+        <p>
+          <strong>Comparing.</strong> Compare positions numerically or as a
+          typed tuple, never as free text: the text LSNs
+          <code>0/9</code> and <code>0/10</code> sort the wrong way round,
+          SQL Server LSNs and Oracle SCNs arrive as strings in Debezium, and
+          MySQL needs a (file, pos[, row]) comparison.
+        </p>
+        <p>
+          <strong>Lineage.</strong> Positions are comparable only within one
+          source log lineage. After a failover to a promoted replica, a
+          restore, a new replication slot, or a changed binlog file or server,
+          they can restart or jump, and a guard that compares the old stored
+          value silently skips every new change (a known risk after a MySQL
+          failover). Version the lineage, for example a
+          <code>source_epoch</code> column that you compare first, then the
+          position. A GTID is not listed above because GTIDs are comparable
+          only within one server UUID, and file plus position is likewise not
+          portable across servers. A primary-key change is a delete plus an
+          insert, so &ldquo;for a given key&rdquo; does not span it.
+        </p>
+        <p>
+          <strong>Not a Kafka offset.</strong> A Kafka offset is a position in
+          the Kafka log, not the source log. A connector restart re-emits
+          earlier changes at new, higher offsets, so an offset guard would
+          accept them as newer. Use offsets for consumer progress only, never
+          as the row version.
+        </p>
+        <p>
+          <strong>Not a timestamp.</strong> Do <em>not</em> use
+          <code>ts_ms</code> as the version. Clocks on different hosts
+          disagree (clock skew), and several changes to one row can share the
+          same millisecond, so the comparison ties. The envelope
+          <code>ts_ms</code> (when the connector processed the event) is later
+          on every replay, and snapshot rows carry the snapshot time, so a
+          stale value can win. <code>source.ts_ms</code> keeps the original
+          commit time on a replayed streaming event, but it is still
+          millisecond-coarse and clock-dependent. Keep <code>ts_ms</code> for
           lag metrics and, at most, as a secondary tie-break.
         </p>
         <p>
@@ -324,8 +385,18 @@ head_extra: |
             >only update the target row if the incoming event's log position is
             greater than the position already stored.</strong
           >
-          A replayed event carries the same position it had the first time, so
-          the strict comparison skips it: the replay changes nothing.
+          A replay of the same change carries the same position it had the
+          first time, so the strict comparison skips it.
+        </p>
+        <p>
+          <strong>Deletes.</strong> A physical <code>DELETE</code> removes the
+          version column along with the row, so a late, replayed older update
+          would match nothing, hit <code>WHEN NOT MATCHED</code> and resurrect
+          the row. Retain a tombstone version instead: a deleted flag plus the
+          delete's position on the row, or a separate tombstone table keyed on
+          the primary key. This is the same &ldquo;tombstones that remove or
+          flag&rdquo; rule as on
+          <a href="{{ '/materialization/' | url }}">Materialization</a>.
         </p>
         <p>
           <strong>Watermark (aggregates only):</strong> event time is the right
@@ -337,9 +408,12 @@ head_extra: |
         </p>
         <div class="codebox">
           <h3>Production-Ready Idempotent Sink Pattern (Postgres)</h3>
-          <pre><code>-- Assumes target table has a primary key `id` and a column `source_lsn`
--- (BIGINT) holding the log position carried in the event, e.g. Debezium
--- `source.lsn`. It is a log position, not a clock time.
+          <pre><code>-- Assumes target table has a primary key `id`, a `deleted` flag and a column
+-- `source_lsn` (BIGINT) holding the log position carried in the event, e.g.
+-- Debezium `source.lsn`. It is a log position, not a clock time.
+-- Assumes the connector provides a per-change position (unique in practice
+-- for Postgres). If several changes to one `id` can share a position, add a
+-- `seq` tie-break as in the BigQuery example below.
 -- MERGE applies as a single atomic statement, but it is NOT immune to
 -- concurrency: under READ COMMITTED a racing INSERT of the same `id` can
 -- still raise a unique_violation. For high-contention upserts prefer
@@ -349,25 +423,31 @@ MERGE INTO target_table T
 USING (
   SELECT
     :entity_id AS id,
-    :payload AS payload,
+    :payload AS payload,  -- NULL for a delete
+    :op AS op,
     :source_lsn AS lsn
 ) AS S
 ON (T.id = S.id)
 WHEN MATCHED AND T.source_lsn < S.lsn THEN
   -- Only update if the incoming event is later in the log;
-  -- a replay (same lsn) matches nothing and changes nothing
+  -- a replay of the same change (same lsn) matches nothing.
+  -- A delete is kept as a tombstone (deleted = true + its lsn), so a late
+  -- older update cannot resurrect the row.
   UPDATE SET
     payload = S.payload,
+    deleted = (S.op = 'd'),
     source_lsn = S.lsn
 WHEN NOT MATCHED THEN
-  -- If the record doesn't exist, create it
-  INSERT (id, payload, source_lsn)
-  VALUES (S.id, S.payload, S.lsn);</code></pre>
+  -- If the record doesn't exist, create it (a delete creates a tombstone)
+  INSERT (id, payload, deleted, source_lsn)
+  VALUES (S.id, S.payload, (S.op = 'd'), S.lsn);</code></pre>
         </div>
         <div class="codebox">
           <h3>Tie-break within one log position (sequence) — BigQuery example</h3>
           <pre><code>-- `lsn` is the source log position. `seq` orders events that share one
--- position, e.g. the event's index within its transaction.
+-- position, e.g. the event's index within its transaction (Debezium
+-- `transaction.total_order`, where the connector provides one; it needs
+-- transaction metadata enabled).
 MERGE `dw.target` T
 USING (SELECT @id AS id, @lsn AS lsn, @seq AS seq, @payload AS p) S
 ON T.id = S.id
@@ -378,8 +458,10 @@ WHEN NOT MATCHED THEN
         </div>
         <p class="muted">
           A primary-key upsert with a log-position guard makes the sink
-          idempotent: transport stays at-least-once, and duplicates and late
-          arrivals become no-ops. That is exactly-once <em>processing</em>.
+          idempotent for updates: transport stays at-least-once, and duplicates
+          and late arrivals become no-ops (deletes need the retained tombstone
+          version described above). That is exactly-once
+          <em>processing</em>.
           End-to-end exactly-once across independent systems is not achievable;
           see
           <a href="{{ '/exactly-once/' | url }}">Exactly-Once Semantics</a>.
