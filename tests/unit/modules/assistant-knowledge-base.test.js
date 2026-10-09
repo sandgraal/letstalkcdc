@@ -60,6 +60,21 @@ describe("assistant knowledge base – beginner questions", () => {
     },
   );
 
+  it("answers every beginner phrasing on the intro, overview and strategy pages", () => {
+    // These are the pages cdc_basics is boosted on. start_here has no module
+    // boost of its own, so a phrasing that spells out "change data capture"
+    // is allowed to fall to cdc_basics there (as it always did on main);
+    // everything else must still reach start_here.
+    for (const module of ["intro", "overview", "strategy"]) {
+      for (const query of BEGINNER) {
+        const expected = /change data capture/i.test(query)
+          ? ["start_here", "cdc_basics"]
+          : ["start_here"];
+        expect(expected, `${query} @ ${module}`).toContain(idOf(query, module));
+      }
+    }
+  });
+
   it("points at the intro, its learning path and the overview", () => {
     const urls = byId("start_here").links.map((l) => l.url + (l.anchor || ""));
     expect(urls).toContain("/intro/");
@@ -122,6 +137,83 @@ describe("assistant knowledge base – beginner prefixes never steal a topic", (
     ["how do I snapshot with pii columns", "snapshot_strategy"],
   ])("%j -> %s (reviewer's cases)", (query, expected) => {
     expect(idOf(query)).toBe(expected);
+  });
+});
+
+describe("assistant knowledge base – module boosts never let a new intent steal a topic", () => {
+  // Winners below are main's (pre-P15-11). start_here and cdc_methods used to
+  // carry a +10 boost on intro/overview/strategy and intro, and one generic
+  // trigger then beat single-trigger topical intents there.
+  const PAGES = ["intro", "overview", "strategy"];
+  const TOPICAL = [
+    ["beginner guide to snapshots", "snapshot_strategy"],
+    ["from scratch snapshot", "snapshot_strategy"],
+    ["explain offsets for beginners", "offset_management"],
+    ["beginner tutorial on offsets", "offset_management"],
+    ["set up debezium from scratch", "connector_setup"],
+    ["kafka connect for beginners", "connector_setup"],
+    ["beginner connector failed", "connector_setup"],
+    ["new to this and my connector failed", "connector_setup"],
+    ["build a materialized view from scratch", "materialization"],
+    ["i am new to cdc, how do i handle duplicates", "exactly_once"],
+    ["newbie question about lag", "lag_handling"],
+  ];
+  const CASES = PAGES.flatMap((page) =>
+    TOPICAL.map(([q, id]) => [q, page, id]),
+  );
+
+  it.each(CASES)("%j on %s -> %s", (query, page, expected) => {
+    expect(idOf(query, page)).toBe(expected);
+  });
+
+  it.each([
+    ["transaction log growing troubleshooting", "troubleshooting"],
+    ["binlog retention lag", "lag_handling"],
+    ["redo log oracle setup", "connector_setup"],
+    ["binlog position offsets", "offset_management"],
+  ])("%j on intro -> %s", (query, expected) => {
+    expect(idOf(query, "intro")).toBe(expected);
+  });
+
+  it.each(["materialization", "exactly-once", "partitioning", "intro"])(
+    "'binlog position offsets' is about offsets on %s, not idempotent sinks",
+    (page) => {
+      expect(idOf("binlog position offsets", page)).toBe("offset_management");
+    },
+  );
+
+  it("no new intent carries a module boost", () => {
+    const original = new Set([
+      "cdc_basics",
+      "lag_handling",
+      "snapshot_strategy",
+      "offset_management",
+      "schema_changes",
+      "exactly_once",
+      "multi_tenancy",
+      "partitioning",
+      "connector_setup",
+      "use_cases",
+      "troubleshooting",
+      "materialization",
+      "observability",
+    ]);
+    for (const intent of kb.intents.filter((i) => !original.has(i.id))) {
+      expect(intent.modules, intent.id).toEqual([]);
+    }
+  });
+});
+
+describe("assistant knowledge base – delivery-guarantee phrasings", () => {
+  it.each([
+    "at-least-once delivery",
+    "what is idempotency in cdc",
+    "dedupe events",
+    "why do i get the same event twice",
+    "what guarantees does cdc give",
+    "effectively once",
+  ])("%j reaches the exactly-once answer", (query) => {
+    expect(idOf(query)).toBe("exactly_once");
   });
 });
 

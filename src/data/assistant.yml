@@ -147,7 +147,7 @@ intents:
         "dual write",
         "dual-write",
       ]
-    modules: ["exactly-once"]
+    modules: []
     answer: >
       The transactional outbox solves the dual-write problem. The application
       writes its business data and an event row to an outbox table in one
@@ -173,15 +173,17 @@ intents:
         "idempotent write",
         "idempotent upsert",
         "ts_ms",
-        "log position",
         "order by lsn",
+        "ordered by log position",
+        "order by log position",
+        "ordering by log position",
         "out of order",
         "out-of-order",
         "late arriving",
         "late-arriving",
         "arrival order",
       ]
-    modules: ["materialization", "exactly-once", "partitioning"]
+    modules: []
     answer: >
       CDC delivery is at-least-once, and end-to-end exactly-once across
       systems is not achievable in general, so correctness comes from an
@@ -214,6 +216,12 @@ intents:
         "deduplication",
         "at least once",
         "delivery guarantee",
+        "at-least-once",
+        "idempotency",
+        "dedupe",
+        "effectively once",
+        "same event twice",
+        "what guarantees",
       ]
     modules: ["exactly-once", "event-envelope"]
     answer: >
@@ -411,7 +419,7 @@ intents:
         "before/after",
         "tombstone",
       ]
-    modules: ["event-envelope"]
+    modules: []
     answer: >
       A change event is an envelope, not just the new row. It carries op
       (insert, update or delete), ts_ms, a source block with the log position
@@ -454,7 +462,7 @@ intents:
         "encrypt",
         "access control",
       ]
-    modules: ["security"]
+    modules: []
     answer: >
       CDC copies your most sensitive tables into systems with different access
       control and a longer memory. Filter sensitive columns at the connector -
@@ -494,7 +502,7 @@ intents:
         "nonrelational",
         "beyond relational",
       ]
-    modules: ["non-relational"]
+    modules: []
     answer: >
       The log-based idea carries to MongoDB, DynamoDB and Cassandra, but each
       relaxes a guarantee relational CDC gave you. MongoDB change streams read
@@ -536,7 +544,7 @@ intents:
         "without kafka",
         "transports",
       ]
-    modules: ["event-envelope"]
+    modules: []
     answer: >
       The change event envelope travels over other transports, but the ordering
       and retention guarantees underneath it differ, and your sink depends on
@@ -574,12 +582,8 @@ intents:
         "ways to do cdc",
         "kinds of cdc",
         "which cdc method",
-        "transaction log",
-        "write-ahead log",
-        "binlog",
-        "redo log",
       ]
-    modules: ["intro"]
+    modules: []
     answer: >
       There are three ways to capture changes. Log-based CDC reads committed
       changes from the database transaction log (PostgreSQL WAL, MySQL binlog,
@@ -620,7 +624,7 @@ intents:
         "build vs buy",
         "buy vs build",
       ]
-    modules: ["tooling"]
+    modules: []
     answer: >
       Every platform compared here delivers at-least-once at the wire, and none
       gives end-to-end exactly-once across systems. Correctness comes from an
@@ -691,11 +695,14 @@ intents:
         "order should i read",
         "curriculum",
         "learning path",
+        "what to learn",
+        "what to learn after",
+        "what comes after",
         "learning roadmap",
         "roadmap",
         "from scratch",
       ]
-    modules: ["intro", "overview", "strategy"]
+    modules: []
     answer: >
       New to CDC? Follow the learning path in the introduction's 'How to use
       this series' section. Step 1 is the Series Overview, to align on
