@@ -1,8 +1,8 @@
 ---
 layout: base.njk
-title: "CDC Tooling Comparison"
+title: "CDC Tool Profiles"
 canonicalPath: "/tooling/"
-description: "A comparison of CDC tools and platforms: open-source Debezium, managed AWS DMS, and commercial options such as Fivetran and GoldenGate."
+description: "What each CDC tool is and does: profiles of open-source, managed cloud and commercial platforms, from Debezium to GoldenGate. To choose between them, compare."
 scripts:
   - "/assets/js/lib/quiz.js"
 
@@ -13,11 +13,22 @@ scripts:
 
 {{ ui.hero(heroConfig) | safe }}
 
+      <div class="container">
       <article class="prose">
         <p>
-          The market for Change Data Capture tools has matured significantly,
-          offering a range of solutions that cater to different needs. Choosing
-          the right tool involves balancing control, cost, and convenience.
+          This page is a set of <strong>tool profiles</strong>: what each CDC
+          tool is, how it captures changes, and where it is strong or weak.
+          If you already know your constraints and want to pick one, skip to
+          the <a href="{{ '/compare/#decide' | url }}">decision guide</a> and
+          the <a href="{{ '/compare/#matrix' | url }}">comparison matrix</a> on
+          the Compare page, which lines up six platforms across deployment,
+          method, delivery semantics, latency, and cost.
+        </p>
+        <p>
+          One thing holds for every tool below: delivery is at-least-once, and
+          none of them gives you exactly-once across systems. The sink has to be
+          idempotent, upserting on the primary key and ordered by the source log
+          position, not by a timestamp.
         </p>
 
         <h2 id="open-source">Open-Source Champions: Power and Flexibility</h2>
@@ -26,7 +37,7 @@ scripts:
           data engineering capabilities that require deep customization and want
           to avoid vendor lock-in.
         </p>
-        <h3>Debezium</h3>
+        <h3 id="debezium">Debezium</h3>
         <p>
           Debezium has emerged as the de facto open-source standard for
           log-based CDC. It is a distributed platform of connectors that runs on
@@ -50,12 +61,16 @@ scripts:
             the underlying infrastructure, including Kafka and Kafka Connect,
             which requires significant technical expertise.
           </li>
+          <li>
+            <strong>Best for:</strong> Teams with strong data engineering and
+            Kafka expertise who want maximum control and zero licensing fees.
+          </li>
         </ul>
 
-        <h3>Airbyte (OSS core + Cloud)</h3>
+        <h3 id="airbyte">Airbyte (self-hosted + Cloud)</h3>
         <p>
           Airbyte provides a large connector catalog (including CDC connectors)
-          with an OSS core and a hosted “Cloud” offering. CDC depth varies by
+          with a self-hosted edition (public code under the Elastic License 2.0, which is source-available rather than open source) and a hosted “Cloud” offering. CDC depth varies by
           source; many pipelines are log-based, others are polling.
         </p>
         <ul>
@@ -69,7 +84,7 @@ scripts:
           </li>
         </ul>
 
-        <h3>Maxwell’s Daemon (MySQL)</h3>
+        <h3 id="maxwell">Maxwell’s Daemon (MySQL)</h3>
         <p>
           A lightweight MySQL binlog tailer that emits JSON change events to
           Kafka/Kinesis. Simpler than Debezium but focused on MySQL only.
@@ -92,10 +107,11 @@ scripts:
           complexity of infrastructure management, allowing teams to set up data
           pipelines quickly.
         </p>
-        <h3>AWS Database Migration Service (DMS)</h3>
+        <h3 id="aws-dms">AWS Database Migration Service (DMS)</h3>
         <p>
-          AWS DMS is a fully managed service that supports a wide variety of
-          migrations and replications. It can capture changes from sources like
+          AWS DMS is a fully managed service, a proprietary AWS service and not
+          an open-source project, that supports a wide variety of migrations
+          and replications. It can capture changes from sources like
           Oracle, PostgreSQL, and SQL Server and deliver them to targets across
           the AWS ecosystem, such as Amazon S3 and Redshift.
         </p>
@@ -103,8 +119,9 @@ scripts:
           <li>
             <strong>Pros:</strong> Its main advantages are simplicity and deep
             integration with the AWS ecosystem. It has a pay-as-you-go pricing
-            model and eliminates the need for users to manage any underlying
-            servers or software.
+            model (per hour for an on-demand replication instance, or per
+            DCU-hour with DMS Serverless) and eliminates the need for users to
+            manage any underlying servers or software.
           </li>
           <li>
             <strong>Cons:</strong> Performance can be variable, and it is
@@ -112,13 +129,17 @@ scripts:
             to vendor lock-in. It can also have limitations regarding the
             capture of certain database features or DDL changes.
           </li>
+          <li>
+            <strong>Best for:</strong> Teams heavily invested in AWS who want
+            simplicity, speed of deployment, and tight cloud integration.
+          </li>
         </ul>
 
-        <h3>Google Cloud Datastream</h3>
+        <h3 id="datastream">Google Cloud Datastream</h3>
         <p>
-          Serverless, log-based CDC into Google Cloud (BigQuery, Cloud SQL,
-          GCS). Integrates with Dataflow templates for transformations and
-          Warehouse MERGE patterns.
+          Serverless, log-based CDC that writes straight into BigQuery or Cloud
+          Storage. Dataflow templates carry changes on to other destinations,
+          such as Cloud SQL and Spanner, and support warehouse MERGE patterns.
         </p>
         <ul>
           <li>
@@ -131,11 +152,14 @@ scripts:
           </li>
         </ul>
 
-        <h3>Azure (ADF/Synapse) with CDC</h3>
+        <h3 id="azure-cdc">Azure (ADF/Synapse) with CDC</h3>
         <p>
-          Azure Data Factory / Synapse pipelines support change capture for SQL
-          Server/Azure SQL and integration with Event Hubs & Data Lake for
-          downstream processing.
+          Azure Data Factory and Synapse pipelines have a built-in change data
+          capture resource for sources such as SQL Server, Azure SQL Database,
+          and Azure SQL Managed Instance, so you can set up capture without
+          designing a pipeline. Microsoft documents that factory CDC resource
+          as in public preview, and it does not support a self-hosted
+          integration runtime.
         </p>
         <ul>
           <li>
@@ -148,10 +172,10 @@ scripts:
           </li>
         </ul>
 
-        <h3>Confluent Cloud (Managed Connect + Debezium)</h3>
+        <h3 id="confluent-cloud">Confluent Cloud (Managed Connect + Debezium)</h3>
         <p>
-          Managed Kafka Connect with official Debezium-based source connectors
-          and schema registry. Reduces the ops burden of running Connect while
+          Managed Kafka Connect with fully managed Debezium-based CDC source
+          connectors (for example PostgreSQL) and a schema registry. Reduces the ops burden of running Connect while
           keeping the open-source connector model.
         </p>
         <ul>
@@ -174,119 +198,57 @@ scripts:
         </p>
         <ul>
           <li>
-            <strong>Oracle GoldenGate:</strong> A long-standing leader in data
+            <strong id="goldengate">Oracle GoldenGate:</strong> A long-standing leader in data
             replication, known for high performance and reliability, especially
             in Oracle environments.
           </li>
           <li>
-            <strong>Fivetran:</strong> A modern, cloud-native ELT platform
-            celebrated for its ease of use and a massive library of pre-built
-            connectors. Its consumption-based pricing can become costly at high
-            volumes.
+            <strong id="fivetran">Fivetran:</strong> A modern, fully managed,
+            multi-cloud SaaS ELT platform celebrated for its ease of use and a
+            massive library of pre-built connectors. Its log-based CDC is fully
+            abstracted from the user, and the consumption-based pricing
+            (Monthly Active Rows) can become costly at high volumes. Best for
+            teams of any size that want a hands-off, no-code pipeline into a
+            cloud warehouse or lake.
           </li>
           <li>
-            <strong>Striim:</strong> A unified platform that combines CDC with
+            <strong id="striim">Striim:</strong> A unified platform that combines CDC with
             real-time, in-flight stream processing and analytics, focused on
             powering operational use cases that demand sub-second latency.
           </li>
           <li>
-            <strong>Qlik Replicate (formerly Attunity):</strong> An
+            <strong id="qlik-replicate">Qlik Replicate (formerly Attunity):</strong> An
             enterprise-grade solution known for its broad platform support and
             an intuitive graphical user interface that simplifies replication
             tasks.
           </li>
           <li>
-            <strong>HVR (now part of Precisely):</strong> High-performance
-            log-based replication — HVR was acquired by Precisely in 2021 —
+            <strong id="hvr">HVR (now part of Fivetran):</strong> High-performance
+            log-based replication — HVR was acquired by Fivetran in 2021 —
             with strong Oracle/SQL Server coverage and enterprise controls.
           </li>
         </ul>
 
-        <h2 id="comparison-table">High-Level Tooling Comparison</h2>
+        <h2 id="comparison-table">Ready to choose between them?</h2>
         <p>
-          This table provides a strategic comparison of representative tools
-          from each category.
+          Profiles tell you what a tool is; they do not tell you which one fits
+          your situation. For that, the
+          <a href="{{ '/compare/' | url }}">Compare page</a> puts Debezium with
+          Kafka Connect, AWS DMS, Fivetran, Airbyte, Oracle GoldenGate, and Qlik
+          Replicate in one
+          <a href="{{ '/compare/#matrix' | url }}">matrix</a> (deployment,
+          method, delivery semantics, latency, cost) and ends with a
+          <a href="{{ '/compare/#decide' | url }}">decision guide</a> that maps
+          your binding constraint to a platform.
         </p>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>Debezium (Open-Source)</th>
-                <th>AWS DMS (Managed Cloud)</th>
-                <th>Fivetran (Commercial SaaS)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Deployment Model</strong></td>
-                <td>
-                  Self-hosted. Requires user to manage Kafka, Kafka Connect, and
-                  connectors.
-                </td>
-                <td>Fully managed service within the AWS cloud.</td>
-                <td>Fully managed, multi-cloud SaaS platform.</td>
-              </tr>
-              <tr>
-                <td><strong>Core Technology</strong></td>
-                <td>
-                  Open-source, log-based connectors built for Apache Kafka.
-                </td>
-                <td>Proprietary replication technology managed by AWS.</td>
-                <td>
-                  Proprietary, log-based CDC technology, fully abstracted from
-                  the user.
-                </td>
-              </tr>
-              <tr>
-                <td><strong>Primary Use Case</strong></td>
-                <td>
-                  Building flexible, custom event-driven architectures and data
-                  pipelines.
-                </td>
-                <td>
-                  Database migrations and data replication primarily within the
-                  AWS ecosystem.
-                </td>
-                <td>
-                  Automated, no-code ELT pipelines to cloud data warehouses and
-                  data lakes.
-                </td>
-              </tr>
-              <tr>
-                <td><strong>Cost Model</strong></td>
-                <td>
-                  Free (Apache 2.0 license). Incurs infrastructure and
-                  operational costs.
-                </td>
-                <td>
-                  Pay-as-you-go (per hour for the replication instance and log
-                  storage).
-                </td>
-                <td>
-                  Consumption-based (Monthly Active Rows). Can become expensive
-                  at high scale.
-                </td>
-              </tr>
-              <tr>
-                <td><strong>Best For</strong></td>
-                <td>
-                  Teams with strong data engineering and Kafka expertise seeking
-                  maximum control and zero licensing fees.
-                </td>
-                <td>
-                  Teams heavily invested in AWS seeking simplicity, speed of
-                  deployment, and tight cloud integration.
-                </td>
-                <td>
-                  Teams of any size wanting a hands-off, fully managed solution
-                  with broad connector support and minimal setup.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+
         <h2 id="capabilities">What to check before you choose</h2>
+        <p>
+          Use this checklist on any tool in the profiles above, then see how
+          the six platforms in the
+          <a href="{{ '/compare/#matrix' | url }}">comparison matrix</a> answer
+          it.
+        </p>
         <ul>
           <li>
             <strong>Source coverage &amp; method:</strong> true log-based vs
@@ -297,13 +259,14 @@ scripts:
             change support; registry compatibility modes.
           </li>
           <li>
-            <strong>Delivery semantics:</strong> ALO by default; EOS
-            <em>scope</em> (Kafka-only transactions vs idempotent sinks for
-            external warehouses).
+            <strong>Delivery semantics:</strong> at-least-once by default; ask
+            what any “exactly-once” claim actually covers (Kafka-only
+            transactions are not end-to-end across systems).
           </li>
           <li>
-            <strong>Exactly-once at the sink:</strong> MERGE/UPSERT patterns,
-            staging+MERGE, dedupe tables.
+            <strong>Idempotent sinks:</strong> MERGE/UPSERT on the primary key,
+            ordered by log position (LSN, SCN, or binlog file and position);
+            implement it with staging plus MERGE or dedupe tables.
           </li>
           <li>
             <strong>Ops &amp; observability:</strong> lag/backlog metrics, DLQs,
@@ -390,3 +353,4 @@ scripts:
 
         {{ quizMacro.quiz(quizConfig) | safe }}
       </article>
+      </div>
