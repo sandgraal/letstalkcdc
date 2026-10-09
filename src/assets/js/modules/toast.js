@@ -43,18 +43,48 @@ const getLiveRegion = () => {
   return region;
 };
 
+/** Delay between a region existing and its text changing, so a screen reader
+ * that has just registered the region still announces the first message. */
+const ANNOUNCE_DELAY_MS = 50;
+
 /**
- * Announce a message to assistive technology. A fresh child node replaces
- * the previous one so an identical message (a second "Copied!") is read again.
+ * Join a title and message into one sentence-like announcement. A space
+ * follows a title that already ends in punctuation ("Code copied!");
+ * otherwise a full stop is added.
+ * @param {string} title
+ * @param {string} message
+ * @returns {string}
+ */
+const announcementText = (title, message) => {
+  if (!title || !message) return title || message || "";
+  return /[.!?\u2026:;]$/.test(title.trim())
+    ? `${title.trim()} ${message}`
+    : `${title.trim()}. ${message}`;
+};
+
+/**
+ * Announce a message to assistive technology. The text is set on a later
+ * tick, and as a fresh child node, so the first message is not dropped and an
+ * identical message (a second "Copied!") is read again.
  * @param {string} text - The message to announce
  */
 const announce = (text) => {
   if (!text) return;
   const region = getLiveRegion();
-  const line = doc.createElement("p");
-  line.textContent = text;
-  region.replaceChildren(line);
+  setTimeout(() => {
+    const line = doc.createElement("p");
+    line.textContent = text;
+    region.replaceChildren(line);
+  }, ANNOUNCE_DELAY_MS);
 };
+
+// Create the region as soon as the module loads (and the body exists), well
+// before the first toast, so assistive technology already knows about it.
+if (doc.body) {
+  getLiveRegion();
+} else {
+  doc.addEventListener("DOMContentLoaded", getLiveRegion, { once: true });
+}
 
 /**
  * Display a toast notification.
@@ -139,7 +169,7 @@ const showToast = (options = {}) => {
   }
 
   container.appendChild(toast);
-  announce([title, message].filter(Boolean).join(". "));
+  announce(announcementText(title, message));
 
   // Auto-dismiss
   if (duration > 0 && type !== "loading") {

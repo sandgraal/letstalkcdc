@@ -2,7 +2,7 @@
  * Unit tests for the Toast module
  * @module tests/unit/modules/toast.test
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   showToast,
   removeToast,
@@ -148,31 +148,63 @@ describe("toast module", () => {
   });
 
   describe("screen reader announcement", () => {
-    it("creates one polite status live region, reused across toasts", () => {
-      showToast({ title: "One", duration: 0 });
-      showToast({ title: "Two", duration: 0 });
-      const regions = document.querySelectorAll('[role="status"]');
-      expect(regions.length).toBe(1);
-      expect(regions[0].getAttribute("aria-live")).toBe("polite");
-      expect(regions[0].classList.contains("sr-only")).toBe(true);
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
-    it("puts the title and message in the live region", () => {
-      showToast({
-        title: "Code copied!",
-        message: "SQL code copied to clipboard",
-        duration: 0,
-      });
+    it("creates the polite live region when the module loads, before any toast", async () => {
+      vi.resetModules();
+      document.body.innerHTML = "";
+      await import("../../../src/assets/js/modules/toast.js");
       const region = document.querySelector('[role="status"]');
-      expect(region.textContent).toBe(
-        "Code copied!. SQL code copied to clipboard",
+      expect(region).not.toBeNull();
+      expect(region.getAttribute("aria-live")).toBe("polite");
+      expect(region.classList.contains("sr-only")).toBe(true);
+      expect(region.textContent).toBe("");
+    });
+
+    it("reuses one region across toasts", () => {
+      showToast({ title: "One", duration: 0 });
+      showToast({ title: "Two", duration: 0 });
+      expect(document.querySelectorAll('[role="status"]').length).toBe(1);
+    });
+
+    it("sets the text on a later tick, not in the same task as the region", () => {
+      showToast({ title: "Code copied!", message: "Done", duration: 0 });
+      const region = document.querySelector('[role="status"]');
+      expect(region.textContent).toBe("");
+      vi.advanceTimersByTime(100);
+      expect(region.textContent).toBe("Code copied! Done");
+    });
+
+    it("joins with a space after terminal punctuation, a full stop otherwise", () => {
+      showToast({ title: "Code copied!", message: "SQL copied", duration: 0 });
+      vi.advanceTimersByTime(100);
+      const region = document.querySelector('[role="status"]');
+      expect(region.textContent).toBe("Code copied! SQL copied");
+
+      showToast({ title: "Saved", message: "All changes", duration: 0 });
+      vi.advanceTimersByTime(100);
+      expect(region.textContent).toBe("Saved. All changes");
+    });
+
+    it("announces a title or message given alone", () => {
+      showToast({ message: "Only message", duration: 0 });
+      vi.advanceTimersByTime(100);
+      expect(document.querySelector('[role="status"]').textContent).toBe(
+        "Only message",
       );
     });
 
     it("announces the latest message, even when it repeats", () => {
       showToast({ title: "Copied", duration: 0 });
+      vi.advanceTimersByTime(100);
       const first = document.querySelector('[role="status"] p');
       showToast({ title: "Copied", duration: 0 });
+      vi.advanceTimersByTime(100);
       const region = document.querySelector('[role="status"]');
       expect(region.children.length).toBe(1);
       expect(region.firstElementChild).not.toBe(first);

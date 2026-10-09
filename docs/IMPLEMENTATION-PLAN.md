@@ -1916,8 +1916,7 @@ production CSS hashes.
       feature must say "check your version". **Needs Docker.** Size: L. Role:
       `implementer`, `reviewer`.
 - [x] **P15-47 · Dead scripts and config found by the script audit.**
-      Outcome: nothing in the repo that nothing calls. Accept: confirm Codacy
-      does not run `.codacy/cli.sh`, then remove it; remove
+      Outcome: nothing in the repo that nothing calls. Accept: remove
       `playground/scenarios/01-canonical-reference/scripts/logging.sh` (no
       caller; coordinate under `playground/`); `.pa11yci.json` appears dead
       (CI reads `pa11y-ci.config.cjs`): verify, then remove; the
@@ -1925,7 +1924,7 @@ production CSS hashes.
       `preview:web` and `sim:seed-reset` are never referenced: document each
       in `docs/DEVELOPMENT.md` or remove it. Size: S. Role: `scout` (verify
       each), `implementer`.
-      _2026-10-09: done, with two corrections to the item's premises. (1) `.pa11yci.json` is NOT dead: `npm run a11y` is bare `pa11y-ci`, whose default config is `.pa11yci` resolved to `.pa11yci.json` (`node_modules/pa11y-ci/bin/pa11y-ci.js` `resolveConfigPath`), and the CI job `a11y-tests` runs `npm run a11y`; kept. `pa11y-ci.config.cjs` is the dead one (no reference anywhere, never auto-discovered): removed. (2) `.codacy/cli.sh` kept: it is the launcher Codacy's own tooling invokes (`.github/instructions/codacy.instructions.md` tells agents to run `codacy_cli_analyze`) and sits beside `.codacy/codacy.yaml`; no repo file calls it, but nothing proves the Codacy integration does not, so it stays. Removed after a repo-wide grep found no caller: `playground/scenarios/01-canonical-reference/scripts/logging.sh` (only its own usage comment), `playground/package.json` scripts `preview:sim`, `preview:web`, `sim:seed-reset` and the file only that script ran, `playground/sim/tests/reset-seeds.mjs`. Root `test:e2e:debug` is documented in `docs/DEVELOPMENT.md` already (kept); `test:watch` is now documented there too (kept)._
+      _2026-10-09: done, with two corrections to the item's premises. (1) `.pa11yci.json` is NOT dead: `npm run a11y` is bare `pa11y-ci`, whose default config is `.pa11yci` resolved to `.pa11yci.json` (`node_modules/pa11y-ci/bin/pa11y-ci.js` `resolveConfigPath`), and the CI job `a11y-tests` runs `npm run a11y`; kept. `pa11y-ci.config.cjs` is the dead one (no reference anywhere, never auto-discovered): removed. (2) `.codacy/cli.sh` was part of the original Accept but is NOT removed; that sub-point moved to P15-52. It was kept: it is the launcher Codacy's own tooling invokes (`.github/instructions/codacy.instructions.md` tells agents to run `codacy_cli_analyze`) and sits beside `.codacy/codacy.yaml`; no repo file calls it, but nothing proves the Codacy integration does not, so it stays. Removed after a repo-wide grep found no caller: `playground/scenarios/01-canonical-reference/scripts/logging.sh` (only its own usage comment), `playground/package.json` scripts `preview:sim`, `preview:web`, `sim:seed-reset` and the file only that script ran, `playground/sim/tests/reset-seeds.mjs`. Root `test:e2e:debug` is documented in `docs/DEVELOPMENT.md` already (kept); `test:watch` is now documented there too (kept)._
 - [x] **P15-48 · Post-merge nit batch.** Outcome: the small review remarks on
       merged work are fixed or consciously dropped. Accept: from the #376
       review: the caption class on `/overview/`, the link text on
@@ -1946,7 +1945,7 @@ production CSS hashes.
       `src/assets/js/modules/toast.js` and `code-blocks.js`; a unit test
       asserts the announcement and `tests/e2e/code-blocks.spec.js` checks it
       on one page. Size: S. Role: `implementer`, `reviewer`.
-      _2026-10-09: done. `showToast` now announces `title. message` through one visually hidden polite live region (`.toast-live-region.sr-only`, `role="status"`, `aria-live="polite"`) created on first use and reused; each message replaces the child node so a repeat is read again. The visible toast is unchanged (it holds buttons and is not a live region), the copy button's `aria-label` is unchanged, and no CSS was touched (`.sr-only` already exists). Unit tests: 4 in `toast.test.js` and 1 in `code-blocks.test.js` (real toast, region text contains "SQL code copied to clipboard", label still "Copy SQL code"). E2E: the clipboard test in `tests/e2e/code-blocks.spec.js` asserts the live region after each copy._
+      _2026-10-09: done. `showToast` now announces the title and message (joined with a space after terminal punctuation, else ". ") through one visually hidden polite live region (`.toast-live-region.sr-only`, `role="status"`, `aria-live="polite"`) created when the module loads and reused, with the text set 50 ms later so the first message is not dropped; each message replaces the child node so a repeat is read again. The visible toast is unchanged (it holds buttons and is not a live region), the copy button's `aria-label` is unchanged, and no CSS was touched (`.sr-only` already exists). Unit tests: 7 in `toast.test.js` (fake timers) and 1 in `code-blocks.test.js` (real toast, region text contains "SQL code copied to clipboard", label still "Copy SQL code"). E2E: the clipboard test in `tests/e2e/code-blocks.spec.js` asserts the live region after each copy._
 - [ ] **P15-50 · Dead copy-button CSS.** Outcome: no rule for markup that no
       longer exists. Evidence (review of #409): the `.copy-snippet` rules in
       `src/assets/css/components/code-block.css` and `.copy-btn` in
@@ -1961,7 +1960,17 @@ production CSS hashes.
       same markup as `/troubleshooting/failure-drills/`. Accept: add it (or
       derive the list from the sitemap) and the spec passes. Size: S. Role:
       `implementer`.
-      _2026-10-09: `/troubleshooting/` added to `PAGES`; the spec passes on chromium (count in the PR)._
+      _2026-10-09: `/troubleshooting/` added to `PAGES`; the spec passes on chromium (9 tests)._
+- [ ] **P15-52 · Confirm Codacy does not call `.codacy/cli.sh`, then remove it.**
+      Outcome: no launcher script that nothing runs. Evidence: split from
+      P15-47. No repo file calls `.codacy/cli.sh`, but it is the launcher the
+      Codacy tooling itself uses (`.github/instructions/codacy.instructions.md`
+      tells agents to run `codacy_cli_analyze`) and it sits beside
+      `.codacy/codacy.yaml`, so non-use is unproven. Accept: the maintainer
+      confirms in the Codacy dashboard (or by disabling the integration) that
+      nothing runs it; then remove `.codacy/cli.sh` and re-check the build.
+      **Maintainer step** for the confirmation. Size: S. Role: maintainer,
+      `implementer`.
 
 ### Ordering
 
