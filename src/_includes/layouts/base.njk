@@ -44,13 +44,16 @@
           "author": {
             "@type": "Person",
             "name": {{ author.name | dump | safe }}{% if author.url %},
-            "url": {{ author.url | dump | safe }}{% endif %}
+            "url": {{ author.url | dump | safe }}{% endif %}{% if author.image %},
+            "image": {{ (site.host ~ author.image) | dump | safe }}{% endif %}{% if author.sameAs and author.sameAs.length %},
+            "sameAs": {{ author.sameAs | dump | safe }}{% endif %}
           },
           "publisher": {
             "@type": "Organization",
             "name": {{ site.title | dump | safe }},
             "url": {{ site.host | dump | safe }}
           },
+          "license": "https://creativecommons.org/licenses/by/4.0/",
           "mainEntityOfPage": {
             "@type": "WebPage",
             "@id": "{{ site.host }}{{ canonicalUrl }}"
@@ -211,6 +214,10 @@
       {% if seriesKey and (datePublished or dateModified) %}
         <aside class="page-meta" aria-label="Page metadata">
           <p class="page-meta__author">
+            {% if author.image %}
+              {# alt="" on purpose: the author's name is printed next to the photo, so it is decorative. #}
+              <img class="author-photo" src="{{ (author.imageSmall or author.image) | url }}"{% if author.imageSmall %} srcset="{{ author.imageSmall | url }} 128w, {{ author.image | url }} 400w" sizes="48px"{% endif %} alt="" width="48" height="48" loading="lazy" decoding="async">
+            {% endif %}
             By <a href="{{ author.url }}" rel="author">{{ author.name }}</a>
           </p>
           {% if dateModified %}
@@ -223,8 +230,8 @@
           {% endif %}
           {% if author.advisoryUrl %}
             <p class="page-meta__cta">
-              Need a second opinion on your CDC design?
-              <a href="{{ author.advisoryUrl }}">See advisory →</a>
+              Questions or feedback?
+              <a href="{{ author.advisoryUrl }}" rel="noopener">Get in touch on LinkedIn</a>
             </p>
           {% endif %}
         </aside>
@@ -421,6 +428,7 @@
           <p class="footer-copyright">{{ site.copyright }}</p>
           <p class="footer-meta">
             Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project
+            • <a href="https://github.com/{{ site.repository }}/blob/main/LICENSE-CONTENT.md" target="_blank" rel="noopener">Content: CC BY 4.0 · Code: MIT</a>
             {% if page.inputPath %} •
               <a href="https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}" target="_blank" rel="noopener" class="footer-edit-link">Edit this page on GitHub</a>
             {% endif %}

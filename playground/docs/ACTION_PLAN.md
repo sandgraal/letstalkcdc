@@ -2,6 +2,8 @@
 **Created:** 2025-11-17  
 **Review Reference:** [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
 
+> **2026-10:** the "Appwrite config" merge item below was completed in Nov 2025 against a source that no longer exists in `assets/feature-flags.js`. Persistence is now Supabase; see [supabase-setup.md](./supabase-setup.md).
+
 ---
 
 ## Quick Summary

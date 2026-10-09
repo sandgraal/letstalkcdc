@@ -19,3 +19,8 @@
 
 # Fivetran community forum intermittently refuses automated requests.
 ^https://community\.fivetran\.com/
+
+# LinkedIn rate-limits and blocks automated link-checkers (HTTP 429 / 999),
+# but the author profile link on module pages and in the footer is valid in
+# a browser. Referenced from src/_data/author.mjs (sameAs, advisoryUrl).
+^https://www\.linkedin\.com/
