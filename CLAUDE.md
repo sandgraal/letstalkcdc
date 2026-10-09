@@ -88,10 +88,13 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: e54f418279ea274845b0afc788042d3f7008a096c6212e43d64bac55d6baa5f4
-# (re-baselined 2026-10-08: author headshot rule `.page-meta__author >
-#  .author-photo` added to 04-components.css, the only CSS difference.
-#  Previously b1478af0… from the same day: in-range dependency update,
+# baseline at HEAD of main is: 424e77a0282c4be9669060dabd3afc645a222a0b9abf35b68b113a3554fb5fe7
+# (re-baselined 2026-10-08: light-theme accent darkened for WCAG AA,
+#  `--color-accent-primary/-hover/-active` and `--color-info/-info-hover`
+#  in the `:root[data-theme="light"]` block of 01-variables.css, the only
+#  CSS difference. Previously e54f4182… from the same day: author headshot
+#  rule `.page-meta__author > .author-photo` added to 04-components.css.
+#  Before that b1478af0… from the same day: in-range dependency update,
 #  cssnano 7.1.9 keeps rgba(248,113,113,.22) in scorecard.css instead of a
 #  lossy hsla(), +4 bytes. Before that eebaa34a… from 2026-08-26: nav/drawer
 #  fixes, then the undefined-token sweep + panels.css bundling)
@@ -308,7 +311,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`e54f418279ea…`).
+3. **`/css-byte-check` baseline is in this file** (`424e77a0282c…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.
