@@ -20,6 +20,6 @@ export abstract class BaseEngine implements MethodEngine {
     return this.bus.on(cb);
   }
 
-  abstract applySourceOp(op: SourceOp): void;
+  abstract applySourceOp(op: SourceOp, scenarioIndex?: number): void;
   abstract tick(nowMs: number): void;
 }

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Playground labs linked from the lessons (P16-26).** The playground
+  gains a `redeliver` operation that re-sends a delivered change with its
+  original log position, guard modes for the log lane's destination (none,
+  `ts_ms`, log position) with optional delete markers, three labs built on
+  them (`replay-guard`, `ts-vs-position`, `delete-then-late-update`) and
+  `?try=<scenario-id>` deep links. `/which-row-wins/`,
+  `/deletes-stay-deleted/` and `/is-cdc-exactly-once/` link to the labs.
+  Production CSS is unchanged.
 - **Glossary terms link to the lessons that teach them (P16-8).** Every
   entry on `/glossary/` now ends with a "Learn more" line (1-2 lessons,
   deep-linked to the section where one exists), driven by an optional

@@ -642,6 +642,97 @@ const defaultScenarios = [
       },
     ],
   },
+  // The three scenarios below are labs for the destination guard. They use two
+  // things the older scenarios do not:
+  //   - { op: "redeliver", ref } is a delivery-layer op, not a source write: the
+  //     log lane sends the record produced by ops[ref] (a 0-based index into this
+  //     list) a second time, with the position of its first delivery. Polling and
+  //     trigger lanes ignore it.
+  //   - `sink` sets how the log lane's destination starts out (guard and delete
+  //     markers). The reader can change it, which resets the run.
+  // `ts_ms` on a write overrides the ts_ms stamped on its change event (a clock
+  // that disagrees with `t`); `t` still decides when the write happens.
+  {
+    id: "replay-guard",
+    difficulty: "beginner",
+    name: "Replay against a guarded sink",
+    label: "Replay against a guarded sink",
+    description:
+      "One order is created, paid and shipped. Later the log sends the paid change and the shipped change a second time, each with the position it had the first time.",
+    highlight:
+      "Starts with no guard: after shipped, the destination shows paid again, and it is right at the end only because the replay finished. Switch the guard to position and press Start: both repeats are skipped. One log lane, one key; delivery is still at-least-once.",
+    tags: ["redelivery", "guard", "at-least-once"],
+    seed: 61,
+    table: "orders",
+    schema: [
+      { name: "id", type: "string", pk: true },
+      { name: "status", type: "string", pk: false },
+      { name: "total", type: "number", pk: false },
+    ],
+    events: [],
+    sink: { guard: "none" },
+    ops: [
+      { t: 100, op: "insert", table: "orders", pk: { id: "ORD-1" }, after: { status: "created", total: 40 } },
+      { t: 200, op: "update", table: "orders", pk: { id: "ORD-1" }, after: { status: "paid" } },
+      { t: 300, op: "update", table: "orders", pk: { id: "ORD-1" }, after: { status: "shipped" } },
+      { t: 500, op: "redeliver", ref: 1, table: "orders", pk: { id: "ORD-1" } },
+      { t: 800, op: "redeliver", ref: 2, table: "orders", pk: { id: "ORD-1" } },
+    ],
+  },
+  {
+    id: "ts-vs-position",
+    difficulty: "intermediate",
+    name: "ts_ms against log position",
+    label: "ts_ms against log position",
+    description:
+      "Two orders each get a paid change and then a refunded change. For ORD-7 the host that committed the refund (for example after a failover) has a clock 22 ms behind, so its ts_ms is older than the paid change. For ORD-8 both changes carry the same ts_ms.",
+    highlight:
+      "Starts with a timestamp guard, which keeps the change with the newer ts_ms: both orders stay paid and one change is skipped for each. Switch the guard to position and press Start: both end refunded. Here the log delivers every change once and in order; only the guard decides.",
+    tags: ["ordering", "ts_ms", "log-position", "guard"],
+    seed: 62,
+    table: "orders",
+    schema: [
+      { name: "id", type: "string", pk: true },
+      { name: "status", type: "string", pk: false },
+      { name: "total", type: "number", pk: false },
+    ],
+    events: [],
+    sink: { guard: "timestamp" },
+    ops: [
+      { t: 100, op: "insert", table: "orders", pk: { id: "ORD-7" }, after: { status: "created", total: 25 } },
+      { t: 205, op: "update", table: "orders", pk: { id: "ORD-7" }, after: { status: "paid" } },
+      { t: 220, op: "update", table: "orders", pk: { id: "ORD-7" }, after: { status: "refunded" }, ts_ms: 198 },
+      { t: 300, op: "insert", table: "orders", pk: { id: "ORD-8" }, after: { status: "created", total: 60 } },
+      { t: 310, op: "update", table: "orders", pk: { id: "ORD-8" }, after: { status: "paid" } },
+      { t: 310, op: "update", table: "orders", pk: { id: "ORD-8" }, after: { status: "refunded" } },
+    ],
+  },
+  {
+    id: "delete-then-late-update",
+    difficulty: "intermediate",
+    name: "Delete followed by a late update",
+    label: "Delete followed by a late update",
+    description:
+      "An order is created, packed and then deleted at the source. After the delete, the log sends the packed change a second time.",
+    highlight:
+      "Starts with no guard and no delete marker: the deleted order comes back as packed. A position guard alone does not stop it, because the destination forgot the delete. Turn on delete markers with the position guard and press Start: the order stays deleted and the marker shows where. Polling never sees the repeat.",
+    tags: ["delete", "delete-marker", "redelivery", "guard"],
+    seed: 63,
+    table: "orders",
+    schema: [
+      { name: "id", type: "string", pk: true },
+      { name: "status", type: "string", pk: false },
+      { name: "total", type: "number", pk: false },
+    ],
+    events: [],
+    sink: { guard: "none", deleteMarkers: false },
+    ops: [
+      { t: 100, op: "insert", table: "orders", pk: { id: "ORD-9" }, after: { status: "created", total: 90 } },
+      { t: 200, op: "update", table: "orders", pk: { id: "ORD-9" }, after: { status: "packed" } },
+      { t: 300, op: "delete", table: "orders", pk: { id: "ORD-9" } },
+      { t: 500, op: "redeliver", ref: 1, table: "orders", pk: { id: "ORD-9" } },
+    ],
+  },
 ];
 
 if (typeof window !== "undefined") {

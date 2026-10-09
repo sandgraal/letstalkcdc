@@ -45,8 +45,9 @@ export class ScenarioRunner implements ScenarioRunnerInterface {
     const { ops } = this.scenario;
 
     while (this.idx < ops.length && ops[this.idx].t <= this.now) {
+      const scenarioIndex = this.idx;
       const op = ops[this.idx++];
-      this.engines.forEach(engine => engine.applySourceOp(op));
+      this.engines.forEach(engine => engine.applySourceOp(op, scenarioIndex));
     }
 
     this.engines.forEach(engine => engine.tick(this.now));

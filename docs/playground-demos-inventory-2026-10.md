@@ -27,6 +27,37 @@ Method, so you can weigh the claims:
   `_site/`; anchors were checked as `id="..."` in the lesson `.njk` sources
   at `origin/main` as merged on 2026-10-09 (review round 1 applied).
 
+> **Update 2026-10-09 (P16-26).** The shared building block in section 6.0 and
+> the three labs in section 6 are built, and `?try=<scenario-id>` is live. The
+> sections below are the state of the playground when this audit was written;
+> where the build changed a fact, a **Built** note says so. What was built, and
+> where it differs from the proposal:
+>
+> - **`redeliver` op** (`{ op: "redeliver", ref, table, pk }`, `ref` a 0-based
+>   index into `ops`): only the log lane honours it. The copy keeps the original
+>   position in a new `sourcePosition` field (shown as the event's log position)
+>   and gets a fresh bus offset; polling and trigger lanes ignore it.
+> - **Sink guard modes** on the log lane's destination (`InMemoryTableStorage`):
+>   no guard (default, the old upsert), a timestamp guard (apply only if `ts_ms`
+>   is strictly newer) and a position guard (apply only if the source position
+>   is higher), plus a separate "keep delete markers" switch. A scenario sets a
+>   starting mode with `sink`; changing it resets the run. The proposal's
+>   `append` mode and a "regressed" marker were not built: the panel shows
+>   Applied, Skipped and **Stale applies** (applied although the same or a later
+>   position was already applied for the key) instead.
+> - **A write may carry `ts_ms`** (log lane only) to model a skewed clock, which
+>   Lab 2 needs. Lab 2 therefore does **not** use the unverified "replay is
+>   stamped with a later `ts_ms`" step; it uses one skewed-clock pair and one
+>   tied-`ts_ms` pair, both ordinary source writes delivered once, in order.
+> - **Scenario ids:** `replay-guard`, `ts-vs-position`, `delete-then-late-update`.
+>   Positions are the lane's 0-based bus offsets.
+> - **Deep link:** `?try=<id>` opens the Compare tab, loads and starts the
+>   scenario; unknown or malformed ids are ignored. The lessons
+>   `/which-row-wins/#try-it`, `/deletes-stay-deleted/#resurrection` and
+>   `/is-cdc-exactly-once/#try-it` link to the labs. The other lessons listed in
+>   section 6 are not linked yet.
+> - Findings 3 and 9 and the "Gaps" table below describe the pre-build state.
+
 ## 1. Summary
 
 | #   | Finding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Basis           |
@@ -84,7 +115,7 @@ them): `window.dispatchEvent(new CustomEvent("cdc:apply-scenario-template",
 { detail: { id } }))` loads a template into the workspace. There is no
 equivalent for the Compare tab; the scenario id comes from `localStorage`.
 
-**Proposed link form** (needs the playground owner; not live): add a
+**Built (P16-26):** this link form is live, see the update at the top. **Proposed link form** (as originally written): add a
 namespaced parameter, `?try=<scenario-id>`, that selects the tab and scenario
 and does nothing else, so the final links are
 `{{ '/playground/' | url }}?try=crud-basic#simulator`. It must not reuse

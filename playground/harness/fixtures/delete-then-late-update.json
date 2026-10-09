@@ -1,0 +1,70 @@
+{
+  "id": "delete-then-late-update",
+  "name": "Delete followed by a late update",
+  "description": "An order is created, packed and then deleted at the source. After the delete, the log sends the packed change a second time.",
+  "tags": [
+    "delete",
+    "delete-marker",
+    "redelivery",
+    "guard"
+  ],
+  "schema": [
+    {
+      "name": "id",
+      "type": "string",
+      "pk": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "pk": false
+    },
+    {
+      "name": "total",
+      "type": "number",
+      "pk": false
+    }
+  ],
+  "ops": [
+    {
+      "t": 100,
+      "op": "insert",
+      "table": "orders",
+      "pk": {
+        "id": "ORD-9"
+      },
+      "after": {
+        "status": "created",
+        "total": 90
+      }
+    },
+    {
+      "t": 200,
+      "op": "update",
+      "table": "orders",
+      "pk": {
+        "id": "ORD-9"
+      },
+      "after": {
+        "status": "packed"
+      }
+    },
+    {
+      "t": 300,
+      "op": "delete",
+      "table": "orders",
+      "pk": {
+        "id": "ORD-9"
+      }
+    },
+    {
+      "t": 500,
+      "op": "redeliver",
+      "ref": 1,
+      "table": "orders",
+      "pk": {
+        "id": "ORD-9"
+      }
+    }
+  ]
+}

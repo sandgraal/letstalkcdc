@@ -31,36 +31,38 @@ var e = class {
 		super.reset(e), this.table.clear(), this.lastSync = 0;
 	}
 	applySourceOp(e) {
-		if (e.op === "insert") this.table.set(e.pk.id, {
-			id: e.pk.id,
-			table: e.table,
-			data: e.after,
-			version: 1,
-			updated_at_ms: e.t,
-			deleted: !1
-		});
-		else if (e.op === "update") {
-			let t = this.table.get(e.pk.id);
-			if (!t || t.deleted) return;
-			this.table.set(e.pk.id, {
-				...t,
-				table: t.table ?? e.table,
-				data: {
-					...t.data,
-					...e.after
-				},
-				version: t.version + 1,
-				updated_at_ms: e.t
+		if (e.op !== "redeliver") {
+			if (e.op === "insert") this.table.set(e.pk.id, {
+				id: e.pk.id,
+				table: e.table,
+				data: e.after,
+				version: 1,
+				updated_at_ms: e.t,
+				deleted: !1
 			});
-		} else if (e.op === "delete") {
-			let t = this.table.get(e.pk.id);
-			if (!t) return;
-			this.table.set(e.pk.id, {
-				...t,
-				table: t.table ?? e.table,
-				deleted: !0,
-				updated_at_ms: e.t
-			});
+			else if (e.op === "update") {
+				let t = this.table.get(e.pk.id);
+				if (!t || t.deleted) return;
+				this.table.set(e.pk.id, {
+					...t,
+					table: t.table ?? e.table,
+					data: {
+						...t.data,
+						...e.after
+					},
+					version: t.version + 1,
+					updated_at_ms: e.t
+				});
+			} else if (e.op === "delete") {
+				let t = this.table.get(e.pk.id);
+				if (!t) return;
+				this.table.set(e.pk.id, {
+					...t,
+					table: t.table ?? e.table,
+					deleted: !0,
+					updated_at_ms: e.t
+				});
+			}
 		}
 	}
 	shouldPoll(e) {
@@ -104,6 +106,7 @@ var e = class {
 		super.reset(e), this.table.clear(), this.audit = [], this.extractOffset = 0, this.lastExtract = 0;
 	}
 	applySourceOp(e) {
+		if (e.op === "redeliver") return;
 		let t = e.t + this.triggerOverheadMs, n = e.txn ?? {
 			id: `tx-${t}`,
 			index: 0,
@@ -217,21 +220,31 @@ function i() {
 //#region sim/engines/LogEngine.ts
 var a = class extends t {
 	constructor(...e) {
-		super(...e), this.name = "log", this.table = /* @__PURE__ */ new Map(), this.wal = [], this.lsn = 0, this.fetchIntervalMs = 100, this.lastFetch = 0;
+		super(...e), this.name = "log", this.table = /* @__PURE__ */ new Map(), this.wal = [], this.lsn = 0, this.fetchIntervalMs = 100, this.lastFetch = 0, this.walByOp = /* @__PURE__ */ new Map();
 	}
 	configure(e) {
 		e.fetch_interval_ms !== void 0 && (this.fetchIntervalMs = e.fetch_interval_ms);
 	}
 	reset(e) {
-		super.reset(e), this.table.clear(), this.wal = [], this.lsn = 0, this.lastFetch = 0;
+		super.reset(e), this.table.clear(), this.wal = [], this.lsn = 0, this.lastFetch = 0, this.walByOp.clear();
 	}
-	applySourceOp(e) {
-		let t = e.txn ?? {
+	applySourceOp(e, t) {
+		if (e.op === "redeliver") {
+			let t = this.walByOp.get(e.ref);
+			t && t.table === e.table && t.pk.id === e.pk.id && this.wal.push({
+				...t,
+				before: t.before ? { ...t.before } : null,
+				after: t.after ? { ...t.after } : null,
+				redelivered: !0
+			});
+			return;
+		}
+		let n = e.txn ?? {
 			id: `tx-${e.t}`,
 			index: 0,
 			total: 1,
 			last: !0
-		}, n = t.id ?? `tx-${e.t}`, r = typeof t.index == "number" ? t.index : 0, i = typeof t.total == "number" ? t.total : 1, a = typeof t.last == "boolean" ? t.last : r >= i - 1;
+		}, r = n.id ?? `tx-${e.t}`, i = typeof n.index == "number" ? n.index : 0, a = typeof n.total == "number" ? n.total : 1, o = typeof n.last == "boolean" ? n.last : i >= a - 1;
 		if (e.op === "insert") this.table.set(e.pk.id, {
 			id: e.pk.id,
 			table: e.table,
@@ -239,60 +252,63 @@ var a = class extends t {
 			version: 1,
 			updated_at_ms: e.t,
 			deleted: !1
-		}), this.wal.push({
+		}), this.pushRecord(t, {
 			lsn: ++this.lsn,
-			tx_id: n,
-			tx_index: r,
-			tx_total: i,
-			tx_last: a,
+			tx_id: r,
+			tx_index: i,
+			tx_total: a,
+			tx_last: o,
 			table: e.table,
 			op: "c",
 			pk: e.pk,
 			before: null,
 			after: e.after,
-			commit_ts_ms: e.t
+			commit_ts_ms: e.ts_ms ?? e.t
 		});
 		else if (e.op === "update") {
-			let t = this.table.get(e.pk.id), o = t ? { ...t.data } : null, s = t ? {
-				...t.data,
+			let n = this.table.get(e.pk.id), s = n ? { ...n.data } : null, c = n ? {
+				...n.data,
 				...e.after
 			} : e.after;
 			this.table.set(e.pk.id, {
 				id: e.pk.id,
-				table: t?.table ?? e.table,
-				data: s,
-				version: (t?.version ?? 0) + 1,
+				table: n?.table ?? e.table,
+				data: c,
+				version: (n?.version ?? 0) + 1,
 				updated_at_ms: e.t,
 				deleted: !1
-			}), this.wal.push({
+			}), this.pushRecord(t, {
 				lsn: ++this.lsn,
-				tx_id: n,
-				tx_index: r,
-				tx_total: i,
-				tx_last: a,
+				tx_id: r,
+				tx_index: i,
+				tx_total: a,
+				tx_last: o,
 				table: e.table,
 				op: "u",
 				pk: e.pk,
-				before: o,
-				after: s,
-				commit_ts_ms: e.t
+				before: s,
+				after: c,
+				commit_ts_ms: e.ts_ms ?? e.t
 			});
 		} else if (e.op === "delete") {
-			let t = this.table.get(e.pk.id);
-			this.table.delete(e.pk.id), this.wal.push({
+			let n = this.table.get(e.pk.id);
+			this.table.delete(e.pk.id), this.pushRecord(t, {
 				lsn: ++this.lsn,
-				tx_id: n,
-				tx_index: r,
-				tx_total: i,
-				tx_last: a,
+				tx_id: r,
+				tx_index: i,
+				tx_total: a,
+				tx_last: o,
 				table: e.table,
 				op: "d",
 				pk: e.pk,
-				before: t ? t.data : null,
+				before: n ? n.data : null,
 				after: null,
-				commit_ts_ms: e.t
+				commit_ts_ms: e.ts_ms ?? e.t
 			});
 		}
+	}
+	pushRecord(e, t) {
+		e !== void 0 && this.walByOp.set(e, t), this.wal.push(t);
 	}
 	tick(e) {
 		if (e - this.lastFetch < this.fetchIntervalMs) return;
@@ -314,7 +330,8 @@ var a = class extends t {
 					last: e.tx_last
 				},
 				seq: ++this.seq,
-				meta: { method: "log" }
+				meta: { method: "log" },
+				...e.redelivered ? { redelivered: !0 } : {}
 			};
 			this.bus.emit(t);
 		}
@@ -347,8 +364,8 @@ var a = class extends t {
 		this.now += e;
 		let { ops: t } = this.scenario;
 		for (; this.idx < t.length && t[this.idx].t <= this.now;) {
-			let e = t[this.idx++];
-			this.engines.forEach((t) => t.applySourceOp(e));
+			let e = this.idx, n = t[this.idx++];
+			this.engines.forEach((t) => t.applySourceOp(n, e));
 		}
 		this.engines.forEach((e) => e.tick(this.now)), this.onTickCb?.(this.now);
 	}
@@ -381,7 +398,7 @@ function l(e) {
 }
 function u(e) {
 	return e.map((e, t) => {
-		if (!s.has(e.op)) return null;
+		if (!s.has(e.op) || e.redelivered) return null;
 		let n = e.pk?.id == null ? "" : String(e.pk.id), r = e.op;
 		return {
 			key: `${r}::${n}`,

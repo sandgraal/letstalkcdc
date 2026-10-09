@@ -2232,7 +2232,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
 
 ### Follow-ups found in review (2026-10-09)
 
-- [ ] **P16-26 · Playground labs linked from the lessons.** Outcome: the
+- [x] **P16-26 · Playground labs linked from the lessons.** Outcome: the
       first labs proposed in #375 exist: replay against a guarded sink, `ts_ms`
       against log position, and delete followed by a late update. Accept: the
       playground gains a redeliver operation that preserves the original
@@ -2240,6 +2240,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       link to them with `| url`. The playground owner coordinates every change
       under `playground/`. Size: L. Role: `implementer`, `reviewer`.
       _2026-10-09: still nothing built. #393 relabelled the old duplicate-insert scenario and did not add a `redeliver` op; the three labs, the `?try=<id>` deep link and the redeliver op remain this item._
+      _2026-10-09: built. `redeliver` op (original position kept), three sink guard modes plus delete markers on the log lane, three scenarios (`replay-guard`, `ts-vs-position`, `delete-then-late-update`), `?try=<id>` deep links, and links from `/which-row-wins/`, `/deletes-stay-deleted/` and `/is-cdc-exactly-once/`. Not done, and not claimed: the other lessons the inventory lists are not linked, the proposal's `append` mode was not built, and Lab 2 uses a skewed-clock `ts_ms` instead of the unverified later-`ts_ms`-on-replay step. See the update note at the top of `docs/playground-demos-inventory-2026-10.md`._
 - [x] **P16-27 · Playground fixes, slice B.** Outcome: the remaining
       playground defects found in review are fixed. Accept: the phantom Dedupe
       on the PK and Drop snapshot rows copy; honesty about snapshot replay;

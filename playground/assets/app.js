@@ -557,6 +557,21 @@ const SHARED_SCENARIOS =
 
 const FALLBACK_TEMPLATE_SEED_BASE = 1000;
 
+// ?try=<scenario-id> deep link. The value is only a lookup key: it must be a
+// plain lowercase-hyphen id AND equal the id of a known scenario, otherwise it
+// is ignored. web/App.tsx (src/features/tryLink.ts) does the same check and
+// starts the scenario; this side only opens the Compare tab.
+const TRY_SCENARIO_ID = (() => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = new URLSearchParams(window.location.search).get("try");
+    if (!raw || raw.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(raw)) return null;
+    return SHARED_SCENARIOS.some(scenario => scenario && scenario.id === raw) ? raw : null;
+  } catch {
+    return null;
+  }
+})();
+
 function cloneTemplateOps(ops, index) {
   if (!Array.isArray(ops)) return [];
   return ops
@@ -651,6 +666,7 @@ const SCENARIO_TEMPLATES = Object.freeze(
       rows: cloneTemplateRows(template.rows),
       events: cloneTemplateEvents(template.events),
       ops: cloneTemplateOps(template.ops, index),
+      sink: template.sink && typeof template.sink === "object" ? { ...template.sink } : undefined,
     }))
     .filter(template => template.id && template.ops.length > 0)
 );
@@ -1670,8 +1686,15 @@ function renderPreviewOps(ops) {
   }
   ops.slice(0, 10).forEach(op => {
     const li = document.createElement("li");
-    const verb = op.op === "insert" ? "Insert" : op.op === "update" ? "Update" : "Delete";
-    li.textContent = `${verb} ${op.table || "table"}#${op.pk?.id ?? "?"}`;
+    const target = `${op.table || "table"}#${op.pk?.id ?? "?"}`;
+    if (op.op === "redeliver") {
+      li.textContent = `Redeliver (ref ${op.ref}) ${target}`;
+    } else if (op.op === "insert" || op.op === "update" || op.op === "delete") {
+      const verb = op.op === "insert" ? "Insert" : op.op === "update" ? "Update" : "Delete";
+      li.textContent = `${verb} ${target}`;
+    } else {
+      li.textContent = `${String(op.op || "Unknown operation")} ${target}`;
+    }
     list.appendChild(li);
   });
 }
@@ -1737,6 +1760,7 @@ function shouldShowOnboarding() {
   ensureOnboardingElements();
   if (!els.onboardingOverlay) return false;
   if (uiState.pendingShareId) return false;
+  if (TRY_SCENARIO_ID) return false;
 
   const seen = storage.get(STORAGE_KEYS.onboarding);
   if (seen) return false;
@@ -4861,6 +4885,7 @@ function downloadScenarioTemplate(template) {
     rows: template.rows,
     events: template.events,
     ops: template.ops,
+    ...(template.sink ? { sink: { ...template.sink } } : {}),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -5204,6 +5229,12 @@ async function main() {
 
   renderTemplateGallery();
   bindUiHandlers();
+  if (TRY_SCENARIO_ID && activateSimulatorTab("compare")) {
+    const simulator = document.getElementById("simulator");
+    if (simulator) {
+      try { simulator.scrollIntoView({ block: "start" }); } catch { /* ignore */ }
+    }
+  }
   renderComparatorFlagState(isComparatorFlagEnabled());
   renderMethodGuidance();
 
@@ -5226,7 +5257,8 @@ async function main() {
   broadcastComparatorState();
   setShareControlsEnabled(false);
 
-  const shouldShowOnboardingNow = !storage.get(STORAGE_KEYS.onboarding)
+  const shouldShowOnboardingNow = !TRY_SCENARIO_ID
+    && !storage.get(STORAGE_KEYS.onboarding)
     && (state.scenarioId === "default" || !state.schema.length)
     && state.rows.length === 0
     && state.events.length === 0;

@@ -15,6 +15,7 @@ export type SourceOp =
       pk: { id: string };
       after: Record<string, any>;
       txn?: { id: string; index: number; total?: number; last?: boolean };
+      ts_ms?: number;
     }
   | {
       t: number;
@@ -23,10 +24,22 @@ export type SourceOp =
       pk: { id: string };
       after: Record<string, any>;
       txn?: { id: string; index: number; total?: number; last?: boolean };
+      ts_ms?: number;
     }
   | {
       t: number;
       op: "delete";
+      table: string;
+      pk: { id: string };
+      txn?: { id: string; index: number; total?: number; last?: boolean };
+      ts_ms?: number;
+    }
+  | {
+      // Delivery-layer op: the log lane delivers the record produced by
+      // `ops[ref]` again, keeping its original log position (tx.lsn).
+      t: number;
+      op: "redeliver";
+      ref: number;
       table: string;
       pk: { id: string };
       txn?: { id: string; index: number; total?: number; last?: boolean };
@@ -51,6 +64,8 @@ export type CdcEvent = {
   seq: number;
   meta: { method: "polling" | "trigger" | "log" };
   schemaChange?: SchemaChangeMeta | null;
+  /** True for a repeat delivery of an earlier log record (same tx.lsn). */
+  redelivered?: boolean;
 };
 
 export type AuditRow = {
@@ -79,4 +94,6 @@ export type WalRecord = {
   before: Record<string, any> | null;
   after: Record<string, any> | null;
   commit_ts_ms: number;
+  // True when this record is a repeat delivery of an earlier record (same lsn).
+  redelivered?: boolean;
 };

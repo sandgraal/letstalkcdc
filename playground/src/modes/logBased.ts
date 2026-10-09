@@ -59,6 +59,13 @@ export function createLogBasedAdapter(): ModeAdapter {
   const rows = new Map<string, StoredRow>();
   const wal: Event[] = [];
   let lastEmittedIndex = 0;
+  // scenario op index -> index into `wal` of the record that op produced. Only
+  // ops that carry a scenarioIndex are recorded, so synthetic (generator) ops
+  // never shift what a scenario's `redeliver.ref` points at.
+  const walIndexByOp = new Map<number, number>();
+  // wal index -> the event as published (carries the bus offset). A redelivery
+  // copies this, so it keeps the position the first delivery was given.
+  const delivered = new Map<number, Event>();
   const schemaVersions = new Map<string, number>();
 
   const ensureSchemaVersion = (tableName: string): number => {
@@ -133,6 +140,42 @@ export function createLogBasedAdapter(): ModeAdapter {
     emitFn([event]);
   };
 
+  const flush = () => {
+    if (!emitFn) return;
+    const batch = wal.slice(lastEmittedIndex);
+    if (!batch.length) return;
+    const first = lastEmittedIndex;
+    const published = emitFn(batch);
+    published.forEach((event, i) => delivered.set(first + i, event));
+    lastEmittedIndex = wal.length;
+  };
+
+  const redeliver = (op: Extract<SourceOp, { op: "redeliver" }>) => {
+    const walIndex = walIndexByOp.get(op.ref);
+    if (walIndex === undefined || !emitFn) return;
+    // The op must name the record it repeats: same table and key as ops[ref].
+    const target = wal[walIndex];
+    const targetKey = target?.after?.id ?? target?.before?.id;
+    if (!target || target.table !== op.table || String(targetKey) !== String(op.pk.id)) return;
+    // Make sure the first delivery has happened, so there is an original
+    // position to preserve.
+    flush();
+    const original = delivered.get(walIndex);
+    if (!original || typeof original.offset !== "number") return;
+    const copy: Event = {
+      ...original,
+      id: nextEventId(),
+      before: original.before ? cloneRowPayload(original.before) : undefined,
+      after: original.after ? cloneRowPayload(original.after) : undefined,
+      sourcePosition: original.sourcePosition ?? original.offset,
+      redelivered: true,
+    };
+    // The consumer UI tags published events with a sequence number; the copy
+    // is a new delivery and must get its own.
+    delete (copy as { __seq?: number }).__seq;
+    wal.push(copy);
+  };
+
   return {
     id: "LOG_BASED",
     initialise(nextRuntime) {
@@ -188,9 +231,15 @@ export function createLogBasedAdapter(): ModeAdapter {
     startTailing(emit) {
       emitFn = emit;
     },
-    applySource(op) {
+    applySource(op, scenarioIndex) {
       if (!runtime) return;
+      if (op.op === "redeliver") {
+        redeliver(op);
+        return;
+      }
       const commitTs = op.t;
+      // ts_ms stamped on the event: the committing node's clock, which may differ from t.
+      const eventTs = op.ts_ms ?? op.t;
       const key = makeRowKey(op.table, op.pk.id);
       ensureSchemaVersion(op.table);
       if (op.op === "insert") {
@@ -202,8 +251,9 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: false,
         });
+        if (scenarioIndex !== undefined) walIndexByOp.set(scenarioIndex, wal.length);
         wal.push(
-          buildRowEvent(op, "INSERT", null, cloneRowPayload(op.after), commitTs),
+          buildRowEvent(op, "INSERT", null, cloneRowPayload(op.after), eventTs),
         );
       } else if (op.op === "update") {
         const current = rows.get(key);
@@ -217,8 +267,9 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: false,
         });
+        if (scenarioIndex !== undefined) walIndexByOp.set(scenarioIndex, wal.length);
         wal.push(
-          buildRowEvent(op, "UPDATE", before, cloneRowPayload(merged), commitTs),
+          buildRowEvent(op, "UPDATE", before, cloneRowPayload(merged), eventTs),
         );
       } else if (op.op === "delete") {
         const current = rows.get(key);
@@ -230,8 +281,9 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: true,
         });
+        if (scenarioIndex !== undefined) walIndexByOp.set(scenarioIndex, wal.length);
         wal.push(
-          buildRowEvent(op, "DELETE", current ? cloneRowPayload(current.data) : null, null, commitTs),
+          buildRowEvent(op, "DELETE", current ? cloneRowPayload(current.data) : null, null, eventTs),
         );
       }
     },
@@ -261,11 +313,7 @@ export function createLogBasedAdapter(): ModeAdapter {
     tick(nowMs) {
       if (!emitFn) return;
       if (nowMs - lastFetch < fetchIntervalMs) return;
-      const batch = wal.slice(lastEmittedIndex);
-      if (batch.length) {
-        emitFn(batch);
-        lastEmittedIndex = wal.length;
-      }
+      flush();
       lastFetch = nowMs;
     },
     pause() {
@@ -278,6 +326,8 @@ export function createLogBasedAdapter(): ModeAdapter {
       rows.clear();
       wal.length = 0;
       lastEmittedIndex = 0;
+      walIndexByOp.clear();
+      delivered.clear();
       emitFn = null;
       runtime = null;
       schemaVersions.clear();

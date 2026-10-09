@@ -9,6 +9,8 @@ export class LogEngine extends BaseEngine {
   private lsn = 0;
   private fetchIntervalMs = 100;
   private lastFetch = 0;
+  // op index -> the WAL record that op produced.
+  private walByOp = new Map<number, WalRecord>();
 
   configure(opts: { fetch_interval_ms?: number }) {
     if (opts.fetch_interval_ms !== undefined) this.fetchIntervalMs = opts.fetch_interval_ms;
@@ -20,9 +22,24 @@ export class LogEngine extends BaseEngine {
     this.wal = [];
     this.lsn = 0;
     this.lastFetch = 0;
+    this.walByOp.clear();
   }
 
-  applySourceOp(op: SourceOp) {
+  applySourceOp(op: SourceOp, scenarioIndex?: number) {
+    if (op.op === "redeliver") {
+      // Delivery-layer repeat: the same record, the same lsn. Nothing is
+      // written at the source and the log position does not advance.
+      const original = this.walByOp.get(op.ref);
+      if (original && original.table === op.table && original.pk.id === op.pk.id) {
+        this.wal.push({
+          ...original,
+          before: original.before ? { ...original.before } : null,
+          after: original.after ? { ...original.after } : null,
+          redelivered: true,
+        });
+      }
+      return;
+    }
     const txnMeta = op.txn ?? { id: `tx-${op.t}`, index: 0, total: 1, last: true };
     const tx_id = txnMeta.id ?? `tx-${op.t}`;
     const tx_index = typeof txnMeta.index === "number" ? txnMeta.index : 0;
@@ -39,7 +56,7 @@ export class LogEngine extends BaseEngine {
         updated_at_ms: op.t,
         deleted: false,
       });
-      this.wal.push({
+      this.pushRecord(scenarioIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -50,7 +67,7 @@ export class LogEngine extends BaseEngine {
         pk: op.pk,
         before: null,
         after: op.after,
-        commit_ts_ms: op.t,
+        commit_ts_ms: op.ts_ms ?? op.t,
       });
     } else if (op.op === "update") {
       const cur = this.table.get(op.pk.id);
@@ -66,7 +83,7 @@ export class LogEngine extends BaseEngine {
         deleted: false,
       });
 
-      this.wal.push({
+      this.pushRecord(scenarioIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -77,13 +94,13 @@ export class LogEngine extends BaseEngine {
         pk: op.pk,
         before,
         after: next,
-        commit_ts_ms: op.t,
+        commit_ts_ms: op.ts_ms ?? op.t,
       });
     } else if (op.op === "delete") {
       const cur = this.table.get(op.pk.id);
       this.table.delete(op.pk.id);
 
-      this.wal.push({
+      this.pushRecord(scenarioIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -94,9 +111,14 @@ export class LogEngine extends BaseEngine {
         pk: op.pk,
         before: cur ? cur.data : null,
         after: null,
-        commit_ts_ms: op.t,
+        commit_ts_ms: op.ts_ms ?? op.t,
       });
     }
+  }
+
+  private pushRecord(scenarioIndex: number | undefined, record: WalRecord) {
+    if (scenarioIndex !== undefined) this.walByOp.set(scenarioIndex, record);
+    this.wal.push(record);
   }
 
   tick(nowMs: number) {
@@ -122,6 +144,7 @@ export class LogEngine extends BaseEngine {
         },
         seq: ++this.seq,
         meta: { method: "log" },
+        ...(record.redelivered ? { redelivered: true } : {}),
       };
 
       this.bus.emit(evt);

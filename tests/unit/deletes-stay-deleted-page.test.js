@@ -332,6 +332,14 @@ describe("links", () => {
   it("resolves every internal link and anchor", () => {
     expect(internal.length).toBeGreaterThan(15);
     for (const { path: p, hash } of internal) {
+      // The playground is a separate published artifact (playground/), not a
+      // page under src/. Its deep links (?try=<id>) are covered by its own tests.
+      if (p === "/playground/") {
+        expect(existsSync(path.join(ROOT, "playground", "index.html"))).toBe(
+          true,
+        );
+        continue;
+      }
       const dir = path.join(ROOT, "src", p.replace(/^\/|\/$/g, ""));
       const file = path.join(dir, "index.njk");
       expect(existsSync(file), `${p} -> ${file}`).toBe(true);
