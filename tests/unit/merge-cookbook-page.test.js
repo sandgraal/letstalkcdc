@@ -309,6 +309,65 @@ describe("merge cookbook: every dialect applies the log-position rule", () => {
     );
   });
 
+  it.each(["snowflake", "bigquery", "databricks delta"])(
+    "%s: a key the target has never seen always inserts, a delete as a marker",
+    (name) => {
+      // no extra condition on the insert branch (AND s.OP <> 'd' would drop
+      // the delete marker and let a late older insert create the row)
+      expect(flat(name)).toContain(
+        "WHEN NOT MATCHED THEN INSERT (ID, EMAIL, IS_DELETED, SOURCE_LSN, SEQ) VALUES (s.ID, s.EMAIL, (s.OP = 'd'), s.SOURCE_LSN, s.SEQ);",
+      );
+    },
+  );
+
+  it("oracle and sql server: the insert branch is unconditional and writes the marker from op", () => {
+    expect(flat("oracle")).toContain(
+      "WHEN NOT MATCHED THEN INSERT (id, email, is_deleted, source_scn, seq) VALUES (s.id, s.email, CASE WHEN s.op = 'd' THEN 1 ELSE 0 END, s.source_scn, s.seq);",
+    );
+    expect(flat("sql server")).toContain(
+      "WHEN NOT MATCHED BY TARGET THEN INSERT (id, email, is_deleted, commit_lsn, change_lsn, event_serial_no) VALUES (s.id, s.email, CASE WHEN s.op = 'd' THEN 1 ELSE 0 END, s.commit_lsn, s.change_lsn, s.event_serial_no);",
+    );
+  });
+
+  // The dedupe must rank by the same key the guard compares by, newest first,
+  // on every column (an ASC ordinal would pick the older of two changes that
+  // share a position).
+  it.each([
+    ["snowflake", "PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC"],
+    ["bigquery", "PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC"],
+    ["databricks delta", "PARTITION BY ID ORDER BY SOURCE_LSN DESC, SEQ DESC"],
+    ["oracle", "PARTITION BY c.id ORDER BY c.source_scn DESC, c.seq DESC"],
+    [
+      "sql server",
+      "PARTITION BY id ORDER BY commit_lsn DESC, change_lsn DESC, event_serial_no DESC",
+    ],
+    ["postgres", "PARTITION BY id ORDER BY source_lsn DESC, seq DESC"],
+    [
+      "mysql",
+      "PARTITION BY id ORDER BY binlog_file DESC, binlog_pos DESC, row_idx DESC",
+    ],
+    ["redshift", "PARTITION BY id ORDER BY source_lsn DESC, seq DESC"],
+  ])("%s: dedupe ranks by the full key, every column DESC", (name, clause) => {
+    const sql = flat(name);
+    expect(sql).toContain(`ROW_NUMBER() OVER (${clause})`);
+    expect(sql).not.toMatch(/ORDER BY[^)]*\bASC\b/i);
+  });
+
+  it("bigquery: INGESTED_AT is set by a default, and DEFAULT precedes NOT NULL", () => {
+    expect(flat("bigquery")).toContain(
+      "INGESTED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP() NOT NULL",
+    );
+  });
+
+  it("oracle rs_id text comparison is qualified, and agrees with the general rule", () => {
+    expect(prose).toMatch(
+      /fixed-width, zero-padded, single-case hex under a binary sort/,
+    );
+    expect(prose).toMatch(
+      /the one text form that is safe is a fixed-width, zero-padded, single-case hex string/,
+    );
+  });
+
   it("redshift and mysql insert only keys the target has never seen", () => {
     expect(flat("redshift")).toContain(
       "LEFT JOIN target_customers t ON t.id = s.id WHERE t.id IS NULL;",
