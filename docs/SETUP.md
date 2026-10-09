@@ -20,39 +20,27 @@ npm run dev
 
 The site is built with **progressive enhancement** — core features work immediately, with optional services adding enhanced functionality:
 
-| Feature                               | Status        | Setup Required                      |
-| ------------------------------------- | ------------- | ----------------------------------- |
-| **Static site** (educational content) | ✅ Ready      | None — works out of the box         |
-| **Local progress tracking**           | ✅ Ready      | None — uses browser localStorage    |
-| **Client-side tracing**               | ❌ Removed    | See [TRACING.md](TRACING.md)        |
-| **Appwrite assistant feedback**       | ⚠️ Optional   | Appwrite project + collection setup |
-| **User authentication**               | ⚠️ Deprecated | Authentication has been removed     |
-| **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed         |
+| Feature                               | Status        | Setup Required                   |
+| ------------------------------------- | ------------- | -------------------------------- |
+| **Static site** (educational content) | ✅ Ready      | None — works out of the box      |
+| **Local progress tracking**           | ✅ Ready      | None — uses browser localStorage |
+| **Client-side tracing**               | ❌ Removed    | See [TRACING.md](TRACING.md)     |
+| **Assistant feedback (Supabase)**     | ⚠️ Optional   | Two build-time variables         |
+| **User authentication**               | ⚠️ Deprecated | Authentication has been removed  |
+| **Cloud progress sync**               | ⚠️ Deprecated | Cloud sync has been removed      |
 
 ## Environment Configuration
 
-### Copy Environment Template
+### Set Variables Inline
+
+Nothing in this repo loads a `.env` file: `npm run dev` and `npm run build` read only the environment of the shell that runs them. `.env.example` is only a reference list of the variable names. Pass values on the command line instead:
 
 ```bash
-cp .env.example .env
-```
-
-### Edit `.env` with Your Values
-
-```bash
-# Required for Appwrite integration (all optional otherwise)
-APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-APPWRITE_PROJECT=your_project_id_here
-APPWRITE_DB_ID=main
-
-# Optional - defaults to "assistant_feedback" if not set
-COL_ASSISTANT_ID=assistant_feedback
-
-# Server-side only (for optional backend helpers)
-APPWRITE_API_KEY=your_secret_api_key_here
+# Optional - assistant feedback (Supabase). Leave unset for local dev.
+SUPABASE_URL=https://<project-ref>.supabase.co SUPABASE_PUBLISHABLE_KEY=sb_publishable_... npm run dev
 
 # Site configuration (for GitHub Pages deployment)
-SITE_HOST=https://letstalkcdc.github.io
+SITE_HOST=https://letstalkcdc.github.io npm run build
 # ELEVENTY_PATH_PREFIX is auto-detected from GITHUB_REPOSITORY
 # Only set manually if needed for custom deployments
 # ELEVENTY_PATH_PREFIX=/letstalkcdc
@@ -75,110 +63,76 @@ There is nothing to set up here. `app.js` keeps a no-op
 
 ---
 
-### 2. Optional Appwrite Assistant Feedback
+### 2. Optional Assistant Feedback (Supabase)
 
-**Status**: ✅ **Code Complete** — Only needed if you want to sync assistant feedback to Appwrite.
+**Status**: ✅ **Code Complete** — Only needed if you want assistant 👍/👎 feedback stored somewhere other than the visitor's own browser.
 
-Progress tracking now runs entirely in the browser with no authentication. Appwrite is purely optional for storing answers/feedback gathered through the assistant widget.
+Progress tracking runs entirely in the browser with no authentication. The only server-side service is a Supabase table that receives the 👍/👎 votes gathered through the assistant widget.
 
 #### What you get
 
-- ✅ Assistant feedback synced to Appwrite when credentials are present
-- ✅ Graceful fallback to local storage if Appwrite details are missing
-- 🚫 No user authentication or GitHub OAuth required
+- ✅ Assistant feedback stored in Supabase when the two variables below are set
+- ✅ Graceful fallback to local storage (`assistantFeedback`) when they are not
+- 🚫 No user authentication or accounts required
 
-#### Prerequisites
+#### How it works
 
-- [Appwrite Cloud account](https://cloud.appwrite.io) (free) or self-hosted instance
+The browser sends each vote straight to Supabase's REST API (PostgREST) with `fetch`. There is no SDK and no CDN script. It uses only the **publishable** key (`sb_publishable_...`), which is safe to expose in the browser because row-level security limits it to `INSERT` on a single table. Never put a secret or service-role key in this repo or in the browser.
+
+Each vote carries a client-generated `id`, so a retried request is idempotent: HTTP 409 means the vote is already stored.
+
+#### The table
+
+Votes land in `public.assistant_feedback`:
+
+| Column      | Type          | Notes                                     |
+| ----------- | ------------- | ----------------------------------------- |
+| `id`        | `uuid` (PK)   | Generated by the browser for safe retries |
+| `question`  | `text`        | Required, at most 2000 characters         |
+| `intent_id` | `text`        | Optional, at most 200 characters          |
+| `helpful`   | `boolean`     | Required; `true` for 👍, `false` for 👎   |
+| `ts`        | `timestamptz` | Defaults to `now()`                       |
+
+Row-level security is on, with an insert-only policy for the `anon` role and no read policy. The reviewable record of the schema is [`supabase/schema.sql`](../supabase/schema.sql); it is not applied automatically.
 
 #### Setup Steps
 
-##### Step 1: Create Appwrite Project
+1. In the Supabase Dashboard, open your project and note the **project URL** (for example `https://<project-ref>.supabase.co`).
+2. Go to **Project Settings → API Keys** and copy the **publishable** key.
+3. If you are standing up a new project rather than using the existing one, run [`supabase/schema.sql`](../supabase/schema.sql) in the Supabase SQL editor.
+4. Set both values at build time:
+   - **Locally**: set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` inline on the command, for example `SUPABASE_URL=... SUPABASE_PUBLISHABLE_KEY=... npm run dev`. Nothing reads a `.env` file.
+   - **On GitHub**: Settings → Secrets and variables → Actions → **Variables** (not Secrets) → add both. `deploy.yml` passes them to the build. The URL and the publishable key are public by design.
 
-1. Log in to [Appwrite Cloud](https://cloud.appwrite.io)
-2. Click "Create Project"
-3. Name it "CDC Playground" (or your preference)
-4. **Note your Project ID** (required for `.env`)
+If either variable is unset (local dev, forks), the site works as normal and feedback only queues in `localStorage` under `assistantFeedback`.
 
-##### Step 2: Set Up Database
-
-1. In your Appwrite project, go to **Databases**
-2. Click "Create Database"
-3. Name it `main`
-4. Click the database to open it
-5. Click "**Import Collections**"
-6. Upload `appwrite.collections.json`
-7. Confirm the `assistant_feedback` collection exists (the progress and events collections are no longer required).
-
-**Detailed Collection Setup** (if not importing via JSON):
-
-If you prefer to create the collection manually:
-
-1. Navigate to **Database → Collections → Create collection**
-2. Choose **Custom ID** and enter `assistant_feedback`
-3. Enable **Document security**
-4. Add the following attributes:
-
-   | Key        | Type     | Required | Size/Format | Notes                             |
-   | ---------- | -------- | -------- | ----------- | --------------------------------- |
-   | `question` | String   | Yes      | 512         | User's question text              |
-   | `intentId` | String   | No       | 128         | Matched intent identifier         |
-   | `helpful`  | Boolean  | Yes      | -           | Captures 👍/👎 feedback           |
-   | `ts`       | Datetime | Yes      | -           | ISO timestamp captured in browser |
-
-5. Create an index named `byTime` on the `ts` attribute (Descending order) for efficient querying
-6. Configure permissions:
-   - Grant **Create** access to `Any` (allows unauthenticated feedback)
-   - Grant **Read**, **Update**, and **Delete** access to administrators only
-
-**Import via Appwrite CLI** (alternative method):
+#### Test Locally
 
 ```bash
-appwrite login
-appwrite projects select <PROJECT_ID>
-appwrite databases import --file appwrite.collections.json
-```
-
-##### Step 3: Configure Environment Variables
-
-Edit your `.env` file:
-
-```bash
-# Required for Appwrite integration
-APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-APPWRITE_PROJECT=YOUR_PROJECT_ID_FROM_STEP_1
-APPWRITE_DB_ID=main
-
-# Optional - defaults to "assistant_feedback" if not set
-COL_ASSISTANT_ID=assistant_feedback
-```
-
-> **Note**: Only `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, and `APPWRITE_DB_ID` are required for Appwrite integration. `COL_ASSISTANT_ID` is optional and defaults to `assistant_feedback` if not set. The assistant automatically stores feedback locally if the required Appwrite credentials are missing. You only need `APPWRITE_API_KEY` if a backend worker posts feedback on your behalf; the static site does not expose the key.
-
-##### Step 4: Test Locally
-
-```bash
-# Test Appwrite connection (optional helper)
-node test-appwrite.cjs
-
-# Start dev server
 npm run dev
 
 # Visit http://localhost:8080/intro/
-# Submit assistant feedback and check the Appwrite collection
+# Submit assistant feedback, then look for the row in the Supabase dashboard
 ```
+
+#### Reading feedback
+
+Reading feedback is a maintainer-only action. Open the Supabase Dashboard → **Table Editor** (or the SQL editor) and look at `public.assistant_feedback`. The browser key cannot read rows.
+
+#### Privacy
+
+When a visitor clicks 👍 or 👎 in the assistant, the site stores their last typed question, the matched topic id (`intent_id`), the vote and a timestamp in the project's Supabase database. The assistant panel shows a notice saying so. Rows are readable only by the maintainer, through the Supabase dashboard. There is no retention policy and no automatic deletion yet: rows stay until someone deletes them by hand in the dashboard (Table Editor → `assistant_feedback` → select the rows → delete). Visitors should not paste secrets or connection strings into the assistant.
 
 #### Troubleshooting
 
-- Ensure the `assistant_feedback` collection permissions allow anonymous document creation.
-- Confirm network access to `APPWRITE_ENDPOINT` from the browser.
-- Confirm CDN is accessible: https://cdn.jsdelivr.net/npm/appwrite@13.0.0
-
 **Assistant feedback not syncing**
 
-- Verify the `assistant_feedback` collection allows anonymous document creation.
-- Confirm the Appwrite credentials in `.env` match your project IDs.
-- Check browser console for Appwrite SDK warnings.
+- Confirm `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` were set when the site was built; they are read at build time, not at runtime.
+- Confirm the table has row-level security on and the insert policy from `supabase/schema.sql`.
+- Check the browser's network tab for the request to `/rest/v1/assistant_feedback`:
+  - A **401 or 403** means `SUPABASE_URL` or `SUPABASE_PUBLISHABLE_KEY` is wrong. Votes stay queued in the browser (for up to 14 days) and are retried, so fixing the variable and redeploying delivers them.
+  - A **409** means that vote was already stored, which counts as delivered.
+  - Any other 4xx (400, 404, 422) means the entry itself was rejected, so it is dropped. A 5xx, 408 or 429 is retried later.
 
 **Progress not persisting**
 
@@ -188,27 +142,27 @@ npm run dev
 
 #### Documentation
 
-- **Detailed collection setup**: See Step 2 above for manual collection creation steps
+- **Schema**: [`supabase/schema.sql`](../supabase/schema.sql)
 
 ---
 
 ### 3. Lightweight Assistant (Optional)
 
-**Status**: ✅ **Implemented** — Requires Appwrite `assistant_feedback` collection
+**Status**: ✅ **Implemented** — Feedback storage is optional (see section 2)
 
 Provides an AI assistant with predefined answers to common CDC questions.
 
 #### Features
 
 - 🤖 Pattern-matched intents for common questions
-- 💾 Feedback collection (👍/👎) stored in Appwrite
+- 💾 Feedback collection (👍/👎) stored in Supabase
 - 🔄 Offline fallback with queue replay
 - 📊 Knowledge base defined in `src/data/assistant.yml`
 
 #### Setup
 
-1. **Complete Appwrite setup** (see section 2 above)
-2. **Verify collection exists**: `assistant_feedback` should be created when you import `appwrite.collections.json`
+1. **Optionally configure feedback storage** (see section 2 above)
+2. **Without it**, feedback queues in `localStorage` and the assistant works unchanged
 3. **Test locally**: Click the floating assistant button (💬 icon)
 
 #### Extending the Knowledge Base
@@ -230,7 +184,7 @@ The site automatically converts YAML → JSON during build.
 
 #### Documentation
 
-- **Collection schema**: See section 2 above for collection setup details
+- **Feedback schema**: See section 2 above and [`supabase/schema.sql`](../supabase/schema.sql)
 - **Contributing guide**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
@@ -245,9 +199,9 @@ The site automatically converts YAML → JSON during build.
 
 - ❌ User signup and login removed
 - ❌ Cloud-synced progress removed
-- ❌ Appwrite `progress` and `events` collections no longer used
+- ❌ Server-side progress and event storage no longer used
 - ✅ Progress tracking continues to work using browser localStorage only
-- ✅ Assistant feedback collection (`assistant_feedback`) still supported
+- ✅ Assistant feedback (👍/👎) is still collected, now in Supabase (see section 2)
 
 #### Historical Context
 
@@ -264,7 +218,7 @@ This functionality was removed to simplify the architecture and eliminate the ne
 If you have an existing deployment with user authentication:
 
 - Existing users will automatically fall back to localStorage-based progress
-- The `progress` and `events` collections can be safely removed from your Appwrite database
+- Any server-side progress or event data from the old deployment is no longer read and can be deleted
 - No user data migration is needed (users will start fresh with localStorage)
 
 For historical reference, the complete authentication setup documentation has been archived in [docs/archive/auth-setup.md](archive/auth-setup.md)
@@ -284,6 +238,7 @@ The site deploys automatically to GitHub Pages via GitHub Actions.
 3. Configure repository variables (Settings → Secrets and variables → Actions → Variables):
    - `SITE_HOST`: `https://letstalkcdc.github.io` or your custom domain
    - `ELEVENTY_PATH_PREFIX`: `/letstalkcdc` (or blank for root deployment)
+   - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (optional): enable assistant feedback storage
 
 4. Push to `main` branch to trigger deployment
 
@@ -310,21 +265,6 @@ npm run smoke:a11y   # Accessibility tests (requires Chromium)
 npm run smoke:perf   # Performance budget checks
 ```
 
-### Appwrite Connection
-
-```bash
-# Test Appwrite connection and collection setup
-node test-appwrite.cjs
-```
-
-Should output:
-
-```
-✓ Connected to Appwrite
-✓ Database: main
-✓ Collection: assistant_feedback
-```
-
 ### Feature Testing Checklist
 
 #### Local Progress (default)
@@ -338,7 +278,7 @@ Should output:
 
 - [ ] Trigger the assistant prompt
 - [ ] Submit thumbs-up or thumbs-down feedback
-- [ ] Confirm a new document appears in Appwrite → Database → `assistant_feedback`
+- [ ] Confirm a new row appears in the Supabase dashboard → Table Editor → `assistant_feedback`
 
 ---
 
@@ -350,8 +290,9 @@ The site follows a **layered architecture**:
 
 1. **Base Layer** — Static HTML/CSS, works without JavaScript
 2. **Local Storage** — Progress tracking in browser (no backend)
-3. **Assistant Feedback** — Appwrite collects 👍/👎 ratings on the
-   AI assistant's responses (optional; site works without it)
+3. **Assistant Feedback** — 👍/👎 ratings on the AI assistant's
+   responses are posted to Supabase with `fetch` (optional; site works
+   without it)
 
 A previous cloud-sync + GitHub-OAuth tier existed on top of this
 stack but was removed; see "Archived: User Authentication and
@@ -359,16 +300,15 @@ Cloud Progress Sync" above.
 
 ### Security
 
-- ✅ API keys never exposed to browser
-- ✅ Collections have proper read/write permissions
-- ✅ Anonymous users isolated to their own data
-- ✅ CORS properly configured
+- ✅ Only the publishable Supabase key is used; no secret or service-role key is in the repo or the browser
+- ✅ Row-level security limits the browser key to `INSERT` on one table
+- ✅ No read access from the browser; the maintainer reads rows in the Supabase dashboard
 - ✅ `.env` excluded from version control
 
 ### Performance
 
 - ✅ Static site generation (fast load times)
-- ✅ Lazy-loading of Appwrite SDK (only when needed)
+- ✅ No client SDK: feedback uses a plain `fetch` call
 
 ---
 
@@ -390,7 +330,7 @@ Cloud Progress Sync" above.
 
 **Port 8080 in use**: Kill the process or use `npx eleventy --serve --port=3000`
 
-**Appwrite connection fails**: Run `node test-appwrite.cjs` to diagnose
+**Assistant feedback not arriving**: See the troubleshooting list in section 2
 
 **Progress not updating**: Ensure `localStorage` is enabled and not cleared automatically
 
@@ -399,12 +339,12 @@ Cloud Progress Sync" above.
 ## Next Steps
 
 1. ✅ Complete basic setup (clone, install, run)
-2. ⚠️ Optional: Configure Appwrite for assistant feedback sync
+2. ⚠️ Optional: Configure Supabase for assistant feedback
 3. ⚠️ Optional: Deploy to production (GitHub Pages)
 4. 📖 Read [docs/adding-modules.md](adding-modules.md) to contribute content
 
 ---
 
-**Last updated**: November 2025  
+**Last updated**: October 2026  
 **Maintained by**: sandgraal/letstalkcdc  
 **License**: See [LICENSE](../LICENSE)

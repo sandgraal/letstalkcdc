@@ -35,6 +35,8 @@ jobs:
         env:
           ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX }}
           SITE_HOST: ${{ vars.SITE_HOST }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build
 
       - name: Upload artifact

@@ -9,12 +9,11 @@
  * - Next-topic suggestions based on progress
  * - Improved feedback with inline confirmation
  */
-import { databases, dbConfig, isAppwriteReady } from "./appwrite-config.js";
+import { createFeedbackClient } from "./feedback-client.js";
 import { withBasePath } from "../assets/js/utils/path-prefix.js";
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 const HISTORY_KEY = "assistantHistory";
-const FEEDBACK_KEY = "assistantFeedback";
 const MAX_HISTORY = 20;
 
 /* ── Knowledge base ────────────────────────────────────────────────────── */
@@ -58,49 +57,18 @@ function pushMessage(role, text, extra) {
 
 /* ── Feedback persistence ──────────────────────────────────────────────── */
 
-function readLocalFeedback() {
-  try {
-    const raw = localStorage.getItem(FEEDBACK_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+// Votes are queued in localStorage (key: assistantFeedback) and sent to
+// Supabase when window.SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY are set.
+let _feedbackClient = null;
+
+function getFeedbackClient() {
+  if (!_feedbackClient) {
+    _feedbackClient = createFeedbackClient({
+      url: window.SUPABASE_URL,
+      key: window.SUPABASE_PUBLISHABLE_KEY,
+    });
   }
-}
-
-function writeLocalFeedback(entries) {
-  try {
-    localStorage.setItem(FEEDBACK_KEY, JSON.stringify(entries));
-  } catch {
-    /* quota exceeded */
-  }
-}
-
-function queueLocalFeedback(entry) {
-  const queue = readLocalFeedback();
-  queue.push(entry);
-  writeLocalFeedback(queue);
-}
-
-async function syncPendingFeedback() {
-  if (!databases || !dbConfig.databaseId || !dbConfig.collectionId) return;
-  const pending = readLocalFeedback();
-  if (!pending.length) return;
-
-  const remaining = [];
-  for (const entry of pending) {
-    try {
-      await databases.createDocument(
-        dbConfig.databaseId,
-        dbConfig.collectionId,
-        "unique()",
-        entry,
-      );
-    } catch {
-      remaining.push(entry);
-    }
-  }
-  writeLocalFeedback(remaining);
+  return _feedbackClient;
 }
 
 /* ── Intent matching (context-aware) ───────────────────────────────────── */
@@ -186,6 +154,10 @@ function esc(s) {
 
 /* ── Build chat panel HTML ─────────────────────────────────────────────── */
 
+let feedbackNoteSeq = 0;
+const FEEDBACK_NOTICE =
+  "Your question is sent with your vote to help improve answers.";
+
 function buildPanelHTML() {
   return `
     <div class="assistant-header">
@@ -243,12 +215,16 @@ function renderMessageBubble(msg) {
   }
 
   // Feedback row (only on latest)
+  // The note discloses that the question leaves the browser with the vote.
+  // It reuses global utility classes (05-utilities.css) so no new CSS is needed.
   if (msg.showFeedback) {
+    const noteId = `assistant-fb-note-${++feedbackNoteSeq}`;
     html += `
       <div class="assistant-feedback" data-intent="${msg.intentId || ""}">
-        <button class="assistant-fb-btn" data-helpful="true" type="button" aria-label="Helpful">👍</button>
-        <button class="assistant-fb-btn" data-helpful="false" type="button" aria-label="Not helpful">👎</button>
-      </div>`;
+        <button class="assistant-fb-btn" data-helpful="true" type="button" aria-label="Helpful" aria-describedby="${noteId}">👍</button>
+        <button class="assistant-fb-btn" data-helpful="false" type="button" aria-label="Not helpful" aria-describedby="${noteId}">👎</button>
+      </div>
+      <p class="assistant-fb-note text-xs text-secondary" id="${noteId}">${FEEDBACK_NOTICE}</p>`;
   }
 
   div.innerHTML = html;
@@ -260,10 +236,8 @@ function renderMessageBubble(msg) {
 document.addEventListener("DOMContentLoaded", async () => {
   const kb = await loadKB();
 
-  // Sync any pending Appwrite feedback
-  if (isAppwriteReady) {
-    syncPendingFeedback();
-  }
+  // Deliver any feedback that is still queued from earlier visits
+  getFeedbackClient().sync();
 
   const panel = document.getElementById("askPanel");
   const fab = document.getElementById("askBtn");
@@ -382,7 +356,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ── Feedback delegation ──
-  messagesEl.addEventListener("click", async (e) => {
+  messagesEl.addEventListener("click", (e) => {
     const btn = e.target.closest(".assistant-fb-btn");
     if (!btn) return;
 
@@ -400,38 +374,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    await saveFeedback(question, intentId, helpful);
+    saveFeedback(question, intentId, helpful);
 
     // Replace feedback row with confirmation
+    const note = feedbackRow.nextElementSibling;
+    if (note && note.matches(".assistant-fb-note")) note.remove();
     feedbackRow.innerHTML = `<span class="assistant-fb-thanks">Thanks for the feedback!</span>`;
   });
 });
 
 /* ── Save feedback ─────────────────────────────────────────────────────── */
 
-async function saveFeedback(question, intentId, helpful) {
-  const entry = {
-    question,
-    intentId,
-    helpful,
-    ts: new Date().toISOString(),
-  };
-
-  if (!databases) {
-    queueLocalFeedback(entry);
-    return;
-  }
-
-  try {
-    await databases.createDocument(
-      dbConfig.databaseId,
-      dbConfig.collectionId,
-      "unique()",
-      entry,
-    );
-    // Also try to flush any pending queue
-    syncPendingFeedback();
-  } catch {
-    queueLocalFeedback(entry);
-  }
+function saveFeedback(question, intentId, helpful) {
+  // Queues first, then sends in the background; never throws.
+  getFeedbackClient().submit({ question, intentId, helpful });
 }

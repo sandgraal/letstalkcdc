@@ -1008,7 +1008,7 @@ dependencies).
 
 ### Tier 0 — requested by the maintainer (work first)
 
-- [ ] **P13-10 · Replace Appwrite with Supabase and remove Appwrite
+- [x] **P13-10 · Replace Appwrite with Supabase and remove Appwrite
       entirely.** Outcome: assistant 👍/👎 feedback reaches a database in
       production (it never has: `deploy.yml` passes no `APPWRITE_*`
       variables, so every vote sat in a local queue that was never
@@ -1055,6 +1055,7 @@ dependencies).
   `SUPABASE_PUBLISHABLE_KEY` as Actions variables; and delete the Appwrite
   project (and rotate the API key noted in `SECURITY.md`) — agents cannot
   and should not do either.
+  2026-10-08: Shipped on branch `claude/supabase-feedback`; the feedback table already existed in the Supabase project (migration `playground_and_feedback_schema`); maintainer steps still open: set the two Actions variables, delete the Appwrite project and rotate the key noted in `SECURITY.md`, optionally apply the commented least-privilege revoke in `supabase/schema.sql`.
 
 ### Tier A — quick wins
 
@@ -1135,7 +1136,7 @@ dependencies).
 
 ### Tier C — larger upgrades (one PR each, never batched)
 
-- [ ] **P13-8 · Major dependency upgrades.** Nine majors are pending:
+- [ ] **P13-8 · Major dependency upgrades.** Eight majors are pending (`dotenv` leaves with P13-10):
       `vitest` + `@vitest/coverage-v8` 4→5 (together), `jsdom` 28→30,
       `cssnano` 7→9 (**will likely move the production CSS hash —
       treat as a CSS change**), `rimraf` 5→6,

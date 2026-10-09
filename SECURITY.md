@@ -1,6 +1,6 @@
 # Security Policy
 
-This is a static, vendor-agnostic learning site (HTML/CSS/JS). There’s **no server, DB, or auth** in this repo. Security issues will mainly involve client-side JS, Markdown rendering, third-party libraries, and accidental secret leaks.
+This is a static, vendor-agnostic learning site (HTML/CSS/JS). There’s **no server or auth** in this repo, and the only database is an optional Supabase table that receives assistant feedback. Security issues will mainly involve client-side JS, Markdown rendering, third-party libraries, and accidental secret leaks.
 
 ## Supported Versions
 
@@ -23,15 +23,20 @@ Please include:
 ## Secret Management
 
 - Never commit secrets or API keys to version control. Use environment variables in your deployment platform (Netlify, Vercel, GitHub Actions, etc.) or a local `.env` file ignored by Git.
-- For Appwrite integration, set `APPWRITE_API_KEY`, `APPWRITE_PROJECT`, `APPWRITE_ENDPOINT`, and other IDs as environment variables. Only non-secret values should be exposed to the browser; the API key must remain server-side.
+- The only browser-exposed credentials are `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (assistant feedback). The publishable key is safe to expose because row-level security limits it to `INSERT` on one table. Never put a secret or service-role key in this repo or in the browser.
 - Rotate credentials immediately if a secret is accidentally exposed.
+
+## Assistant Feedback Data
+
+When a visitor clicks 👍 or 👎 in the assistant, their last typed question, the matched topic id, the vote and a timestamp are stored in the project's Supabase database. Rows are readable only by the maintainer in the Supabase dashboard; there is no retention policy and no automatic deletion yet. Visitors should not paste secrets or connection strings into the assistant.
 
 ## Key Rotation
 
-- If a secret (such as `APPWRITE_API_KEY`) is committed, generate a new key in Appwrite and update your environment variables accordingly.
-- Remove the compromised key from all environments and revoke it in Appwrite.
+- If a secret (such as an API key or a Supabase service-role key) is committed, generate a new key in the provider's console and update your environment variables accordingly.
+- Remove the compromised key from all environments and revoke it with the provider.
 - Consider using tools like `git filter-repo` to remove exposed secrets from history.
 
 ## Recent Security Update
 
 - In October 2025, an Appwrite API key was inadvertently committed to the repository. The key was rotated and removed. Please ensure future contributions do not expose secrets.
+- The Appwrite integration has since been removed from the repository (assistant feedback now uses Supabase). **Maintainer action:** rotate or revoke that Appwrite API key if it is still active, and delete the Appwrite project in the Appwrite console so no live credentials or data remain there.

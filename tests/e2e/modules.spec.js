@@ -45,7 +45,6 @@ test.describe("content pages", () => {
       (e) =>
         !e.includes("favicon") &&
         !e.includes("404") &&
-        !e.includes("appwrite") &&
         !e.includes("Failed to load resource"),
     );
     expect(realErrors).toEqual([]);

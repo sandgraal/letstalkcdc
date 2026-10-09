@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking via localStorage. Appwrite is optionally used for one feature only — collecting 👍/👎 assistant feedback. (User authentication and cross-device cloud progress sync used to be Appwrite-backed too but were removed; see `docs/SETUP.md`.)
+This is **Let's Talk CDC** — an educational static site about Change Data Capture (CDC), built with **Eleventy 3.1.x** + **Vite 7** and deployed to **GitHub Pages**. The codebase uses a hybrid architecture: a static site generator for content with browser-based progress tracking via localStorage. Supabase is optionally used for one feature only — collecting 👍/👎 assistant feedback. (User authentication and cross-device cloud progress sync existed once but were removed; see `docs/SETUP.md`.)
 
 ### Key Architecture Decisions
 
@@ -127,16 +127,16 @@ Global site configuration derived from environment variables:
 }
 ```
 
-### Appwrite Data (`src/_data/appwrite.mjs`)
+### Supabase Data (`src/_data/supabase.mjs`)
 
-Optional configuration for assistant feedback collection:
+Optional configuration for assistant feedback storage. Two environment
+variables are read at build time and `base.njk` exposes them to the
+browser as `window.SUPABASE_URL` / `window.SUPABASE_PUBLISHABLE_KEY`:
 
 ```javascript
 {
-  endpoint: process.env.APPWRITE_ENDPOINT,
-  project: process.env.APPWRITE_PROJECT,
-  databaseId: process.env.APPWRITE_DB_ID,
-  assistantCollectionId: process.env.COL_ASSISTANT_ID
+  url: process.env.SUPABASE_URL,
+  publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY
 }
 ```
 
@@ -176,29 +176,33 @@ Visual metadata display for modules (difficulty, time estimate, prerequisites).
 
 Shared UI components (buttons, cards, badges) used across the site.
 
-## Appwrite Integration (Optional)
+## Supabase Integration (Optional)
 
-Appwrite is the optional headless backend for one shipping feature
-— assistant feedback. The historical auth + cloud-progress-sync
-feature was removed; only its collection schemas linger in
-`appwrite.collections.json` as a vestigial reference.
+Supabase is the optional backend for one shipping feature — assistant
+feedback. The browser posts each 👍/👎 vote straight to Supabase's REST
+API (PostgREST) with `fetch` (`src/js/feedback-client.js`, called from
+`src/js/assistant.js`). There is no SDK
+and no CDN script.
 
-- **Config**: `src/_data/appwrite.mjs` reads env vars
-  (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT`, `APPWRITE_DB_ID`,
-  `COL_ASSISTANT_ID`).
-- **Collections** defined in `appwrite.collections.json`:
-  - `assistant_feedback` — 👍/👎 ratings on AI-assistant responses.
-    This is the only live consumer. The `progress` and `events`
-    collections in the schema file are vestigial — the auth + cloud
-    progress sync feature was removed (see `docs/SETUP.md`).
+- **Config**: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, read at
+  build time. In GitHub they are repository **Variables** (not
+  Secrets) that `deploy.yml` passes to the build.
+- **Key**: only the **publishable** key (`sb_publishable_...`) is used.
+  It is safe in the browser because row-level security limits it to
+  `INSERT` on one table. Never put a secret or service-role key in this
+  repo or in the browser.
+- **Table**: `public.assistant_feedback`, recorded in
+  `supabase/schema.sql` (reviewable and idempotent; not applied
+  automatically). Reading rows is a maintainer-only action in the
+  Supabase dashboard.
 
-### When Appwrite is Needed
+### When Supabase is Needed
 
-**Use Appwrite when**:
+**Use Supabase when**:
 
 - Collecting assistant feedback (👍/👎 ratings on AI assistant responses)
 
-**Site works WITHOUT Appwrite**:
+**Site works WITHOUT Supabase**:
 
 - All educational content renders correctly
 - Navigation functions normally
@@ -206,29 +210,23 @@ feature was removed; only its collection schemas linger in
 - Progress tracking runs entirely in browser localStorage
   (`src/assets/js/local-progress.js`).
 - Assistant works with local-only feedback storage
+  (`localStorage` key `assistantFeedback`)
 - Only loses: centralized assistant-feedback analytics
 
-### Collection Schema
+### Table Schema
 
-**`assistant_feedback` collection** (stores assistant interaction feedback):
+**`public.assistant_feedback`** (stores assistant interaction feedback):
 
-```json
-{
-  "question": "string(512)", // User's question text
-  "intentId": "string(128)", // Matched intent identifier
-  "helpful": "boolean", // User feedback (👍 = true, 👎 = false)
-  "ts": "datetime" // Timestamp of feedback
-}
-```
+| Column      | Type          | Notes                                                     |
+| ----------- | ------------- | --------------------------------------------------------- |
+| `id`        | `uuid` (PK)   | Client-generated so retries are idempotent (409 = stored) |
+| `question`  | `text`        | Required, at most 2000 characters                         |
+| `intent_id` | `text`        | Optional, at most 200 characters                          |
+| `helpful`   | `boolean`     | 👍 = true, 👎 = false                                     |
+| `ts`        | `timestamptz` | Defaults to `now()`                                       |
 
-- Indexed by: `ts` (descending) for recent feedback queries
-- Permissions: Anonymous users can create documents; admins can read/update/delete
-
-The `progress` and `events` collection definitions in
-`appwrite.collections.json` are vestigial. The cloud-sync feature
-that wrote to them was removed; the schema file is retained as a
-historical reference. New deployments can leave both collections
-absent.
+- Row-level security is on; the `anon` role may `INSERT` only. There is
+  no anon read policy.
 
 ## Common Patterns
 
@@ -283,7 +281,7 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 ## When in Doubt
 
 1. Check **[docs/README.md](../docs/README.md)** for complete documentation index
-2. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Appwrite, tracing, deployment)
+2. Check **[docs/SETUP.md](../docs/SETUP.md)** for complete setup guide (Supabase feedback, tracing, deployment)
 3. Inspect existing pages in `src/` for patterns
 4. Run `npm run smoke` to validate changes
 
@@ -293,7 +291,7 @@ eleventyConfig.addNunjucksFilter("filterName", (value, arg) => {
 
 **Setup & Deployment:**
 
-- **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Appwrite, tracing, all features)
+- **[docs/SETUP.md](../docs/SETUP.md)** — Complete setup guide (Supabase feedback, tracing, all features)
 - **[docs/HOSTING.md](../docs/HOSTING.md)** — Hosting platforms and deployment
 - **[README.md](../README.md)** — Project overview and quick start
 
