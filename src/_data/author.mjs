@@ -14,9 +14,16 @@ export default {
     "Author of CDC: The Missing Manual. Writes about change data capture, " +
     "streaming data, and what actually breaks in production.",
   url: "https://github.com/sandgraal",
-  image: null, // TODO: add /static/author/christopher.jpg when an asset is ready
-  sameAs: ["https://github.com/sandgraal"],
-  // Optional consulting / advisory contact surface. When set, the layout
-  // shows a soft CTA on module pages. Leave null to hide.
-  advisoryUrl: null,
+  // Root-relative paths (src/static is passed through to the site root).
+  // Templates add the path prefix with `| url`; JSON-LD prefixes `site.host`.
+  image: "/author/christopher.jpg", // 400x400
+  imageSmall: "/author/christopher-128.jpg", // 128x128, byline avatar
+  sameAs: [
+    "https://github.com/sandgraal",
+    "https://www.linkedin.com/in/cennis/",
+  ],
+  // Contact surface. When set, the layout shows a soft "Get in touch on
+  // LinkedIn" CTA on module pages (the wording assumes a LinkedIn URL).
+  // Leave null to hide.
+  advisoryUrl: "https://www.linkedin.com/in/cennis/",
 };
