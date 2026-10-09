@@ -1074,13 +1074,7 @@ dependencies).
       the check. Accept: `linkcheck.yml` passes `--max-retries` and
       `--retry-wait-time` to lychee; the workflow still fails on a real 404. Verify: workflow lint (`actionlint` if present, else YAML
       parse) and a green CI run. Size: S. Role: `implementer`.
-      Done 2026-10-08: added `--max-retries 5 --retry-wait-time 10` to
-      the lychee args in `linkcheck.yml`; no `--accept` change, so a
-      real 404 still fails. Note lychee's defaults are already 3
-      retries at a 1 s wait, and the original 503 survived those, so the
-      change that matters is the longer wait. Whether 10 s is enough is
-      only provable over several CI runs.
-- [ ] **P13-3 · Remove dead "coming soon" copy.**
+- [x] **P13-3 · Remove dead "coming soon" copy.**
       `src/cloud-labs/index.njk:158` renders a "Cloud labs are coming
       soon" callout when `publishedLabs == 0`, but all five labs
       exist; `src/_includes/components/ui.njk:73,112` default a CTA to
@@ -1089,6 +1083,7 @@ dependencies).
       if a branch is genuinely unreachable it is deleted, not just
       hidden. Verify: `npm run build`, `rg -i "coming soon" _site`,
       `npm test`. Size: S. Role: `implementer`.
+      _2026-10-08: removed the unreachable `publishedLabs` callout and counter in `cloud-labs/index.njk` and the no-href `Coming Soon` branch of `module_card`; kept `series_card`'s `state: disabled` default as a deliberate exception to the "unreachable → deleted" rule: it is an opt-in API with its own styling (`.series-card.is-disabled` in `04-components.css`), no data sets `state` today, and `_site` has zero hits. Deleting it would also mean touching CSS, which belongs to `css-refactor`. Revisit if a later audit wants the branch gone._
 - [ ] **P13-4 · Take the in-range dependency updates as one batch.**
       Every package whose `wanted` version (the newest inside its current
       semver range, per `npm outdated`) is ahead of `current` — on
