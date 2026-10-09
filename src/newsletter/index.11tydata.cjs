@@ -9,7 +9,7 @@ module.exports = {
   eleventyComputed: {
     description: (data) =>
       data.newsletter && data.newsletter.enabled
-        ? "Get an email when new Let's Talk CDC modules, labs or corrections are published. A plain form with no script; your address goes to Buttondown only when you submit."
+        ? "Get an email when new Let's Talk CDC modules, labs or corrections go up. A plain form, no script; your address goes to Buttondown only when you submit."
         : "The Let's Talk CDC newsletter is not open yet. There is no signup form and nothing is collected.",
     robotsMeta: (data) =>
       data.newsletter && data.newsletter.enabled

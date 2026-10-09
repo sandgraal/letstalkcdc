@@ -260,6 +260,33 @@ describe("newsletter signup disclosure (P15-9)", () => {
     expect(sec).toContain('href="https://buttondown.com/legal/privacy"');
   });
 
+  it("discloses the IP address, browser details and cookies Buttondown may receive or set", () => {
+    const sec = section(on, "newsletter");
+    expect(sec).toMatch(
+      /the email address you typed, plus what\s+any request reveals to the receiving site \(your IP address and browser\s+details\)/,
+    );
+    expect(sec).toMatch(/may set cookies under its privacy policy/);
+    expect(section(on, "cookies")).toMatch(
+      /Buttondown page you continue to\s+may set its own cookies/,
+    );
+    expect(section(off, "cookies")).not.toMatch(/Buttondown/);
+  });
+
+  it("routes subscribers to the unsubscribe link, not the anonymous-entry section", () => {
+    const sec = section(on, "newsletter");
+    expect(sec).toMatch(/unsubscribe link Buttondown normally includes/);
+    expect(sec).toContain(`href="${author.advisoryUrl}"`);
+    expect(sec).toMatch(/not for\s+newsletter subscribers/);
+    expect(section(off, "newsletter")).not.toMatch(/unsubscribe/);
+  });
+
+  it("says Buttondown keeps subscriber data, and only when the signup is on", () => {
+    expect(section(on, "retention")).toMatch(
+      /Buttondown, not this site,\s+keeps your address for as long as you are subscribed/,
+    );
+    expect(section(off, "retention")).not.toMatch(/Buttondown/);
+  });
+
   it("lists buttondown.com among third-party requests only when the signup is on", () => {
     expect(section(on, "third-parties")).toContain(
       "<strong>buttondown.com</strong>",

@@ -9,7 +9,13 @@
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -111,6 +117,10 @@ const read = (dir, file) => readFileSync(path.join(dir, file), "utf8");
 const robotsMeta = (html) =>
   html.match(/<meta[^>]*name="robots"[^>]*>/i)?.[0] ?? "";
 const NOT_OPEN = /not open yet/i;
+const section = (html, id) =>
+  html.match(
+    new RegExp(`<section[^>]*aria-labelledby="${id}"[\\s\\S]*?</section>`),
+  )?.[0] ?? "";
 
 describe("production build, BUTTONDOWN_USERNAME unset", () => {
   let dir;
@@ -138,6 +148,12 @@ describe("production build, BUTTONDOWN_USERNAME unset", () => {
   it("marks /newsletter/ noindex and leaves it out of the sitemap", () => {
     expect(robotsMeta(read(dir, "newsletter/index.html"))).toMatch(/noindex/);
     expect(read(dir, "sitemap.xml")).not.toContain("/newsletter/");
+  });
+
+  it("keeps /newsletter/ out of the search index", () => {
+    const paths = JSON.parse(read(dir, "search-index.json")).map((e) => e.path);
+    expect(paths.length).toBeGreaterThan(10);
+    expect(paths.some((p) => p.endsWith("/newsletter/"))).toBe(false);
   });
 
   it("keeps every other page indexable and form-free", () => {
@@ -229,12 +245,41 @@ describe("production build, BUTTONDOWN_USERNAME set", () => {
     expect(read(dir, "js/assistant.js")).not.toMatch(/embed-subscribe/);
   });
 
+  it("lists /newsletter/ in the search index", () => {
+    const paths = JSON.parse(read(dir, "search-index.json")).map((e) => e.path);
+    expect(paths.some((p) => p.endsWith("/newsletter/"))).toBe(true);
+  });
+
   it("links to /newsletter/ from the footer and lists it in the sitemap", () => {
     expect(home).toContain('<a href="/guide/newsletter/">Newsletter</a>');
     const sitemap = read(dir, "sitemap.xml");
     expect(sitemap).toContain(
       "<loc>https://newsletter-check.example.org/guide/newsletter/</loc>",
     );
+  });
+
+  it("keeps every built page's meta description within 160 characters", () => {
+    const walk = (d) =>
+      readdirSync(d).flatMap((n) => {
+        const f = path.join(d, n);
+        return statSync(f).isDirectory() ? walk(f) : [f];
+      });
+    const descOf = (html) =>
+      html.match(/<meta\s+name="description"\s+content="([^"]*)"/)?.[1];
+    const unescape = (t) =>
+      t
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&");
+    const long = walk(dir)
+      .filter((f) => f.endsWith(".html"))
+      .map((f) => [path.relative(dir, f), descOf(readFileSync(f, "utf8"))])
+      .filter(([, d]) => d && unescape(d).length > 160)
+      .map(([f, d]) => `${f}: ${unescape(d).length}`);
+    expect(long).toEqual([]);
+    const own = unescape(descOf(page));
+    expect(own.length).toBeGreaterThan(0);
+    expect(own.length).toBeLessThanOrEqual(160);
   });
 
   it("is indexable and no longer says it is not open", () => {
@@ -252,6 +297,14 @@ describe("production build, BUTTONDOWN_USERNAME set", () => {
       expect(html).toContain(`href="${BUTTONDOWN_PRIVACY_URL}"`);
     }
     expect(privacy).toMatch(/Nothing is sent as you type/);
+    // Buttondown also receives what any request reveals, and may set cookies.
+    expect(privacy).toMatch(/your IP address and browser\s+details/);
+    expect(privacy).toMatch(/may set cookies under its privacy policy/);
+    expect(section(privacy, "cookies")).toMatch(
+      /Buttondown page you continue to\s+may set its own cookies/,
+    );
+    expect(page).toMatch(/may set its own cookies/);
+    expect(page).toMatch(/IP address and browser details/);
   });
 });
 

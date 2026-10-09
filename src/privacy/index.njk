@@ -133,7 +133,9 @@ canonicalPath: "/privacy/"
   </p>
   <ul>
     <li>
-      <strong>What is sent:</strong> the email address you typed.
+      <strong>What is sent:</strong> the email address you typed, plus what
+      any request reveals to the receiving site (your IP address and browser
+      details).
     </li>
     <li>
       <strong>To whom:</strong> Buttondown (<strong>buttondown.com</strong>),
@@ -144,15 +146,23 @@ canonicalPath: "/privacy/"
       <strong>When:</strong> only when you press Subscribe. The form is an
       ordinary web form: your browser sends it and you continue on
       Buttondown's site. Nothing is sent as you type, and the site loads no
-      script from Buttondown.
+      script from Buttondown. Buttondown's own pages, where you continue
+      after pressing Subscribe, may set cookies under its privacy policy.
     </li>
   </ul>
   <p>
     Buttondown handles the address under its own
     <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">privacy policy</a>.
     As the newsletter's sender, the maintainer, {{ author.name }}, can see
-    the subscriber list in Buttondown. To ask for your address to be removed,
-    use the routes under "Asking about or deleting your entry" below.
+    the subscriber list in Buttondown.
+  </p>
+  <p>
+    To unsubscribe, use the unsubscribe link Buttondown normally includes in
+    its emails. You can also write to the maintainer on
+    <a href="{{ author.advisoryUrl }}" rel="noopener">LinkedIn</a> to ask
+    about your address. The "Asking about or deleting your entry" section
+    below is for anonymous assistant and playground entries, not for
+    newsletter subscribers.
   </p>
   {% else %}
   <p>
@@ -188,6 +198,12 @@ canonicalPath: "/privacy/"
   <p>
     The site's own code does not set cookies or use analytics.
   </p>
+  {% if newsletter.enabled %}
+  <p>
+    If you use the newsletter signup, the Buttondown page you continue to
+    may set its own cookies.
+  </p>
+  {% endif %}
   <p>
     Some features load things from other companies, which can behave
     differently. If you click play on an embedded YouTube video, YouTube's
@@ -260,6 +276,15 @@ canonicalPath: "/privacy/"
     cannot change that. The playground also asks you, on the page,
     to use made-up data only. This policy took effect on 2026-10-09.
   </p>
+  {% if newsletter.enabled %}
+  <p>
+    Newsletter subscribers are a separate case: Buttondown, not this site,
+    keeps your address for as long as you are subscribed. What it keeps after
+    you unsubscribe is set by its
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">privacy policy</a>
+    and its own clean-up schedule.
+  </p>
+  {% endif %}
 </section>
 
 <section class="prose" aria-labelledby="who-sees">
