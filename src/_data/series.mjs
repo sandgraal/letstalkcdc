@@ -47,6 +47,16 @@ export default [
     skillLevel: "Advanced",
   },
   {
+    key: "is-cdc-exactly-once",
+    title: "Is CDC Exactly-Once? Per Hop",
+    description:
+      "Check any exactly-once claim hop by hop: Kafka Connect and Debezium opt-in settings, Kafka transactions, offsets in the sink, and how to verify.",
+    href: "is-cdc-exactly-once/",
+    ctaLabel: "Check the Claim",
+    tags: [{ label: "Advanced Pattern", variant: "tag-pattern" }],
+    skillLevel: "Advanced",
+  },
+  {
     key: "multi-tenancy",
     title: "Multi-Tenancy",
     description: "Isolation patterns, topic math, and rough egress estimates.",

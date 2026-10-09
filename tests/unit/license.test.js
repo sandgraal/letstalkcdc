@@ -1,7 +1,7 @@
 /**
  * Guard: licensing files exist, say what LICENSE-CONTENT.md promises, the
  * templates still advertise the licence, and the Lighthouse badge in
- * docs/DEVELOPMENT.md states the floor that .lighthouserc.json enforces for /intro/
+ * docs/DEVELOPMENT.md states the floor that lighthouse-ci.config.json enforces for /intro/
  * (P15-1, P15-6).
  */
 import { describe, it, expect } from "vitest";
@@ -117,9 +117,9 @@ describe("templates advertise the licence", () => {
 });
 
 describe("Lighthouse badge in docs/DEVELOPMENT.md", () => {
-  it("states the /intro/ floors enforced in .lighthouserc.json", () => {
-    const rc = JSON.parse(read(".lighthouserc.json"));
-    const entry = rc.ci.assert.assertMatrix.find((m) =>
+  it("states the /intro/ floors enforced in lighthouse-ci.config.json", () => {
+    const rc = JSON.parse(read("lighthouse-ci.config.json"));
+    const entry = rc.assertMatrix.find((m) =>
       m.matchingUrlPattern.includes("intro"),
     );
     const floor = (key) =>

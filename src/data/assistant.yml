@@ -248,6 +248,109 @@ intents:
         anchor: "#delivery-title"
         preview: Keys, payloads, tombstones, and ordering guarantees.
 
+  - id: exactly_once_claims
+    triggers:
+      [
+        "is cdc exactly once",
+        "cdc exactly once",
+        "is change data capture exactly once",
+        "change data capture exactly once",
+        "is debezium exactly once",
+        "debezium exactly once",
+        "does debezium support exactly once",
+        "debezium support exactly once",
+        "kafka connect exactly once",
+        "connect exactly once",
+        "exactly once source connector",
+        "exactly.once.support",
+        "exactly.once.source.support",
+        "transaction.boundary",
+        "vendor says exactly once",
+        "exactly once claim",
+        "exactly once marketing",
+      ]
+    modules: []
+    answer: >
+      Debezium documents at-least-once delivery and says it has no internal
+      deduplication layer. From Debezium 3.3 it also documents an opt-in
+      Kafka Connect mode (exactly.once.source.support=enabled on every worker,
+      exactly.once.support=required on the connector, distributed mode, Connect
+      3.3.0 or later) for the hop from the connector into Kafka only. Its own
+      page says it is unclear whether the implementation is fully correct. So
+      a vendor sentence that says exactly-once needs five questions: which
+      hop, which connector and is the opt-in on, which sink, what happens on
+      failover, and what dedupes. The sink still needs an upsert on the
+      primary key that applies a change only if its source log position is
+      newer.
+    links:
+      - label: Is CDC exactly-once? Per hop
+        url: /is-cdc-exactly-once/
+        anchor: "#claims-title"
+        preview: Five questions that scope any exactly-once claim.
+      - label: The Kafka Connect opt-in
+        url: /is-cdc-exactly-once/
+        anchor: "#connect-eos-title"
+        preview: Settings, what the framework does, and the caveats Debezium lists.
+      - label: Exactly-once, hop by hop
+        url: /exactly-once/
+        anchor: "#per-hop"
+        preview: The summary table of what each hop can guarantee.
+
+  - id: kafka_transactions_sink_offsets
+    triggers:
+      [
+        "sendoffsetstotransaction",
+        "read_committed",
+        "kafka read_committed",
+        "isolation.level read_committed",
+        "transactional.id",
+        "kafka transaction",
+        "exactly_once_v2",
+        "kafka streams exactly once",
+        "streams exactly once",
+        "sendoffsets",
+        "offsets in the database",
+        "offsets in the same transaction",
+        "offsets in the sink",
+        "store offsets in the database",
+        "store the offset in the database",
+        "commit offsets with the data",
+        "exactly once into a database",
+        "exactly once to a database",
+        "exactly once to the sink",
+        "what guarantee do i really have",
+        "verify exactly once",
+        "prove exactly once",
+      ]
+    modules: []
+    answer: >
+      Kafka transactions make writes to topics and the consumer offsets atomic,
+      and a consumer sees only committed records when isolation.level is
+      read_committed (the default, read_uncommitted, also returns records from
+      aborted transactions). Kafka Streams does this with exactly_once_v2. The
+      atomicity stops at Kafka: it does not include a database, so for an
+      external sink the Kafka documentation suggests storing the consumer offset
+      in the same database transaction as the data. That protects against a
+      consumer replaying a record, not against a duplicate that is already in
+      the topic at another offset, so the upsert still compares source log
+      positions and keeps deletes as markers. To check what your pipeline gives,
+      stop the sink, rewind its consumer group (and, if the sink stores offsets
+      itself, reset or delete its stored offset row, otherwise nothing is
+      replayed), replay, and confirm the table is unchanged.
+    links:
+      - label: Offsets in the sink's transaction
+        url: /is-cdc-exactly-once/
+        anchor: "#sink-title"
+        preview: Offsets and data in one transaction, plus the position guard.
+      - label: What guarantee do I really have?
+        url: /is-cdc-exactly-once/
+        anchor: "#decide-title"
+        preview: A short decision flow from topic to sink.
+      - label: Verify what your pipeline gives
+        url: /is-cdc-exactly-once/
+        anchor: "#verify-title"
+        preview: Find duplicates in the topic and replay into the sink.
+
   - id: multi_tenancy
     triggers:
       [

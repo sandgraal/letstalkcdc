@@ -50,7 +50,8 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "backlog-recovery",
     name: "Backlog Recovery",
-    description: "Inject backlog, throttle consumer, then catch up",
+    description:
+      "Inject a backlog committed over time, throttle the consumer, then watch lag drain as it catches up",
     icon: "🔥",
     actions: [
       { type: "injectBacklog", count: 12 },
@@ -60,7 +61,8 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "fault-injection",
     name: "Event Drops & Faults",
-    description: "Simulate network issues with 20% drop rate",
+    description:
+      "A 20% drop rate models unrecoverable loss with no redelivery, so apply-on-commit stalls on an incomplete transaction (apply-as-polled does not). Real at-least-once pipelines redeliver, so a real system would not stay stuck.",
     icon: "⚠️",
     actions: [
       { type: "setDropProbability", probability: 0.2 },

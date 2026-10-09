@@ -444,6 +444,65 @@ describe("assistant knowledge base – Postgres replication slots", () => {
   });
 });
 
+describe("assistant knowledge base – is CDC exactly-once, per hop (M2)", () => {
+  it.each([
+    "is cdc exactly once",
+    "is debezium exactly once",
+    "does debezium support exactly once",
+    "is change data capture exactly once",
+    "kafka connect exactly once source connector",
+    "what does exactly.once.support do",
+  ])("%j reaches the claims answer", (query) => {
+    expect(idOf(query)).toBe("exactly_once_claims");
+  });
+
+  it.each([
+    "what is read_committed",
+    "how do i use sendoffsetstotransaction",
+    "kafka streams exactly once",
+    "store offsets in the database with the data",
+    "what guarantee do i really have",
+  ])("%j reaches the transactions and sink-offsets answer", (query) => {
+    expect(idOf(query)).toBe("kafka_transactions_sink_offsets");
+  });
+
+  it("does not capture PostgreSQL isolation-level questions", () => {
+    expect(idOf("what is read committed in postgres")).toBeNull();
+    expect(idOf("what is isolation.level in a database")).not.toBe(
+      "kafka_transactions_sink_offsets",
+    );
+  });
+
+  it("leaves the plain delivery questions to exactly_once", () => {
+    expect(idOf("exactly once delivery guarantee")).toBe("exactly_once");
+    expect(idOf("why do i get duplicate events")).toBe("exactly_once");
+  });
+
+  it("shares no trigger with another intent and carries no boost", () => {
+    const mine = ["exactly_once_claims", "kafka_transactions_sink_offsets"];
+    for (const id of mine) {
+      expect(byId(id).modules).toEqual([]);
+      for (const t of byId(id).triggers) {
+        for (const o of kb.intents.filter((i) => i.id !== id)) {
+          expect(o.triggers, `${t} also in ${o.id}`).not.toContain(t);
+        }
+      }
+    }
+  });
+
+  it("neither answer promises exactly-once across systems", () => {
+    for (const id of mine2()) {
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).toContain("source log position");
+    }
+  });
+});
+
+function mine2() {
+  return ["exactly_once_claims", "kafka_transactions_sink_offsets"];
+}
+
 describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
   it.each([
     "how do I test my cdc pipeline",

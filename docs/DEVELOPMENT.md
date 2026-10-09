@@ -6,7 +6,7 @@ rules (pull requests, voice, conventions) are in [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Prerequisites
 
-- **Node.js 22.13 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
+- **Node.js 22.19 or newer** (`engines.node` in `package.json`). `.nvmrc` pins
   `24` (the LTS CI runs on), so `nvm use` picks a matching version.
 - npm, which ships with Node.
 - Optional: Chromium for the accessibility smoke test (`npm run smoke:a11y`),
@@ -44,31 +44,31 @@ CI runs the same checks and more (see [Checks in CI](#checks-in-ci)).
 
 ## Commands
 
-| Command                     | What it does                                                       |
-| --------------------------- | ------------------------------------------------------------------ |
-| `npm run dev`               | Eleventy dev server on :8080 (alias of `npm run serve`)            |
-| `npm run build`             | Full production build: CSS, Vite JS, Eleventy, then CSS minify     |
-| `npm run build:css`         | PostCSS bundle of `main.css` into `styles.min.css`                 |
-| `npm run build:js`          | Vite bundle into `dist/`                                           |
-| `npm run build:11ty`        | Eleventy build into `_site/` (production mode)                     |
-| `npm run build:lhci`        | Production build with root path prefix, as Lighthouse CI needs     |
-| `npm test`                  | Vitest unit suite                                                  |
-| `npm run test:coverage`     | Unit suite with coverage                                           |
-| `npm run test:e2e`          | Playwright end-to-end tests (also `test:e2e:ui`, `test:e2e:debug`) |
-| `npm run lint`              | ESLint (`lint:fix` to apply fixes)                                 |
-| `npm run lint:content`      | Content lint script (`scripts/lint-content.js`)                    |
-| `npm run format`            | Prettier, write                                                    |
-| `npm run format:check`      | Prettier, check only (what CI runs)                                |
-| `npm run smoke`             | `smoke:core` + `smoke:a11y` + `smoke:perf`                         |
-| `npm run smoke:core`        | HTML and link smoke plus visual smoke; the fastest of the three    |
-| `npm run smoke:a11y`        | pa11y accessibility run (needs Chromium)                           |
-| `npm run smoke:perf`        | Performance budget checks                                          |
-| `npm run a11y`              | `pa11y-ci` directly                                                |
-| `npm run lighthouse`        | Lighthouse CI (`lhci autorun`)                                     |
-| `npm run verify:deployment` | Probe a live deployment (see [Deployment](#deployment))            |
-| `npm run seed:discussions`  | Create starter GitHub Discussions (see [Community](#community))    |
-| `npm run clean`             | Remove `dist`, `_site` and the generated `styles.min.css`          |
-| `npm run verify-all`        | `format:check` + `lint` + `test` + `build`                         |
+| Command                     | What it does                                                        |
+| --------------------------- | ------------------------------------------------------------------- |
+| `npm run dev`               | Eleventy dev server on :8080 (alias of `npm run serve`)             |
+| `npm run build`             | Full production build: CSS, Vite JS, Eleventy, then CSS minify      |
+| `npm run build:css`         | PostCSS bundle of `main.css` into `styles.min.css`                  |
+| `npm run build:js`          | Vite bundle into `dist/`                                            |
+| `npm run build:11ty`        | Eleventy build into `_site/` (production mode)                      |
+| `npm run build:lhci`        | Production build with root path prefix, as the Lighthouse run needs |
+| `npm test`                  | Vitest unit suite                                                   |
+| `npm run test:coverage`     | Unit suite with coverage                                            |
+| `npm run test:e2e`          | Playwright end-to-end tests (also `test:e2e:ui`, `test:e2e:debug`)  |
+| `npm run lint`              | ESLint (`lint:fix` to apply fixes)                                  |
+| `npm run lint:content`      | Content lint script (`scripts/lint-content.js`)                     |
+| `npm run format`            | Prettier, write                                                     |
+| `npm run format:check`      | Prettier, check only (what CI runs)                                 |
+| `npm run smoke`             | `smoke:core` + `smoke:a11y` + `smoke:perf`                          |
+| `npm run smoke:core`        | HTML and link smoke plus visual smoke; the fastest of the three     |
+| `npm run smoke:a11y`        | pa11y accessibility run (needs Chromium)                            |
+| `npm run smoke:perf`        | Performance budget checks                                           |
+| `npm run a11y`              | `pa11y-ci` directly                                                 |
+| `npm run lighthouse`        | Lighthouse score gate (`scripts/lighthouse-ci.mjs`)                 |
+| `npm run verify:deployment` | Probe a live deployment (see [Deployment](#deployment))             |
+| `npm run seed:discussions`  | Create starter GitHub Discussions (see [Community](#community))     |
+| `npm run clean`             | Remove `dist`, `_site` and the generated `styles.min.css`           |
+| `npm run verify-all`        | `format:check` + `lint` + `test` + `build`                          |
 
 ## Project structure
 
@@ -97,7 +97,7 @@ letstalkcdc/
 ├── eleventy.config.mjs       # Eleventy config (filters, passthroughs, collections)
 ├── vite.config.mjs           # Vite config
 ├── postcss.config.mjs        # PostCSS config
-├── .lighthouserc.json        # Lighthouse CI URLs and score floors
+├── lighthouse-ci.config.json # Lighthouse URLs, run count and score floors
 ├── CLAUDE.md                 # Agent quick reference (AGENTS.md is a symlink to it)
 └── _site/, dist/             # Build output. Generated; never edit.
 ```
@@ -140,7 +140,7 @@ optional, and nothing in the repo loads a `.env` file.
 | Local progress and theme           | Always   | Stored in the browser's `localStorage`; no account, no server                               |
 | Assistant (pattern-matched help)   | Built in | Answers come from `src/data/assistant.yml` via `/data/assistant.json`; no model is called   |
 | Assistant feedback (Supabase)      | Optional | Needs `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` at build time; see [SETUP.md](SETUP.md) |
-| Lighthouse CI                      | Optional | `npm run lighthouse` locally; CI also runs it against the floors in `.lighthouserc.json`    |
+| Lighthouse score gate              | Optional | `npm run lighthouse` locally (needs Chrome); CI runs it against `lighthouse-ci.config.json` |
 | Playground saved scenarios/sharing | Optional | The playground loads the Supabase SDK for these; see `playground/README.md`                 |
 
 Unset, the Supabase variables leave the assistant working; votes just queue in
@@ -174,10 +174,16 @@ Two facts worth knowing:
 `.github/workflows/ci.yml` runs on pushes and pull requests to `main`: build,
 ESLint and Prettier, unit tests, `npm audit --production`, the smoke suite,
 pa11y accessibility tests, Playwright end-to-end tests (including axe checks)
-and Lighthouse CI. The Lighthouse floors apply to `/intro/` only, and this badge
-states them (a unit test fails if it drifts from `.lighthouserc.json`):
+and the Lighthouse score gate. The Lighthouse `error` floors apply to `/intro/`
+only, and this badge states them (a unit test fails if it drifts from
+`lighthouse-ci.config.json`):
 
-[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](../.lighthouserc.json)
+[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](../lighthouse-ci.config.json)
+
+A floor passes if the best of the three runs reaches it (`aggregation` in
+`lighthouse-ci.config.json`, as Lighthouse CI did), because a run can be hurt by
+the machine instead of the page. The results table prints the median and every
+run. Runs that error or lose their LCP are retried, not counted.
 
 `linkcheck.yml` builds the site and crawls it with lychee.
 `deploy.yml` publishes to GitHub Pages. The playground has its own workflows

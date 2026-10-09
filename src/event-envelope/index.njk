@@ -143,7 +143,7 @@ scripts:
       <article>
         <h3>Exactly-once processing patterns</h3>
         <ul>
-          <li>Persist offsets in the same transaction as your target writes.</li>
+          <li>Persist offsets in the same transaction as your target writes (see <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC exactly-once? Per hop</a> for an example).</li>
           <li>Use sink-side dedupe keys (primary-key + log position).</li>
           <li>Recover by rewinding to the last committed offset checkpoint.</li>
         </ul>
