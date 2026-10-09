@@ -585,6 +585,11 @@ describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
 describe("assistant knowledge base – CDC without Kafka (module J)", () => {
   it.each([
     "debezium server vs the embedded engine",
+    "debezium server",
+    "what is debezium server",
+    "debezium server sinks",
+    "what does debezium.sink.type do",
+    "which sink types does debezium server support",
     "what is the debezium embedded engine",
     "can I run debezium without kafka",
     "what does recordcommitter markprocessed do",
@@ -597,6 +602,8 @@ describe("assistant knowledge base – CDC without Kafka (module J)", () => {
     "how do I sync elasticsearch from cdc",
     "what is version_type=external",
     "elasticsearch delete resurrect after gc_deletes",
+    "gc_deletes",
+    "what is gc_deletes",
     "how do I keep a search index in sync",
     "sync redis cache from a table",
   ])("%j reaches the search-index sync answer", (query) => {

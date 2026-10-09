@@ -316,6 +316,8 @@ describe("the page's JavaScript runs", () => {
             error: { type: "unavailable_shards_exception" },
           },
         },
+        // A delete of an absent document is a 404; the version is still recorded.
+        { delete: { status: 404, result: "not_found" } },
       ],
     };
     expect(classifyBulk(response)).toEqual({ retry: [4, 6], rejected: [5] });

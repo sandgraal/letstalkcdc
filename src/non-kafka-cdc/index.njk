@@ -231,7 +231,7 @@ class IdempotentSink implements DebeziumEngine.ChangeConsumer&lt;ChangeEvent&lt;
     <p>
       The documentation also says: &ldquo;applications will receive each source record exactly once during normal operation
       (including restart after a graceful shutdown), but do need to be tolerant of receiving duplicate events
-      immediately following a restart after a crash&rdquo;. It then says applications needing more rigorous
+      immediately following a restart after a crash or improper shutdown&rdquo;. It then says applications needing more rigorous
       exactly-once behaviour should use &ldquo;the full Debezium platform&rdquo;. Read that against the Debezium
       exactly-once page, which documents only an opt-in with caveats for connectors on Kafka Connect. For the engine the
       safe design is the first sentence: expect duplicates after a crash and make the write idempotent.
@@ -254,7 +254,7 @@ class IdempotentSink implements DebeziumEngine.ChangeConsumer&lt;ChangeEvent&lt;
         <tr>
           <th scope="row">Google Cloud Datastream</th>
           <td>Data is &ldquo;delivered to the destination at least once. No event is missed, but there&rsquo;s a possibility of duplicate events in the stream&rdquo;; the duplicate window &ldquo;should be on the order of minutes&rdquo; and the event UUID detects duplicates.</td>
-          <td>&ldquo;Doesn&rsquo;t guarantee ordering&rdquo;. In BigQuery, out-of-order events are merged in sequence using event metadata and an internal change sequence number. For PostgreSQL the page says order can be inferred from <code>source_timestamp</code> together with <code>lsn</code>; use the <code>lsn</code> as your guard.</td>
+          <td>&ldquo;Doesn&rsquo;t guarantee ordering&rdquo;. In BigQuery, out-of-order events are merged in sequence using event metadata and an internal change sequence number. For PostgreSQL the page says order can be inferred from <code>source_timestamp</code> together with <code>lsn</code>. The <code>lsn</code> is typed as a string, so a text comparison mis-orders it: parse it to a number before comparing, and treat that as this page&rsquo;s recommendation, not a Datastream guarantee.</td>
         </tr>
         <tr>
           <th scope="row">AWS DMS</th>
@@ -368,7 +368,7 @@ export function toBulkLines(events, { index, idField = "id", softDelete = false 
       lines.push(JSON.stringify({ ...row, deleted: e.op === "d" }));
     }
   }
-  return lines.length ? lines.join("\n") + "\n" : "";
+  return lines.length ? lines.join("\n") + "\n" : ""; // "" means nothing to send
 }
 
 // Returns indexes to retry (429, 5xx) and indexes that were rejected (everything else).
@@ -379,13 +379,15 @@ export function classifyBulk(response) {
     const r = Object.values(item)[0];
     if (r.status &lt; 300) return; // applied
     if (r.status === 409 &amp;&amp; r.error?.type === "version_conflict_engine_exception") return; // stale or duplicate
+    if (r.status === 404 &amp;&amp; r.result === "not_found") return; // delete of an absent doc; the version was still recorded
     if (r.status === 429 || r.status &gt;= 500) retry.push(i);
     else rejected.push(i);
   });
   return { retry, rejected };
 }</code></pre>
     <p>
-      Send the lines to <code>POST /_bulk</code> with <code>Content-Type: application/x-ndjson</code>. Commit the source
+      If <code>toBulkLines</code> returns an empty string (every event was skipped), do not call <code>/_bulk</code>: an
+      empty body is an error, so use <code>if (!body) return;</code> and commit the offsets. Otherwise send the lines to <code>POST /_bulk</code> with <code>Content-Type: application/x-ndjson</code>. Commit the source
       offset only after every item is applied, a 409, or sent to a dead-letter store; a batch with a retry item is
       re-sent whole, which is safe because the write is idempotent. The two functions above were run against
       Elasticsearch 9.5.5 with hand-made events: a create and an update returned 201 and 200, a replayed older change and
