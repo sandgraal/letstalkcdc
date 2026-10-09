@@ -36,9 +36,8 @@ after the Eleventy build (used by `deploy.yml` and `linkcheck.yml`). Its CI
 (`playground-preflight`, `playground-generated-bundles`, `playground-harness-nightly`)
 runs with `working-directory: playground`. Root ESLint/Prettier ignore `playground/`.
 
-The playground talks to Appwrite Cloud from the browser (optional realtime sync and
-saved scenarios); `sandgraal.github.io` must be listed under the Appwrite project's
-**Platforms** for those calls to pass CORS.
+The playground talks to Supabase from the browser (optional realtime sync and
+saved scenarios); no CORS setup is needed. See `playground/docs/supabase-setup.md`.
 
 ## Setting Up GitHub Pages Deployment
 
@@ -68,18 +67,16 @@ The site automatically rebuilds and deploys when:
 
 GitHub OAuth-based progress sync has been removed. All journey progress is now tracked locally in the browser, so the legacy `migrateUser` function and associated serverless hosting are no longer needed. You can delete any residual function deployments and secrets tied to that flow.
 
-## Optional Appwrite Variables
+## Optional Supabase Variables
 
-Appwrite credentials are only required if you want to sync assistant feedback:
+Supabase credentials are only required if you want to sync assistant feedback. Both are public client-side values (row-level security is the access control):
 
-| Variable            | Description                      |
-| ------------------- | -------------------------------- |
-| `APPWRITE_ENDPOINT` | Appwrite API endpoint URL        |
-| `APPWRITE_PROJECT`  | Appwrite project ID              |
-| `APPWRITE_DB_ID`    | Appwrite database ID             |
-| `COL_ASSISTANT_ID`  | Assistant feedback collection ID |
+| Variable                   | Description                               |
+| -------------------------- | ----------------------------------------- |
+| `SUPABASE_URL`             | Project URL (`https://<ref>.supabase.co`) |
+| `SUPABASE_PUBLISHABLE_KEY` | Publishable key (`sb_publishable_...`)    |
 
-If any of these are omitted, the assistant silently falls back to storing feedback locally.
+If either is omitted, the assistant silently falls back to storing feedback locally.
 
 ## Migration from Netlify (If Needed)
 
@@ -87,7 +84,7 @@ If you previously hosted on Netlify:
 
 1. ✅ **Static Site** – Already handled by GitHub Actions.
 2. ✅ **Functions** – Remove the unused `migrateUser` function and related secrets.
-3. ✅ **Environment Variables** – Keep only the optional Appwrite values listed above if you still use them.
+3. ✅ **Environment Variables** – Keep only the optional Supabase values listed above if you still use them.
 4. ✅ **Cleanup** – Delete `netlify.toml` or function directories when no longer required.
 
 ## Custom Domain Setup (Optional)
@@ -107,7 +104,7 @@ Before considering a deployment complete:
 1. ✅ Static site builds and deploys successfully.
 2. ✅ All pages load correctly at the deployed URL.
 3. ✅ Local progress persists across reloads (no authentication required).
-4. ⚠️ (Optional) Assistant feedback reaches Appwrite if credentials are supplied.
+4. ⚠️ (Optional) Assistant feedback reaches Supabase if credentials are supplied.
 
 ## CI failure runbook
 

@@ -198,7 +198,7 @@ type ComparatorDebugApi = {
 declare global {
   interface Window {
     cdcFeatureFlags?: FeatureFlagApi;
-    APPWRITE_CFG?: {
+    PLAYGROUND_CFG?: {
       featureFlags?: string[];
     };
     cdcComparatorDebug?: ComparatorDebugApi;
@@ -553,7 +553,7 @@ function readFeatureFlags(): Set<string> {
   if (Array.isArray(initial) && initial.length) {
     return new Set(initial.map(String));
   }
-  const cfg = window.APPWRITE_CFG?.featureFlags;
+  const cfg = window.PLAYGROUND_CFG?.featureFlags;
   if (Array.isArray(cfg) && cfg.length) {
     return new Set(cfg.map(String));
   }

@@ -38,7 +38,7 @@ This playground has minimal runtime dependencies:
 ### Browser Security
 
 The playground runs entirely client-side with no backend. All data stays in the browser:
-- No data is sent to external servers (except optional Appwrite integration)
+- No data is sent to external servers (except the optional Supabase integration for realtime sync and shared scenarios)
 - Scenarios and events are stored in `localStorage` only
 - No authentication or user data collection
 

@@ -20,7 +20,7 @@ This matrix tracks the major feature flags used in the CDC playground, summarisi
 
 - **Manifest:** `assets/feature-flag-manifest.json` is the single source of truth for flag purpose, rollout readiness, and whether each flag should ship in `index.html` by default.
 - **Load order:** `assets/feature-flags.js` collects flags from multiple sources and merges them into a single allowlist. Flags are loaded in this order (all sources are combined, not overridden):
-  1. `APPWRITE_CFG.featureFlags` (from `index.html` script tag) - Primary defaults
+  1. `PLAYGROUND_CFG.featureFlags` (from `index.html` script tag) - Primary defaults
   2. `window.CDC_FEATURE_FLAGS` (from `index.html` script tag) - Fallback defaults
   3. `localStorage` (`cdc_feature_flags_v1` key) - User-persisted overrides
   4. Query parameters (`?flag=...` or `?flags=...,...`) - URL-based overrides (highest priority for testing)

@@ -21,7 +21,7 @@
   })();
 
   const assetHeaderEntries = (() => {
-    const raw = global.APPWRITE_CFG?.assetHeaders;
+    const raw = global.PLAYGROUND_CFG?.assetHeaders;
     if (!raw || typeof raw !== "object") return [];
     return Object.entries(raw).filter(([, value]) => typeof value === "string" && value);
   })();
@@ -63,7 +63,7 @@
     // Prefer a native dynamic import: the browser resolves the bundle's
     // relative cross-chunk imports (e.g. "./event-log-widget.js") against the
     // bundle's own URL. This is the path that works for static hosting,
-    // Appwrite Sites (public assets), GitHub Pages, and `open index.html`.
+    // GitHub Pages (public assets), and `open index.html`.
     try {
       return await import(/* @vite-ignore */ resolved);
     } catch (nativeError) {

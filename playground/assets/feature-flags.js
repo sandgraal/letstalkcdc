@@ -47,8 +47,8 @@
   function collectInitialFlags() {
     const seed = new Set();
 
-    const cfgFlags = Array.isArray(global.APPWRITE_CFG?.featureFlags)
-      ? global.APPWRITE_CFG.featureFlags
+    const cfgFlags = Array.isArray(global.PLAYGROUND_CFG?.featureFlags)
+      ? global.PLAYGROUND_CFG.featureFlags
       : [];
     cfgFlags.forEach(flag => seed.add(String(flag)));
 

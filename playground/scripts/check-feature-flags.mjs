@@ -65,10 +65,10 @@ const enabledByDefault = manifest
   .map(entry => entry.flag);
 
 const indexHtml = fs.readFileSync(indexPath, "utf8");
-const appwriteFlags = extractFlags(indexHtml, /featureFlags:\s*\[([\s\S]*?)\]/, "APPWRITE_CFG.featureFlags");
+const configFlags = extractFlags(indexHtml, /featureFlags:\s*\[([\s\S]*?)\]/, "PLAYGROUND_CFG.featureFlags");
 const globalFlags = extractFlags(indexHtml, /window\.CDC_FEATURE_FLAGS[^[]*\[([\s\S]*?)\]/, "window.CDC_FEATURE_FLAGS");
 
-assertSameSet(enabledByDefault, appwriteFlags, "APPWRITE_CFG.featureFlags");
+assertSameSet(enabledByDefault, configFlags, "PLAYGROUND_CFG.featureFlags");
 assertSameSet(enabledByDefault, globalFlags, "window.CDC_FEATURE_FLAGS");
 
 

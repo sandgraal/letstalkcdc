@@ -53,7 +53,7 @@ This project is hosted on **GitHub Pages** with automatic deployment via GitHub 
 
 ### Quick Start
 
-For complete setup instructions including optional features (Appwrite assistant-feedback collection, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
+For complete setup instructions including optional features (Supabase assistant-feedback table, AI assistant), see **[docs/SETUP.md](docs/SETUP.md)**.
 
 ### 🚀 CDC Sandbox for Hands-On Practice
 
@@ -110,7 +110,7 @@ The site is built with progressive enhancement — core features work immediatel
 | **Client-side tracing**               | ❌ Removed  | [docs/TRACING.md](docs/TRACING.md) |
 | **User authentication**               | ❌ Removed  | [docs/SETUP.md](docs/SETUP.md)     |
 | **Cloud progress sync**               | ❌ Removed  | [docs/SETUP.md](docs/SETUP.md)     |
-| **Appwrite assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
+| **Supabase assistant feedback**       | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
 | **Lightweight AI assistant**          | ⚠️ Optional | [docs/SETUP.md](docs/SETUP.md)     |
 
 ### Serverless Function Hosting
@@ -118,7 +118,7 @@ The site is built with progressive enhancement — core features work immediatel
 - Progress is now stored locally in the browser—no serverless function is required for core site features.
 
 - Detailed deployment instructions
-- **Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify) are only needed for advanced integrations (e.g., Appwrite, feedback collection) or legacy features. Most users do not need to deploy a serverless function.**
+- **Serverless function hosting options (Vercel, Cloudflare Workers, AWS Lambda, Netlify) are only needed for advanced integrations (e.g., feedback collection) or legacy features. Most users do not need to deploy a serverless function.**
 - Environment variable configuration
 - Custom domain setup
 - Migration guides

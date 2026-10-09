@@ -29,6 +29,6 @@
 - **E2E specs**: `tests/e2e/*.spec.mjs`, Playwright config in `playwright.config.ts`.
 
 ## known_constraints_and_feature_flags
-- Feature flags are loaded from `window.cdcFeatureFlags` / `APPWRITE_CFG.featureFlags`; an empty set enables all features by default, but once populated it becomes an allowlist.
+- Feature flags are loaded from `window.cdcFeatureFlags` / `PLAYGROUND_CFG.featureFlags`; an empty set enables all features by default, but once populated it becomes an allowlist.
 - `ff_schema_demo`, `ff_multitable`, `ff_trigger_mode`, `ff_metrics`, and `ff_walkthrough` gate larger comparator surfaces; docs under `docs/feature-flags.md` describe rollout expectations.
 - Keep generated bundles untouched unless rebuilding via the documented scripts; property tests depend on the generated simulator bundle.

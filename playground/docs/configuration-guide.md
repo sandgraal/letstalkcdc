@@ -1,6 +1,6 @@
 # CDC Playground Configuration Guide
 
-Use this guide to configure the playground for different demos—from an offline, zero-dependency run to an Appwrite-backed, shareable lab. It highlights the knobs and feature flags that change behaviour so data engineers and architects can set up repeatable sessions quickly.
+Use this guide to configure the playground for different demos—from an offline, zero-dependency run to a Supabase-backed, shareable lab. It highlights the knobs and feature flags that change behaviour so data engineers and architects can set up repeatable sessions quickly.
 
 ## Run modes at a glance
 
@@ -8,7 +8,7 @@ Use this guide to configure the playground for different demos—from an offline
 | --- | --- | --- |
 | **Offline (no build)** | Quick orientation to the base playground without the comparator | 1) Clone/zip the repo 2) Open `index.html` directly in the browser 3) Skip npm install/build |
 | **Comparator enabled** | Full CDC method comparison (Polling vs Trigger vs Log) with metrics, diffs, and exports | 1) `npm install` 2) `npm run build` to generate `assets/generated/ui-shell.js` & `assets/generated/sim-bundle.js` 3) Open `index.html` and scroll to the **CDC Method Comparator** |
-| **Appwrite-connected** | Sharing scenarios or assets from a remote host; injecting feature flags via config | 1) Provide `window.APPWRITE_CFG` before loaders run 2) Include any required `assetHeaders` for hosted bundles 3) Open `index.html` normally |
+| **Cloud-connected** | Sharing scenarios or assets from a remote host; injecting feature flags via config | 1) Provide `window.PLAYGROUND_CFG` before loaders run 2) Include any required `assetHeaders` for hosted bundles 3) Open `index.html` normally (see [`supabase-setup.md`](supabase-setup.md)) |
 
 > Tip: `npm run check:bundles` verifies generated assets are fresher than sources before you ship or demo.
 
@@ -16,7 +16,7 @@ Use this guide to configure the playground for different demos—from an offline
 
 The playground merges multiple inputs to decide which features are on:
 
-1. `window.APPWRITE_CFG.featureFlags` (if present)
+1. `window.PLAYGROUND_CFG.featureFlags` (if present)
 2. `window.CDC_FEATURE_FLAGS` globals defined in `index.html`
 3. Browser localStorage (`cdc_feature_flags_v1`)
 4. URL parameters: `?flag=ff_metrics&flag=ff_multitable` or `?flags=ff_metrics,ff_multitable`
@@ -31,22 +31,18 @@ The comparator now surfaces a **Configuration snapshot** card directly above the
 - Cross-lane controls (apply-on-commit, consumer throttle, synthetic generator rate)
 - Feature flag state and whether you’re running with the default manifest
 
-Use the **Copy** button in that card to grab a JSON payload that can seed guided labs, Appwrite configs, or reproducibility docs without re-typing knob values.
+Use the **Copy** button in that card to grab a JSON payload that can seed guided labs, playground configs, or reproducibility docs without re-typing knob values.
 
-## Appwrite configuration surface
+## Cloud backend configuration surface
 
-> For the **exact** collections, attributes, and permissions needed to make realtime, scenario persistence, and share links work — plus the known `scenarios` serialization caveat — see **[`appwrite-setup.md`](appwrite-setup.md)**. This section is just the config-object overview.
+> For the exact tables, policies, and functions behind realtime, scenario persistence, and share links, see **[`supabase-setup.md`](supabase-setup.md)**. This section is just the config-object overview.
 
-`index.html` seeds an `APPWRITE_CFG` object that you can override for your own stack:
+`index.html` seeds a `PLAYGROUND_CFG` object that you can override for your own stack:
 
-- **endpoint** – Must be the project's **regional** endpoint (e.g. `https://nyc.cloud.appwrite.io/v1`); the generic `https://cloud.appwrite.io/v1` returns "Project is not accessible in this region" and breaks realtime.
-- **projectId / databaseId / collectionId / scenarioCollectionId** – Used by the workspace exporter/importer; keep demo data isolated per project.
+- **supabaseUrl / supabaseKey** – Project URL and *publishable* key (public by design; access is enforced by row-level security). Omit either and the playground runs fully offline.
 - **shareBaseUrl** – Host name used when generating share links.
-- **channel(db, col)** – Helper to build realtime subscription topics.
-- **assetHeaders** – Optional map of headers (e.g., `X-Appwrite-Project`) sent when fetching hosted bundles like `assets/generated/ui-shell.js`.
+- **assetHeaders** – Optional map of headers sent when fetching hosted bundles like `assets/generated/ui-shell.js` (only needed if you front the bundles with a CDN that requires them).
 - **featureFlags** – Flags to inject before localStorage/query params are read; useful for guided sessions or remote deployments.
-
-If you are hosting the bundles behind Appwrite or another CDN that requires headers, set `assetHeaders` so `assets/ui-shell-loader.js` and `assets/event-log-loader.js` can fetch them successfully.
 
 ## Comparator configuration cheat sheet
 

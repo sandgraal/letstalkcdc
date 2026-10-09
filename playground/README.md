@@ -190,7 +190,7 @@ Latest assessment:
 - 🧠 [CDC Method Cheat Sheet](docs/cdc-method-cheatsheet.md) – Quick selection guide for Polling, Triggers, Log, and Outbox
 - ✅ [Change Feed Evaluation Checklist](docs/change-feed-evaluation-checklist.md) – Quick scoring script for comparing Polling, Trigger, and Log capture
 - 🧭 [CDC Method Comparator Guide](docs/comparator-guide.md) – How to launch, navigate, and demo the React comparator shell
-- ⚙️ [Configuration Guide](docs/configuration-guide.md) – Run-mode matrix, feature flag sources, and Appwrite setup tips
+- ⚙️ [Configuration Guide](docs/configuration-guide.md) – Run-mode matrix, feature flag sources, and Supabase setup
 
 ## Contributing
 
@@ -200,12 +200,10 @@ We welcome improvements to the simulator, documentation, and learning resources.
 
 This playground now lives in the [`letstalkcdc`](https://github.com/sandgraal/letstalkcdc) repository under `playground/` and is published to GitHub Pages at <https://sandgraal.github.io/letstalkcdc/playground/>. The site workflow (`.github/workflows/deploy.yml`) copies `index.html`, `CDC_logo.png`, and `assets/` into `_site/playground/`; the generated bundles in `assets/generated/` are committed, so no playground build step runs at deploy time (CI enforces they stay in sync via `npm run check:bundles`).
 
-Appwrite Cloud remains the optional backend (realtime sync, saved scenarios). Add `sandgraal.github.io` as a Web platform in the Appwrite project so browser requests pass CORS.
-
-`npm run package:appwrite` still produces `dist/appwrite-site` and `dist/appwrite-site.zip` for the legacy Appwrite Sites host.
+Supabase is the optional backend (realtime sync, saved scenarios, share links); without it the playground runs fully offline. See [`docs/supabase-setup.md`](docs/supabase-setup.md).
 
 ## Roadmap
 
-- Realtime stream via Appwrite Realtime (broadcast ops to multiple clients).
-- Save/load scenarios in Appwrite Databases (multi-device).
+- Realtime stream via Supabase Realtime (broadcast ops to multiple clients). ✅ Shipped.
+- Save/load scenarios in Supabase (multi-device). ✅ Shipped.
 - Shareable scenario link (base64 or shortlink).

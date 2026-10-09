@@ -62,7 +62,7 @@ Two independent breakages made the two flagship interactive tools fail **on the 
 
 ### Fix A — comparator + playground broke on HTTP hosting (blob-import bug)
 - **Symptom:** `#simShellRoot` stuck on "Simulator preview unavailable"; `#changefeedPlaygroundRoot` stuck on "Preparing…".
-- **Root cause:** `index.html` hardcodes `window.APPWRITE_CFG.assetHeaders`, which forced the loaders (`assets/*-loader.js`) to fetch bundles as text and `import()` them via a **`blob:` URL**. The web bundles are code-split — `ui-shell.js` and `changefeed-playground.js` both `import … from "./event-log-widget.js"` — and a relative specifier cannot resolve against a non-hierarchical `blob:` base. → `TypeError: Failed to resolve module specifier "./event-log-widget.js"`.
+- **Root cause:** `index.html` hardcodes `window.PLAYGROUND_CFG.assetHeaders`, which forced the loaders (`assets/*-loader.js`) to fetch bundles as text and `import()` them via a **`blob:` URL**. The web bundles are code-split — `ui-shell.js` and `changefeed-playground.js` both `import … from "./event-log-widget.js"` — and a relative specifier cannot resolve against a non-hierarchical `blob:` base. → `TypeError: Failed to resolve module specifier "./event-log-widget.js"`.
 - **Why tests missed it:** unit/e2e load bundles directly as modules or over `file://`; the header/blob path only activates on `http(s)://`. **The deployed path had zero coverage.**
 - **Fix:** all four loaders now try a native `import()` first and only fall back to the header/blob fetch if native import actually throws.
 
@@ -84,7 +84,7 @@ Priority order: **W1 → (W2 ∥ W3) → W4.** All are scoped to the playground'
 ### W1 — Reliability & deploy correctness (mostly done — verify + extend)
 - [ ] **Verify the fix on the real deploy target.** Run `npm run package:appwrite`, deploy to Appwrite Sites, confirm both widgets mount live. Repeat for any GitHub Pages mirror.
 - [ ] **Run the failure-aware Docker pipeline live** (`cd scenarios/01-canonical-reference && make preflight && make up && make status`). Capture actual vs `docs/expected-behavior.md`; file any drift.
-- [ ] **Reconsider the hardcoded `APPWRITE_CFG.assetHeaders`** in `index.html` — is `X-Appwrite-Project` even required to fetch public static assets? If not, removing it simplifies the loader path. Acceptance: documented decision + smoke test still green.
+- [ ] **Reconsider the hardcoded `PLAYGROUND_CFG.assetHeaders`** in `index.html` — is `X-Appwrite-Project` even required to fetch public static assets? If not, removing it simplifies the loader path. Acceptance: documented decision + smoke test still green.
 - [ ] Wire the new smoke spec into `ci:preflight` (it already runs under `test:e2e`).
 
 ### W2 — Wayfinding & lightweight context (NOT content authoring)

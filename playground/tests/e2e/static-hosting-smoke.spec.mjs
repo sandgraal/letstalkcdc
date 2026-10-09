@@ -15,7 +15,7 @@ const suite = process.env.PLAYWRIGHT_DISABLE === "1" ? test.describe.skip : test
 // bundle via a non-hierarchical blob: URL) breaks both widgets on every deployed
 // site while file://-based specs stay green. This file guards that gap in two
 // configurations:
-//   1. default — APPWRITE_CFG has no assetHeaders, so loaders use native import().
+//   1. default — PLAYGROUND_CFG has no assetHeaders, so loaders use native import().
 //   2. with assetHeaders injected — proves the loaders' native-import-first
 //      path still mounts the widgets even when a header-fetch is configured
 //      (the header/blob fallback alone cannot resolve code-split chunks).
@@ -117,18 +117,18 @@ suite("Static hosting smoke (served over HTTP)", () => {
   test("both widgets mount over HTTP even when assetHeaders are configured", async ({ page }) => {
     // Force the header-fetch condition the deployed site used to ship with, to
     // prove the loaders' native-import-first path keeps both widgets working.
-    // Intercept the assignment of window.APPWRITE_CFG (set by an inline script
+    // Intercept the assignment of window.PLAYGROUND_CFG (set by an inline script
     // in index.html) and graft assetHeaders on before the loader scripts read it.
     await page.addInitScript(() => {
       let stored;
-      Object.defineProperty(window, "APPWRITE_CFG", {
+      Object.defineProperty(window, "PLAYGROUND_CFG", {
         configurable: true,
         get() {
           return stored;
         },
         set(value) {
           stored = value
-            ? { ...value, assetHeaders: { "X-Appwrite-Project": "smoke-test" } }
+            ? { ...value, assetHeaders: { "X-Smoke-Test": "smoke-test" } }
             : value;
         },
       });
@@ -139,7 +139,7 @@ suite("Static hosting smoke (served over HTTP)", () => {
     // duplicate of the default test): the page must actually have shipped with
     // assetHeaders configured.
     const injectedHeader = await page.evaluate(
-      () => window.APPWRITE_CFG?.assetHeaders?.["X-Appwrite-Project"],
+      () => window.PLAYGROUND_CFG?.assetHeaders?.["X-Smoke-Test"],
     );
     expect(injectedHeader).toBe("smoke-test");
   });

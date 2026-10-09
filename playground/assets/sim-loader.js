@@ -14,7 +14,7 @@
   })();
 
   const assetHeaderEntries = (() => {
-    const raw = global.APPWRITE_CFG?.assetHeaders;
+    const raw = global.PLAYGROUND_CFG?.assetHeaders;
     if (!raw || typeof raw !== "object") return [];
     return Object.entries(raw).filter(([, value]) => typeof value === "string" && value);
   })();

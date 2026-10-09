@@ -91,7 +91,7 @@ Before promoting any flag to default-on, complete these checks:
    - Document any special considerations
 
 3. **Commit and Deploy**
-   - Add flag to both `APPWRITE_CFG.featureFlags` and `window.CDC_FEATURE_FLAGS` in `index.html`
+   - Add flag to both `PLAYGROUND_CFG.featureFlags` and `window.CDC_FEATURE_FLAGS` in `index.html`
    - Commit with clear message: `feat: enable ff_<flag_name> by default`
    - Monitor for issues after deployment
 
@@ -102,7 +102,7 @@ Before promoting any flag to default-on, complete these checks:
 **Location:** `index.html` lines 554-564 and 570-580
 
 **Steps:**
-1. Remove flag from `APPWRITE_CFG.featureFlags` array
+1. Remove flag from `PLAYGROUND_CFG.featureFlags` array
 2. Remove flag from `window.CDC_FEATURE_FLAGS` array
 3. Commit: `revert: disable ff_<flag_name> due to <issue>`
 4. Update `docs/feature-flags.md` to reflect disabled state
@@ -125,7 +125,7 @@ Most flags don't require data cleanup. Exceptions:
 
 Flags are loaded from multiple sources in this order (later sources override earlier):
 
-1. **`APPWRITE_CFG.featureFlags`** (index.html) - Primary source for defaults
+1. **`PLAYGROUND_CFG.featureFlags`** (index.html) - Primary source for defaults
 2. **`window.CDC_FEATURE_FLAGS`** (index.html) - Fallback defaults
 3. **`localStorage`** (`cdc_feature_flags_v1`) - User overrides
 4. **Query parameters** (`?flag=...` or `?flags=...`) - URL overrides

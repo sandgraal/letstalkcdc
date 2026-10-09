@@ -4,7 +4,7 @@ Hands-on walkthroughs for showcasing change data capture behaviors in the playgr
 
 ## Prerequisites
 - Build bundles: `npm run build` (required for the comparator and metrics panels).
-- Enable comparator feature flags if you customized `APPWRITE_CFG.featureFlags`. For a full surface, leave `featureFlags` empty or include `ff_schema_demo`, `ff_multitable`, `ff_trigger_mode`, and `ff_walkthrough`.
+- Enable comparator feature flags if you customized `PLAYGROUND_CFG.featureFlags`. For a full surface, leave `featureFlags` empty or include `ff_schema_demo`, `ff_multitable`, `ff_trigger_mode`, and `ff_walkthrough`.
 - Load a curated scenario from the gallery to match the recipe below (e.g., **Omnichannel Orders** or **Outbox Relay**).
 
 ## Lab 1 – Polling vs Log Lag on Fulfilment Updates

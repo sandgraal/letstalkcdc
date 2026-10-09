@@ -557,8 +557,8 @@
 
     <footer class="footer">
       <span
-        >Built for Appwrite Hacktoberfest · Deployed on
-        <strong>Sites</strong></span
+        >Part of
+        <a href="https://sandgraal.github.io/letstalkcdc/">Let's Talk CDC</a></span
       >
     </footer>
 
@@ -663,28 +663,15 @@
       </div>
     </div>
 
-    <!-- Appwrite SDK + config -->
-    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+    <!-- Supabase SDK + config (realtime sync, saved scenarios, share links) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
     <script>
-      window.APPWRITE_CFG = {
-        // Regional endpoint: this project lives in Appwrite Cloud's `nyc`
-        // region. The generic https://cloud.appwrite.io/v1 returns
-        // "Project is not accessible in this region", which broke realtime +
-        // scenario persistence + share links.
-        endpoint: "https://nyc.cloud.appwrite.io/v1",
-        projectId: "68e009780030a983a57d",
-        databaseId: "68e028d90039fa4588f5",
-        collectionId: "events",
-        scenarioCollectionId: "scenarios",
-        shareBaseUrl:
-          "https://sandgraal.github.io/letstalkcdc/playground/",
-        channel: (db, col) => `databases.${db}.collections.${col}.documents`,
-        // No assetHeaders: Appwrite Sites serves the generated bundles as
-        // public static assets (verified: they return 200 + text/javascript
-        // with and without X-Appwrite-Project). Omitting this keeps every
-        // bundle loader on the native dynamic import() path; the header-fetch
-        // + blob: fallback can't resolve code-split chunks and was the root
-        // cause of the comparator/playground failing to load on the deploy.
+      window.PLAYGROUND_CFG = {
+        // The publishable key is public by design; access is governed by
+        // row-level security (see docs/supabase-setup.md).
+        supabaseUrl: "https://veagqeduouwapbfvpsfj.supabase.co",
+        supabaseKey: "sb_publishable_qXyRQL9NxpwrW2j3JjzjsA_snAUDyHb",
+        shareBaseUrl: "https://sandgraal.github.io/letstalkcdc/playground/",
         featureFlags: [
           "comparator_v2",
           "ff_event_bus",

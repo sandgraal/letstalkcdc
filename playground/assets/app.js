@@ -1,5 +1,5 @@
 // Minimal CDC simulator with Debezium-like envelopes.
-// Now with Appwrite Realtime.
+// Now with Supabase Realtime.
 // State is in-memory + localStorage snapshot.
 
 import tooltipCopy from "./tooltip-copy.js";
@@ -1860,85 +1860,56 @@ function setShareControlsEnabled(enabled) {
 
 function buildShareUrl(id) {
   if (!id) return "";
-  const base = (appwrite?.cfg?.shareBaseUrl) || (typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "");
+  const base = (backend?.cfg?.shareBaseUrl) || (typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "");
   const separator = base.includes("?") ? "&" : "?";
   return `${base}${separator}scenario=${encodeURIComponent(id)}`;
 }
 
 async function saveScenarioRemote(options = {}) {
-  if (!appwrite) {
-    refreshSchemaStatus("Connect to Appwrite to save scenarios.", "error");
-    return null;
-  }
-  const { databases, cfg } = appwrite;
-  const collectionId = cfg.scenarioCollectionId;
-  if (!collectionId) {
-    refreshSchemaStatus("Appwrite scenario collection not configured.", "error");
+  if (!backend) {
+    refreshSchemaStatus("Connect to the cloud backend to save scenarios.", "error");
     return null;
   }
 
-  // Appwrite attributes are typed scalars — there is no nested-object/JSON
-  // type. Pack the nested snapshot (schema/rows/events/comparator) into a
-  // single `payload` string so it round-trips through a plain string
-  // attribute. See docs/appwrite-setup.md § "scenarios". The reader
-  // (maybeHydrateSharedScenario) unpacks `payload`, with a fallback to the
-  // legacy top-level fields.
+  // Scenarios are immutable snapshots: every save inserts a new row keyed by a
+  // client-generated UUID, so previously shared links never change under people.
+  // The nested snapshot is stored as jsonb. See docs/supabase-setup.md.
+  const id = newRowId();
   const snapshot = {
+    id,
     kind: "scenario",
     version: 2,
     saved_at: new Date().toISOString(),
-    scenarioId: state.scenarioId || null,
-    payload: JSON.stringify({
+    payload: {
+      scenarioId: state.scenarioId || null,
       schema: clone(state.schema),
       rows: clone(state.rows),
       events: clone(state.events),
       comparator: buildComparatorExport(),
       officeOptIn: officeSchemaOptIn,
       schemaVersion: state.schemaVersion,
-    }),
-  };
-
-  const reuseId = state.remoteId || uiState.lastShareId;
-  const targetId = reuseId || (window?.Appwrite ? Appwrite.ID.unique() : `${Date.now()}`);
-
-  const persist = async (id, method) => {
-    if (method === "update") {
-      return databases.updateDocument(cfg.databaseId, collectionId, id, snapshot);
-    }
-    return databases.createDocument(cfg.databaseId, collectionId, id, snapshot);
+    },
   };
 
   try {
-    const doc = await persist(targetId, reuseId ? "update" : "create");
-    state.remoteId = doc.$id;
-    uiState.lastShareId = doc.$id;
+    const { error } = await backend.client.from("scenarios").insert(snapshot);
+    if (error) throw error;
+    state.remoteId = id;
+    uiState.lastShareId = id;
     save();
     if (!options.silent) flashButton(els.saveRemote, "Saved!");
-    return doc.$id;
+    return id;
   } catch (err) {
     console.warn("saveScenarioRemote failed", err?.message || err);
-    if (reuseId) {
-      try {
-        const fallbackId = window?.Appwrite ? Appwrite.ID.unique() : `${Date.now()}-${Math.random()}`;
-        const doc = await persist(fallbackId, "create");
-        state.remoteId = doc.$id;
-        uiState.lastShareId = doc.$id;
-        save();
-        if (!options.silent) flashButton(els.saveRemote, "Saved!");
-        return doc.$id;
-      } catch (err2) {
-        console.warn("saveScenarioRemote fallback failed", err2?.message || err2);
-      }
-    }
     if (!options.silent) flashButton(els.saveRemote, "Failed");
-    refreshSchemaStatus("Cloud save failed. Check Appwrite configuration.", "error");
+    refreshSchemaStatus("Cloud save failed. Check your connection and try again.", "error");
     return null;
   }
 }
 
 async function copyShareLink() {
-  if (!appwrite) {
-    refreshSchemaStatus("Connect to Appwrite to share scenarios.", "error");
+  if (!backend) {
+    refreshSchemaStatus("Connect to the cloud backend to share scenarios.", "error");
     return;
   }
   const id = uiState.lastShareId || state.remoteId || await saveScenarioRemote({ silent: true });
@@ -1988,56 +1959,38 @@ async function copyShareLink() {
 }
 
 async function maybeHydrateSharedScenario() {
-  if (!appwrite) return;
+  if (!backend) return;
   if (!uiState.pendingShareId) return;
   const shareId = uiState.pendingShareId;
   uiState.pendingShareId = null;
 
-  const { databases, cfg } = appwrite;
-  if (!cfg.scenarioCollectionId) return;
-
   try {
-    const doc = await databases.getDocument(cfg.databaseId, cfg.scenarioCollectionId, shareId);
-    if (!doc || doc.kind !== "scenario") {
-      refreshSchemaStatus("Shared document is not a scenario payload.", "error");
+    const { data: row, error } = await backend.client.rpc("get_scenario", { p_id: shareId });
+    if (error) throw error;
+    if (!row || row.kind !== "scenario") {
+      refreshSchemaStatus("Shared scenario not found.", "error");
       return;
     }
 
-    // v2 packs the snapshot into a single `payload` string; older docs (if
-    // any) used top-level fields. Parse strictly: if a `payload` is present but
-    // not a valid object, abort rather than overwrite the current workspace
-    // with empties (safeParse returns the raw string on failure, so guard the
-    // type explicitly).
-    let data = doc;
-    if (typeof doc.payload === "string") {
-      let parsed;
-      try { parsed = JSON.parse(doc.payload); } catch { parsed = null; }
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        refreshSchemaStatus("Shared scenario could not be read (corrupt payload).", "error");
-        return;
-      }
-      data = parsed;
+    // Abort rather than overwrite the current workspace with empties if the
+    // stored payload is not an object.
+    const data = row.payload;
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      refreshSchemaStatus("Shared scenario could not be read (corrupt payload).", "error");
+      return;
     }
 
-    const officePref =
-      typeof data.officeOptIn === "boolean"
-        ? data.officeOptIn
-        : typeof doc.officeOptIn === "boolean"
-          ? doc.officeOptIn
-          : typeof doc.officeSchemaOptIn === "boolean"
-            ? doc.officeSchemaOptIn
-            : null;
-    if (officePref !== null) {
-      setOfficeSchemaPreference(officePref);
+    if (typeof data.officeOptIn === "boolean") {
+      setOfficeSchemaPreference(data.officeOptIn);
     }
 
-    const comparator = data.comparator || doc.comparator;
+    const comparator = data.comparator;
     state.schema = data.schema || [];
-    state.schemaVersion = Number(data.schemaVersion ?? doc.schemaVersion) || 1;
+    state.schemaVersion = Number(data.schemaVersion) || 1;
     state.rows = data.rows || [];
     state.events = data.events || [];
-    state.scenarioId = doc.scenarioId || data.scenarioId || null;
-    state.remoteId = doc.$id;
+    state.scenarioId = data.scenarioId || null;
+    state.remoteId = row.id;
 
     if (state.events.length) selectLastEvent(); else resetEventSelection();
     if (state.scenarioId) storage.set(STORAGE_KEYS.lastTemplate, state.scenarioId);
@@ -2054,7 +2007,7 @@ async function maybeHydrateSharedScenario() {
     if (sharedDetail) {
       renderComparatorFeedback(sharedDetail);
     }
-    uiState.lastShareId = doc.$id;
+    uiState.lastShareId = row.id;
     save();
     renderSchema();
     renderEditor();
@@ -2695,12 +2648,7 @@ function demandPrimaryKey(action) {
 }
 
 function nextDocumentId() {
-  if (!appwrite || !window.Appwrite) return null;
-  try {
-    return Appwrite.ID.unique();
-  } catch {
-    return null;
-  }
+  return backend ? newRowId() : null;
 }
 
 function ensureDefaultSchema() {
@@ -4317,125 +4265,80 @@ function downloadNdjson() {
 }
 
 
-// ---------- Appwrite Realtime wiring ----------
-let appwrite = null;
+// ---------- Supabase realtime wiring ----------
+let backend = null;
 
-async function initAppwrite() {
-  const cfg = window.APPWRITE_CFG;
-  if (!cfg || !window.Appwrite) return; // run offline if not configured
+function newRowId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  // Fallback for non-secure contexts: RFC 4122 v4-shaped id.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
-  const client    = new Appwrite.Client().setEndpoint(cfg.endpoint).setProject(cfg.projectId);
-  const account   = new Appwrite.Account(client);
-  const databases = new Appwrite.Databases(client);
-  // Appwrite SDK v13 removed the `Appwrite.Realtime` constructor; realtime is
-  // now `client.subscribe(channel, cb)` directly on the Client. The old
-  // `new Appwrite.Realtime(client)` threw "is not a constructor", which aborted
-  // initAppwrite entirely and silently disabled share links + persistence.
+async function initBackend() {
+  const cfg = window.PLAYGROUND_CFG;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !window.supabase?.createClient) return; // run offline if not configured
 
-  // Try to ensure a session. account.get() throwing is normal (no session yet);
-  // we then fall back to an anonymous session. Both are best-effort: with `Any`
-  // collection perms the app runs fine as an unauthenticated guest, so a failed
-  // session must NOT disable realtime/persistence (see docs/appwrite-setup.md
-  // § "Sessions & permissions model"). What we must avoid is calling
-  // client.subscribe() against an *unreachable* backend — that opens a WebSocket
-  // the realtime client then retries every ~1s forever ("Realtime got
-  // disconnected. Reconnect will be attempted in 1 seconds."), flooding the
-  // console. So we gate on reachability, not on whether a session was obtained.
-  //
-  // An Appwrite request that received an HTTP response (even 401/403) carries
-  // that status in `err.code`; a network failure (project paused, offline, DNS)
-  // surfaces as code 0 / a plain fetch error. If the backend answered *either*
-  // call it's reachable.
-  const respondedWithHttpStatus = (err) => typeof err?.code === "number" && err.code > 0;
-  let backendReachable = false;
+  const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // Reachability probe: a HEAD request that touches the events table. If the
+  // backend never answers (project paused, offline, DNS) stay fully offline and
+  // do NOT open a realtime socket, which would otherwise retry in a loop and
+  // flood the console. Any HTTP answer, even an error status, means reachable.
   try {
-    await account.get();
-    backendReachable = true; // a session already exists → reachable
-  } catch (getErr) {
-    if (respondedWithHttpStatus(getErr)) backendReachable = true; // 401 (no session) still means reachable
-    try {
-      await account.createAnonymousSession();
-      backendReachable = true;
-    } catch (sessionErr) {
-      if (respondedWithHttpStatus(sessionErr)) backendReachable = true;
-      // Log full error objects (not just .message, which is often empty) so the
-      // auth-vs-network distinction is diagnosable from the console.
-      console.warn("Appwrite session unavailable; continuing as guest if reachable.", { getErr, sessionErr });
-    }
-  }
-
-  // Graceful degradation: when the backend never responded, stay fully offline.
-  // Don't call client.subscribe() (avoids the ~1s reconnect flood) and leave
-  // `appwrite = null` so publishEvent/share/persistence no-op via their existing
-  // `if (!appwrite) return` guards.
-  if (!backendReachable) {
-    console.warn("Appwrite backend unreachable; running offline (realtime sync + remote save disabled).");
+    const { error } = await client.from("events").select("id", { head: true, count: "estimated" });
+    if (error && !error.code && !error.status) throw error;
+  } catch (err) {
+    console.warn("Backend unreachable; running offline (realtime sync + remote save disabled).", err);
     return;
   }
 
-  const channel = cfg.channel(cfg.databaseId, cfg.collectionId);
-  // SDK v13 accepts a string or string[]; use the canonical array form.
-  const unsubscribe = client.subscribe([channel], (msg) => {
-    const ev = (msg.events && msg.events[0]) || "";
-    // Only react to document create events
-    if (!ev.includes(".documents.*.create")) return;
+  const channel = client
+    .channel("playground-events")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "events" }, ({ new: doc }) => {
+      if (!doc) return;
+      const norm = {
+        ts_ms: Number(doc.ts_ms) || Date.now(),
+        op: doc.op ?? "u",
+        before: doc.before ?? null,
+        after: doc.after ?? null,
+        _docId: doc.id,
+      };
 
-    // Normalize payload (supports either JSON or string columns)
-    const doc = msg.payload;
-    if (doc?.kind === "scenario") return;
-    const norm = {
-      ts_ms: doc.ts_ms ?? doc.ts ?? Date.now(),
-      op:    doc.op    ?? "u",
-      before: typeof doc.before === "string" ? safeParse(doc.before) : (doc.before ?? null),
-      after:  typeof doc.after  === "string" ? safeParse(doc.after)  : (doc.after  ?? null),
-      _docId: doc.$id
-    };
+      // De-dup (ignore if we already appended this row id)
+      if (!state.events.some((e) => e._docId === norm._docId)) {
+        state.events.push(norm);
+        selectLastEvent();
+        renderJSONLog();
+        save();
+      }
+    })
+    .subscribe();
 
-    // De-dup (ignore if we already appended this doc id)
-    if (!state.events.some(e => e._docId === norm._docId)) {
-      state.events.push(norm);
-      selectLastEvent();
-      renderJSONLog();
-      save();
-    }
-  });
-
-  appwrite = { client, account, databases, unsubscribe, cfg };
+  backend = { client, channel, cfg };
 }
 
-function safeParse(s) { try { return JSON.parse(s); } catch { return s; } }
-
-// Attempt to write JSON; if it fails (e.g., column is string), retry stringified.
+// Insert one change event. Row ids are client-generated so the realtime echo of
+// our own insert is de-duplicated against the locally appended event.
 async function publishEvent(op, before, after, docId) {
-  if (!appwrite) return; // offline mode: skip
-  const { databases, cfg } = appwrite;
+  if (!backend) return; // offline mode: skip
 
-  const docBodyJSON = {
+  const row = {
+    id: docId || newRowId(),
     ts_ms: nowTs(),
     op,
     before: els.includeBefore.checked ? (before ?? null) : null,
-    after:  after ?? null
+    after: after ?? null,
   };
 
-  const documentId = docId || Appwrite.ID.unique();
-
-  try {
-    // First try as JSON
-    await databases.createDocument(cfg.databaseId, cfg.collectionId, documentId, docBodyJSON);
-  } catch (e) {
-    // Fallback to string columns
-    const docBodyStr = {
-      ts_ms: docBodyJSON.ts_ms,
-      op:    docBodyJSON.op,
-      before: docBodyJSON.before == null ? null : JSON.stringify(docBodyJSON.before),
-      after:  docBodyJSON.after  == null ? null : JSON.stringify(docBodyJSON.after)
-    };
-    try {
-      await databases.createDocument(cfg.databaseId, cfg.collectionId, documentId, docBodyStr);
-    } catch (e2) {
-      console.warn("publishEvent failed (JSON and string modes)", e2);
-      pushErrorToast("Failed to persist event to Appwrite. Event kept local.");
-    }
+  const { error } = await backend.client.from("events").insert(row);
+  if (error) {
+    console.warn("publishEvent failed", error);
+    pushErrorToast("Failed to persist event to the cloud. Event kept local.");
   }
 }
 
@@ -4696,7 +4599,7 @@ function findByPK(values) {
   return state.rows.findIndex(row => pks.every(k => row[k] === values[k]));
 }
 
-// ---------- Operations (now publish to Appwrite too) ----------
+// ---------- Operations (also published to the cloud backend) ----------
 function setCrudButtonsDisabled(disabled) {
   const effective = disabled || comparatorPaused;
   ["opInsert", "opUpdate", "opDelete", "btnAutofillRow", "btnSchemaAdd", "btnSchemaDrop"].forEach(id => {
@@ -5334,11 +5237,11 @@ async function main() {
   }
 
   try {
-    await initAppwrite();
-    if (appwrite?.cfg?.scenarioCollectionId) setShareControlsEnabled(true);
+    await initBackend();
+    if (backend) setShareControlsEnabled(true);
     await maybeHydrateSharedScenario();
   } catch (err) {
-    console.warn("Appwrite init skipped", err?.message || err);
+    console.warn("Backend init skipped", err?.message || err);
   }
 
   if (!showedOnboardingEarly) {
