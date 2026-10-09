@@ -35,7 +35,7 @@
   },
   "environments": {
     "local": {
-      "requirements": ["Node.js 20+", "npm 10+"],
+      "requirements": ["Node.js 22.13+", "npm 10+"],
       "notes": [
         "Open index.html directly for the static playground.",
         "Use npm run dev:web to boot the Vite dev server for the comparator shell.",
