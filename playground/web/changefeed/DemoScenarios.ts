@@ -62,7 +62,7 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
     id: "fault-injection",
     name: "Event Drops & Faults",
     description:
-      "Simulate network issues with a 20% drop rate; the Dropped counter shows events the consumer never sees",
+      "A 20% drop rate models unrecoverable loss with no redelivery, so apply-on-commit stalls on an incomplete transaction (apply-as-polled does not). Real at-least-once pipelines redeliver, so a real system would not stay stuck.",
     icon: "⚠️",
     actions: [
       { type: "setDropProbability", probability: 0.2 },

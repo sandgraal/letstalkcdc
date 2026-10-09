@@ -14,7 +14,8 @@ export type PositionedEvent = {
  * event is not lower than the position of the previous event for that key.
  * Events without a position (for example engines that do not stamp one) are skipped
  * because there is nothing to compare. A position already seen for the key is a
- * repeat delivery of the same log entry, not a reordering, so it is not a violation.
+ * repeat delivery of the same log entry (normal under at-least-once delivery), not a
+ * reordering, so it is not a violation.
  */
 export function isOrderedByLogPosition(events: readonly PositionedEvent[]): boolean {
   const lastPosition = new Map<string, number>();

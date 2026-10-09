@@ -242,7 +242,7 @@ const buildPlaygroundTakeaway = (
   if (view.broker.dropped > 0) {
     items.push({
       id: "dropped",
-      text: `${view.broker.dropped} event${view.broker.dropped === 1 ? "" : "s"} dropped by delivery faults — the consumer never sees them.`,
+      text: `${view.broker.dropped} event${view.broker.dropped === 1 ? "" : "s"} dropped by delivery faults: this models unrecoverable loss with no redelivery, so apply-on-commit stalls on an incomplete transaction (apply-as-polled does not). Real at-least-once pipelines redeliver, so a real system would not stay stuck.`,
       clean: false,
     });
   }

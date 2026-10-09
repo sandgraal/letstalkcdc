@@ -8,9 +8,9 @@ export const TOOLTIP_COPY = {
   logFetchInterval: "Shorter fetch intervals decrease lag but require more connector and network throughput.",
   metricLag: "Latency only: simulated clock minus the newest event's commit timestamp. It does not decide ordering.",
   metricOrdering:
-    "OK when, for every row key, each event's log position (offset/LSN) is no lower than the previous one. Ordering follows the log, never the clock.",
+    "OK when, for every row key, each event's log position is no lower than the previous one. The position is the lane's own bus offset, assigned when the event is published. Ordering follows the log, never the clock.",
   metricConsistency:
-    "Ordering holds and, for polling, every delete the scenario issued was captured. Drift means a lane diverged from the source.",
+    "Drift means ordering broke or, for polling, deletes were missed. It does not compare lane state to the source.",
   backlog: "Events queued on the bus waiting for apply to catch up.",
   lagPercentile: "Latency from commit to apply; percentiles show typical versus tail delay.",
   lagSpread: "Difference between the fastest and slowest lane latency.",

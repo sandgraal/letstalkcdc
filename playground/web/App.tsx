@@ -2478,7 +2478,6 @@ export function App() {
     initializeGeneratorState(scenario);
 
     const runner = new ScenarioRunner();
-    const unsubscribes: Array<() => void> = [];
     const runtimes: Partial<Record<MethodOption, LaneRuntime>> = {};
     const enginesMap: Partial<Record<MethodOption, ControllerBackedEngine>> = {};
 
@@ -2512,15 +2511,8 @@ export function App() {
       };
       runtimes[method] = runtime;
 
-      const unsubscribe = engine.onEvent(event => {
-        setLaneEvents(prev => {
-          const next = { ...prev };
-          const existing = next[method] ?? [];
-          next[method] = [...existing, event];
-          return next;
-        });
-      });
-      unsubscribes.push(unsubscribe);
+      // Lane events are appended once, when drainQueues consumes them from the bus.
+      // Subscribing to engine.onEvent here as well appended every event twice.
       return engine;
     });
 
@@ -2538,7 +2530,6 @@ export function App() {
     return () => {
       runner.pause();
       stopLoop();
-      unsubscribes.forEach(unsub => unsub());
       enginesRef.current = {};
     };
   }, [activeMethods, scenario, stopLoop, methodConfig, updateLaneSnapshot, handleProduced, initializeGeneratorState]);

@@ -82,6 +82,23 @@ suite("Comparator basics", () => {
     await expect(orderingBadges.filter({ hasText: "Ordering: OK" })).toHaveCount(3);
   });
 
+  test("each lane counts a source change once (CRUD Basic is 1 insert, 1 update, 1 delete)", async ({ page }) => {
+    await loadComparator(page);
+
+    const scenarioSelect = page.locator('select[aria-label="Scenario"]');
+    await scenarioSelect.waitFor({ timeout: 10000 });
+    await scenarioSelect.selectOption({ label: "CRUD Basic" });
+    await page.evaluate(() => window.cdcComparatorClock?.play?.());
+    await page.waitForTimeout(4500);
+
+    const badges = page.locator('[role="status"]', { hasText: "Ops C/U/D:" });
+    await expect(badges).toHaveCount(3);
+    // Log and trigger capture all three ops; polling misses the delete and the intermediate update.
+    await expect(badges.filter({ hasText: "Ops C/U/D: 1/1/1" })).toHaveCount(2);
+    await expect(badges.filter({ hasText: "Ops C/U/D: 1/0/0" })).toHaveCount(1);
+    await expect(badges.filter({ hasText: "Deletes: 200%" })).toHaveCount(0);
+  });
+
   test("transactions scenario exposes apply-on-commit toggle", async ({ page }) => {
     await loadComparator(page);
 
