@@ -27,7 +27,8 @@
     background-color 0.3s;
 }
 
-.step-diagram .step :is(h4, p, em) {
+.step-diagram .step :is(h4, p, em),
+.step-diagram .step .h-as-4 {
   color: inherit;
 }
 
@@ -77,7 +78,8 @@
   }
 }
 
-.code-comparison h4 {
+.code-comparison h4,
+.code-comparison .h-as-4 {
   margin-top: 0;
   text-align: center;
 }

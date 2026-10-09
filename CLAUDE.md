@@ -88,8 +88,11 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 83943ab39baf798fdd5cfd1dc726035d030b0bd3d0dc4dc6bb322934d2d060b6
-# (re-baselined 2026-10-09 (P13-6): deterministic font loading, the only
+# baseline at HEAD of main is: f59f964fe388ee151653e9a075eea653e243e72e66e234bb5b0099cd36aa0ea2
+# (re-baselined 2026-10-09 (P16-9): `.h-as-3` / `.h-as-4` presentational
+#  heading-level helpers appended to 05-utilities.css, the only CSS
+#  difference; headings promoted to the right outline level keep their
+#  computed style. Previously 83943ab3… from the same day (P13-6): deterministic font loading, the only
 #  CSS difference is in 01-variables.css: six metric-matched local()
 #  fallback `@font-face` rules (IBM Plex Sans/Mono Fallback, with
 #  size-adjust/ascent/descent/line-gap overrides) and the three
@@ -334,7 +337,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`83943ab39baf…`).
+3. **`/css-byte-check` baseline is in this file** (`f59f964fe388…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.

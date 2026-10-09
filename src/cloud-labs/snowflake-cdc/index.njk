@@ -435,7 +435,7 @@ SELECT * FROM customers_cdc ORDER BY load_timestamp DESC LIMIT 10;</code></pre>
       Raw CDC events contain operations (INSERT, UPDATE, DELETE). To build a current state table, apply MERGE logic (see <a href="{{ '/materialization/' | url }}">Materialization 101</a> for the pattern and the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a> for variants):
     </p>
     <div class="callout callout-warning">
-      <h4>At-least-once delivery → dedup by log position, never <code>ts_ms</code></h4>
+      <h3 class="h-as-4">At-least-once delivery → dedup by log position, never <code>ts_ms</code></h3>
       <p>
         The Kafka → Snowflake sink is <strong>at-least-once</strong>: after a
         retry, connector restart, or offset rewind, the same change event can
@@ -556,7 +556,7 @@ SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
     <h2>Snowflake-Specific Gotchas</h2>
     
     <div class="callout callout-warning">
-      <h4>1. VARIANT Storage Overhead</h4>
+      <h3 class="h-as-4">1. VARIANT Storage Overhead</h3>
       <p>
         <strong>Issue:</strong> Kafka messages stored as VARIANT consume more storage than native columns.
       </p>
@@ -566,7 +566,7 @@ SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
     </div>
 
     <div class="callout callout-warning">
-      <h4>2. Warehouse Auto-Suspend</h4>
+      <h3 class="h-as-4">2. Warehouse Auto-Suspend</h3>
       <p>
         <strong>Issue:</strong> Snowflake Sink Connector fails intermittently due to warehouse suspended.
       </p>
@@ -576,7 +576,7 @@ SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
     </div>
 
     <div class="callout callout-warning">
-      <h4>3. Key-Pair Authentication Rotation</h4>
+      <h3 class="h-as-4">3. Key-Pair Authentication Rotation</h3>
       <p>
         <strong>Issue:</strong> Connector stops working after key rotation.
       </p>
@@ -591,7 +591,7 @@ ALTER USER kafka_connector_user UNSET RSA_PUBLIC_KEY;</code></pre>
     </div>
 
     <div class="callout callout-info">
-      <h4>4. Snowpipe Credit Consumption</h4>
+      <h3 class="h-as-4">4. Snowpipe Credit Consumption</h3>
       <p>
         Snowpipe uses serverless compute, billed separately from warehouse credits. Monitor via:
       </p>
@@ -601,7 +601,7 @@ ORDER BY START_TIME DESC;</code></pre>
     </div>
 
     <div class="callout callout-warning">
-      <h4>5. Schema Evolution</h4>
+      <h3 class="h-as-4">5. Schema Evolution</h3>
       <p>
         <strong>Issue:</strong> Kafka Connect Snowflake Sink doesn't auto-evolve tables on schema changes (background: <a href="{{ '/schema-evolution/' | url }}">Schema Evolution</a>).
       </p>

@@ -35,7 +35,7 @@ ai-generated: true
     </ol>
 
     <div class="callout callout-warning">
-      <h4>Scope of this lab &mdash; and what polling CDC cannot see</h4>
+      <h3 class="h-as-4">Scope of this lab &mdash; and what polling CDC cannot see</h3>
       <p>
         This lab builds the <strong>timestamp/polling</strong> approach (options 1&ndash;2 above), because it is the quickest way to stand up CDC with only a warehouse and a source table. Understand its limits before you rely on it:
       </p>
@@ -434,7 +434,7 @@ ORDER BY hour DESC;</code></pre>
     <h2>Matillion-Specific Gotchas</h2>
     
     <div class="callout callout-warning">
-      <h4>1. Instance Right-Sizing</h4>
+      <h3 class="h-as-4">1. Instance Right-Sizing</h3>
       <p>
         <strong>Issue:</strong> Jobs timeout or run slowly on undersized instances.
       </p>
@@ -449,7 +449,7 @@ ORDER BY hour DESC;</code></pre>
     </div>
 
     <div class="callout callout-warning">
-      <h4>2. Variable Scoping</h4>
+      <h3 class="h-as-4">2. Variable Scoping</h3>
       <p>
         <strong>Issue:</strong> Variables not accessible across transformation/orchestration jobs.
       </p>
@@ -459,7 +459,7 @@ ORDER BY hour DESC;</code></pre>
     </div>
 
     <div class="callout callout-warning">
-      <h4>3. Timezone Handling</h4>
+      <h3 class="h-as-4">3. Timezone Handling</h3>
       <p>
         <strong>Issue:</strong> <code>updated_at</code> timestamps mismatch due to timezone differences.
       </p>
@@ -475,14 +475,14 @@ FROM customers;</code></pre>
     </div>
 
     <div class="callout callout-info">
-      <h4>4. Network Latency</h4>
+      <h3 class="h-as-4">4. Network Latency</h3>
       <p>
         Whatever executes your queries &mdash; the Data Productivity Cloud agent in your VPC, or a legacy self-hosted VM &mdash; keep it close to the data. For best performance, ensure the source database is in the same region/VPC or reachable over VPN peering. Cross-region queries can add 50-500ms latency per query.
       </p>
     </div>
 
     <div class="callout callout-warning">
-      <h4>5. Concurrent Job Limits</h4>
+      <h3 class="h-as-4">5. Concurrent Job Limits</h3>
       <p>
         <strong>Issue:</strong> Multiple CDC jobs scheduling at same time causing resource contention.
       </p>

@@ -501,7 +501,7 @@ aws logs tail /aws/dms/tasks/cdc-task-mysql-to-s3 --follow</code></pre>
     <h2>Verification</h2>
 
     <div class="callout callout-warning">
-      <h4>⚠️ DMS delivery is at-least-once — dedupe downstream</h4>
+      <h3 class="h-as-4">⚠️ DMS delivery is at-least-once — dedupe downstream</h3>
       <p>
         DMS CDC delivery to S3 (and onward to Redshift) is <strong>at-least-once</strong>, not exactly-once. On a task restart or resume, DMS re-reads from the last checkpointed log position and can <strong>re-emit changes it already wrote</strong>, producing duplicate rows in S3/Redshift. This is expected behavior, not a bug.
       </p>

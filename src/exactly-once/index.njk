@@ -145,21 +145,21 @@ eleventyComputed:
       <div class="interactive-demo" id="demo">
         <div class="step-diagram">
           <div class="step" id="step-1">
-            <h4>1. Consume Message</h4>
+            <h3 class="h-as-4">1. Consume Message</h3>
             <p>
               The consumer service pulls a message (`Order #123`) from the
               message broker.
             </p>
           </div>
           <div class="step" id="step-2">
-            <h4>2. Process &amp; Write to Sink</h4>
+            <h3 class="h-as-4">2. Process &amp; Write to Sink</h3>
             <p>
               The service processes the order and successfully inserts a record
               into the `orders` table in the downstream database.
             </p>
           </div>
           <div class="step" id="step-3">
-            <h4>3. CRASH! 💥</h4>
+            <h3 class="h-as-4">3. CRASH! 💥</h3>
             <p>
               Before the service can acknowledge the message by committing its
               offset to the broker, the service crashes. The broker assumes the
@@ -167,7 +167,7 @@ eleventyComputed:
             </p>
           </div>
           <div class="step" id="step-4">
-            <h4>4. Restart &amp; Re-process</h4>
+            <h3 class="h-as-4">4. Restart &amp; Re-process</h3>
             <p>
               The service restarts. Since the offset was not committed, it
               fetches the same message (`Order #123`) again and inserts a
@@ -240,7 +240,7 @@ eleventyComputed:
         a crash can drop data; idempotent sinks tolerate replays after restart.</p>
         <div class="code-comparison">
           <div>
-            <h4>Naive Consumer</h4>
+            <h3 class="h-as-4">Naive Consumer</h3>
             <pre><code>// Pseudocode: may create duplicates
 for (event of stream) {
   // Simple insert will create a new
@@ -250,7 +250,7 @@ for (event of stream) {
 }</code></pre>
           </div>
           <div>
-            <h4>Idempotent Consumer</h4>
+            <h3 class="h-as-4">Idempotent Consumer</h3>
             <pre><code>// Pseudocode: safe from duplicates
 for (event of stream) {
   // MERGE/UPSERT handles existing records
@@ -265,7 +265,7 @@ for (event of stream) {
         </div>
         <div class="code-comparison">
           <div>
-            <h4>Warehouse MERGE (Snowflake-style)</h4>
+            <h3 class="h-as-4">Warehouse MERGE (Snowflake-style)</h3>
 <pre><code>MERGE INTO dw.orders AS t
 USING (SELECT :event_id AS event_id, :order_id AS order_id, :payload::variant AS p) s
 ON t.event_id = s.event_id
@@ -276,7 +276,7 @@ WHEN MATCHED THEN
 </code></pre>
           </div>
           <div>
-            <h4>BigQuery MERGE (idempotent)</h4>
+            <h3 class="h-as-4">BigQuery MERGE (idempotent)</h3>
 <pre><code>MERGE `dw.orders` t
 USING (SELECT @event_id AS event_id, @order_id AS order_id, @payload AS payload) s
 ON t.event_id = s.event_id

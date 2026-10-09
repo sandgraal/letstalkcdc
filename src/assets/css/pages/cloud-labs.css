@@ -145,7 +145,8 @@
   background-color: var(--color-bg-secondary);
 }
 
-.callout h4 {
+.callout h4,
+.callout .h-as-4 {
   margin-top: 0;
   margin-bottom: 0.5rem;
 }

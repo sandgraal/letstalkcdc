@@ -427,7 +427,7 @@ Schema Changes Detected | Expected changes   | Alert if unexpected drift</code><
     <h2>Fivetran-Specific Gotchas</h2>
     
     <div class="callout callout-warning">
-      <h4>1. Column Name Normalization</h4>
+      <h3 class="h-as-4">1. Column Name Normalization</h3>
       <p>
         <strong>Issue:</strong> Fivetran lowercases all column names and replaces special characters with underscores.
       </p>
@@ -443,7 +443,7 @@ Schema Changes Detected | Expected changes   | Alert if unexpected drift</code><
     </div>
 
     <div class="callout callout-warning">
-      <h4>2. Replication Slot Growth</h4>
+      <h3 class="h-as-4">2. Replication Slot Growth</h3>
       <p>
         <strong>Issue:</strong> If Fivetran connector is paused or fails, PostgreSQL replication slot retains WAL logs, consuming disk space.
       </p>
@@ -462,7 +462,7 @@ SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
     </div>
 
     <div class="callout callout-warning">
-      <h4>3. Primary Key Requirements</h4>
+      <h3 class="h-as-4">3. Primary Key Requirements</h3>
       <p>
         <strong>Issue:</strong> Tables without primary keys sync slowly (full table refresh each cycle).
       </p>
@@ -476,7 +476,7 @@ SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
     </div>
 
     <div class="callout callout-info">
-      <h4>4. Large Table Initial Sync</h4>
+      <h3 class="h-as-4">4. Large Table Initial Sync</h3>
       <p>
         Initial sync of billion-row tables can take hours. Speed up with:
       </p>
@@ -488,7 +488,7 @@ SELECT pg_drop_replication_slot('fivetran_xxx');</code></pre>
     </div>
 
     <div class="callout callout-warning">
-      <h4>5. Data Type Conversions</h4>
+      <h3 class="h-as-4">5. Data Type Conversions</h3>
       <p>
         Fivetran auto-converts types but may not preserve precision:
       </p>

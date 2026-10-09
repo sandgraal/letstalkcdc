@@ -6,8 +6,8 @@
  * made-up prefix. `/playground/` is copied in by the deploy script, not by
  * Eleventy, so links to it are out of scope here.
  *
- * KNOWN_* lists are findings that need a CSS hook or belong to another
- * change; the tests fail when an entry is fixed so the list gets pruned.
+ * The heading outline is measured by scripts/seo-audit.mjs (its definition of
+ * one <h1> and no skipped level inside <main>), not re-implemented here.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -22,6 +22,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { auditSite } from "../../scripts/seo-audit.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -36,23 +37,9 @@ const ELEVENTY_BIN = path.join(
 );
 const PREFIX = "/guide";
 
-// Pages with no <h1>: merge-cookbook is owned by another change; the sandbox
-// is a noindex iframe fixture.
-const KNOWN_NO_H1 = new Set(["/merge-cookbook/", "/mermaid-sandbox/"]);
-// Pages whose heading levels skip (h2 -> h4 etc.). Fixing them changes the
-// look of the heading, so they need a CSS hook first.
-const KNOWN_SKIPS = new Set([
-  "/cloud-labs/aws-dms/",
-  "/cloud-labs/fivetran/",
-  "/cloud-labs/goldengate/",
-  "/cloud-labs/matillion-cdc/",
-  "/cloud-labs/snowflake-cdc/",
-  "/dashboard/",
-  "/exactly-once/",
-  "/lab-kafka-debezium/",
-  "/partitioning/",
-  "/use-cases/",
-]);
+// The one page allowed to fail the outline check: a noindex iframe fixture
+// with no <main> and no <h1>.
+const OUTLINE_EXEMPT = new Set(["/mermaid-sandbox/"]);
 
 function walk(dir) {
   return readdirSync(dir).flatMap((n) => {
@@ -63,8 +50,6 @@ function walk(dir) {
 
 const idsOf = (html) =>
   [...html.matchAll(/\sid=["']([^"']+)["']/g)].map((m) => m[1]);
-const headingLevels = (html) =>
-  [...html.matchAll(/<h([1-6])[\s>]/g)].map((m) => Number(m[1]));
 
 describe("internal links and headings (built site)", () => {
   let out;
@@ -101,33 +86,17 @@ describe("internal links and headings (built site)", () => {
     if (out) rmSync(out, { recursive: true, force: true });
   });
 
-  it("every content page has exactly one h1, except the known exceptions", () => {
-    const bad = [...pages]
-      .filter(
-        ([, html]) => headingLevels(html).filter((l) => l === 1).length !== 1,
-      )
-      .map(([url]) => url)
-      .filter((url) => !KNOWN_NO_H1.has(url));
+  it("every content page has one h1 and no skipped heading level", () => {
+    const audit = auditSite(out, {
+      host: `https://links.example.org${PREFIX}`,
+      git: false,
+    });
+    const bad = audit.details["headings.pagesWithAnyIssue"]
+      .filter((p) => !OUTLINE_EXEMPT.has(p.url))
+      .map((p) => `${p.url}: ${p.issues.join("; ")}`);
     expect(bad).toEqual([]);
-    for (const url of KNOWN_NO_H1) {
-      const h1s = headingLevels(pages.get(url) ?? "").filter((l) => l === 1);
-      expect(
-        h1s.length,
-        `${url} now has an h1; drop it from KNOWN_NO_H1`,
-      ).not.toBe(1);
-    }
-  });
-
-  it("heading levels do not skip, except the known pages", () => {
-    const skips = [...pages]
-      .filter(([, html]) => {
-        const levels = headingLevels(html);
-        return levels.some((l, i) => i > 0 && l > levels[i - 1] + 1);
-      })
-      .map(([url]) => url);
-    expect(skips.filter((u) => !KNOWN_SKIPS.has(u))).toEqual([]);
-    expect([...KNOWN_SKIPS].filter((u) => !skips.includes(u))).toEqual([]);
-  });
+    expect(audit.metrics["headings.pagesWithMultipleH1"]).toBe(0);
+  }, 60_000);
 
   it("ids are unique within each page", () => {
     const dups = [];
