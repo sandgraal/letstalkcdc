@@ -95,7 +95,7 @@
   --code-surface: #0e141d;
   --code-ink: #dbe6f0;
   --code-line: #1b2531;
-  --code-comment: #6b7d8f;
+  --code-comment: #7d8ea0;
   --code-key: #7fd7f2;
   --code-str: #a7e0a0;
   --font-sans:
@@ -114,15 +114,15 @@
     --line-2: #c6d3e0;
     --ink: #0c1620;
     --ink-2: #425263;
-    --ink-3: #6d7d8d;
+    --ink-3: #566676;
     --accent: #0a7299;
     --accent-2: #5566e6;
     --on-accent: #ffffff;
     --accent-soft: rgba(12, 141, 189, 0.1);
     --accent-line: rgba(12, 141, 189, 0.32);
-    --create: #1f9d3a;
-    --update: #b07714;
-    --delete: #d23b48;
+    --create: #177a2c;
+    --update: #8f5f0f;
+    --delete: #c0303d;
     --create-soft: rgba(31, 157, 58, 0.1);
     --update-soft: rgba(176, 119, 20, 0.12);
     --delete-soft: rgba(210, 59, 72, 0.1);
@@ -141,15 +141,15 @@
   --line-2: #c6d3e0;
   --ink: #0c1620;
   --ink-2: #425263;
-  --ink-3: #6d7d8d;
+  --ink-3: #566676;
   --accent: #0a7299;
   --accent-2: #5566e6;
   --on-accent: #ffffff;
   --accent-soft: rgba(12, 141, 189, 0.1);
   --accent-line: rgba(12, 141, 189, 0.32);
-  --create: #1f9d3a;
-  --update: #b07714;
-  --delete: #d23b48;
+  --create: #177a2c;
+  --update: #8f5f0f;
+  --delete: #c0303d;
   --create-soft: rgba(31, 157, 58, 0.1);
   --update-soft: rgba(176, 119, 20, 0.12);
   --delete-soft: rgba(210, 59, 72, 0.1);
@@ -1222,8 +1222,10 @@ table.ops tr:last-child td {
   color: var(--ink);
 }
 .search-mock .r b mark {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: transparent;
+  font-weight: 700;
+  text-decoration: underline;
+  color: var(--ink);
   border-radius: 3px;
 }
 .search-mock .r span {

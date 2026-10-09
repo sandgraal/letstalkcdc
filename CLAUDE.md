@@ -88,8 +88,13 @@ change:
 ```bash
 NODE_ENV=production npm run build:css
 sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: 163231e666f0b6cd0659deda39d6362547e468577b775ca570217f9a1d613d74
-# (re-baselined 2026-10-09: visible-UI fixes - new `.discussion-callout`
+# baseline at HEAD of main is: 1906308d385dec188be5f86f478b79c9f7f01c6e4e464e08e5ba6cff42fd2648
+# (re-baselined 2026-10-09 (P15-21, contrast debt): new
+#  `components/code-block.css` (the code-block wrapper / header /
+#  `.code-copy-button` / `.copy-snippet` classes had no rules), light-theme
+#  `--color-success/-warning/-error` (+ hovers) darkened to 4.5:1, and the
+#  `.status-badge` variants in 07-version-status.css moved onto those
+#  tokens. Previously 163231e6… from earlier the same day: visible-UI fixes - new `.discussion-callout`
 #  rules (community box), the orphaned dead `.stats-*` / `.session-modal`
 #  rules removed along with the chip markup, the `.button-primary` text
 #  and hover colours, and the `a.button:where(:hover, :active,
@@ -319,7 +324,7 @@ without asking. The mines that catch new agents:
    `main` for days). Don't recreate it. Cross-session context lives
    in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
    and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file** (`163231e666f0…`).
+3. **`/css-byte-check` baseline is in this file** (`1906308d385d…`).
    If you touch any CSS, prove the production bundle is unchanged or
    walk the diff. Don't assume CI catches it — only the lighthouse
    job re-builds CSS.

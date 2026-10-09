@@ -27,9 +27,9 @@ pre {
 }
 
 .ok {
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .no {
-  color: #ef4444;
+  color: var(--color-error);
 }

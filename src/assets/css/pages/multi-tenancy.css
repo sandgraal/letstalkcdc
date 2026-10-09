@@ -121,15 +121,18 @@
   margin: 0.25rem 0 0.75rem;
 }
 
-.seg-presets button {
+.seg-presets button,
+.preset-row button {
   border: 1px solid var(--border-color);
+  color: var(--color-text-primary);
   border-radius: 0.5rem;
   padding: 0.35rem 0.75rem;
   background: var(--bg-primary);
   cursor: pointer;
 }
 
-.seg-presets button:focus {
+.seg-presets button:focus,
+.preset-row button:focus {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }

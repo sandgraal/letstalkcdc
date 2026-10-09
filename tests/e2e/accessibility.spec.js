@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFileSync } from "node:fs";
 
 /**
  * E2E accessibility tests using axe-core.
@@ -17,29 +18,21 @@ const PAGES_TO_AUDIT = [
 ];
 
 /**
- * `color-contrast` is NOT exempted by rule any more (it used to be, globally,
- * because the light-theme accent blue was 3.77:1 on white). It is audited
- * for every page in both themes, minus the exact elements below, which have
- * contrast failures that do not come from the accent token and are tracked
- * separately. A new failure anywhere else, including a regression of the
- * accent colour, fails the test.
+ * Every page in the built sitemap. `color-contrast` is audited on ALL of them,
+ * in both themes, with no exemptions: the list of known failing elements that
+ * used to live here (P15-21) is now empty, so any new failure, including a
+ * regression of an accent or status token, fails the test. The sitemap is the
+ * source because it is what ships (noindex dev pages such as /styleguide/ are
+ * not in it and are not audited here).
  */
-const KNOWN_CONTRAST_ELEMENTS = {
-  // Light theme: hard-coded status colours (#10b981 / #f59e0b / #ef4444 on
-  // the page ground for the three simulator buttons; pale red / cyan /
-  // indigo severity pills at 1.5-2.2:1).
-  "/intro/": [
-    "#sim-insert",
-    "#sim-update",
-    "#sim-delete",
-    ".severity-must",
-    ".severity-should",
-    ".severity-nice",
-  ],
-  // Dark theme: the code-block copy buttons inherit the browser default
-  // black button text (1.1-1.2:1 on the dark code surface).
-  "/troubleshooting/": [".code-copy-button", ".copy-snippet"],
-};
+const SITEMAP_PAGES = [
+  ...readFileSync(
+    new URL("../../_site/sitemap.xml", import.meta.url),
+    "utf8",
+  ).matchAll(/<loc>([^<]+)<\/loc>/g),
+]
+  .map(([, loc]) => new URL(loc).pathname.replace(/^\/letstalkcdc(?=\/)/, ""))
+  .sort();
 
 /**
  * Known a11y violation rule IDs per page — pre-existing content issues
@@ -97,7 +90,13 @@ test.describe("accessibility", () => {
         ).toEqual([]);
       }
     });
+  }
 
+  test("the sitemap is non-empty", () => {
+    expect(SITEMAP_PAGES.length).toBeGreaterThan(30);
+  });
+
+  for (const pagePath of SITEMAP_PAGES) {
     for (const theme of ["light", "dark"]) {
       test(`${pagePath} passes color-contrast (${theme} theme)`, async ({
         page,
@@ -109,13 +108,10 @@ test.describe("accessibility", () => {
         await page.waitForLoadState("networkidle");
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
 
-        let axe = new AxeBuilder({ page })
+        const results = await new AxeBuilder({ page })
           .withRules(["color-contrast"])
-          .exclude(".mermaid");
-        for (const selector of KNOWN_CONTRAST_ELEMENTS[pagePath] || []) {
-          axe = axe.exclude(selector);
-        }
-        const results = await axe.analyze();
+          .exclude(".mermaid")
+          .analyze();
 
         const failures = results.violations.flatMap((v) =>
           v.nodes.map(
@@ -409,6 +405,73 @@ test.describe("buttons keep 4.5:1 on hover, active and focus-visible", () => {
         expect(
           failures,
           `a.button interactive-state contrast failures on ${pagePath} (${theme}):\n${failures.join("\n")}`,
+        ).toEqual([]);
+      });
+    }
+  }
+});
+
+// The rest-state audit above cannot see a hover or focus fill. These are the
+// controls P15-21 repaired, measured with axe while the state is applied, in
+// both themes: the code-block copy buttons (no rules at all before, so
+// browser-default black text), the /intro/ simulator buttons (hard-coded
+// status colours with white hover text) and the three tool apps' buttons.
+const CONTROL_STATES = [
+  ["/event-envelope/", ".code-copy-button"],
+  ["/troubleshooting/failure-drills/", ".copy-snippet"],
+  ["/intro/", ".sim-btn"],
+  ["/connector-builder/", ".builder-app .btn, .builder-app .tabs button"],
+  ["/debezium-decoder/", ".decoder-app .btn, .decoder-app .tabs button"],
+  ["/dlq-triage/", ".dlq-app .btn, .dlq-app .tabs button"],
+  ["/multi-tenancy/", ".preset-row button"],
+];
+
+test.describe("repaired controls keep 4.5:1 on hover and focus-visible", () => {
+  for (const theme of ["light", "dark"]) {
+    for (const [pagePath, selector] of CONTROL_STATES) {
+      test(`${pagePath} ${selector} (${theme} theme)`, async ({ page }) => {
+        await openInTheme(page, pagePath, theme);
+        await page.evaluate(() =>
+          document.addEventListener("click", (e) => e.preventDefault(), true),
+        );
+
+        const visible = page.locator(selector).filter({ visible: true });
+        const count = Math.min(await visible.count(), 8);
+        expect(count, `no visible ${selector} on ${pagePath}`).toBeGreaterThan(
+          0,
+        );
+
+        const failures = [];
+        for (let i = 0; i < count; i++) {
+          const control = visible.nth(i);
+          await control.scrollIntoViewIfNeeded();
+          for (const state of ["hover", "focus-visible"]) {
+            if (state === "hover") {
+              await control.hover();
+            } else {
+              await page.mouse.move(0, 0);
+              await page.keyboard.press("Shift");
+              await control.focus();
+            }
+            await control.evaluate((el) => el.setAttribute("data-ct", "1"));
+            const results = await new AxeBuilder({ page })
+              .include('[data-ct="1"]')
+              .withRules(["color-contrast"])
+              .analyze();
+            await control.evaluate((el) => el.removeAttribute("data-ct"));
+            for (const v of results.violations) {
+              for (const n of v.nodes) {
+                failures.push(
+                  `#${i} [${state}] ${n.any[0]?.message ?? v.description}`,
+                );
+              }
+            }
+            await control.evaluate((el) => el.blur());
+          }
+        }
+        expect(
+          failures,
+          `${selector} contrast failures on ${pagePath} (${theme}):\n${failures.join("\n")}`,
         ).toEqual([]);
       });
     }
