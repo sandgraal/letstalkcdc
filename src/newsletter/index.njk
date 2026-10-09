@@ -1,0 +1,53 @@
+---
+layout: base.njk
+title: "Newsletter"
+canonicalPath: "/newsletter/"
+---
+{% import "components/ui.njk" as ui %}
+{% from "components/newsletter-form.njk" import form as newsletterForm %}
+
+{{ ui.hero({
+  title: "Newsletter",
+  description: "<p>An email when new modules, labs or corrections are published. No schedule is promised.</p>" if newsletter.enabled else "<p>The newsletter is not open yet. There is nothing to sign up to today.</p>",
+  align: "center",
+  skillLevel: "About"
+}) | safe }}
+
+{% if newsletter.enabled %}
+<section class="prose" aria-labelledby="signup">
+  <h2 id="signup">Sign up</h2>
+  <p>
+    Enter your email address and press Subscribe. The form works without
+    JavaScript.
+  </p>
+  {{ newsletterForm(newsletter, 'newsletter-page', '/privacy/#newsletter' | url) }}
+</section>
+
+<section class="prose" aria-labelledby="privacy-note">
+  <h2 id="privacy-note">What happens to your address</h2>
+  <p>
+    The newsletter is run by
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">Buttondown</a>,
+    a separate company. This site does not store your address. When you
+    press Subscribe, your browser sends the address you typed to
+    buttondown.com, and Buttondown takes over from there, including any
+    confirmation step. Nothing is sent to Buttondown before you press the
+    button, and this page loads no script from Buttondown. How Buttondown
+    handles the address is covered by its
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">privacy policy</a>.
+    The full picture of what this site sends where is on the
+    <a href="{{ '/privacy/#newsletter' | url }}">privacy page</a>.
+  </p>
+</section>
+{% else %}
+<section class="prose" aria-labelledby="not-open">
+  <h2 id="not-open">Not open yet</h2>
+  <p>
+    The newsletter is not open yet, so there is no signup form on this
+    site. Nothing you type here is collected anywhere. In the meantime you
+    can follow new pages through the
+    <a href="{{ '/feed.xml' | url }}">RSS feed</a> or the project on
+    <a href="https://github.com/{{ site.repository }}">GitHub</a>.
+  </p>
+</section>
+{% endif %}

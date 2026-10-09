@@ -40,8 +40,16 @@ const SITEMAP_PAGES = [
   .sort();
 
 // Built pages that are deliberately not in the sitemap (noindex) but are
-// served and were part of the contrast debt; audited too.
-for (const extra of ["/dashboard/", "/styleguide/", "/mermaid-sandbox/"]) {
+// served and were part of the contrast debt; audited too. /newsletter/ is
+// in this list because it is out of the sitemap (noindex) while
+// BUTTONDOWN_USERNAME is unset, so the "not open yet" state is audited in
+// every CI build; a build with the variable set audits it via the sitemap.
+for (const extra of [
+  "/dashboard/",
+  "/styleguide/",
+  "/mermaid-sandbox/",
+  "/newsletter/",
+]) {
   if (!SITEMAP_PAGES.includes(extra)) SITEMAP_PAGES.push(extra);
 }
 

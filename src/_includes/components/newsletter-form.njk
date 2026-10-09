@@ -1,0 +1,22 @@
+{#
+  Buttondown signup form (P15-9). Plain HTML POST, no script, no third-party
+  asset. Only rendered by callers that checked `newsletter.enabled`.
+  Field names follow Buttondown's embed docs: `email` and hidden `embed=1`.
+  `id` keeps the label/input pairing unique when more than one form is on
+  a page.
+#}
+{% macro form(newsletter, id, privacyHref) -%}
+<form class="newsletter-form flex flex-col gap-sm" action="{{ newsletter.action }}" method="post">
+  <label class="block" for="{{ id }}-email">Email address</label>
+  <input id="{{ id }}-email" type="email" name="email" autocomplete="email" required aria-describedby="{{ id }}-hint">
+  <input type="hidden" name="embed" value="1">
+  <button class="button" type="submit">Subscribe</button>
+  <p class="footer-description" id="{{ id }}-hint">
+    When you press Subscribe, your email address is sent to
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">Buttondown</a>,
+    which runs this newsletter, and you continue on their site. Nothing is
+    sent before that. Details on the
+    <a href="{{ privacyHref }}">privacy page</a>.
+  </p>
+</form>
+{%- endmacro %}

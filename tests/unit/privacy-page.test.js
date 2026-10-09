@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import nunjucks from "nunjucks";
 import author from "../../src/_data/author.mjs";
+import { resolveNewsletter } from "../../lib/newsletter.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -232,6 +233,62 @@ describe("privacy page, rendered", () => {
     );
     expect(section(rendered, "playground")).toContain("<code>ts_ms</code>");
     expect(section(rendered, "playground")).toContain("<code>id</code>");
+  });
+});
+
+describe("newsletter signup disclosure (P15-9)", () => {
+  const renderWith = (newsletter) =>
+    env.renderString(body, {
+      ...data,
+      author,
+      newsletter,
+      site: { repository: "sandgraal/letstalkcdc" },
+    });
+  const on = renderWith(resolveNewsletter("demo-user", () => {}));
+  const off = renderWith(resolveNewsletter(undefined));
+
+  it("says what is sent, to whom and when, and links Buttondown's policy", () => {
+    const sec = section(on, "newsletter");
+    expect(sec).toMatch(/<strong>What is sent:<\/strong>\s+the email address/);
+    expect(sec).toMatch(/<strong>To whom:<\/strong>\s+Buttondown/);
+    expect(sec).toContain("buttondown.com");
+    expect(sec).toMatch(
+      /<strong>When:<\/strong>\s+only when you press Subscribe/,
+    );
+    expect(sec).toMatch(/Nothing is sent as you type/);
+    expect(sec).toMatch(/loads no\s+script from Buttondown/);
+    expect(sec).toContain('href="https://buttondown.com/legal/privacy"');
+  });
+
+  it("lists buttondown.com among third-party requests only when the signup is on", () => {
+    expect(section(on, "third-parties")).toContain(
+      "<strong>buttondown.com</strong>",
+    );
+    expect(section(off, "third-parties")).not.toMatch(/buttondown/i);
+  });
+
+  it("claims nothing is sent while the signup is not open", () => {
+    const sec = section(off, "newsletter");
+    expect(sec).toMatch(/not open yet/);
+    expect(sec).toMatch(/does not ask for or\s+send an email address/);
+    expect(off).not.toMatch(/buttondown/i);
+  });
+
+  it("keeps every other claim: cookies, assistant and playground sections", () => {
+    for (const html of [on, off]) {
+      expect(section(html, "cookies")).toContain(
+        "site's own code does not set cookies",
+      );
+      expect(section(html, "stores")).toContain("assistant_feedback");
+      expect(section(html, "playground")).toContain("<code>ts_ms</code>");
+    }
+  });
+
+  it("links to the newsletter page through the url filter only when on", () => {
+    expect(section(on, "newsletter")).toContain(
+      'href="/letstalkcdc/newsletter/"',
+    );
+    expect(section(off, "newsletter")).not.toContain("/newsletter/");
   });
 });
 

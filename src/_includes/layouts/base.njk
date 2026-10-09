@@ -15,7 +15,7 @@
     {% endif %}
     <title>{% if title %}{{ title }} | {{ site.title }}{% else %}{{ site.seoTitle }}{% endif %}</title>
     <meta name="description" content="{{ pageDescription }}">
-    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta name="robots" content="{{ robotsMeta | default('index,follow,max-image-preview:large') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ '/apple-touch-icon.png' | url }}">
     <link rel="icon" href="{{ '/favicon.svg' | url }}" type="image/svg+xml">
     <link rel="icon" href="{{ '/favicon.ico' | url }}">
@@ -500,9 +500,21 @@
               {% if community.slack.enabled %}
               <li><a href="{{ community.slack.url }}" target="_blank" rel="noopener">{{ community.slack.label }}</a></li>
               {% endif %}
+              {% if newsletter.enabled %}
+              <li><a href="{{ '/newsletter/' | url }}">Newsletter</a></li>
+              {% endif %}
               <li><a href="{{ '/errata/' | url }}">Report Issue</a></li>
             </ul>
           </div>
+          {# Compact signup (P15-9). Rendered only while BUTTONDOWN_USERNAME is
+             set, and not on /newsletter/ itself, which has its own form. #}
+          {% if newsletter.enabled and not newsletterPage %}
+          {% from "components/newsletter-form.njk" import form as newsletterForm %}
+          <div class="footer-section">
+            <h3 class="footer-title">Newsletter</h3>
+            {{ newsletterForm(newsletter, 'footer-newsletter', '/privacy/#newsletter' | url) }}
+          </div>
+          {% endif %}
         </div>
         
         <div class="footer-bottom">

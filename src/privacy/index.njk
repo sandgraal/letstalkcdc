@@ -8,7 +8,7 @@ canonicalPath: "/privacy/"
 
 {{ ui.hero({
   title: "Privacy",
-  description: "<p>Short version: reading the module pages stores nothing about you on a server. Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted.</p>",
+  description: "<p>Short version: reading the module pages stores nothing about you on a server. Two optional features do send what you type to the project's database: voting on a CDC Assistant answer (one small record), and the Change Feed Playground (rows you edit and scenarios you save). This page says what is stored, who can see it, and when it is deleted.</p>" + ("<p>The newsletter signup is a third optional feature: if you use it, the email address you type is sent to Buttondown.</p>" if newsletter.enabled else ""),
   align: "center",
   skillLevel: "About"
 }) | safe }}
@@ -123,6 +123,46 @@ canonicalPath: "/privacy/"
   </ul>
 </section>
 
+<section class="prose" aria-labelledby="newsletter">
+  <h2 id="newsletter">The newsletter signup</h2>
+  {% if newsletter.enabled %}
+  <p>
+    The <a href="{{ '/newsletter/' | url }}">newsletter</a> has a signup form
+    on its page and in the footer, with one field: your email address. The
+    newsletter is run by Buttondown, a separate company.
+  </p>
+  <ul>
+    <li>
+      <strong>What is sent:</strong> the email address you typed.
+    </li>
+    <li>
+      <strong>To whom:</strong> Buttondown (<strong>buttondown.com</strong>),
+      which then sends its own confirmation and newsletter emails. This site
+      does not keep the address.
+    </li>
+    <li>
+      <strong>When:</strong> only when you press Subscribe. The form is an
+      ordinary web form: your browser sends it and you continue on
+      Buttondown's site. Nothing is sent as you type, and the site loads no
+      script from Buttondown.
+    </li>
+  </ul>
+  <p>
+    Buttondown handles the address under its own
+    <a href="{{ newsletter.privacyUrl }}" target="_blank" rel="noopener">privacy policy</a>.
+    As the newsletter's sender, the maintainer, {{ author.name }}, can see
+    the subscriber list in Buttondown. To ask for your address to be removed,
+    use the routes under "Asking about or deleting your entry" below.
+  </p>
+  {% else %}
+  <p>
+    The newsletter signup is not open yet, so this site does not ask for or
+    send an email address anywhere. This section will describe the signup
+    when it opens.
+  </p>
+  {% endif %}
+</section>
+
 <section class="prose" aria-labelledby="device">
   <h2 id="device">What stays on your device</h2>
   <p>
@@ -182,6 +222,12 @@ canonicalPath: "/privacy/"
       <strong>www.youtube-nocookie.com</strong>: only if you click play on that
       video, which then loads YouTube's player.
     </li>
+    {% if newsletter.enabled %}
+    <li>
+      <strong>buttondown.com</strong>: only when you press Subscribe on the
+      newsletter form, as described under "The newsletter signup".
+    </li>
+    {% endif %}
     <li>
       <strong>Supabase</strong>, the database host: when you send an
       assistant vote, and whenever you open the Change Feed Playground, as
