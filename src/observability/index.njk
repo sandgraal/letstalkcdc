@@ -42,7 +42,7 @@ scripts:
       <tbody>
         <tr>
           <th scope="row">Latency</th>
-          <td>End-to-end lag (source commit to sink ingest).</td>
+          <td>End-to-end <a href="{{ '/glossary/' | url }}#lag">lag</a> (source commit to sink ingest).</td>
           <td>Shows whether consumers see fresh data.</td>
         </tr>
         <tr>
@@ -102,7 +102,7 @@ scripts:
         <li><strong>Throughput chart</strong> — Source and sink records per second over time</li>
         <li><strong>Error rate graph</strong> — Track failed batches and error logs</li>
         <li><strong>Connector status panel</strong> — At-a-glance health check for all connectors</li>
-        <li><strong>DLQ volume tracker</strong> — Monitor dead letter queue growth</li>
+        <li><strong>DLQ volume tracker</strong> — Monitor dead letter queue growth (triage with the <a href="{{ '/dlq-triage/' | url }}">DLQ Triage Assistant</a>)</li>
         <li><strong>Task running ratio</strong> — Detect saturation before it impacts throughput</li>
         <li><strong>Restart counter</strong> — Identify unstable connectors</li>
         <li><strong>Batch timing</strong> — Track processing performance trends</li>

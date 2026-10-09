@@ -65,7 +65,7 @@ ai-generated: true
     
     <h3>Step 1: Prepare Source Database (RDS MySQL)</h3>
     <p>
-      First, ensure your RDS MySQL instance has binary logging enabled. This is required for DMS to capture changes.
+      First, ensure your RDS MySQL instance has binary logging enabled. This is required for DMS to capture changes. The <a href="{{ '/quickstarts/quickstart-mysql/' | url }}">MySQL quickstart</a> explains the binlog settings on a local container.
     </p>
     <p>
       <strong>Setting <code>binlog_format=ROW</code> is not sufficient on its own.</strong> On RDS MySQL the binary log only exists when <strong>automated backups are enabled</strong> (backup retention period &gt; 0). With a retention of 0 there is no binlog for DMS to read, regardless of the <code>binlog_format</code> parameter — so enable automated backups on the instance before configuring the CDC task.
@@ -506,7 +506,7 @@ aws logs tail /aws/dms/tasks/cdc-task-mysql-to-s3 --follow</code></pre>
         DMS CDC delivery to S3 (and onward to Redshift) is <strong>at-least-once</strong>, not exactly-once. On a task restart or resume, DMS re-reads from the last checkpointed log position and can <strong>re-emit changes it already wrote</strong>, producing duplicate rows in S3/Redshift. This is expected behavior, not a bug.
       </p>
       <p>
-        Make the consumer idempotent: <strong>upsert on the primary key, ordered by the change's log position (the source binlog coordinate / LSN / SCN), not by <code>cdc_timestamp</code></strong>. The timestamp is coarse and can tie or move backwards across restarts; the log position is the only monotonic ordering of committed changes. End-to-end exactly-once across DMS and your warehouse is not achievable — correctness comes from an idempotent sink, not from the pipe.
+        Make the consumer idempotent (the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a> has templates): <strong>upsert on the primary key, ordered by the change's log position (the source binlog coordinate / LSN / SCN), not by <code>cdc_timestamp</code></strong>. The timestamp is coarse and can tie or move backwards across restarts; the log position is the only monotonic ordering of committed changes. End-to-end exactly-once across DMS and your warehouse is not achievable — correctness comes from an idempotent sink, not from the pipe.
       </p>
     </div>
 
@@ -710,6 +710,9 @@ aws cloudwatch get-metric-statistics \
         </tr>
       </tbody>
     </table>
+    <p>
+      For more platforms side by side, see <a href="{{ '/compare/' | url }}">Compare CDC Platforms</a>. The <a href="{{ '/cloud-labs/fivetran/' | url }}">Fivetran lab</a> covers a fully managed SaaS alternative, and the <a href="{{ '/cloud-labs/snowflake-cdc/' | url }}">Snowflake lab</a> shows how to load CDC files from S3 with Snowpipe.
+    </p>
   </section>
 
   <section class="qs-verify" aria-labelledby="resources-heading">
