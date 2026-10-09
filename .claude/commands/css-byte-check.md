@@ -22,7 +22,7 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   1906308d385dec188be5f86f478b79c9f7f01c6e4e464e08e5ba6cff42fd2648
+   c32d01ac29ef3f3ea5fe6448aa5414d559e980ce265c5e52ffb8f575bc42ce7e
    ```
    (re-baselined 2026-10-09 for the P15-21 contrast debt: new
    `components/code-block.css`, light-theme `--color-success/-warning/-error`

@@ -39,6 +39,12 @@ const SITEMAP_PAGES = [
   )
   .sort();
 
+// Built pages that are deliberately not in the sitemap (noindex) but are
+// served and were part of the contrast debt; audited too.
+for (const extra of ["/dashboard/", "/styleguide/", "/mermaid-sandbox/"]) {
+  if (!SITEMAP_PAGES.includes(extra)) SITEMAP_PAGES.push(extra);
+}
+
 /**
  * Known a11y violation rule IDs per page — pre-existing content issues
  * tracked separately from the E2E test suite. These rules are filtered
@@ -111,7 +117,19 @@ test.describe("accessibility", () => {
         }, theme);
         await page.goto(pagePath);
         await page.waitForLoadState("networkidle");
+        // /styleguide/ is standalone and does not read the stored theme.
+        await page.evaluate((t) => {
+          const root = document.documentElement;
+          if (!root.getAttribute("data-theme")) {
+            root.setAttribute("data-theme", t);
+          }
+        }, theme);
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+        // Audit the settled colours, not a mid-transition frame.
+        await page.addStyleTag({
+          content:
+            "*,*::before,*::after{transition:none!important;animation:none!important}",
+        });
 
         const results = await new AxeBuilder({ page })
           .withRules(["color-contrast"])

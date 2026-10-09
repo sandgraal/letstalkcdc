@@ -355,7 +355,9 @@ a.button:where(:hover, :active, :focus-visible):not(
 
 .badge.recommended {
   background: var(--gradient-accent);
-  color: white;
+  /* The gradient is the same cyan-to-indigo in both themes, so the label is
+     a fixed dark ink (white was 1.96:1). */
+  color: #06131a;
   box-shadow:
     0 0 0 1px rgba(60, 200, 240, 0.3),
     var(--shadow-glow-sm);

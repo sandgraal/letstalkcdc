@@ -7,11 +7,13 @@
        .code-block-header > .code-block-language + button.code-copy-button
        pre > code
 
-   and appends a `button.copy-snippet` inside every `pre`. None of these
-   classes had a rule in the production bundle (the stylesheet that
-   carried them was purged in Month 0 without ever having been
-   imported), so the buttons rendered with the browser's default black
-   button text. That was 1.1-1.4:1 on every dark code surface.
+   and appends a `button.copy-snippet` inside every `pre`. Apart from a
+   few spacing tweaks for narrow screens in 09-mobile-responsive.css,
+   none of these classes had a rule in the production bundle (the
+   stylesheet that carried them was purged in Month 0 without ever
+   having been imported), so the buttons rendered with the browser's
+   default black button text and the language label was unstyled. That
+   was 1.1-1.4:1 on every dark code surface.
 
    The buttons paint their own surface AND text colour from the theme
    tokens, so they are legible whatever surface the page gives `pre`.

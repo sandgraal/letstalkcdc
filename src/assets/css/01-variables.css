@@ -357,21 +357,24 @@
   --color-secondary-subtle: rgba(85, 102, 230, 0.1);
 
   /* Semantic Colors = op-colors (create / update / delete) */
-  /* These three are used as TEXT colour on the light surfaces and on
-     their own -subtle tints, so each is held to 4.5:1 on the darkest
-     light surface (#e6ecf3): success 4.58, warning 4.63, error 4.73
-     (P15-21; the previous values were 2.97 / 3.21 / 3.96). */
-  --color-success: #177a2c;
+  /* These three are used as TEXT colour on the light surfaces and on their
+     own -subtle tints. Each is >= 4.5:1 on every light surface (#ffffff to
+     #e6ecf3) AND on its own -subtle tint over any of them: worst case
+     success 4.78, warning 4.59, error 4.57 (P15-21; the earlier values were
+     2.97 / 3.21 / 3.96 on #e6ecf3). They are close in luminance to one
+     another, so never rely on colour alone to tell them apart - every use
+     today also carries a text label. */
+  --color-success: #146f27;
   --color-success-subtle: rgba(31, 157, 58, 0.1);
-  --color-success-hover: #115f21;
+  --color-success-hover: #0f5c20;
 
-  --color-warning: #8f5f0f;
+  --color-warning: #85580d;
   --color-warning-subtle: rgba(176, 119, 20, 0.12);
-  --color-warning-hover: #724a0a;
+  --color-warning-hover: #6b4409;
 
-  --color-error: #c0303d;
+  --color-error: #b52c39;
   --color-error-subtle: rgba(210, 59, 72, 0.1);
-  --color-error-hover: #a52833;
+  --color-error-hover: #9a2430;
 
   --color-info: #0a7299;
   --color-info-subtle: rgba(12, 141, 189, 0.1);
