@@ -15,3 +15,5 @@ sandbox
 AGENTS.md
 # Vendored Change Feed Playground has its own toolchain and formatting
 playground
+# Google Search Console ownership file: must stay byte-identical (no trailing newline)
+src/static/google*.html
