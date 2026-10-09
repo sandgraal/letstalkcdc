@@ -584,6 +584,62 @@ describe("assistant knowledge base – testing a CDC pipeline (M5)", () => {
   });
 });
 
+describe("assistant knowledge base – CDC without Kafka (module J)", () => {
+  it.each([
+    "debezium server vs the embedded engine",
+    "debezium server",
+    "what is debezium server",
+    "debezium server sinks",
+    "what does debezium.sink.type do",
+    "which sink types does debezium server support",
+    "what is the debezium embedded engine",
+    "can I run debezium without kafka",
+    "what does recordcommitter markprocessed do",
+    "what is debezium.sink.type in debezium server",
+  ])("%j reaches the Server and engine answer", (query) => {
+    expect(idOf(query)).toBe("debezium_server_engine");
+  });
+
+  it.each([
+    "how do I sync elasticsearch from cdc",
+    "what is version_type=external",
+    "elasticsearch delete resurrect after gc_deletes",
+    "gc_deletes",
+    "what is gc_deletes",
+    "how do I keep a search index in sync",
+    "sync redis cache from a table",
+  ])("%j reaches the search-index sync answer", (query) => {
+    expect(idOf(query)).toBe("search_index_sync");
+  });
+
+  it("does not steal the older transport and tool questions", () => {
+    expect(idOf("pulsar vs kinesis ordering")).toBe("transports");
+    expect(idOf("instead of kafka")).toBe("transports");
+    expect(idOf("fivetran vs debezium")).toBe("tool_choice");
+    expect(idOf("cache invalidation with cdc")).toBe("use_cases");
+  });
+
+  it("shares no trigger with another intent, carries no boost, keeps the thesis", () => {
+    const mine = ["debezium_server_engine", "search_index_sync"];
+    for (const id of mine) {
+      expect(byId(id).modules).toEqual([]);
+      expect(byId(id).triggers.length).toBeGreaterThanOrEqual(5);
+      expect(byId(id).links.map((l) => l.url)).toContain("/non-kafka-cdc/");
+      for (const t of byId(id).triggers) {
+        for (const o of kb.intents.filter((i) => i.id !== id)) {
+          expect(o.triggers, `${t} also in ${o.id}`).not.toContain(t);
+        }
+      }
+      const a = byId(id).answer.toLowerCase();
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+    }
+    expect(byId("debezium_server_engine").answer).toContain(
+      "source log position",
+    );
+    expect(byId("search_index_sync").answer).toContain("index.gc_deletes");
+  });
+});
+
 describe("assistant knowledge base – data contracts for database events (module G)", () => {
   const MINE = ["cdc_data_contract", "ddl_breaks_consumers"];
 

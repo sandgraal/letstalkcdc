@@ -93,7 +93,7 @@ canonicalPath: "/compare/"
 
   <section id="decide" aria-labelledby="decide-title">
     <h2 id="decide-title">Decision guide</h2>
-    <p>Start from the constraint that actually binds you:</p>
+    <p>Start from the constraint that actually binds you (no Kafka? see <a href="{{ '/non-kafka-cdc/#decide' | url }}">which non-Kafka path for which need</a>):</p>
     <ul class="compare-decide">
       <li><strong>Zero ops, warehouse target</strong> → <a href="#fivetran">Fivetran</a> (or <a href="#airbyte">Airbyte Cloud</a>) — hand it off, dedupe in the destination MERGE.</li>
       <li><strong>All-in on AWS</strong> → <a href="#aws-dms">AWS DMS</a> — managed, IaC-friendly, into S3/Redshift/Kinesis.</li>

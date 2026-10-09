@@ -68,7 +68,7 @@
     <p>{{ card.description }}</p>
     {% if card.href %}
       {% set cardHref = resolve_href(card.href) %}
-      <a href="{{ cardHref | trim }}" class="cta-button">{{ card.ctaLabel | default('Explore') }}</a>
+      <a href="{{ cardHref | trim }}" class="button primary">{{ card.ctaLabel | default('Explore') }}</a>
     {% endif %}
   </article>
 {%- endmacro %}
