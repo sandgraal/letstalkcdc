@@ -25,6 +25,7 @@
  * Targets are listed in tests/unit/gradient-text-contrast.test.js; keep the
  * two in step.
  */
+/* global getComputedStyle, createImageBitmap, OffscreenCanvas, window, document */
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -97,7 +98,7 @@ const PROBES = {
   G: "background:none!important;-webkit-text-fill-color:#fff!important;color:#fff!important;text-shadow:none!important",
 };
 
-async function measure(page, helper, target, theme) {
+async function measure(page, helper, target) {
   const loc = page.locator(target.selector).first();
   if (!(await loc.count())) return null;
   await loc.scrollIntoViewIfNeeded();
@@ -277,7 +278,7 @@ async function main() {
                 "*,*::before,*::after{transition:none!important;animation:none!important}",
             });
             await page.evaluate(() => document.fonts.ready);
-            const m = await measure(page, helper, target, theme);
+            const m = await measure(page, helper, target);
             if (m && m.min !== null && (!worst || m.min < worst.min))
               worst = { page: p, ...m };
           }
