@@ -205,102 +205,118 @@ describe("code-blocks module", () => {
     });
   });
 
-  describe("legacy copy buttons", () => {
-    it("adds a copy-snippet button to unwrapped pre > code", () => {
-      document.body.innerHTML = `
-        <pre><code>legacy code</code></pre>
-      `;
+  describe("one copy control per block", () => {
+    const controls = (root) =>
+      Array.from(root.querySelectorAll("button")).filter((b) =>
+        /copy/i.test(`${b.className} ${b.textContent}`),
+      );
 
-      // Legacy buttons are added by initLegacyCopyButtons (internal), called by initCodeBlocks
-      // But the enhance function runs first and wraps them.
-      // Legacy is for pre > code that are ALREADY inside .code-block-wrapper
-      // Actually, legacy runs on blocks NOT in a wrapper. But enhanceCodeBlocks
-      // wraps them first. So we test that the wrapper approach works.
+    it("gives a plain pre > code exactly one copy button", () => {
+      document.body.innerHTML = `<pre><code>plain</code></pre>`;
       initCodeBlocks(mockTracer);
 
-      // The block should be wrapped by enhanceCodeBlocks
-      expect(document.querySelector(".code-block-wrapper")).not.toBeNull();
+      expect(document.querySelectorAll(".copy-snippet").length).toBe(0);
+      expect(controls(document.body).length).toBe(1);
+      expect(controls(document.body)[0].classList).toContain(
+        "code-copy-button",
+      );
     });
 
-    it("legacy copy-snippet click copies text on success", async () => {
+    it("replaces a static button.copy (failure-drills markup)", () => {
       document.body.innerHTML = `
-        <pre><code>legacy text</code></pre>
+        <pre><button class="copy">copy</button><code>docker ps</code></pre>
+        <pre><button class="copy">copy</button><code>docker logs</code></pre>
       `;
       initCodeBlocks(mockTracer);
 
-      // Legacy copy-snippet button exists alongside the enhanced one
-      const legacyBtn = document.querySelector(".copy-snippet");
-      expect(legacyBtn).not.toBeNull();
-
-      await legacyBtn.click();
-
-      await vi.waitFor(() => {
-        // Legacy uses code.innerText (undefined in jsdom), so just verify it was called
-        expect(navigator.clipboard.writeText).toHaveBeenCalled();
-        expect(legacyBtn.textContent).toBe("Copied!");
+      const wrappers = document.querySelectorAll(".code-block-wrapper");
+      expect(wrappers.length).toBe(2);
+      wrappers.forEach((wrapper) => {
+        expect(controls(wrapper).length).toBe(1);
+        expect(wrapper.querySelector("pre > button")).toBeNull();
       });
     });
 
-    it("legacy copy-snippet shows Failed on clipboard error", async () => {
-      navigator.clipboard.writeText = vi
-        .fn()
-        .mockRejectedValue(new Error("blocked"));
-
+    it("replaces a static button.copy-btn (snapshotting markup)", () => {
       document.body.innerHTML = `
-        <pre><code>fail text</code></pre>
+        <pre><button class="copy-btn" type="button">Copy</button><code>SELECT 1</code></pre>
       `;
       initCodeBlocks(mockTracer);
 
-      const legacyBtn = document.querySelector(".copy-snippet");
-      await legacyBtn.click();
-
-      await vi.waitFor(() => {
-        expect(legacyBtn.textContent).toBe("Failed");
-      });
+      expect(document.querySelector(".copy-btn")).toBeNull();
+      expect(controls(document.body).length).toBe(1);
     });
 
-    it("legacy button restores text after timeout", async () => {
-      vi.useFakeTimers();
-
-      document.body.innerHTML = `
-        <pre><code>timer text</code></pre>
-      `;
-      initCodeBlocks(mockTracer);
-
-      const legacyBtn = document.querySelector(".copy-snippet");
-      await legacyBtn.click();
-
-      // Wait for the async click handler to complete
-      await vi.advanceTimersByTimeAsync(0);
-
-      expect(legacyBtn.textContent).toBe("Copied!");
-
-      vi.advanceTimersByTime(1200);
-      expect(legacyBtn.textContent).toBe("Copy");
-
-      vi.useRealTimers();
-    });
-
-    it("reuses existing copy-btn instead of creating a new one", () => {
+    it("does not leave a button after the code (legacy order)", () => {
       document.body.innerHTML = `
         <pre><code>reuse</code><button class="copy-btn">Existing</button></pre>
       `;
       initCodeBlocks(mockTracer);
 
-      // Should have the existing copy-btn (reused by legacy) + the enhanced copy button
-      const legacy = document.querySelector(".copy-btn");
-      expect(legacy).not.toBeNull();
-      expect(legacy.textContent).toBe("Existing");
+      expect(document.querySelector(".copy-btn")).toBeNull();
+      expect(controls(document.body).length).toBe(1);
     });
 
-    it("uses pre.id for tracer codeId when available", async () => {
+    it("never doubles up when run twice", () => {
+      document.body.innerHTML = `<pre><button class="copy">copy</button><code>twice</code></pre>`;
+      initCodeBlocks(mockTracer);
+      initCodeBlocks(mockTracer);
+
+      expect(controls(document.body).length).toBe(1);
+    });
+
+    it("keeps the remaining control labelled and keyboard-reachable", () => {
+      document.body.innerHTML = `
+        <pre><button class="copy">copy</button><code class="language-bash">ls</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const button = document.querySelector(".code-copy-button");
+      expect(button.type).toBe("button");
+      expect(button.tabIndex).toBe(0);
+      expect(button.getAttribute("aria-label")).toBe("Copy BASH code");
+    });
+
+    it("copies the code, not the removed button's label", async () => {
+      document.body.innerHTML = `
+        <pre><button class="copy">copy</button><code>echo hi</code></pre>
+      `;
+      initCodeBlocks(mockTracer);
+
+      const button = document.querySelector(".code-copy-button");
+      await button.click();
+
+      await vi.waitFor(() => {
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith("echo hi");
+        expect(button.textContent).toBe("Copied!");
+      });
+    });
+
+    it("shows Failed on clipboard error", async () => {
+      navigator.clipboard.writeText = vi
+        .fn()
+        .mockRejectedValue(new Error("blocked"));
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      document.body.innerHTML = `<pre><code>fail text</code></pre>`;
+      initCodeBlocks(mockTracer);
+
+      const button = document.querySelector(".code-copy-button");
+      await button.click();
+
+      await vi.waitFor(() => {
+        expect(button.textContent).toBe("Failed");
+      });
+      errorSpy.mockRestore();
+    });
+
+    it("uses pre.id for the tracer block id when available", async () => {
       document.body.innerHTML = `
         <pre id="my-block"><code>id block</code></pre>
       `;
       initCodeBlocks(mockTracer);
 
-      const legacyBtn = document.querySelector(".copy-snippet");
-      await legacyBtn.click();
+      await document.querySelector(".code-copy-button").click();
 
       await vi.waitFor(() => {
         expect(mockTracer.trackInteraction).toHaveBeenCalledWith(
@@ -309,30 +325,6 @@ describe("code-blocks module", () => {
           true,
         );
       });
-    });
-
-    it("handles tracer failure gracefully in legacy copy", async () => {
-      const failingTracer = {
-        trackInteraction: vi.fn().mockImplementation(() => {
-          throw new Error("tracer down");
-        }),
-      };
-
-      document.body.innerHTML = `
-        <pre><code>tracer fail</code></pre>
-      `;
-      initCodeBlocks(failingTracer);
-
-      const legacyBtn = document.querySelector(".copy-snippet");
-      const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
-
-      await legacyBtn.click();
-
-      await vi.waitFor(() => {
-        expect(legacyBtn.textContent).toBe("Copied!");
-      });
-
-      debugSpy.mockRestore();
     });
   });
 

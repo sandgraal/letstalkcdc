@@ -1,7 +1,7 @@
 /**
  * Code Blocks Module
- * Handles legacy code copy buttons and enhanced code block wrappers
- * with language labels, copy functionality, and toast notifications.
+ * Wraps every `pre > code` in a header with a language label and exactly one
+ * copy button, with toast notifications.
  *
  * @module code-blocks
  * @exports {function} initCodeBlocks - Initialize code block enhancements
@@ -33,54 +33,18 @@ const initHeadingAnchors = () => {
 };
 
 /**
- * Initialize legacy code copy buttons on pre > code elements.
- * Adds a "Copy" button to code blocks that don't already have one.
- *
- * @param {object} tracer - OpenTelemetry education tracer instance
+ * Static markup in a few templates puts its own copy control inside the
+ * `pre` (`button.copy` on /troubleshooting/failure-drills/, `button.copy-btn`
+ * on /snapshotting/). None of them has ever been wired up by a page script
+ * of its own, and each would sit beside the header button below. The header
+ * button is the one copy control for every block, so the in-`pre` ones are
+ * dropped rather than left as a second, duplicate or dead, control.
  */
-const initLegacyCopyButtons = (tracer) => {
-  doc.querySelectorAll("pre > code").forEach((code) => {
-    const pre = code.parentElement;
+const LEGACY_COPY_SELECTOR = "button.copy, .copy-btn, .copy-snippet";
 
-    // Skip if already enhanced by the wrapper system
-    if (pre.closest(".code-block-wrapper")) return;
-
-    let button = pre.querySelector(".copy-btn, .copy-snippet");
-    if (!button) {
-      button = Object.assign(doc.createElement("button"), {
-        textContent: "Copy",
-        className: "copy-snippet",
-        type: "button",
-      });
-      pre.style.position = "relative";
-      pre.appendChild(button);
-    }
-
-    const restore = (label) => {
-      setTimeout(() => {
-        button.textContent = label;
-      }, 1200);
-    };
-
-    const label = button.textContent;
-
-    button.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(code.innerText);
-        button.textContent = "Copied!";
-        restore(label);
-
-        try {
-          const codeId = pre.id || code.className || "unnamed-code-block";
-          tracer.trackInteraction("code-copy", codeId, true);
-        } catch (error) {
-          console.debug("Code copy tracking failed:", error);
-        }
-      } catch (_) {
-        button.textContent = "Failed";
-        restore(label);
-      }
-    });
+const removeLegacyCopyButtons = (pre) => {
+  pre.querySelectorAll(LEGACY_COPY_SELECTOR).forEach((button) => {
+    if (button.parentElement === pre) button.remove();
   });
 };
 
@@ -98,6 +62,8 @@ const enhanceCodeBlocks = (tracer) => {
 
     // Skip if already enhanced
     if (pre.closest(".code-block-wrapper")) return;
+
+    removeLegacyCopyButtons(pre);
 
     // Detect language from class (e.g., language-javascript)
     const languageClass = Array.from(codeBlock.classList).find((cls) =>
@@ -152,9 +118,11 @@ const enhanceCodeBlocks = (tracer) => {
         }
 
         try {
-          const blockId = `code-${language.toLowerCase()}-${Math.random()
-            .toString(36)
-            .substr(2, 9)}`;
+          const blockId =
+            pre.id ||
+            `code-${language.toLowerCase()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
           tracer.trackInteraction("code-copy", blockId, true);
         } catch (error) {
           console.debug("Code copy tracking failed:", error);
@@ -186,14 +154,13 @@ const enhanceCodeBlocks = (tracer) => {
 };
 
 /**
- * Initialize all code block enhancements: heading anchors, legacy copy
- * buttons, and enhanced code block wrappers.
+ * Initialize all code block enhancements: heading anchors and the code
+ * block wrappers (one copy button each).
  *
  * @param {object} tracer - OpenTelemetry education tracer instance
  */
 const initCodeBlocks = (tracer) => {
   initHeadingAnchors();
-  initLegacyCopyButtons(tracer);
   enhanceCodeBlocks(tracer);
 };
 
