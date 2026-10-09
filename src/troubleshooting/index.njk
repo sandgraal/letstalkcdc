@@ -166,7 +166,8 @@ SHOW GLOBAL STATUS LIKE 'Binlog_cache_disk_use';</code></pre>
               </li>
               <li>
                 <em>Lost history:</em> binlogs expired during snapshot → extend
-                expire window; restart from fresh snapshot.
+                expire window; restart from fresh snapshot. See the
+                <a href="{{ '/sql-server-mysql-cdc/' | url }}">MySQL and SQL Server runbooks</a>.
               </li>
               <li>
                 <em>DDL breakage:</em> add

@@ -672,3 +672,63 @@ describe("assistant knowledge base – data contracts for database events (modul
     expect(byId("cdc_data_contract").answer).toMatch(/at-least-once/);
   });
 });
+
+describe("assistant knowledge base – SQL Server and MySQL specifics", () => {
+  const CASES = [
+    ["my mysql binlog was purged", "mysql_binlog_purged"],
+    ["what is binlog_expire_logs_seconds", "mysql_binlog_purged"],
+    [
+      "connector fails because gtid_purged has my position",
+      "mysql_binlog_purged",
+    ],
+    ["debezium database.server.id must be unique", "mysql_binlog_purged"],
+    ["sql server cdc cleanup job deleted my changes", "sqlserver_cdc_jobs"],
+    ["how do I change sp_cdc_change_job retention", "sqlserver_cdc_jobs"],
+    ["what is event_serial_no", "sqlserver_cdc_jobs"],
+    [
+      "sql server transaction log not truncating with cdc",
+      "sqlserver_cdc_jobs",
+    ],
+  ];
+
+  it.each(CASES)("%j -> %s", (query, expected) => {
+    expect(idOf(query)).toBe(expected);
+  });
+
+  it("answers the same way from the page, which has no module boost of its own", () => {
+    for (const [query, expected] of CASES) {
+      expect(idOf(query, "sql-server-mysql-cdc")).toBe(expected);
+    }
+  });
+
+  it("does not steal the Postgres slot or older retention phrasings", () => {
+    expect(idOf("replication slot growing wal")).toBe("replication_slot_wal");
+    expect(idOf("my replication lag keeps growing")).toBe("lag_handling");
+    expect(idOf("what is delete.retention.ms")).toBe("tombstone_retention");
+  });
+
+  it("keeps the thesis: re-snapshot, idempotent sink or ordering tuple, no exactly-once promise", () => {
+    const my = byId("mysql_binlog_purged").answer.toLowerCase();
+    expect(my).toContain("re-snapshot");
+    expect(my).toContain("idempotent sink");
+    const ms = byId("sqlserver_cdc_jobs").answer.toLowerCase();
+    expect(ms).toContain("re-snapshot");
+    expect(ms).toContain("(commit_lsn, change_lsn, event_serial_no)");
+    for (const a of [my, ms]) {
+      expect(a).not.toMatch(/exactly-once (is|holds)/);
+      expect(a).not.toMatch(/order(ed)? by (ts_ms|timestamp)/);
+    }
+  });
+
+  it("points at page sections that exist", () => {
+    for (const id of ["mysql_binlog_purged", "sqlserver_cdc_jobs"]) {
+      for (const link of byId(id).links) {
+        if (link.url === "/sql-server-mysql-cdc/") {
+          expect(link.anchor).toMatch(
+            /^#(mysql|mysql-runbook|sqlserver|sqlserver-runbook|guard)$/,
+          );
+        }
+      }
+    }
+  });
+});
