@@ -154,7 +154,7 @@ scripts:
   <section id="ordering" aria-labelledby="ordering-title">
     <h2 id="ordering-title">Ordering and compaction</h2>
     <p>
-      Per-key ordering is preserved within a partition, but cross-partition
+      Per-key ordering is preserved within a partition (<a href="{{ '/partitioning/' | url }}">Partitioning &amp; Reconciliation</a> covers key choice), but cross-partition
       sequencing is best-effort. Design your envelope so downstream jobs can
       stitch history back together.
     </p>
@@ -165,14 +165,14 @@ scripts:
       </li>
       <li>
         Keep the delete event, which carries a position, and let the connector
-        follow it with a tombstone if the topic is compacted. A tombstone is a
+        follow it with a <a href="{{ '/glossary/' | url }}#tombstone">tombstone</a> if the topic is <a href="{{ '/glossary/' | url }}#compaction">compacted</a>. A tombstone is a
         signal to Kafka&rsquo;s log cleaner and has no position, so the sink
         keeps its own delete marker
         (<a href="{{ '/deletes-stay-deleted/' | url }}#three-deletes">three
         kinds of delete</a>).
       </li>
       <li>
-        Make idempotent materialization the default so out-of-order updates
+        Make idempotent materialization the default (see the <a href="{{ '/merge-cookbook/' | url }}">MERGE cookbook</a>) so out-of-order updates
         resolve deterministically.
       </li>
     </ol>

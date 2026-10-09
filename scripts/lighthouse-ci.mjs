@@ -9,7 +9,8 @@
  * assertion matrix in the same file. Floors are checked against the best of
  * the runs by default ("aggregation" in the config), as Lighthouse CI did;
  * the table also prints the median and every run. A run that errored or lost
- * its LCP is retried, never counted.
+ * its LCP is retried (3 attempts), never counted; a URL left with too few
+ * valid runs (checkRunCoverage) ends the job with exit 2.
  *
  *   npm run build:lhci && npm run lighthouse
  *
@@ -35,6 +36,7 @@ import { Launcher, launch } from "chrome-launcher";
 import lighthouse from "lighthouse";
 import {
   categoryScores,
+  checkRunCoverage,
   contentTypeFor,
   evaluateAssertions,
   exitCodeFor,
@@ -202,29 +204,44 @@ async function auditOnce(url) {
 }
 
 // A run that ends in a Lighthouse runtime error (for example "the page did not
-// paint any content") or that lost its LCP (see incompleteReason) is not a
-// measurement of the page. Retry it twice, then fail the whole run rather than
-// letting the other runs hide it.
+// paint any content"), times out, or lost its LCP (see incompleteReason) is not
+// a measurement of the page. Try each run up to MAX_ATTEMPTS times with a short
+// backoff. A run that is still invalid is returned as such, with the reason,
+// and the caller decides what a URL with too few valid runs means.
+const MAX_ATTEMPTS = 3;
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
 async function auditWithRetry(url) {
-  for (let attempt = 1; ; attempt++) {
-    let failure;
+  let lastInvalid = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const audit = await auditOnce(url);
-      failure = incompleteReason(audit.lhr);
-      if (!failure) return audit;
+      const reason = incompleteReason(audit.lhr);
+      if (!reason) return { valid: true, ...audit };
+      lastInvalid = { reason, json: audit.json, html: audit.html };
     } catch (error) {
-      failure = error.message;
+      lastInvalid = { reason: error.message };
     }
-    if (attempt === 3)
-      throw new Error(`Lighthouse failed on ${url}: ${failure}`);
-    process.stdout.write(`failed (${failure.slice(0, 80)}), retrying ... `);
+    if (attempt < MAX_ATTEMPTS) {
+      process.stdout.write(
+        `invalid (${lastInvalid.reason.slice(0, 70)}), retrying ... `,
+      );
+      await sleep(attempt * 2000);
+    }
   }
+  return { valid: false, ...lastInvalid };
 }
 
 const aggregation = config.aggregation;
 const perUrl = [];
 let results = [];
 let infrastructureError = false;
+const annotate = (level, message) =>
+  process.stdout.write(
+    process.env.GITHUB_ACTIONS
+      ? `::${level}::${message}\n`
+      : `${level.toUpperCase()}  ${message}\n`,
+  );
 
 try {
   await rm(outputDir, { recursive: true, force: true });
@@ -232,15 +249,25 @@ try {
 
   for (const urlPath of config.urls) {
     const scoresByAudit = {};
+    let valid = 0;
     for (let run = 1; run <= config.runs; run++) {
       process.stdout.write(
         `Running Lighthouse ${run}/${config.runs} on ${origin}${urlPath} ... `,
       );
-      const { lhr, json, html } = await auditWithRetry(`${origin}${urlPath}`);
+      const audit = await auditWithRetry(`${origin}${urlPath}`);
       const base = join(outputDir, `${slugForUrl(urlPath)}-run${run}`);
-      await writeFile(`${base}.json`, json);
-      await writeFile(`${base}.html`, html);
-      const scores = categoryScores(lhr);
+      if (!audit.valid) {
+        // Kept for diagnosis; never counted.
+        if (audit.json) await writeFile(`${base}-invalid.json`, audit.json);
+        process.stdout.write(
+          `INVALID after ${MAX_ATTEMPTS} attempts: ${audit.reason}\n`,
+        );
+        continue;
+      }
+      valid++;
+      await writeFile(`${base}.json`, audit.json);
+      await writeFile(`${base}.html`, audit.html);
+      const scores = categoryScores(audit.lhr);
       for (const [id, score] of Object.entries(scores))
         (scoresByAudit[id] ??= []).push(score);
       process.stdout.write(
@@ -252,7 +279,7 @@ try {
           .join(", ")}\n`,
       );
     }
-    perUrl.push({ url: urlPath, scoresByAudit });
+    perUrl.push({ url: urlPath, scoresByAudit, valid });
   }
 
   const auditIds = [
@@ -267,7 +294,20 @@ try {
   );
 
   const summary = [];
-  for (const { url, scoresByAudit } of perUrl) {
+  for (const { url, scoresByAudit, valid } of perUrl) {
+    const coverage = checkRunCoverage({
+      matrix: config.assertMatrix,
+      urlPath: url,
+      valid,
+      requested: config.runs,
+      minValidRuns: config.minValidRuns,
+      minValidRunsForError: config.minValidRunsForError,
+    });
+    if (coverage.warning) annotate("warning", coverage.warning);
+    if (coverage.fatal) {
+      annotate("error", coverage.fatal);
+      infrastructureError = true;
+    }
     const found = evaluateAssertions(
       config.assertMatrix,
       url,
@@ -286,11 +326,7 @@ try {
           ? r.actual.toFixed(2)
           : "no score";
         const message = `${url} ${r.auditId}: ${r.aggregation} ${actual} < ${r.minScore} (runs: ${r.values.map((v) => v?.toFixed(2) ?? "n/a").join(", ")})`;
-        process.stdout.write(
-          process.env.GITHUB_ACTIONS
-            ? `::${level}::${message}\n`
-            : `${level.toUpperCase()}  ${message}\n`,
-        );
+        annotate(level, message);
       }
     }
   }

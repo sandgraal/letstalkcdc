@@ -14,7 +14,9 @@ import {
   categoryScores,
   contentTypeFor,
   evaluateAssertions,
+  checkRunCoverage,
   exitCodeFor,
+  hasErrorAssertions,
   formatTable,
   incompleteReason,
   isCompressible,
@@ -295,6 +297,101 @@ describe("incompleteReason", () => {
   });
 });
 
+describe("run coverage policy (checkRunCoverage)", () => {
+  const matrix = config.assertMatrix;
+  const check = (urlPath, valid, extra = {}) =>
+    checkRunCoverage({
+      matrix,
+      urlPath,
+      valid,
+      requested: 3,
+      minValidRuns: config.minValidRuns,
+      minValidRunsForError: config.minValidRunsForError,
+      ...extra,
+    });
+
+  it("says nothing when every run is valid", () => {
+    expect(check("/overview/index.html", 3)).toEqual({
+      fatal: null,
+      warning: null,
+    });
+    expect(check("/intro/index.html", 3)).toEqual({
+      fatal: null,
+      warning: null,
+    });
+  });
+
+  it("warns, naming the URL and the counts, when some runs are invalid", () => {
+    const { fatal, warning } = check("/overview/index.html", 1);
+    expect(fatal).toBeNull();
+    expect(warning).toContain("/overview/index.html");
+    expect(warning).toContain("1 of 3 runs valid, 2 invalid");
+    expect(check("/overview/index.html", 2).warning).toContain(
+      "2 of 3 runs valid, 1 invalid",
+    );
+  });
+
+  it("is fatal when a URL has zero valid runs", () => {
+    const { fatal, warning } = check("/overview/index.html", 0);
+    expect(fatal).toContain("/overview/index.html");
+    expect(fatal).toContain("no usable run");
+    expect(warning).toBeNull();
+  });
+
+  it("is fatal when /intro/ (error floors) has fewer than 2 valid runs", () => {
+    const { fatal } = check("/intro/index.html", 1);
+    expect(fatal).toContain("/intro/index.html");
+    expect(fatal).toContain("at least 2 valid runs");
+  });
+
+  it("accepts 2 valid runs on /intro/ but still warns about the invalid one", () => {
+    const { fatal, warning } = check("/intro/index.html", 2);
+    expect(fatal).toBeNull();
+    expect(warning).toContain("2 of 3 runs valid, 1 invalid");
+  });
+
+  it("never asks for more valid runs than were requested", () => {
+    expect(check("/intro/index.html", 1, { requested: 1 })).toEqual({
+      fatal: null,
+      warning: null,
+    });
+    expect(check("/index.html", 0, { requested: 1 }).fatal).toContain(
+      "no usable run",
+    );
+  });
+
+  it("knows which URLs carry error floors", () => {
+    expect(hasErrorAssertions(matrix, "/intro/index.html")).toBe(true);
+    expect(hasErrorAssertions(matrix, "/overview/index.html")).toBe(false);
+  });
+
+  it("maps to exit codes: warning only is 0, fatal coverage is 2 (infrastructure)", () => {
+    const warned = check("/overview/index.html", 1);
+    expect(
+      exitCodeFor({ results: [], infrastructureError: !!warned.fatal }),
+    ).toBe(0);
+    const zero = check("/overview/index.html", 0);
+    expect(
+      exitCodeFor({ results: [], infrastructureError: !!zero.fatal }),
+    ).toBe(2);
+    const lone = check("/intro/index.html", 1);
+    expect(
+      exitCodeFor({ results: [], infrastructureError: !!lone.fatal }),
+    ).toBe(2);
+  });
+
+  it("asserts on the valid runs only: [0.87] alone still satisfies an optimistic 0.82", () => {
+    const results = evaluateAssertions(
+      matrix,
+      "/overview/index.html",
+      { "categories:performance": [0.87] },
+      config.aggregation,
+    );
+    expect(results.every((r) => r.passed || r.level === "warn")).toBe(true);
+    expect(exitCodeFor({ results })).toBe(0);
+  });
+});
+
 describe("exitCodeFor", () => {
   const pass = { level: "error", passed: true };
   const warnFail = { level: "warn", passed: false };
@@ -496,6 +593,11 @@ describe("lighthouse-ci.config.json", () => {
         results.every((r) => r.level === "warn" && r.minScore === 0.9),
       ).toBe(true);
     }
+  });
+
+  it("requires 1 valid run per URL and 2 where error floors apply", () => {
+    expect(config.minValidRuns).toBe(1);
+    expect(config.minValidRunsForError).toBe(2);
   });
 
   it("asserts on the best run by default, as Lighthouse CI did", () => {
