@@ -348,10 +348,11 @@
         <script type="module" src="{{ script | url }}" defer></script>
       {% endfor %}
     {% endif %}
-    {% if supabase.url and supabase.key %}
+    {# Emit only for an https URL and a key; escape "<" so a value can never close the script tag. #}
+    {% if supabase.url and supabase.publishableKey and supabase.url.startsWith("https://") %}
       <script>
-        window.SUPABASE_URL = {{ supabase.url | dump | safe }};
-        window.SUPABASE_PUBLISHABLE_KEY = {{ supabase.key | dump | safe }};
+        window.SUPABASE_URL = {{ supabase.url | dump | replace("<", "\\u003c") | safe }};
+        window.SUPABASE_PUBLISHABLE_KEY = {{ supabase.publishableKey | dump | replace("<", "\\u003c") | safe }};
       </script>
     {% endif %}
     {% if seriesKey %}

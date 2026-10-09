@@ -1006,9 +1006,60 @@ commands that prove it) · **Size** (S ≤ 1 h, M ≤ half a day, L = split
 it) · **Role** (who executes; see `CONDUCTOR.md`) · **Needs** (ordering
 dependencies).
 
+### Tier 0 — requested by the maintainer (work first)
+
+- [x] **P13-10 · Replace Appwrite with Supabase and remove Appwrite
+      entirely.** Outcome: assistant 👍/👎 feedback reaches a database in
+      production (it never has: `deploy.yml` passes no `APPWRITE_*`
+      variables, so every vote sat in a local queue that was never
+      drained), and nothing in the repo depends on Appwrite. Target: the
+      `letstalkcdc` Supabase project (`veagqeduouwapbfvpsfj`, region
+      us-east-1), whose `public.assistant_feedback` table already exists
+      with RLS on, an insert-only policy for `anon`, and length checks
+      (`question` ≤ 2000, `intent_id` ≤ 200). No migration is needed. The
+      `events` and `scenarios` tables in the same project belong to the
+      playground work — do not touch them.
+      Accept:
+  - Feedback is sent with plain `fetch` to PostgREST using the
+    **publishable** key. No SDK, no CDN script, no new dependency, no
+    secret in the repo or the built output.
+  - Retries are safe: each entry carries a client-generated UUID as `id`,
+    HTTP 409 counts as delivered, other 4xx responses drop the entry
+    (they can never succeed), 5xx / network errors retry with an attempt
+    cap, the local queue is size-capped, and two syncs cannot send the
+    same entry concurrently. `question` is truncated to the column limit
+    before sending.
+  - With the config unset (local dev, forks) the site still works and
+    feedback queues locally.
+  - Config comes from `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`
+    (build-time env → `src/_data` → `base.njk`), and `deploy.yml` passes
+    both from repository **variables**.
+  - Removed: `src/_data/appwrite.mjs`, `src/js/appwrite-config.js`,
+    `test-appwrite.cjs`, `appwrite.collections.json`, the Appwrite
+    entries in `.env.example`, the now-unused `dotenv` devDependency,
+    and every Appwrite instruction in the docs. A unit test fails if
+    "appwrite" reappears in `src/`, `scripts/`, `tests/` or
+    `.github/` code. `CHANGELOG.md`, `SECURITY.md`'s history note,
+    `docs/archive/` and this plan's historical entries may keep the word.
+  - Tests: unit tests for the send / retry / queue logic with an injected
+    `fetch`; an e2e test that clicks 👍 and asserts the request body
+    against a mocked endpoint.
+
+  Verify: `/verify-all`, `npm run smoke:core`, `npm run test:e2e`, and
+  `rg -il appwrite src scripts tests .github` returns nothing. After merge
+  and after the maintainer sets the two repository variables, one real vote
+  on the deployed site produces a row (checked with a read-only query).
+  Size: L → ship as one PR but brief two roles in parallel on disjoint
+  files (code + tests; docs + config templates). Role: `implementer`,
+  then `reviewer`. **Maintainer step:** set `SUPABASE_URL` and
+  `SUPABASE_PUBLISHABLE_KEY` as Actions variables; and delete the Appwrite
+  project (and rotate the API key noted in `SECURITY.md`) — agents cannot
+  and should not do either.
+  2026-10-08: Shipped on branch `claude/supabase-feedback`; the feedback table already existed in the Supabase project (migration `playground_and_feedback_schema`); maintainer steps still open: set the two Actions variables, delete the Appwrite project and rotate the key noted in `SECURITY.md`, optionally apply the commented least-privilege revoke in `supabase/schema.sql`.
+
 ### Tier A — quick wins
 
-- [ ] **P13-1 · Retire the stale `.lycheeignore` canonical-loopback
+- [x] **P13-1 · Retire the stale `.lycheeignore` canonical-loopback
       entries.** Outcome: link-check no longer carries workarounds for
       pages that have been live since 2026-08-27. Accept: the six
       entries for `/glossary/`, `/methodology/`, `/cloud-labs/`,
@@ -1017,6 +1068,10 @@ dependencies).
       the `linkcheck` workflow passes on the PR. Verify: all six URLs
       return 200 in production (checked 2026-10-08); `npm run build`;
       CI `linkcheck`. Size: S. Role: `scribe`.
+      **Resolved 2026-10-08:** removed the six stale entries from
+      `.lycheeignore` (glossary, methodology, cloud-labs, compare,
+      non-relational, security) and kept the Snowflake, Oracle and
+      Fivetran entries; all six URLs returned 200 in production.
 - [ ] **P13-2 · Make link-check tolerate transient 5xx.** Outcome: a
       single flaky 503 (as on the Dependabot PR's run of 2026-09-01,
       1 error in 519 links, healthy a moment later) no longer fails
@@ -1038,7 +1093,7 @@ dependencies).
       semver range, per `npm outdated`) is ahead of `current` — on
       2026-10-08 that included `@11ty/eleventy` 3.1.2→3.1.6, `vite`,
       `eslint`, `prettier`, `postcss`, `autoprefixer`, `cssnano`,
-      `postcss-import`, `vitest`, `jsdom`, `dotenv` and the Playwright /
+      `postcss-import`, `vitest`, `jsdom` and the Playwright /
       axe packages — plus an `engines` field (`node >=20`, matching
       `.nvmrc` and CI). Majors are _not_ in this batch (see P13-8).
       Accept: `verify-all`, `smoke:core` and the Playwright suite pass; if
@@ -1086,10 +1141,10 @@ dependencies).
 
 ### Tier C — larger upgrades (one PR each, never batched)
 
-- [ ] **P13-8 · Major dependency upgrades.** Nine majors are pending:
+- [ ] **P13-8 · Major dependency upgrades.** Eight majors are pending (`dotenv` leaves with P13-10):
       `vitest` + `@vitest/coverage-v8` 4→5 (together), `jsdom` 28→30,
       `cssnano` 7→9 (**will likely move the production CSS hash —
-      treat as a CSS change**), `dotenv` 17→18, `rimraf` 5→6,
+      treat as a CSS change**), `rimraf` 5→6,
       `postcss-cli` 11→12, `postcss-import` 16→17, `pa11y-ci` 4→5. Accept
       per upgrade: read the changelog for breaking changes, `verify-all`
       green, no behavioural change in `_site/`. Verify: `/verify-all`,

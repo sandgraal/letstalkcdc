@@ -69,14 +69,14 @@ GitHub OAuth-based progress sync has been removed. All journey progress is now t
 
 ## Optional Supabase Variables
 
-Supabase credentials are only required if you want to sync assistant feedback. Both are public client-side values (row-level security is the access control):
+Assistant 👍/👎 feedback is sent from the browser straight to Supabase's REST API with `fetch`. Both values are read at build time and are public by design (the key is the **publishable** key, limited by row-level security to `INSERT` on one table):
 
-| Variable                   | Description                               |
-| -------------------------- | ----------------------------------------- |
-| `SUPABASE_URL`             | Project URL (`https://<ref>.supabase.co`) |
-| `SUPABASE_PUBLISHABLE_KEY` | Publishable key (`sb_publishable_...`)    |
+| Variable                   | Description                                                             |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `SUPABASE_URL`             | Supabase project URL (for example `https://<project-ref>.supabase.co`)  |
+| `SUPABASE_PUBLISHABLE_KEY` | Publishable key (`sb_publishable_...`) from Project Settings → API Keys |
 
-If either is omitted, the assistant silently falls back to storing feedback locally.
+Add both under **Settings → Secrets and variables → Actions → Variables** (not Secrets); `deploy.yml` passes them to the build. Never add a secret or service-role key. If either is omitted (local dev, forks), the assistant works as normal and feedback only queues in the visitor's `localStorage`.
 
 ## Migration from Netlify (If Needed)
 
@@ -84,7 +84,7 @@ If you previously hosted on Netlify:
 
 1. ✅ **Static Site** – Already handled by GitHub Actions.
 2. ✅ **Functions** – Remove the unused `migrateUser` function and related secrets.
-3. ✅ **Environment Variables** – Keep only the optional Supabase values listed above if you still use them.
+3. ✅ **Environment Variables** – Keep only the optional Supabase variables listed above if you want assistant feedback stored.
 4. ✅ **Cleanup** – Delete `netlify.toml` or function directories when no longer required.
 
 ## Custom Domain Setup (Optional)
@@ -104,7 +104,7 @@ Before considering a deployment complete:
 1. ✅ Static site builds and deploys successfully.
 2. ✅ All pages load correctly at the deployed URL.
 3. ✅ Local progress persists across reloads (no authentication required).
-4. ⚠️ (Optional) Assistant feedback reaches Supabase if credentials are supplied.
+4. ⚠️ (Optional) Assistant feedback reaches Supabase if `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are set.
 
 ## CI failure runbook
 
@@ -120,7 +120,7 @@ When a GitHub Actions workflow fails:
 | Component              | Platform     | Cost                         |
 | ---------------------- | ------------ | ---------------------------- |
 | Static Site            | GitHub Pages | Free for public repositories |
-| Optional feedback sync | Appwrite     | Free tier available          |
+| Optional feedback sync | Supabase     | Free tier available          |
 
 ## Decision Log
 
@@ -131,4 +131,4 @@ When a GitHub Actions workflow fails:
 ## See Also
 
 - [docs/SETUP.md](SETUP.md) – Full environment setup checklist
-- [docs/APPWRITE_QUICKSTART.md](APPWRITE_QUICKSTART.md) – Optional assistant feedback sync
+- [supabase/schema.sql](../supabase/schema.sql) – Schema for the optional assistant feedback table
