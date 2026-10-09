@@ -165,6 +165,35 @@ describe("titles and descriptions in the built site", () => {
     expect(bad).toEqual([]);
   });
 
+  it("keeps the exception lists honest: every entry still breaks its limit", () => {
+    const byUrl = new Map(pages.map((p) => [p.url, p]));
+    const stale = [];
+    for (const url of TITLE_OVER_TARGET_OK) {
+      const p = byUrl.get(url);
+      if (!p)
+        stale.push(
+          `${url}: not an indexable page; remove it from TITLE_OVER_TARGET_OK`,
+        );
+      else if (p.title.length <= TITLE_TARGET)
+        stale.push(
+          `${url}: title is now ${p.title.length} chars (limit ${TITLE_TARGET}); remove it from TITLE_OVER_TARGET_OK`,
+        );
+    }
+    for (const url of DESCRIPTION_OVER_MAX_OK) {
+      const p = byUrl.get(url);
+      const len = p?.descriptions[0]?.length ?? 0;
+      if (!p)
+        stale.push(
+          `${url}: not an indexable page; remove it from DESCRIPTION_OVER_MAX_OK`,
+        );
+      else if (len <= DESCRIPTION_MAX)
+        stale.push(
+          `${url}: description is now ${len} chars (limit ${DESCRIPTION_MAX}); remove it from DESCRIPTION_OVER_MAX_OK`,
+        );
+    }
+    expect(stale).toEqual([]);
+  });
+
   it("does not let two pages share a title or a description", () => {
     const seen = { title: new Map(), description: new Map() };
     const dupes = [];
