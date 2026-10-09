@@ -114,6 +114,18 @@ export default [
     skillLevel: "Intermediate",
   },
   {
+    key: "deletes-stay-deleted",
+    title: "Deletes That Stay Deleted",
+    description:
+      "Delete events, Kafka tombstones and sink delete markers; why a late update can resurrect a row; and where a deleted row can still live (compaction, time travel, snapshots, backups).",
+    href: "deletes-stay-deleted/",
+    tags: [
+      { label: "Advanced Pattern", variant: "tag-pattern" },
+      { label: "Ops", variant: "tag-ops" },
+    ],
+    skillLevel: "Advanced",
+  },
+  {
     key: "reconciliation-surgery",
     title: "Reconciliation & Offset Surgery",
     description:

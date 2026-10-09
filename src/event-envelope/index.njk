@@ -164,7 +164,12 @@ scripts:
         per-key version, not a timestamp.
       </li>
       <li>
-        Store soft deletes as explicit tombstones; compaction depends on it.
+        Keep the delete event, which carries a position, and let the connector
+        follow it with a tombstone if the topic is compacted. A tombstone is a
+        signal to Kafka&rsquo;s log cleaner and has no position, so the sink
+        keeps its own delete marker
+        (<a href="{{ '/deletes-stay-deleted/' | url }}#three-deletes">three
+        kinds of delete</a>).
       </li>
       <li>
         Make idempotent materialization the default so out-of-order updates

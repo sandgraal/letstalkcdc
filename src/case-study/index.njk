@@ -511,7 +511,7 @@ revenueByCategory.toStream()
         <h4>Week 3-4: Customer Tables (customers, addresses)</h4>
         <ul>
           <li>Handle PII fields (added field-level encryption in Kafka)</li>
-          <li>Validate GDPR delete propagation (tombstones → Snowflake DELETEs)</li>
+          <li>Validate GDPR delete propagation (tombstones → Snowflake DELETEs). A tombstone only tells Kafka to compact; see <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes That Stay Deleted</a> for what else holds a copy, including Time Travel and Fail-safe</li>
         </ul>
         <p><strong>Result:</strong> Successfully replicated, compliance team approved</p>
       </div>
