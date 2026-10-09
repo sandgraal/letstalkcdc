@@ -17,7 +17,9 @@ seriesItemList: "CDC Learning Series"
     {% img '/diagrams/cdc-pipeline-architecture.svg' | url,
       'CDC pipeline architecture showing data flow from source database through connector to stream and finally to sink',
       {
-        class: 'diagram-section__image'
+        class: 'diagram-section__image',
+        loading: 'eager',
+        fetchpriority: 'high'
       }
     %}
     <figcaption class="diagram-section__caption">
