@@ -41,6 +41,17 @@ const toLastmod = (value) => {
 const xmlEscape = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/**
+ * Indexable pages that Eleventy does not build, so no collection item exists
+ * for them (P16-11). Paths are root-relative with no path prefix; they are
+ * joined to `site.host`, which already carries it. `lastmod` is left out on
+ * purpose, by the same rule as any page without a real date: the playground
+ * is copied in by scripts/publish-playground.sh, has no authored
+ * dateModified, and the deploy checkout is shallow, so a git date would be
+ * the date of the latest commit to anything, not of the playground.
+ */
+const extraUrls = [{ url: "/playground/" }];
+
 module.exports = class {
   data() {
     return {
@@ -67,7 +78,9 @@ module.exports = class {
     });
 
     const unique = Array.from(
-      new Map(candidates.map((item) => [item.url, item])).values(),
+      new Map(
+        [...candidates, ...extraUrls].map((item) => [item.url, item]),
+      ).values(),
     );
 
     const urls = unique

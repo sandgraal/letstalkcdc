@@ -1,7 +1,7 @@
 ---
 layout: base.njk
 title: "Reconciliation & Offset Surgery"
-description: "Advanced CDC operations: repair out-of-sync sinks with SQL diffs, verify data integrity with checksums, and safely reset offsets using the Kafka Connect REST API."
+description: "Advanced CDC operations: repair out-of-sync sinks with SQL diffs, verify integrity with checksums, and safely reset offsets via the Kafka Connect REST API."
 canonicalPath: "/reconciliation-surgery/"
 scripts:
   - "/assets/js/lib/quiz.js"
@@ -31,7 +31,7 @@ scripts:
     </p>
     <ul>
       <li><strong>Missed events:</strong> Connector downtime longer than log retention, causing data gaps.</li>
-      <li><strong>Failed transformations:</strong> SMTs or sink logic that silently dropped or corrupted records.</li>
+      <li><strong>Failed transformations:</strong> <a href="{{ '/glossary/#smt' | url }}">SMTs</a> or sink logic that silently dropped or corrupted records.</li>
       <li><strong>Partial writes:</strong> Sink acknowledged success but only persisted some rows due to transient errors.</li>
       <li><strong>Manual interventions:</strong> Direct edits to sink data that bypassed the CDC pipeline.</li>
       <li><strong>Split-brain scenarios:</strong> Multiple pipelines or manual processes writing to the same sink tables.</li>
@@ -175,7 +175,7 @@ ORDER BY partition_day DESC;</code></pre>
   <section id="offset-surgery" aria-labelledby="offset-surgery-title">
     <h2 id="offset-surgery-title">Offset surgery: when and how</h2>
     <p>
-      Offset surgery means directly manipulating the position markers that tell Kafka Connect
+      Offset surgery means directly manipulating the position markers that tell <a href="{{ '/glossary/#kafka-connect' | url }}">Kafka Connect</a>
       "where to resume reading." This is dangerous—do it wrong and you'll duplicate or skip events.
     </p>
 

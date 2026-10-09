@@ -3,7 +3,7 @@
 The CDC Method Comparator (`#simShellRoot`) is the React shell that streams the Polling, Trigger, and Log capture engines side by side so you can see ordering, lag, and delete semantics in one place. Use this guide to launch it locally, pick the right knobs, and run demos with data engineers or architects evaluating change feed patterns.
 
 ## Prerequisites
-- Node 18+ and npm installed locally.
+- Node 22.13+ and npm installed locally.
 - Bundles generated at least once via `npm run build` (creates `assets/generated/ui-shell.js` and `assets/generated/ui-shell.css`).
 - Optional but recommended: run `npm run build:sim` to rebuild simulator engines if you touched any `sim/` sources.
 

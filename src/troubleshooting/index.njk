@@ -1,6 +1,6 @@
 ---
 layout: base.njk
-title: "First 15 Minutes — CDC Troubleshooting"
+title: "First 15 Minutes of a CDC Incident"
 description: "A repeatable first-15-minutes playbook to triage Change Data Capture incidents across Postgres, MySQL, Oracle, Kafka/Debezium, and common sinks."
 datePublished: "2026-02-06"
 dateModified: "2026-10-09"
@@ -24,7 +24,7 @@ head_extra: |
         <ol>
           <li>
             <strong>Freeze changes</strong> that make state drift: pause
-            backfills, schema changes, and connector restarts.
+            <a href="{{ '/glossary/#backfill' | url }}">backfills</a>, schema changes, and connector restarts.
           </li>
           <li>
             <strong>Define the failure mode</strong>: <em>stuck</em> (no

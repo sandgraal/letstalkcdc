@@ -123,7 +123,7 @@ scripts:
         </div>
       </div>
       <p class="ced-foot">
-        Delivery is <strong>at-least-once</strong>: a real sink dedupes on the
+        Delivery is <strong><a href="{{ '/glossary/#at-least-once' | url }}">at-least-once</a></strong>: a real sink <a href="{{ '/glossary/#deduplication' | url }}">dedupes</a> on the
         primary key ordered by <code>lsn</code>, not <code>ts_ms</code>. This is a
         client-side illustration — no database is involved.
       </p>
@@ -159,7 +159,7 @@ scripts:
             <strong>Log-based CDC (The Gold Standard):</strong> Reads committed changes
             from the database’s transaction log (<em>PostgreSQL <a href="{{ '/glossary/' | url }}#wal-redo-log">WAL</a></em>, <em>MySQL binlog</em>,
             <em>SQL Server transaction log</em>, <em>Oracle redo</em>). It’s <em>low-impact</em> on OLTP,
-            but not free: <a href="{{ '/glossary/' | url }}#log-retention">log retention</a>, I/O, and replication slot/archival settings must be tuned.
+            but not free: <a href="{{ '/glossary/' | url }}#log-retention">log retention</a>, I/O, and <a href="{{ '/glossary/#replication-slot' | url }}">replication slot</a>/archival settings must be tuned.
             It reliably captures inserts/updates/deletes in order. <em>DDL capture</em> depends on the
             database and connector configuration. PostgreSQL's Write-Ahead Log (WAL) records all changes to
             the database before they are applied, ensuring data integrity and
@@ -199,7 +199,7 @@ scripts:
           <summary>Show full breakdown</summary>
           <p>
             <strong>Trigger-Based CDC:</strong> Uses database triggers (ON INSERT/UPDATE/DELETE) to
-            write change rows into <em>shadow/audit</em> tables. Sometimes paired with an “outbox”-style table,
+            write change rows into <em>shadow/audit</em> tables. Sometimes paired with an “<a href="{{ '/glossary/#outbox' | url }}">outbox</a>”-style table,
             but the <em>Transactional Outbox</em> pattern can also be implemented without triggers by writing the
             outbox row <em>in the same application transaction</em>. While it
             is database-agnostic and explicit, this approach adds overhead to
@@ -413,7 +413,7 @@ scripts:
         similar) decouples source from consumers.
       </li>
       <li>
-        <strong>Schema Registry:</strong> Manages event schemas (Avro/JSON/Protobuf),
+        <strong><a href="{{ '/glossary/#schema-registry' | url }}">Schema Registry</a>:</strong> Manages event schemas (Avro/JSON/Protobuf),
         enforces compatibility, and protects consumers during evolution.
       </li>
       <li>
@@ -457,7 +457,7 @@ scripts:
           <li>
             <strong>Deliver</strong>
             Topics are partitioned by key for ordering; consumers use MERGE
-            (upsert) semantics to apply changes idempotently.
+            (<a href="{{ '/glossary/#upsert' | url }}">upsert</a>) semantics to apply changes idempotently.
           </li>
         </ol>
       </div>

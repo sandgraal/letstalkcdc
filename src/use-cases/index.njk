@@ -2,7 +2,7 @@
 layout: base.njk
 title: "CDC Use Cases & Applications"
 canonicalPath: "/use-cases/"
-description: "Explore real-world CDC use cases, including real-time data warehousing, cache invalidation, auditing, microservices integration, and full-text search indexing."
+description: "Real-world CDC use cases: real-time data warehousing, cache invalidation, auditing, microservices integration, and full-text search indexing."
 scripts:
   - "/assets/js/lib/quiz.js"
 head_extra: |
@@ -84,7 +84,7 @@ head_extra: |
           <p>
             <strong>The CDC Solution:</strong> CDC enables the
             <strong>Event-Carried State Transfer</strong> pattern via the
-            Transactional Outbox. When a service makes a change (an `orders`
+            Transactional <a href="{{ '/glossary/#outbox' | url }}">Outbox</a>. When a service makes a change (an `orders`
             service creates an order), it writes the business data and an event
             record to an "outbox" table in the same atomic transaction. The CDC
             agent streams only the committed outbox events to a Kafka topic.
