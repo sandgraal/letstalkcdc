@@ -60,7 +60,7 @@ const decode = (s) =>
   s.replace(/&[a-z]+;/g, (e) => (e in ENTITIES ? ENTITIES[e] : e));
 /** Visible text: tags dropped, entities decoded, whitespace collapsed. */
 const text = (html) =>
-  decode(html.replace(/<[^>]+>/g, " "))
+  decode(html.replace(/<wbr>/g, "").replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
 /** Everything a reader sees on the page, including the quiz data. */
@@ -412,6 +412,16 @@ describe("inbound links and the assistant", () => {
     expect(id(query, "backfill-resnapshot")).toBe(expected);
   });
 
+  it("every trigger, typed verbatim, reaches its own intent", () => {
+    for (const intent of kb.intents.filter((i) =>
+      i.id.startsWith("backfill_"),
+    )) {
+      for (const t of intent.triggers) {
+        expect(id(t), `${intent.id}: ${t}`).toBe(intent.id);
+      }
+    }
+  });
+
   it.each([
     ["what is a snapshot", "snapshot_strategy"],
     ["what is the initial load", "snapshot_strategy"],
@@ -463,8 +473,12 @@ describe("the SQL on the page, executed against SQLite", () => {
   const upsertSql = upsert.replace(VALUES, "VALUES (?, ?, ?, ?)");
 
   const strip = (sql) => sql.replace(/--.*$/gm, "");
-  const sweepSql = (b) =>
-    strip(sweepBlock)
+  const sweepSql = (b, { tenant = false } = {}) =>
+    strip(
+      tenant
+        ? sweepBlock.replace("-- AND tenant_id = 5", "AND tenant_id = 5")
+        : sweepBlock,
+    )
       .replaceAll(":boundary", String(b.boundary))
       .replaceAll(":lo", String(b.lo))
       .replaceAll(":hi", String(b.hi));
@@ -554,6 +568,155 @@ describe("the SQL on the page, executed against SQLite", () => {
     });
   });
 
+  describe("ties: two different changes at one position", () => {
+    it("the single-position guard keeps whichever arrives first, so ties need an ordinal", () => {
+      const a = [1, "first-change", false, 150];
+      const b = [1, "second-change", false, 150];
+      const one = create();
+      [a, b].forEach(one.apply);
+      const two = create();
+      [b, a].forEach(two.apply);
+      expect(one.rows()[0].email).toBe("first-change");
+      expect(two.rows()[0].email).toBe("second-change");
+    });
+
+    it("comparing (position, ordinal) converges in every order, with a backfill row in the mix", () => {
+      const db = new sqlite.DatabaseSync(":memory:");
+      db.exec(`CREATE TABLE customers (
+        id BIGINT PRIMARY KEY, email TEXT, is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+        source_lsn BIGINT NOT NULL, ordinal BIGINT NOT NULL)`);
+      const stmt = db.prepare(`INSERT INTO customers VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email,
+          is_deleted = EXCLUDED.is_deleted, source_lsn = EXCLUDED.source_lsn,
+          ordinal = EXCLUDED.ordinal
+        WHERE (customers.source_lsn, customers.ordinal)
+            < (EXCLUDED.source_lsn, EXCLUDED.ordinal)`);
+      const events = [
+        [1, "backfill", 0, 150, 0], // the backfill row for key 1
+        [1, "first-change", 0, 150, 1], // two different changes share position 150
+        [1, "second-change", 0, 150, 2],
+        [2, "backfill", 0, 150, 0],
+        [2, "later", 0, 200, 0],
+        [3, "backfill", 0, 150, 0],
+        [3, null, 1, 150, 1], // a delete that shares the boundary position
+      ];
+      const permute = (items) =>
+        items.length <= 1
+          ? [items]
+          : items.flatMap((x, i) =>
+              permute([...items.slice(0, i), ...items.slice(i + 1)]).map(
+                (rest) => [x, ...rest],
+              ),
+            );
+      const orders = permute(events);
+      expect(orders).toHaveLength(5040);
+      for (const order of orders) {
+        db.exec("DELETE FROM customers");
+        order.forEach((e) => stmt.run(...e));
+        const got = db
+          .prepare("SELECT id, email, is_deleted FROM customers ORDER BY id")
+          .all()
+          .map((r) => [Number(r.id), r.email, Number(r.is_deleted)]);
+        expect(got).toEqual([
+          [1, "second-change", 0],
+          [2, "later", 0],
+          [3, null, 1],
+        ]);
+      }
+    });
+
+    it("loosening the guard to <= lets a late backfill row at the shared boundary revive a swept key", () => {
+      const { db, apply, rows } = create();
+      apply([5, "ghost", false, 100]);
+      db.exec("INSERT INTO backfill_keys VALUES (1)");
+      db.exec(
+        strip(sweepBlock)
+          .replaceAll(":boundary", "150")
+          .replaceAll(":lo", "1")
+          .replaceAll(":hi", "999"),
+      );
+      expect(rows()[0]).toMatchObject({ deleted: true, lsn: 150 });
+      apply([5, "ghost", false, 150]);
+      expect(rows()[0]).toMatchObject({ deleted: true }); // strict guard: stays deleted
+      const loose = upsertSql.replace(
+        "WHERE customers.source_lsn <",
+        "WHERE customers.source_lsn <=",
+      );
+      expect(loose).not.toBe(upsertSql);
+      db.prepare(loose).run(5, "ghost", 0, 150);
+      expect(rows()[0]).toMatchObject({ deleted: false, email: "ghost" });
+    });
+  });
+
+  describe("choice 5: the stamp of a SQL reload and a transaction that straddles the stream start", () => {
+    // Stream start 150. A transaction opened at 130 changed key 9 (WAL record
+    // at 140, below the start) and commits after the read, so the stream
+    // delivers it with source_lsn 140. The read did not see it.
+    const STREAMED = [9, "streamed-straddling", false, 140];
+    const loaded = (stamp) => [9, "loaded", false, stamp];
+    const outcome = (stamp, streamFirst) => {
+      const { apply, rows } = create();
+      const seq = streamFirst
+        ? [STREAMED, loaded(stamp)]
+        : [loaded(stamp), STREAMED];
+      seq.forEach(apply);
+      return rows()[0].email;
+    };
+
+    it("stamping the stream's start position makes the loaded row beat the change, in either order", () => {
+      expect(outcome(150, false)).toBe("loaded");
+      expect(outcome(150, true)).toBe("loaded");
+    });
+
+    it("stamping a lower bound (or the lowest position, for an empty target) lets the change win, in either order", () => {
+      for (const stamp of [100, 0]) {
+        expect(outcome(stamp, false)).toBe("streamed-straddling");
+        expect(outcome(stamp, true)).toBe("streamed-straddling");
+      }
+    });
+
+    it("a loaded row with the lowest stamp still fills a key the stream never touched", () => {
+      const { apply, rows } = create();
+      apply([4, "loaded-only", false, 0]);
+      expect(rows()).toEqual([
+        { id: 4, email: "loaded-only", deleted: false, lsn: 0 },
+      ]);
+    });
+
+    // The same page statement on a PostgreSQL-compatible engine, when the
+    // package is installed (it is not a dependency of this site).
+    const pgliteName = "@electric-sql/pglite";
+    let PGlite = null;
+    it("on PGlite (skipped when the package is not installed)", async (ctx) => {
+      try {
+        ({ PGlite } = await import(/* @vite-ignore */ pgliteName));
+      } catch {
+        ctx.skip();
+        return;
+      }
+      const literal = ([id, email, del, lsn]) =>
+        upsert.replace(
+          VALUES,
+          `VALUES (${id}, ${email === null ? "NULL" : `'${email}'`}, ${del ? "TRUE" : "FALSE"}, ${lsn})`,
+        );
+      const run = async (stamp, streamFirst) => {
+        const pg = new PGlite();
+        await pg.exec(ddl);
+        const seq = streamFirst
+          ? [STREAMED, loaded(stamp)]
+          : [loaded(stamp), STREAMED];
+        for (const r of seq) await pg.exec(literal(r));
+        const { rows } = await pg.query("SELECT email FROM customers");
+        await pg.close();
+        return rows[0].email;
+      };
+      expect(await run(150, false)).toBe("loaded");
+      expect(await run(150, true)).toBe("loaded");
+      expect(await run(100, false)).toBe("streamed-straddling");
+      expect(await run(100, true)).toBe("streamed-straddling");
+    });
+  });
+
   describe("rows the snapshot never mentions", () => {
     const SCOPE = { boundary: 150, lo: 1, hi: 999 };
     // The sink before the backfill: key 5 was deleted at the source during the
@@ -622,11 +785,76 @@ describe("the SQL on the page, executed against SQLite", () => {
       expect(rows()).toEqual(once);
     });
 
-    it("an incomplete key list deletes a live row that the same-position backfill row cannot revive", () => {
+    it("a live key that is in the list but not yet refreshed is left alone", () => {
       const { db, apply, rows } = create();
       BEFORE.forEach(apply);
-      loadKeys(db, [1]); // key 2 is missing from the list
+      loadKeys(db, [1, 2]); // the backfill rows have not been applied yet
       db.exec(sweepSql(SCOPE));
+      expect(rows().find((r) => r.id === 1)).toMatchObject({
+        deleted: false,
+        email: "old1",
+        lsn: 100,
+      });
+      expect(rows().find((r) => r.id === 2)).toMatchObject({ deleted: false });
+      expect(rows().find((r) => r.id === 5)).toMatchObject({ deleted: true });
+    });
+
+    it("an existing marker is not touched, and a row at exactly the boundary is not swept", () => {
+      const { db, apply, rows } = create();
+      BEFORE.forEach(apply);
+      apply([7, null, true, 120]); // a marker below the boundary, not in the list
+      apply([8, "at-boundary", false, 150]); // live, at the boundary, not in the list
+      loadKeys(db, [1, 2]);
+      db.exec(sweepSql(SCOPE));
+      expect(rows().find((r) => r.id === 7)).toEqual({
+        id: 7,
+        email: null,
+        deleted: true,
+        lsn: 120,
+      });
+      expect(rows().find((r) => r.id === 8)).toMatchObject({
+        deleted: false,
+        lsn: 150,
+      });
+    });
+
+    it("under the runbook order the backfilled rows are exempt even if the list is partial", () => {
+      const { db, apply, rows } = create();
+      BEFORE.forEach(apply);
+      BACKFILL.forEach(apply); // load first, as in the runbook
+      loadKeys(db, [1]); // key 2 missing from the list
+      db.exec(sweepSql(SCOPE));
+      expect(rows().find((r) => r.id === 1)).toMatchObject({ deleted: false });
+      expect(rows().find((r) => r.id === 2)).toMatchObject({
+        deleted: false,
+        email: "new2",
+      });
+    });
+
+    it("a key live at the source but missing from both the list and the load is swept and stays deleted", () => {
+      const { db, apply, rows } = create();
+      BEFORE.forEach(apply);
+      apply([6, "live-at-source", false, 100]);
+      BACKFILL.forEach(apply);
+      loadKeys(db, [1, 2]); // key 6 is in neither
+      db.exec(sweepSql(SCOPE));
+      expect(rows().find((r) => r.id === 6)).toMatchObject({
+        deleted: true,
+        lsn: 150,
+      });
+      apply([6, "live-at-source", false, 150]); // a later row at the same position
+      expect(rows().find((r) => r.id === 6)).toMatchObject({
+        deleted: true,
+        email: null,
+      });
+    });
+
+    it("a sweep before the load, with a list that lacks a key, deletes that key for good", () => {
+      const { db, apply, rows } = create();
+      BEFORE.forEach(apply);
+      loadKeys(db, [1]); // key 2 missing from the list
+      db.exec(sweepSql(SCOPE));
+      expect(rows().find((r) => r.id === 1)).toMatchObject({ deleted: false });
       expect(rows().find((r) => r.id === 2)).toMatchObject({
         deleted: true,
         lsn: 150,
@@ -635,6 +863,60 @@ describe("the SQL on the page, executed against SQLite", () => {
       expect(rows().find((r) => r.id === 2)).toMatchObject({
         deleted: true,
         email: null,
+      });
+      expect(rows().find((r) => r.id === 1)).toMatchObject({
+        deleted: false,
+        email: "new1",
+      });
+    });
+
+    it("the sweep must repeat the backfill's filter: a tenant-5 backfill must not delete tenant-6 rows", () => {
+      const { db, apply, rows } = create();
+      db.exec("ALTER TABLE customers ADD COLUMN tenant_id INTEGER");
+      apply([20, "t5-ghost", false, 100]); // tenant 5, deleted at the source
+      apply([21, "t5-live", false, 100]); // tenant 5, in the list
+      apply([30, "t6-live", false, 100]); // tenant 6, never part of the backfill
+      db.exec("UPDATE customers SET tenant_id = 5 WHERE id IN (20, 21)");
+      db.exec("UPDATE customers SET tenant_id = 6 WHERE id = 30");
+      loadKeys(db, [21]);
+      const range = { boundary: 150, lo: 10, hi: 900 };
+      // The printed filter line is a comment; without repeating it, tenant 6 is swept.
+      const unfiltered = create();
+      unfiltered.db.exec("ALTER TABLE customers ADD COLUMN tenant_id INTEGER");
+      [
+        [20, "t5-ghost", false, 100],
+        [21, "t5-live", false, 100],
+        [30, "t6-live", false, 100],
+      ].forEach(unfiltered.apply);
+      unfiltered.db.exec("INSERT INTO backfill_keys VALUES (21)");
+      unfiltered.db.exec(sweepSql(range));
+      expect(unfiltered.rows().find((r) => r.id === 30)).toMatchObject({
+        deleted: true,
+      });
+      expect(sweepBlock).toContain("-- AND tenant_id = 5");
+      db.exec(sweepSql(range, { tenant: true }));
+      expect(rows().find((r) => r.id === 20)).toMatchObject({ deleted: true });
+      expect(rows().find((r) => r.id === 21)).toMatchObject({ deleted: false });
+      expect(rows().find((r) => r.id === 30)).toMatchObject({
+        deleted: false,
+        email: "t6-live",
+      });
+    });
+
+    it("a boundary above the lower bound sweeps a row that a straddling transaction inserted", () => {
+      const lowerBound = 100;
+      const higher = 150;
+      const run = (boundary) => {
+        const { db, apply, rows } = create();
+        loadKeys(db, [1]); // the key list was read before that transaction committed
+        apply([8, "straddling-insert", false, 140]); // WAL record below `higher`
+        db.exec(sweepSql({ boundary, lo: 1, hi: 999 }));
+        return rows().find((r) => r.id === 8);
+      };
+      expect(run(higher)).toMatchObject({ deleted: true });
+      expect(run(lowerBound)).toMatchObject({
+        deleted: false,
+        email: "straddling-insert",
       });
     });
 

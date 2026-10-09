@@ -338,8 +338,17 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             (bootstraps batch targets).
           </li>
           <li>
-            <strong>schema_only / never:</strong> Skip data snapshot (for
-            pre-seeded targets or special cases).
+            <strong>no_data:</strong> Capture structure but no table data (for
+            pre-seeded targets or special cases). On MySQL this replaces
+            <code>schema_only</code>, which is deprecated; the Debezium 3.7
+            pages do not list <code>never</code>.
+          </li>
+          <li>
+            <strong>always / when_needed:</strong> <code>always</code> repeats
+            the snapshot on every start; <code>when_needed</code> snapshots when
+            no offsets exist or the recorded log position is gone. See
+            <a href="{{ '/backfill-resnapshot/' | url }}#modes">Backfill and Re-Snapshot Safely</a>
+            for the full list. Check the names for your version.
           </li>
           <li>
             <strong>incremental snapshot:</strong> Chunk tables online (no
@@ -498,10 +507,19 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             position: for an initial snapshot, the position the snapshot read
             from; for an incremental chunk, a position in the log at the time
             the chunk was read. Check the <code>source</code> block of an
-            <code>r</code> event for your connector. Streamed changes that
-            commit after that point carry higher positions, so when a streamed
-            change and a snapshot row for the same key meet in the sink, the
-            higher position wins. That is why the guard compares log
+            <code>r</code> event for your connector. Later streamed changes
+            to the same key usually carry higher positions (row locks
+            serialise writers per key), so when a streamed change and a
+            snapshot row for the same key meet in the sink, the higher
+            position wins. One caveat: on PostgreSQL a streamed event&rsquo;s
+            <code>source.lsn</code> is the position of the change&rsquo;s WAL
+            record, not of the commit, so a transaction that was already open
+            at the snapshot&rsquo;s position and commits afterwards can arrive
+            with positions <em>below</em> it, and a snapshot row stamped at
+            that position would then beat it. Check what position your
+            connector gives snapshot rows, and see
+            <a href="{{ '/backfill-resnapshot/' | url }}#sql-reload">the stamp rule for a SQL reload</a>.
+            That is why the guard compares log
             position: a snapshot row that arrives late, is re-sent after a
             retry, or comes from an overlapping chunk or a re-run snapshot
             holds an older position than the streamed change already applied,

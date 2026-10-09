@@ -212,8 +212,9 @@ scripts:
     <p>
       What position do the snapshot rows carry? The MySQL page says all read events of an initial snapshot contain the
       same binlog position, the one read before the scan. The PostgreSQL page says streaming continues from the position
-      read at the start of the snapshot, but does not say which <code>source.lsn</code> the read events carry: look at
-      one in your own topic. Rows of an incremental snapshot have <code>op = 'r'</code> and <code>source.snapshot =
+      read at the start of the snapshot, and its example event shows <code>source.lsn</code> and a
+      <code>sequence</code> field (the last committed LSN, then the current LSN), but that example is a create event and
+      the page does not say which <code>source.lsn</code> a read event carries: look at one in your own topic. Rows of an incremental snapshot have <code>op = 'r'</code> and <code>source.snapshot =
       "incremental"</code> in the Debezium example, which is how a sink can tell them apart for monitoring (not for
       ordering).
     </p>
@@ -248,15 +249,15 @@ VALUES ('backfill-2026-10-09-1',
       </li>
       <li>
         <strong><code>additional-conditions</code></strong> appends a <code>WHERE</code> filter per table. This is how you
-        backfill a key range or one tenant rather than the whole table. For a blocking snapshot, the filter is a full
-        <code>SELECT</code>, the same form as <code>snapshot.select.statement.overrides</code>.
+        backfill a key range or one tenant rather than the whole table. The sweep below must repeat the same filter. For a blocking snapshot, the filter is a full
+        <code>SELECT</code>, the same form as <code>snapshot.select.<wbr>statement.<wbr>overrides</code>.
       </li>
       <li>
-        <strong>Chunk size.</strong> <code>incremental.snapshot.chunk.size</code> defaults to 1024 rows. A bigger chunk
+        <strong>Chunk size.</strong> <code>incremental.snapshot.<wbr>chunk.size</code> defaults to 1024 rows. A bigger chunk
         runs fewer queries and needs more memory to buffer.
       </li>
       <li>
-        <strong>Watermarks.</strong> <code>incremental.snapshot.watermarking.strategy</code> is <code>insert_insert</code>
+        <strong>Watermarks.</strong> <code>incremental.snapshot.<wbr>watermarking.strategy</code> is <code>insert_insert</code>
         (open and close entries per chunk in the signal table) or <code>insert_delete</code> (one entry, removed
         afterwards, which stops the signal table growing quickly). Setting <code>read.only</code> to true lets a PostgreSQL
         13 or later connector with a read-only connection run incremental snapshots without writing to the signal table.
@@ -325,16 +326,38 @@ VALUES ('backfill-2026-10-09-1',
     <p>
       Sometimes the sink and the source are reachable from one place (a replica, a foreign table, a batch job) and a
       query is simpler than a signal. The cost is that no connector chooses the boundary for you, and the whole
-      correctness argument rests on it. The rule that I can defend is: <strong>start the stream first, read second, and
-      stamp the loaded rows with the position at which the stream starts</strong>, or with anything lower. Then every
-      change the read missed is, by construction, a streamed change with a higher position; and every change the read
-      did include is either the same content or older than a streamed one.
+      correctness argument rests on it. The rule: <strong>stamp the loaded rows with a position at or below the first
+      change of every transaction that is still open when you start the read</strong>.
     </p>
     <p>
-      This is my reasoning, not a vendor statement. It depends on events of a transaction that straddles the stamp
-      carrying a position above it. I could not confirm that from the documentation, and the snapshotting page and
-      Debezium&rsquo;s own initial snapshot both depend on the same property. Prove it in staging with a long transaction
-      that starts before the snapshot and commits after it (the runbook has the step).
+      The reason is where a streamed position comes from. On PostgreSQL the <code>source.lsn</code> of a streamed event
+      is the position of the change&rsquo;s WAL record, not of the commit (the Debezium 3.7 PostgreSQL page says it is
+      &ldquo;the position in the write-ahead log where the transaction changes were written&rdquo;; in PostgreSQL&rsquo;s
+      <code>logical.c</code> the change callback reports the change&rsquo;s own LSN and only the commit message uses the
+      transaction&rsquo;s end LSN). A transaction that began before the stream&rsquo;s start position and commits after
+      your read therefore arrives with positions <em>below</em> that start. If you stamped the loaded row with the start
+      position, the loaded row would beat that change, which would then be skipped permanently.
+    </p>
+    <ul>
+      <li>
+        <strong>Take a lower bound.</strong> For example the slot&rsquo;s <code>restart_lsn</code> read before the read
+        starts (verify that on your version), or wait until no transaction older than the stream start is open before you
+        read.
+      </li>
+      <li>
+        <strong>A new, empty target</strong> can take the lowest possible position, so loaded rows only fill keys the
+        stream has not touched.
+      </li>
+      <li>
+        <strong>Per-key convergence only.</strong> The load gives no transactional consistency across rows while it runs:
+        two rows changed by one source transaction can be visible at different versions until the stream catches up.
+      </li>
+    </ul>
+    <p>
+      This is my reasoning from those two sources, not a vendor procedure. The unit tests reproduce the straddling
+      transaction with the unsafe stamp and with a lower bound; prove it in staging with a long transaction that starts
+      before the read and commits after it (the runbook has the step). Debezium&rsquo;s own handoff is described as
+      streaming from the position read at the start of the snapshot; that page describes no sink-side comparison.
     </p>
     <p>
       Do not stamp the loaded rows with the position <em>after</em> the read, or with a timestamp. A position taken after
@@ -388,7 +411,7 @@ WHERE customers.source_lsn &lt; EXCLUDED.source_lsn;</code></pre>
         <strong>The guard skips corrections that keep the same position.</strong> If you reload to fix a transform bug,
         the corrected rows carry the positions the bad ones had, so the strict guard skips them. For a content fix, load
         into a new table with the corrected transform, let it catch up from the stream, check it, and switch readers over.
-        Do not loosen the guard on the live table to <code>&lt;=</code>: that turns every replay into an overwrite.
+        Do not loosen the guard on the live table to <code>&lt;=</code>: a row with an equal position would then replace the stored one, so a late backfill row stamped at the shared boundary would beat a sweep marker or a streamed change at that position.
       </li>
       <li>
         <strong>Ties need an ordinal.</strong> If two changes to one key can share a position, compare the pair
@@ -415,17 +438,30 @@ SET email = NULL, is_deleted = TRUE, source_lsn = :boundary
 WHERE NOT is_deleted
   AND source_lsn &lt; :boundary
   AND id BETWEEN :lo AND :hi
+  -- Repeat the backfill's additional-conditions filter here, if it had one:
+  -- AND tenant_id = 5
   AND id NOT IN (SELECT id FROM backfill_keys);</code></pre>
     <ul>
       <li>
-        <strong>Scope it.</strong> Without the <code>id BETWEEN</code> bound, a filtered backfill would mark every row it
-        did not read as deleted.
+        <strong>Scope it exactly like the backfill.</strong> Without the <code>id BETWEEN</code> bound, a filtered
+        backfill would mark every row it did not read as deleted. A key range is not enough when the backfill also had an
+        <code>additional-conditions</code> filter: a tenant-5 backfill swept with only <code>lo = 10</code> and
+        <code>hi = 900</code> would mark live tenant-6 rows in that range as deleted. Repeat the filter in the sweep (the
+        commented line), which means the sink needs that column.
       </li>
       <li>
-        <strong>The key list must be complete for the scope.</strong> A partial list marks live rows as deleted, and the
-        marker has the same position as the backfill row for that key, so the strict guard then skips the row and it
-        stays deleted until the stream next changes it. The unit tests demonstrate it. Read the list from the source in
-        one pass, after the boundary is fixed.
+        <strong>The key list must be complete for the scope.</strong> Under the runbook the backfill is applied first, so
+        backfilled rows already sit at the boundary and the sweep leaves them alone. The hazard is a key that is live at the
+        source but missing from both the list and the load (the list was built with a different filter or in a different
+        pass): the sweep marks it deleted at the boundary, and a later row for it at that same position is skipped by the
+        strict guard, so it stays deleted until the stream next changes it. The unit tests demonstrate it, and also
+        that a sweep which runs before the load, with a list that lacks a key, has the same effect. Read the list from the
+        source in one pass.
+      </li>
+      <li>
+        <strong>Use the same lower bound for <code>:boundary</code>.</strong> With the stamp rule from
+        <a href="#sql-reload">choice 5</a>, a higher boundary would sweep a row that a transaction straddling the read
+        inserted and the stream already applied.
       </li>
       <li>
         <strong>Why a key list and not the position alone.</strong> Rows from an incremental snapshot may not all carry
@@ -474,7 +510,7 @@ WHERE NOT is_deleted
     <ul>
       <li>
         <strong>Read load on the source.</strong> Chunk queries compete with application traffic. Smaller chunks mean
-        shorter queries and more of them; <code>incremental.snapshot.chunk.size</code> (1024) is the lever. For the initial
+        shorter queries and more of them; <code>incremental.snapshot.<wbr>chunk.size</code> (1024) is the lever. For the initial
         snapshot, <code>snapshot.fetch.size</code> (10240 rows per batch by default) and <code>snapshot.max.threads</code>
         (1 by default; above 1 the connector splits tables by primary-key range) set the pressure. A table without a
         primary key is processed as a single chunk on one thread.
@@ -570,7 +606,7 @@ ORDER BY bucket;</code></pre>
       <li><strong>Name the reason</strong> from <a href="#when">the table</a>, and the scope: which tables, which key range.</li>
       <li><strong>Check the sink first.</strong> It must key on the primary key, carry a never-<code>NULL</code> position column, compare positions with a strict <code>&lt;</code>, and keep deletes as markers. Fix that before any load. If it does not, do not start.</li>
       <li><strong>Rehearse in staging</strong> with a copy of the table. Include a long transaction that starts before the snapshot and commits after it, and confirm that the changed row ends with the newer value.</li>
-      <li><strong>Check the log is still there</strong> from the position you need: slot status and retained WAL on PostgreSQL, binlog retention on MySQL, topic retention in Kafka. A snapshot that runs longer than the log retention loses the handoff.</li>
+      <li><strong>Check the log is still there</strong> from the position you need. On MySQL, binlog retention: a snapshot that runs longer than it loses the handoff. On PostgreSQL the slot keeps WAL for you, so the risk is the opposite: disk growth while the snapshot runs, or the slot being invalidated by <code>max_slot_wal_keep_size</code> (see <a href="{{ '/postgres-replication-slots/' | url }}">the slots runbook</a>). In Kafka, topic retention.</li>
       <li><strong>Pick the choice</strong> from <a href="#choices">the table</a> and write the signal or the command down before you run it, including the filter.</li>
       <li><strong>Inspect a sample</strong> of the first backfill rows: <code>op</code>, <code>source.snapshot</code> and the position they carry. If the position is not what the guard expects, stop.</li>
       <li><strong>Set the pace</strong> (chunk size, threads, fetch size), and agree who may pause the snapshot if the source is under load.</li>
@@ -580,6 +616,7 @@ ORDER BY bucket;</code></pre>
       <li><strong>Verify</strong> with the counts, checksums, suspect-row query and spot checks above. Record the boundary, the counts and the checks.</li>
       <li><strong>Put the settings back.</strong> A <code>snapshot.mode</code> of <code>always</code> repeats the full load on every restart. Remove temporary signal permissions and filters.</li>
       <li><strong>Recompute the purge bound</strong> for delete markers, since the backfill just added a replay source.</li>
+      <li><strong>Check the positions are comparable.</strong> My reasoning, not a vendor statement: positions only compare within one source log lineage. After a source rebuild, restore or migration, a new cluster can restart its LSN or binlog numbering below the <code>source_lsn</code> already stored, and the guard would then skip every new change. Start a fresh target, or re-key the positions. A MySQL position is a (file, position) pair, so encode it into one number that sorts the same way.</li>
     </ol>
   </section>
 
@@ -589,8 +626,8 @@ ORDER BY bucket;</code></pre>
     <h2 id="limits-title">What was tested and what was not</h2>
     <ul>
       <li>No Debezium, Kafka, Kafka Connect or database service was run for this page. Every statement about them comes from the documentation linked below, read on 2026-10-09.</li>
-      <li>The guarded upsert, the interleaving of backfill and stream rows (all 5,040 orders of seven rows, plus a reversed replay), the idempotent re-run, the sweep and its scoping, the incomplete-key-list hazard, and the counts and suspect-row queries are executed in the site&rsquo;s unit tests on SQLite only. They are not run on PostgreSQL in the suite.</li>
-      <li>The payload checksum query was run once by hand on PGlite, a PostgreSQL-compatible engine that is not a dependency of this site, and is not in the suite.</li>
+      <li>The guarded upsert, the interleaving of backfill and stream rows (all 5,040 orders of seven rows, plus a reversed replay), the idempotent re-run, the sweep and its scoping, the incomplete-key-list hazard, and the counts and suspect-row queries are executed in the site&rsquo;s unit tests on SQLite only. The straddling-transaction case also runs on PGlite when that package is installed, and is skipped otherwise.</li>
+      <li>The payload checksum query uses PostgreSQL-only functions, so the SQLite tests cannot run it. It was run once by hand on PGlite, a PostgreSQL-compatible engine. If PGlite becomes a dependency of this site, move the query into the suite. Until then treat it as lightly checked.</li>
       <li>The <code>execute-snapshot</code> example follows the documentation and was not run.</li>
       <li>Check your version: the position that read events carry on PostgreSQL and for incremental snapshots; whether events of a transaction that straddles the boundary carry a higher position; the exact <code>snapshot.mode</code> names on your release; and how your sink treats an equal position.</li>
       <li>Not covered: sizes and prices, connector-specific tuning beyond the properties named above, and backfills of non-relational sources.</li>
