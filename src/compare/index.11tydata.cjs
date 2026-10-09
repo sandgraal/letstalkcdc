@@ -1,11 +1,11 @@
 module.exports = {
   datePublished: "2026-08-25",
-  dateModified: "2026-08-25",
+  dateModified: "2026-10-09",
   seriesKey: "compare",
   heroConfig: {
     title: "Compare CDC Platforms",
     description:
-      "<p>A head-to-head of the six CDC platforms teams actually evaluate — deployment, method, <strong>delivery semantics</strong>, latency, and cost — with the honest framing vendor marketing skips.</p>",
+      "<p>A decision aid for choosing among the six CDC platforms teams actually evaluate — deployment, method, <strong>delivery semantics</strong>, latency, and cost — with the honest framing vendor marketing skips.</p>",
     align: "center",
     actions: [
       { href: "#matrix", label: "See the matrix" },
