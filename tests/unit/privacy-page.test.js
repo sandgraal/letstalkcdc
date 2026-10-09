@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import nunjucks from "nunjucks";
 import author from "../../src/_data/author.mjs";
+import { resolveNewsletter } from "../../lib/newsletter.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -250,6 +251,89 @@ describe("privacy page, rendered", () => {
   });
 });
 
+describe("newsletter signup disclosure (P15-9)", () => {
+  const renderWith = (newsletter) =>
+    env.renderString(body, {
+      ...data,
+      author,
+      newsletter,
+      site: { repository: "sandgraal/letstalkcdc" },
+    });
+  const on = renderWith(resolveNewsletter("demo-user", () => {}));
+  const off = renderWith(resolveNewsletter(undefined));
+
+  it("says what is sent, to whom and when, and links Buttondown's policy", () => {
+    const sec = section(on, "newsletter");
+    expect(sec).toMatch(/<strong>What is sent:<\/strong>\s+the email address/);
+    expect(sec).toMatch(/<strong>To whom:<\/strong>\s+Buttondown/);
+    expect(sec).toContain("buttondown.com");
+    expect(sec).toMatch(
+      /<strong>When:<\/strong>\s+only when you press Subscribe/,
+    );
+    expect(sec).toMatch(/Nothing is sent as you type/);
+    expect(sec).toMatch(/loads no\s+script from Buttondown/);
+    expect(sec).toContain('href="https://buttondown.com/legal/privacy"');
+  });
+
+  it("discloses the IP address, browser details and cookies Buttondown may receive or set", () => {
+    const sec = section(on, "newsletter");
+    expect(sec).toMatch(
+      /the email address you typed, plus what\s+any request reveals to the receiving site \(your IP address and browser\s+details\)/,
+    );
+    expect(sec).toMatch(/may set cookies under its privacy policy/);
+    expect(section(on, "cookies")).toMatch(
+      /Buttondown page you continue to\s+may set its own cookies/,
+    );
+    expect(section(off, "cookies")).not.toMatch(/Buttondown/);
+  });
+
+  it("routes subscribers to the unsubscribe link, not the anonymous-entry section", () => {
+    const sec = section(on, "newsletter");
+    expect(sec).toMatch(/unsubscribe link Buttondown normally includes/);
+    expect(sec).toContain(`href="${author.advisoryUrl}"`);
+    expect(sec).toMatch(/not for\s+newsletter subscribers/);
+    expect(section(off, "newsletter")).not.toMatch(/unsubscribe/);
+  });
+
+  it("says Buttondown keeps subscriber data, and only when the signup is on", () => {
+    expect(section(on, "retention")).toMatch(
+      /Buttondown, not this site,\s+keeps your address for as long as you are subscribed/,
+    );
+    expect(section(off, "retention")).not.toMatch(/Buttondown/);
+  });
+
+  it("lists buttondown.com among third-party requests only when the signup is on", () => {
+    expect(section(on, "third-parties")).toContain(
+      "<strong>buttondown.com</strong>",
+    );
+    expect(section(off, "third-parties")).not.toMatch(/buttondown/i);
+  });
+
+  it("claims nothing is sent while the signup is not open", () => {
+    const sec = section(off, "newsletter");
+    expect(sec).toMatch(/not open yet/);
+    expect(sec).toMatch(/does not ask for or\s+send an email address/);
+    expect(off).not.toMatch(/buttondown/i);
+  });
+
+  it("keeps every other claim: cookies, assistant and playground sections", () => {
+    for (const html of [on, off]) {
+      expect(section(html, "cookies")).toContain(
+        "site's own code does not set cookies",
+      );
+      expect(section(html, "stores")).toContain("assistant_feedback");
+      expect(section(html, "playground")).toContain("<code>ts_ms</code>");
+    }
+  });
+
+  it("links to the newsletter page through the url filter only when on", () => {
+    expect(section(on, "newsletter")).toContain(
+      'href="/letstalkcdc/newsletter/"',
+    );
+    expect(section(off, "newsletter")).not.toContain("/newsletter/");
+  });
+});
+
 describe("privacy page, analytics (P15-10)", () => {
   it("unset: says no analytics and no cookies, and has no visit-count section", () => {
     expect(section(rendered, "cookies")).toContain(
@@ -313,6 +397,93 @@ describe("privacy page, analytics (P15-10)", () => {
     expect(c).toContain("does not set cookies");
     expect(c).toContain("GoatCounter");
     expect(renderedWithAnalytics).not.toMatch(/use analytics/);
+  });
+});
+
+describe("privacy page, newsletter and analytics together", () => {
+  const site = { repository: "sandgraal/letstalkcdc" };
+  const newsletter = resolveNewsletter("demo-user", () => {});
+  const analytics = { goatcounterCode: "letstalkcdc" };
+  const both = env.renderString(body, {
+    ...data,
+    author,
+    site,
+    newsletter,
+    analytics,
+  });
+  const newsletterOnly = env.renderString(body, {
+    ...data,
+    author,
+    site,
+    newsletter,
+  });
+  const analyticsOnly = env.renderString(body, {
+    ...data,
+    author,
+    site,
+    analytics,
+  });
+  const neither = env.renderString(body, { ...data, author, site });
+
+  it("lists GoatCounter and Buttondown among third-party requests, each only when on", () => {
+    const list = section(both, "third-parties");
+    expect(list).toMatch(
+      /<strong>gc\.zgo\.at<\/strong> and <strong>goatcounter\.com<\/strong>/,
+    );
+    expect(list).toContain("<strong>buttondown.com</strong>");
+    expect(list).toMatch(/except the visit-count script/);
+    expect(section(newsletterOnly, "third-parties")).not.toMatch(
+      /zgo\.at|goatcounter/i,
+    );
+    expect(section(newsletterOnly, "third-parties")).toContain(
+      "<strong>buttondown.com</strong>",
+    );
+    expect(section(analyticsOnly, "third-parties")).not.toMatch(/buttondown/i);
+    expect(section(neither, "third-parties")).not.toMatch(
+      /zgo\.at|goatcounter|buttondown/i,
+    );
+  });
+
+  it("cookies: no contradiction, Buttondown's page cookies are said separately", () => {
+    const c = section(both, "cookies");
+    expect(c).toContain("The site's own code does not set cookies.");
+    expect(c).toContain("GoatCounter, which sets no cookies either");
+    expect(c).toMatch(
+      /Separately, if you use the newsletter signup, the Buttondown page you continue to\s+may set its own cookies/,
+    );
+    // The analytics-off sentence must not appear once analytics is on.
+    expect(c).not.toMatch(/use analytics/);
+    // The Buttondown sentence belongs to the newsletter alone.
+    expect(section(analyticsOnly, "cookies")).not.toMatch(/Buttondown/);
+    expect(section(newsletterOnly, "cookies")).toContain(
+      "does not set cookies or use analytics",
+    );
+    expect(section(newsletterOnly, "cookies")).toMatch(/Buttondown page/);
+  });
+
+  it("keeps both disclosure sections when both are on", () => {
+    expect(section(both, "visit-counts")).toContain("GoatCounter");
+    expect(section(both, "newsletter")).toMatch(/What is sent/);
+    expect(section(both, "retention")).toMatch(/Buttondown, not this site/);
+  });
+
+  it("hero: keeps the visit-count wording and appends the newsletter sentence", () => {
+    const hero = (a, n) =>
+      new nunjucks.Environment(null, { autoescape: true }).renderString(
+        page
+          .slice(0, page.indexOf("}) | safe }}") + "}) | safe }}".length)
+          .replace('{% import "components/ui.njk" as ui %}', ""),
+        { analytics: a, newsletter: n, ui: { hero: (c) => c.description } },
+      );
+    const h = hero(analytics, newsletter);
+    expect(h).toMatch(/apart from an anonymous visit count/);
+    expect(h).toMatch(/Do Not Track/);
+    expect(h).toMatch(
+      /The newsletter signup is a third optional feature: if you use it, the email address you type is sent to Buttondown\./,
+    );
+    expect(hero({}, {})).not.toMatch(/Buttondown|GoatCounter/);
+    expect(hero({}, newsletter)).not.toMatch(/GoatCounter|visit count/i);
+    expect(hero(analytics, {})).not.toMatch(/Buttondown/);
   });
 });
 

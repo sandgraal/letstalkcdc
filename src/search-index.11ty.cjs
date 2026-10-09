@@ -31,6 +31,11 @@ module.exports = class {
   render({ collections }) {
     const entries = (collections.all || [])
       .filter((item) => item.url && !item.inputPath.includes("/_redirects/"))
+      // /newsletter/ says "not open yet" until BUTTONDOWN_USERNAME is set
+      // (P15-9); do not offer it as a search result in that state.
+      .filter(
+        (item) => !(item.data.newsletterPage && !item.data.newsletter?.enabled),
+      )
       .map((item) => {
         const title = item.data.title || item.data.page?.fileSlug || item.url;
         const description = item.data.description || "";
