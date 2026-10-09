@@ -220,3 +220,173 @@ test.describe("assistant panel", () => {
       .toEqual([]);
   });
 });
+
+/**
+ * P15-15: panel polish. One matrix, three claims per viewport:
+ *   - header, close button, input and Send sit fully inside the viewport and
+ *     are hit-testable (nothing painted over them) with the module page's own
+ *     toolbars showing (/intro/ has the site header and the sticky subnav);
+ *   - on desktop the close button is a 44x44 target;
+ *   - every way of closing the panel puts focus back on the floating button.
+ */
+const VIEWPORTS = [
+  { name: "1280x800", width: 1280, height: 800 },
+  { name: "768x1024", width: 768, height: 1024 },
+  { name: "390x844", width: 390, height: 844 },
+  { name: "667x375 landscape", width: 667, height: 375 },
+  { name: "568x320 landscape", width: 568, height: 320 },
+  { name: "640x300 landscape", width: 640, height: 300 },
+];
+
+/** @param {import('@playwright/test').Page} page */
+async function openPanelOnModulePage(page) {
+  await page.goto("/intro/");
+  const fab = page.locator("#askBtn");
+  const panel = page.locator("#askPanel");
+  await expect(panel.locator(".assistant-input")).toHaveCount(1);
+  await fab.click();
+  await expect(panel).toBeVisible();
+  return { fab, panel };
+}
+
+test.describe("assistant panel polish (P15-15)", () => {
+  for (const vp of VIEWPORTS) {
+    test(`${vp.name}: header, close, input and Send are on screen and hit-testable`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const { panel } = await openPanelOnModulePage(page);
+      // Let the focus-on-open rAF settle so a mobile keyboard-less run is stable.
+      await page.waitForTimeout(100);
+
+      const report = await panel.evaluate((el) => {
+        const out = {};
+        const vw = document.documentElement.clientWidth;
+        const vh = window.innerHeight;
+        const targets = {
+          panel: el,
+          header: el.querySelector(".assistant-header"),
+          title: el.querySelector(".assistant-title"),
+          close: el.querySelector(".assistant-close"),
+          input: el.querySelector(".assistant-input"),
+          send: el.querySelector(".assistant-send"),
+        };
+        for (const [key, node] of Object.entries(targets)) {
+          const r = node.getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            r.left + r.width / 2,
+            r.top + r.height / 2,
+          );
+          out[key] = {
+            inside:
+              r.top >= 0 && r.left >= 0 && r.bottom <= vh && r.right <= vw,
+            hittable: !!hit && (hit === node || node.contains(hit)),
+            rect: [r.left, r.top, r.right, r.bottom].map(Math.round),
+            hit: hit ? hit.id || hit.className || hit.tagName : null,
+          };
+        }
+        const c = targets.close.getBoundingClientRect();
+        out.closeSize = [c.width, c.height];
+        out.viewport = [vw, vh];
+        return out;
+      });
+
+      for (const key of [
+        "panel",
+        "header",
+        "title",
+        "close",
+        "input",
+        "send",
+      ]) {
+        expect(
+          report[key].inside,
+          `${key} fully inside ${vp.name} ${JSON.stringify(report[key].rect)} in ${JSON.stringify(report.viewport)}`,
+        ).toBe(true);
+        expect(
+          report[key].hittable,
+          `${key} covered by ${report[key].hit}`,
+        ).toBe(true);
+      }
+
+      // The 44x44 close target is a desktop requirement (P15-15 a); on phones
+      // the same CSS applies, so assert it everywhere the panel is wider than
+      // a phone.
+      if (vp.width >= 768) {
+        expect(report.closeSize[0]).toBeGreaterThanOrEqual(44);
+        expect(report.closeSize[1]).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  test("the header keeps its layout: title left, close right, one row", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const { panel } = await openPanelOnModulePage(page);
+    const header = await panel.locator(".assistant-header").boundingBox();
+    const title = await panel.locator(".assistant-title").boundingBox();
+    const close = await panel.locator(".assistant-close").boundingBox();
+    expect(header && title && close).toBeTruthy();
+    if (header && title && close) {
+      expect(title.x).toBeLessThan(close.x);
+      expect(close.x + close.width).toBeLessThanOrEqual(
+        header.x + header.width,
+      );
+      // Single row, and the 44px target does not balloon the header.
+      expect(header.height).toBeLessThanOrEqual(60);
+    }
+  });
+
+  test("close button, Escape and the floating button each return focus to the floating button", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const { fab, panel } = await openPanelOnModulePage(page);
+
+    // 1. Close button, opened by pointer.
+    await panel.locator(".assistant-close").click();
+    await expect(panel).toBeHidden();
+    await expect(fab).toBeFocused();
+
+    // 2. Escape, opened by keyboard (focus the button, press Enter).
+    await fab.focus();
+    await page.keyboard.press("Enter");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".assistant-input")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(fab).toBeFocused();
+
+    // 3. Close button, opened by keyboard, closed by keyboard.
+    await page.keyboard.press("Space");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".assistant-input")).toBeFocused();
+    await panel.locator(".assistant-close").focus();
+    await page.keyboard.press("Enter");
+    await expect(panel).toBeHidden();
+    await expect(fab).toBeFocused();
+
+    // 4. The floating button toggles it closed; focus stays there.
+    await page.keyboard.press("Enter");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".assistant-input")).toBeFocused();
+    await fab.focus();
+    await page.keyboard.press("Enter");
+    await expect(panel).toBeHidden();
+    await expect(fab).toBeFocused();
+  });
+
+  test("the panel is non-modal: Tab leaves it rather than trapping focus", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const { panel } = await openPanelOnModulePage(page);
+    await panel.locator(".assistant-send").focus();
+    await page.keyboard.press("Tab");
+    const stillInside = await page.evaluate(() =>
+      document.getElementById("askPanel")?.contains(document.activeElement),
+    );
+    expect(stillInside).toBe(false);
+  });
+});

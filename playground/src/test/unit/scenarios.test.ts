@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCENARIO_TEMPLATES } from "../../features/scenarios";
-import { SCENARIOS as COMPARATOR_SCENARIOS, countScenarioRows } from "../../../web/scenarios";
+import { SCENARIOS as COMPARATOR_SCENARIOS } from "../../../web/scenarios";
 import sharedScenarios, { type SharedScenario } from "../../features/shared-scenarios";
 import { normaliseSharedScenario } from "../../features/shared-scenario-normaliser";
 import type { SourceOp } from "../../domain/types";
@@ -278,10 +278,23 @@ describe("Comparator scenarios", () => {
 
       expect(scenario.ops.length).toBe(template?.ops.length ?? 0);
       expect(scenario.ops).not.toBe(template?.ops);
-      expect(scenario.stats?.rows ?? 0).toBe(template ? countScenarioRows(template) : 0);
       expect(scenario.stats?.rows ?? 0).toBeGreaterThan(0);
       expect(scenario.stats?.ops ?? 0).toBe(scenario.ops.length);
     });
+  });
+
+  it("counts rows by hand-checked totals, not by re-running the counter", () => {
+    const rowsById = new Map(COMPARATOR_SCENARIOS.map(scenario => [scenario.id, scenario.stats?.rows]));
+    // crud-basic: 1 insert, no seed rows.
+    expect(rowsById.get("crud-basic")).toBe(1);
+    // orders-items-transactions: 3 inserts (TX-720 order + 2 items), no seed rows.
+    expect(rowsById.get("orders-items-transactions")).toBe(3);
+    // snapshot-replay: 2 inserted keys + the seed-only LED-101 = 3.
+    expect(rowsById.get("snapshot-replay")).toBe(3);
+    // retention-erasure: 6 inserts + 2 seed rows (C-300, C-301) = 8.
+    expect(rowsById.get("retention-erasure")).toBe(8);
+    // snapshot-to-stream: 1 insert + 2 seed rows = 3.
+    expect(rowsById.get("snapshot-to-stream")).toBe(3);
   });
 });
 

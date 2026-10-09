@@ -1611,7 +1611,7 @@ production CSS hashes.
       step** (needs a device). Size: S.
       _2026-10-09: maintainer reported "site looks good on iPhone"; closed on
       that report._
-- [ ] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
+- [x] **P15-15 · Assistant panel polish.** Outcome: the remaining panel
       defects found in reviews are fixed. Accept: (a) the desktop close button
       measures at least 44×44 (it is about 22×30); (b) closing the panel
       returns focus to the floating button (`closePanel()` does not today —
@@ -1620,6 +1620,7 @@ production CSS hashes.
       and input row stay on screen. Verify: the hit-test e2e on every project,
       the reviewer's viewport matrix. Size: M. Role: `css-refactor` for (a)
       and (c), `implementer` for (b), `reviewer`.
+      _2026-10-09: shipped in this PR. Close button 22×30 → 44×44 (header 53px); `closePanel()` now returns focus to `#askBtn` on every close path; panel `max-height: min(520px, calc(100dvh - 6.5rem))` and the message area's `min-height` drops to 0 at ≤ 480px tall. Panel top at 667×375 −17 → 147, header at 640×300 −99 → 65, at 568×320 −79 → 85. Proven by the six-viewport matrix in `tests/e2e/assistant.spec.js` (chromium + mobile-chrome; WebKit is not installed locally, CI runs it) and `tests/unit/modules/assistant-focus-return.test.js`. `src/css/assistant.css` ships on its own, so the production CSS hash is unchanged (`f59f964f…`)._
 - [x] **P15-16 · Light-theme accent contrast.** Needs D8. Outcome: the
       light theme meets WCAG AA for accent-coloured text and controls.
       Accept: `--color-accent-primary` (or its light-theme value) reaches
@@ -1961,6 +1962,7 @@ production CSS hashes.
       #409. Accept: remove both, with the production CSS hash re-baselined
       (it will change) and recorded in `CLAUDE.md` and
       `.claude/commands/css-byte-check.md`. Size: S. Role: `css-refactor`.
+      _2026-10-09: half done, item stays open. Removed the `.copy-snippet` selectors and rule from `components/code-block.css` (no element carries that class in any template, script or built page; the JS only lists it in `LEGACY_COPY_SELECTOR`), hash re-baselined to `fceb82df…`; the production diff is deletions only. NOT removed: `.copy-btn` in `pages/snapshotting.css` and `button.copy` in `pages/failure-drills.css`, `troubleshooting.css` and friends. The evidence was wrong for them: the static markup is still in `src/snapshotting/index.njk` (6 `<button class="copy-btn">`) and `src/troubleshooting/failure-drills.njk` plus `index.njk` (about 30 `<button class="copy">`); `code-blocks.js` only deletes those at runtime, so the rules style a dead no-JS button. Remaining work: delete the static buttons from those templates, then the page CSS rules (page CSS is outside the bundle hash). `.copy` in `connector-builder.css`, `debezium-decoder.css` and `dlq-triage.css` is for those tools' own controls, a different job._
 - [x] **P15-51 · E2E code-block page list misses `/troubleshooting/`.**
       Outcome: the one-copy-button test covers every page with code blocks.
       Evidence (review of #409): the `PAGES` list in
@@ -2233,8 +2235,8 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       seed rows; the orphan `scenarios.json`; the brand pill. Size: M. Role:
       `implementer`, `reviewer`.
       _2026-10-09: #393 merged (phantom Dedupe/Drop-snapshot copy removed everywhere and guarded by a test; `snapshot-replay` relabelled "Re-insert after Update"; orphan `scenarios.json`, `playground/.eleventy.js` and `ui-index.js` deleted; brand pill fixed). Stays open: seed rows are documented, not fixed (9 of 11 scenarios have a `rows` entry that duplicates an `insert` op, so loading `rows` would be a duplicate-key insert), and `snapshot-to-stream` still says it shows "snapshot catch-up handing off to change feed tails", which is not modelled._
-      _2026-10-09: closed. `ops` is now the single source of truth for rows: the 9 duplicate `rows` entries were removed from `shared-scenarios.js` (only `retention-erasure`, `snapshot-to-stream` and `LED-101` in `snapshot-replay` keep rows, none of which any `insert` op creates), a unit test fails on any `rows` entry that repeats an `insert` op's table and key, and the "N rows" label counts distinct rows from `ops` plus `rows`. The `snapshot-to-stream` copy ("Account Changes": "no snapshot phase and no handoff") was already honest on main; the stale mention in the demos inventory was updated. Loading seed rows into the lanes stays out of scope._
-- [ ] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
+      _2026-10-09: closed. `ops` is now the single source of truth for rows: the 9 duplicate `rows` entries were removed from `shared-scenarios.js` (only `retention-erasure`, `snapshot-to-stream` and `LED-101` in `snapshot-replay` keep rows, none of which any `insert` op creates), a unit test fails on any `rows` entry that repeats an `insert` op's table and key, and the "N rows" label counts distinct rows from `ops` plus `rows`. The Compare lanes never loaded `rows` (they start empty), so only the synthetic generator is affected: it seeds its known ids from `scenario.rows` (`src/ui/generator.ts`), so for the 8 scenarios that lost their rows it now updates and deletes only the rows it generated itself instead of orphan seed ids such as `ORD-501`. The `snapshot-to-stream` copy ("Account Changes": "no snapshot phase and no handoff") was already honest on main; this PR changes no copy, only the stale mention in the demos inventory. Loading seed rows into the lanes stays out of scope._
+- [x] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
       SEO work has no orphaned remainder. Accept: (a) the CSS hook for the 10
       heading-level skips (the other half of P16-9), routed to `css-refactor`
       after #376 merges; (b) an `<h1>` on `/mermaid-sandbox/` (not indexed, low
@@ -2242,6 +2244,7 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       re-run after the module batch and the numbers recorded (the measured
       baseline itself stays with P16-12). Size: S. Role: `css-refactor`,
       `implementer`.
+      _2026-10-09: done. (a) by the `.h-as-3`/`.h-as-4` helpers (see P16-9), (b) `/merge-cookbook/` by P16-9 and `/mermaid-sandbox/` now has an `<h1>` and a `<main>` (the audit's last heading problem was "no <main>" once the `<h1>` was in; the `<div id="main">` became `<main class="wrap" id="main">`, same class, no CSS change), so `npm run audit:seo` reports `headings.pagesWithAnyIssue` 0 and the `OUTLINE_EXEMPT` carve-out is gone from `tests/unit/internal-links-headings.test.js`; (c) the post-batch numbers are recorded in `docs/seo-baseline-2026-10-after.md`._
 
 ### Follow-ups found in the autopsy (2026-10-09)
 

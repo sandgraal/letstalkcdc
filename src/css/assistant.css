@@ -38,7 +38,11 @@
   bottom: 5rem;
   right: 1.5rem;
   width: 380px;
-  max-height: 520px;
+  /* Never taller than the room above the lifted bottom edge (5rem) minus a
+     1.5rem gutter, so a short landscape viewport (667x375) keeps the header on
+     screen. `dvh` follows the visible viewport; the `px` line is the fallback. */
+  max-height: min(520px, calc(100vh - 6.5rem));
+  max-height: min(520px, calc(100dvh - 6.5rem));
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #ddd);
   border-radius: 1rem;
@@ -66,7 +70,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  /* Vertical padding is trimmed because the close button below is a 44px
+     target; the header stays about the height it was (~52px). */
+  padding: 0.25rem 0.5rem 0.25rem 1rem;
   border-bottom: 1px solid var(--color-border, #e5e5e5);
   background: var(--color-surface-alt, #f8f9fa);
 }
@@ -78,6 +84,14 @@
 }
 
 .assistant-close {
+  /* 44x44 hit area (WCAG 2.5.8 / the tier used on .assistant-send) around a
+     glyph that keeps its 1.4rem size; flex centres the x in the larger box. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
   background: none;
   border: none;
   font-size: 1.4rem;
@@ -103,6 +117,13 @@
   gap: 0.75rem;
   min-height: 180px;
   max-height: 360px;
+}
+/* Short landscape: let the message area give way so the header and the input
+   row/Send never get clipped by the panel's overflow (P15-15). */
+@media (max-height: 480px) {
+  .assistant-messages {
+    min-height: 0;
+  }
 }
 
 /* ── Message bubbles ──────────────────────────────────────────────────── */
@@ -313,5 +334,8 @@
        panel can overflow the top of the screen and hide the close button.
        `svh` is the small viewport; browsers without it keep the `vh` line. */
     max-height: min(75svh, calc(100svh - 6rem));
+    /* `dvh` tracks the visible viewport as the toolbars move; same cascade
+       as the base rule above. */
+    max-height: min(75dvh, calc(100dvh - 6rem));
   }
 }

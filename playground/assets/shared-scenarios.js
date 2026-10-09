@@ -6,6 +6,9 @@
 // is not loaded into the lanes, and it must never repeat the table and key of
 // an `insert` op: loading such a row would be a duplicate-key insert.
 // src/test/unit/scenarios.test.ts fails if it does.
+// The one other reader is the synthetic generator (src/ui/generator.ts, used by
+// web/App.tsx), which seeds its known ids from `rows`. Scenarios without `rows`
+// start it empty, so it updates and deletes only rows it generated itself.
 // A scenario that updates or deletes a row with no insert in `ops` (those
 // three) emits an event with no prior state. Loading seed rows would also make
 // the log and polling adapters emit snapshot INSERT events (the trigger
