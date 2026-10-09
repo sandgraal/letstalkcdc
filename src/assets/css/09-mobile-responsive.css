@@ -257,8 +257,7 @@ figcaption {
    ========================================================================== */
 
 @media (max-width: 640px) {
-  .modal,
-  .session-modal .modal-content {
+  .modal {
     max-width: 95vw;
     max-height: 90vh;
     margin: var(--space-md);
@@ -365,22 +364,6 @@ main {
     bottom: var(--space-xs);
     max-width: none;
     width: auto;
-  }
-}
-
-/* ==========================================================================
-   Stats/Progress Chip Mobile Position
-   ========================================================================== */
-
-@media (max-width: 640px) {
-  .stats-wrapper {
-    bottom: calc(var(--space-lg) + 70px); /* Position above ask button */
-    right: var(--space-md);
-  }
-
-  .stats-chip {
-    width: 48px;
-    height: 48px;
   }
 }
 

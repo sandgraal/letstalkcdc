@@ -3,20 +3,7 @@ layout: base.njk
 title: "Series Overview"
 description: "Series hub for advanced CDC patterns. Exactly-once semantics, multi-tenancy, partitioning, and reconciliation."
 canonicalPath: "/overview/"
-head_extra: |
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      "name": "CDC Learning Series",
-      "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Interactive Introduction to CDC", "url": "{{ site.origin }}{{ '/intro/' | url }}"},
-        {"@type": "ListItem", "position": 2, "name": "Exactly-Once Semantics", "url": "{{ site.origin }}{{ '/exactly-once/' | url }}"},
-        {"@type": "ListItem", "position": 3, "name": "Multi-Tenancy: Cost vs Isolation", "url": "{{ site.origin }}{{ '/multi-tenancy/' | url }}"},
-        {"@type": "ListItem", "position": 4, "name": "Hands-On Lab: Kafka + Debezium + Postgres", "url": "{{ site.origin }}{{ '/lab-kafka-debezium/' | url }}"}
-      ]
-    }
-  </script>
+seriesItemList: "CDC Learning Series"
 ---
 {% import "components/ui.njk" as ui %}
 
