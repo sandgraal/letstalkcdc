@@ -58,9 +58,11 @@ export default [
         behind and its checkpoint LSN ages out, the connector can't
         resume — it has to bootstrap with a full snapshot. Tune
         retention to cover your worst-case consumer outage plus a
-        margin; on Postgres this means <code>wal_keep_size</code>
-        (or replication slots, which are stricter) and
-        <code>max_slot_wal_keep_size</code>.</p>`,
+        margin; on Postgres, a replication slot retains WAL until
+        its consumer confirms it, <code>max_slot_wal_keep_size</code>
+        caps that (default <code>-1</code>, unlimited), and
+        <code>wal_keep_size</code> is only a minimum kept for
+        standbys.</p>`,
     related: ["wal-redo-log", "snapshot", "replication-slot"],
   },
   {
