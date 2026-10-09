@@ -212,10 +212,11 @@ canonicalPath: "/privacy/"
       effect, and nothing on the site depends on it.
     </li>
     <li>
-      <strong>How long:</strong> the totals contain no personal data. No
-      automatic deletion schedule is set for them; the maintainer can
-      delete the whole GoatCounter site, and with it all the totals, at any
-      time in GoatCounter's settings.
+      <strong>How long:</strong> the totals contain no personal data. By
+      default nothing deletes them on a schedule; the
+      maintainer can delete the whole GoatCounter site, and with it all the
+      totals, at any time in GoatCounter's settings (GoatCounter says
+      copies can remain in its backups for up to 30 days).
     </li>
   </ul>
 </section>
@@ -226,11 +227,20 @@ canonicalPath: "/privacy/"
   <p>
     The pages are hosted on GitHub Pages, so GitHub receives each page
     request as any web host does. Fonts, styles and the site's own scripts
-    are served from the site itself. A few features load something from
+    are served from the site itself{% if analytics.goatcounterCode %}, except the visit-count script
+    described below{% endif %}. A few features load something from
     another company, and any request to another host necessarily shows that
     host your IP address and browser details:
   </p>
   <ul>
+    {% if analytics.goatcounterCode %}
+    <li>
+      <strong>gc.zgo.at</strong> and <strong>goatcounter.com</strong>: the
+      visit-count script and the count itself, on every page except the
+      playground; skipped when your browser sends Do Not Track (see "Visit
+      counts").
+    </li>
+    {% endif %}
     <li>
       <strong>cdn.jsdelivr.net</strong> (the jsDelivr CDN): the Mermaid
       library on pages that draw diagrams, the Chart.js library on pages

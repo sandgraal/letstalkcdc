@@ -9,7 +9,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import nunjucks from "nunjucks";
-import analyticsData from "../../src/_data/analytics.mjs";
 import { readGoatcounterCode } from "../../lib/goatcounter-code.mjs";
 
 const ROOT = path.resolve(
@@ -74,8 +73,16 @@ describe("readGoatcounterCode", () => {
     warn.mockRestore();
   });
 
-  it("is off in this test environment (no variable set)", () => {
-    expect(analyticsData.goatcounterCode).toBe("");
+  it("the data file follows the variable (unset is off)", async () => {
+    vi.stubEnv("GOATCOUNTER_CODE", "");
+    vi.resetModules();
+    const unset = await import("../../src/_data/analytics.mjs");
+    expect(unset.default.goatcounterCode).toBe("");
+    vi.stubEnv("GOATCOUNTER_CODE", "mysite");
+    vi.resetModules();
+    const set = await import("../../src/_data/analytics.mjs");
+    expect(set.default.goatcounterCode).toBe("mysite");
+    vi.unstubAllEnvs();
   });
 
   it("the data file has only a default export (Eleventy nests named exports)", async () => {

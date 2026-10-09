@@ -288,6 +288,26 @@ describe("privacy page, analytics (P15-10)", () => {
     expect(v).toMatch(/Do Not Track is respected/);
   });
 
+  it("third-party list: gc.zgo.at present only when set, scripts sentence stays true", () => {
+    const on = section(renderedWithAnalytics, "third-parties");
+    expect(on).toMatch(
+      /<strong>gc\.zgo\.at<\/strong> and <strong>goatcounter\.com<\/strong>/,
+    );
+    expect(on).toMatch(/except\s+the\s+playground/);
+    expect(on).toMatch(/except the visit-count script/);
+    const off = section(rendered, "third-parties");
+    expect(off).not.toMatch(/zgo\.at|goatcounter|visit-count/i);
+    expect(off).toMatch(
+      /site's own scripts\s+are served from the site itself\./,
+    );
+  });
+
+  it("set: retention mentions the 30-day backup caveat and a default", () => {
+    const v = section(renderedWithAnalytics, "visit-counts");
+    expect(v).toMatch(/By\s+default nothing deletes them on a\s+schedule/);
+    expect(v).toMatch(/backups for up to 30 days/);
+  });
+
   it("set: the cookies section no longer says there is no analytics", () => {
     const c = section(renderedWithAnalytics, "cookies");
     expect(c).toContain("does not set cookies");
