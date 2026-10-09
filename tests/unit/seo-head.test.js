@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 
 import series from "../../src/_data/series.mjs";
 import seo from "../../src/_data/seo.mjs";
+import site from "../../src/_data/site.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -95,6 +96,8 @@ describe("social cards and structured data in the built site", () => {
   let outDir;
   /** @type {{ rel: string, url: string, html: string, meta: object, ld: object[] }[]} */
   let pages = [];
+  /** Every built HTML file, whether or not it is in the sample. */
+  let allFiles = [];
 
   beforeAll(() => {
     outDir = mkdtempSync(path.join(os.tmpdir(), "ltcdc-seo-"));
@@ -114,22 +117,90 @@ describe("social cards and structured data in the built site", () => {
       },
     );
 
-    pages = walk(outDir)
+    allFiles = walk(outDir)
       .filter((f) => f.endsWith(".html"))
-      .map((file) => ({ file, html: readFileSync(file, "utf8") }))
-      // Pages rendered by the base layout only (skips redirects, the
-      // standalone sandbox pages and the playground copy).
-      .filter(({ html }) => html.includes("data-path-prefix="))
-      .filter(({ html }) => !/noindex/i.test(html.split("</head>")[0]))
-      .map(({ file, html }) => {
+      .map((file) => {
+        const html = readFileSync(file, "utf8");
         const rel = path.relative(outDir, file).split(path.sep).join("/");
-        const url = `/${rel.replace(/index\.html$/, "")}`;
-        return { rel, url, html, meta: metaMap(html), ld: jsonLd(html) };
+        const head = html.split("</head>")[0];
+        return {
+          rel,
+          url: `/${rel.replace(/index\.html$/, "")}`,
+          html,
+          // Rendered by base.njk (skips redirects, the standalone sandbox
+          // pages and the playground copy).
+          usesBaseLayout: html.includes("data-path-prefix="),
+          noindex: /noindex/i.test(head),
+        };
       });
+
+    pages = allFiles
+      .filter((f) => f.usesBaseLayout && !f.noindex)
+      .map((f) => ({ ...f, meta: metaMap(f.html), ld: jsonLd(f.html) }));
   }, 240_000);
 
   afterAll(() => {
     if (outDir) rmSync(outDir, { recursive: true, force: true });
+  });
+
+  describe("the sample is deliberate", () => {
+    const sampled = () => new Set(pages.map((p) => p.url));
+
+    it("samples every sitemap URL, bar pages the base layout does not render", () => {
+      const sitemap = readFileSync(path.join(outDir, "sitemap.xml"), "utf8");
+      const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+        (m) => m[1],
+      );
+      expect(locs.length).toBeGreaterThan(40);
+
+      // Pages that may be in the sitemap but are not built from base.njk
+      // (standalone HTML), so they have no card to check. Keep this list
+      // explicit: a new entry should be a decision, not an accident.
+      const notFromBaseLayout = new Set(["/mermaid-sandbox/", "/playground/"]);
+
+      const missing = [];
+      for (const loc of locs) {
+        const u = new URL(loc);
+        expect(u.origin, loc).toBe(HOST);
+        const rel = u.pathname.slice(PREFIX.length) || "/";
+        if (notFromBaseLayout.has(rel)) continue;
+        if (!sampled().has(rel)) missing.push(rel);
+      }
+      expect(missing).toEqual([]);
+    });
+
+    it("no page rendered by base.njk has silently become noindex", () => {
+      // None are expected today. If one is added on purpose, list it here.
+      const expectedNoindex = [];
+      const actual = allFiles
+        .filter((f) => f.usesBaseLayout && f.noindex)
+        .map((f) => f.url)
+        .sort();
+      expect(actual).toEqual(expectedNoindex);
+    });
+
+    it("keeps 404, the styleguide and the retired teaser noindex and out of the sample", () => {
+      for (const rel of [
+        "404.html",
+        "styleguide/index.html",
+        "from-change-capture-to-ci/index.html",
+      ]) {
+        const f = allFiles.find((x) => x.rel === rel);
+        expect(f, `${rel} should be built`).toBeTruthy();
+        expect(f.noindex, `${rel} should stay noindex`).toBe(true);
+        expect(sampled().has(f.url), `${rel} must not be sampled`).toBe(false);
+      }
+    });
+
+    it("keeps the mermaid sandbox out of the sample on purpose", () => {
+      const f = allFiles.find((x) => x.rel === "mermaid-sandbox/index.html");
+      expect(f, "mermaid-sandbox should be built").toBeTruthy();
+      // Standalone page with its own head: either it is noindex (P16-5) or
+      // it is not built from base.njk. Either way it is not sampled, and a
+      // switch to the base layout without noindex fails here.
+      expect(f.noindex || !f.usesBaseLayout).toBe(true);
+      expect(sampled().has(f.url)).toBe(false);
+    });
   });
 
   it("finds a realistic sample of indexable pages", () => {
@@ -238,6 +309,28 @@ describe("social cards and structured data in the built site", () => {
           bad.push(`${p.url}: twitter:description differs from description`);
       }
       expect(bad).toEqual([]);
+    });
+
+    it("falls back to the hero copy, not the site default, when a page has no description", () => {
+      const byUrl = Object.fromEntries(pages.map((p) => [p.url, p]));
+      for (const url of [
+        "/strategy/",
+        "/schema-evolution/",
+        "/tooling/",
+        "/use-cases/",
+      ]) {
+        const p = byUrl[url];
+        expect(p, url).toBeTruthy();
+        const metaDesc = decode(
+          /<meta name="description" content="([^"]*)">/.exec(p.html)[1],
+        );
+        expect(metaDesc, url).not.toBe(site.description);
+        expect(metaDesc, url).not.toMatch(/[<>]/);
+        expect(decode(p.meta["og:description"][0]), url).toBe(metaDesc);
+        expect(decode(p.meta["twitter:description"][0]), url).toBe(metaDesc);
+        const article = p.ld.find((b) => ARTICLE_TYPES.has(b["@type"]));
+        expect(article.description, url).toBe(metaDesc);
+      }
     });
 
     it("marks lessons as articles and the home page as a website", () => {

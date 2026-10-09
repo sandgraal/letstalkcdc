@@ -3,8 +3,18 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {# One description for the meta tag, the cards and the JSON-LD: front
+       matter first, then the hero copy (stripped of its <p> wrapper), then
+       the site default. #}
+    {% if description %}
+      {% set pageDescription = description %}
+    {% elseif heroConfig.description %}
+      {% set pageDescription = heroConfig.description | striptags %}
+    {% else %}
+      {% set pageDescription = site.description %}
+    {% endif %}
     <title>{% if title %}{{ title }} | {{ site.title }}{% else %}{{ site.seoTitle }}{% endif %}</title>
-    <meta name="description" content="{{ description | default(site.description) }}">
+    <meta name="description" content="{{ pageDescription }}">
     <meta name="robots" content="index,follow,max-image-preview:large">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ '/apple-touch-icon.png' | url }}">
     <link rel="icon" href="{{ '/favicon.svg' | url }}" type="image/svg+xml">
@@ -43,7 +53,7 @@
     {% set isArticle = (datePublished or dateModified) and not seo.noArticle[page.url] %}
     {% set pageHeadline = title or heroConfig.title or site.title %}
     {% set cardTitle = title or site.seoTitle %}
-    {% set cardDescription = description | default(site.description) %}
+    {% set cardDescription = pageDescription %}
     {% set ogImagePath = ogImage or seo.ogImage.path %}
     {% if ogImagePath | startsWith('http') %}
       {% set ogImageUrl = ogImagePath %}
@@ -83,7 +93,7 @@
           "@context": "https://schema.org",
           "@type": {{ (schemaType or 'Article') | dump | safe }},
           "headline": {{ pageHeadline | dump | replace("<", "\\u003c") | safe }},
-          "description": {{ (description or site.description) | dump | replace("<", "\\u003c") | safe }},
+          "description": {{ pageDescription | dump | replace("<", "\\u003c") | safe }},
           "url": {{ (site.host ~ canonicalUrl) | dump | safe }},
           "inLanguage": "en",
           "image": {{ ogImageUrl | dump | safe }},
