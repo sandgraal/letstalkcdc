@@ -9,13 +9,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build site
         env:
-          # Pinned to the real GitHub Pages host so canonical / OG / JSON-LD
-          # URLs resolve when lychee crawls them. Production deploy.yml uses
-          # vars.SITE_HOST and vars.ELEVENTY_PATH_PREFIX for its own host;
-          # those are intentionally not relied on here so the link-check
-          # works even if the repo variables are unset.
-          ELEVENTY_PATH_PREFIX: /letstalkcdc
-          SITE_HOST: https://sandgraal.github.io
+          # Same repository variables as deploy.yml, so a domain move is a
+          # variable change and the link check follows it. The literal after
+          # `||` keeps the job working when a variable is unset (and for
+          # runs where vars are unavailable). `||` also replaces an empty
+          # value, which matches the build: lib/path-prefix.mjs and
+          # lib/site-host.mjs both treat an empty value as unset. A site
+          # served from the domain root is therefore configured with
+          # ELEVENTY_PATH_PREFIX=/ (truthy, so it passes through), never
+          # with an empty string.
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '/letstalkcdc' }}
+          SITE_HOST: ${{ vars.SITE_HOST || 'https://sandgraal.github.io' }}
         run: npm ci && npm run build && scripts/publish-playground.sh
       - uses: lycheeverse/lychee-action@v2.0.2
         env:
