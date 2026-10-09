@@ -115,4 +115,87 @@ test.describe("assistant panel", () => {
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
   });
+
+  test("a thumbs-up sends one request to the Supabase endpoint", async ({
+    page,
+  }, testInfo) => {
+    skipMobileChrome(testInfo);
+
+    // Configure the client BEFORE any page script runs (base.njk only emits
+    // these when the build has SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY).
+    await page.addInitScript(() => {
+      window.SUPABASE_URL = "https://feedback-test.supabase.co";
+      window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_e2e";
+      localStorage.removeItem("assistantFeedback");
+    });
+
+    const posts = [];
+    await page.route(
+      "https://feedback-test.supabase.co/rest/v1/assistant_feedback",
+      async (route) => {
+        const request = route.request();
+        posts.push({
+          method: request.method(),
+          headers: request.headers(),
+          body: request.postDataJSON(),
+        });
+        await route.fulfill({ status: 201, body: "" });
+      },
+    );
+
+    await page.goto("/");
+
+    const fab = page.locator("#askBtn");
+    const panel = page.locator("#askPanel");
+    await expect(panel.locator(".assistant-input")).toHaveCount(1);
+    await fab.click();
+    await expect(panel).toBeVisible();
+
+    await panel
+      .locator(".assistant-input")
+      .fill("What is change data capture?");
+    await panel.locator(".assistant-send").click();
+
+    const thumbsUp = panel.locator('.assistant-fb-btn[data-helpful="true"]');
+    await expect(thumbsUp).toBeVisible();
+
+    // Disclosure: visible next to the buttons and tied to them for AT users.
+    const note = panel.locator(".assistant-fb-note");
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText(
+      "Your question is sent with your vote to help improve answers.",
+    );
+    await expect(thumbsUp).toHaveAttribute(
+      "aria-describedby",
+      (await note.getAttribute("id")) ?? "",
+    );
+    await thumbsUp.click();
+
+    await expect(panel.locator(".assistant-fb-thanks")).toHaveText(
+      "Thanks for the feedback!",
+    );
+    await expect.poll(() => posts.length).toBe(1);
+
+    const [post] = posts;
+    expect(post.method).toBe("POST");
+    expect(post.headers.apikey).toBe("sb_publishable_e2e");
+    expect(post.headers.authorization).toBe("Bearer sb_publishable_e2e");
+    expect(post.headers.prefer).toBe("return=minimal");
+    expect(post.body.question).toBe("What is change data capture?");
+    expect(post.body.helpful).toBe(true);
+    // "change data capture" is a trigger of the cdc_basics intent.
+    expect(post.body.intent_id).toBe("cdc_basics");
+    expect(post.body.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(new Date(post.body.ts).toISOString()).toBe(post.body.ts);
+
+    // Delivered, so nothing is left in the local queue (the key may be absent
+    // or an empty list, depending on whether anything needed persisting).
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          JSON.parse(localStorage.getItem("assistantFeedback") || "[]"),
+        ),
+      )
+      .toEqual([]);
+  });
 });

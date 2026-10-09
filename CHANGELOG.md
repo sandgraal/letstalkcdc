@@ -58,6 +58,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ordering key). All four are at-least-once; none gives exactly-once
     into an external sink.
 
+### Changed
+
+- **Assistant feedback moved from Appwrite to Supabase, and Appwrite was
+  removed entirely (P13-10).** Votes are sent with plain `fetch` and the
+  publishable key (no SDK, no CDN script). Each vote carries a
+  client-generated UUID as its `id`, so retries are idempotent: HTTP 409
+  counts as delivered. The local queue is bounded; other 4xx responses drop
+  the entry, and 5xx or network errors retry up to an attempt cap.
+  Production feedback now reaches a database once the maintainer sets the
+  `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` Actions variables. Before
+  this, production never sent feedback, because no Appwrite variables were
+  configured. The unused `dotenv` devDependency is removed. A notice in the
+  assistant panel discloses that the question is sent with the vote.
+
 ### Fixed
 
 - **The `/overview/` series grid rendered zero module cards** — in
