@@ -386,3 +386,211 @@ Maintainer choices that are not numbered decisions but shape the next phase:
 analytics is GoatCounter (cookie-less); the domain will change but the name is
 undecided; the next push is "content depth, SEO/growth and more interactive
 demos" (Phase 16); the feedback vote fallback is kept as is.
+
+## 7. Process and quality gates
+
+### How work is done here
+
+- **Conductor and roles** ([`CONDUCTOR.md`](CONDUCTOR.md)): one orchestrating AI
+  session plans and integrates; single-purpose roles do the work (`scout`,
+  `verifier`, `scribe` on Haiku 5.5; `implementer`, `reviewer`, `css-refactor`
+  on Sonnet 5.5). The role that writes never verifies or approves. A unit test
+  (`tests/unit/agent-roster.test.js`) pins the roster and model IDs.
+- **Merge rules in practice** (the maintainer's working agreement with the
+  conductor; recorded in the conductor's notes, **not in the repo**): merge a
+  PR only after an independent reviewer's points are fixed, CI is green, and a
+  test-merge against current `main` passes when other PRs landed meanwhile.
+  `CONDUCTOR.md` itself says "stop at the PR; merging is the maintainer's",
+  so the two differ. Setting variables or secrets, creating external accounts,
+  real-device checks and force-pushes stay with the maintainer.
+- **Authorship caveat:** `git shortlog -sn origin/main` shows 1,102 commits
+  since 2025-08-24: `sandgraal` 600, `github-actions[bot]` 224,
+  `copilot-swe-agent[bot]` 202, `Claude` 32, `Christopher Ennis` 30. Squash
+  merges are committed under the maintainer's account, so that count does not
+  measure who wrote what.
+- **Branch protection:** a repository ruleset named `default` is active on the
+  default branch with rules `deletion`, `non_fast_forward`, `code_scanning`,
+  `code_quality` and `pull_request`. **No `required_status_checks` rule**:
+  a red CI run does not block a merge. The classic branch-protection API
+  returns 404 (`gh api repos/sandgraal/letstalkcdc/branches/main/protection`).
+  Two merged commits on `main` had red `unit-tests` runs on 2026-10-09 (below).
+
+### Gates before a change merges
+
+```bash
+npm run verify-all
+```
+
+That is `format:check`, `lint`, `test` (vitest) and `build`. Add
+`npm run smoke:core` for routing, passthrough or template changes,
+`npm run test:e2e` for browser behaviour, and the CSS hash check below for any
+CSS. Definition of Done is in `CONDUCTOR.md`: every acceptance criterion with
+quoted evidence, a test that fails without the change, a reviewer's verdict,
+the plan checkbox flipped, `CHANGELOG.md` `[Unreleased]` updated.
+
+**Byte-identity CSS check** (the production hash is recorded in `CLAUDE.md` and
+`.claude/commands/css-byte-check.md`):
+
+```bash
+NODE_ENV=production npm run build:css && shasum -a 256 src/assets/css/styles.min.css
+```
+
+**Conventions:** Conventional Commits with a lowercase scope (`fix(ci): ...`);
+branches `claude/<short-name>`; one plan item per PR; never `--no-verify`; no
+hardcoded `/` in templates (use `| url`); never edit `_site/`, `dist/` or the
+generated `styles.min.css`; no `console.log` in shipped code.
+
+### CI flake history (verified in git log, `gh run`, or the workflow files)
+
+| Flake                                                                 | Evidence                                                                                                                                               | Status                                                                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Lighthouse `NO_LCP` on `/overview/`                                   | #396: "loses its LCP (LanternError NO_LCP) in roughly 1 run in 3". My local run hit it 6 times in 15 attempts                                          | Mitigated: 3 attempts per run, invalid runs never counted, LCP image loaded eagerly. Still happens |
+| Lighthouse `NO_FCP` when Chrome is backgrounded                       | Seen on a local run on macOS ("keep the browser window in the foreground")                                                                             | Local only; same retry logic                                                                       |
+| PGlite 5 s timeout in unit tests                                      | `backfill-resnapshot-page.test.js` "Test timed out in 5000ms" in four `unit-tests` runs on 2026-10-09 (two on `main`, ids 37929470803 and 37929548105) | Fixed in #406 (one shared instance, 60 s timeouts)                                                 |
+| Chrome download inside `npm ci`                                       | `ci.yml` comment: puppeteer's postinstall fails the step when download providers are unreachable; #388 and `PUPPETEER_SKIP_DOWNLOAD`                   | Mitigated; **no failing run was retrieved, so frequency is unverified**                            |
+| lychee 503 / 504 from `github.com`                                    | #388 (burst of about 45 requests for one URL), #391 (profile and file-history pages answer 504 from runner IPs). lychee does not retry a 5xx           | Mitigated by `--remap`, `--max-concurrency 8` and `.lycheeignore` entries                          |
+| lychee 403 from `dev.mysql.com`, Oracle, LinkedIn, Fivetran community | `.lycheeignore` comments (bots blocked; valid in a browser). **The MySQL host answers 403, not 5xx**                                                   | Ignored by pattern                                                                                 |
+| `seo-audit.test.js` real-build case                                   | Carries an explicit 60 s timeout (added in #410). **That it timed out at 5 s under load is unverified**: no CI log shows it                            | n/a                                                                                                |
+| `layout.spec.js` `/intro/ accumulates no meaningful layout shift`     | Failed once in my full chromium run at `eb7f95e`; passed in an earlier run at `2eb0f29`                                                                | See section 3 for the re-run result                                                                |
+
+Other CI history on `main` (last 100 runs): `CI` 16 success / 2 failure (the
+PGlite ones); `Deploy` 16 success / 3 cancelled (superseded by newer pushes,
+`cancel-in-progress`); `Link check` 18 success; `Fortify AST Scan` 18 success
+(see section 5 on whether it scans).
+
+### Re-running everything
+
+```bash
+ELEVENTY_PATH_PREFIX=/letstalkcdc SITE_HOST=https://sandgraal.github.io npm run build
+```
+
+```bash
+scripts/publish-playground.sh
+```
+
+```bash
+npm run smoke
+```
+
+`npm run smoke` is `smoke:core` + `smoke:a11y` + `smoke:perf`. Lighthouse needs
+a different build (section 3).
+
+## 8. Risk register
+
+Ranked by my judgement of likelihood times damage for a one-person site.
+**Evidence** is what was measured or read; **Opinion** is the ranking and the
+mitigation.
+
+| #   | Risk                                                      | Evidence                                                                                                                                                                                                                                                                                                                                                               | Suggested mitigation (opinion)                                                                                           |
+| --- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Content correctness drift**                             | Pages teach Debezium 3.x; labs pin 2.7.4.Final and Confluent 7.7.0 (`toolVersions.mjs` `tested`); Debezium 3.7.0.Final released 2026-09-29; seven of eight merge-cookbook dialects never executed; review provenance unrecorded                                                                                                                                        | Sample audit (section 9); P15-46; version-stamp each version-specific claim; a quarterly re-check of `tools`             |
+| 2   | **Single maintainer, AI-authored volume**                 | CODEOWNERS is `* @sandgraal`; git authorship cannot separate human from agent work (section 7); the SME is not identified in the repo                                                                                                                                                                                                                                  | Name a second reviewer; keep review texts (they were lost for #376); publish who reviewed what                           |
+| 3   | **No required CI checks on `main`**                       | Ruleset has no `required_status_checks`; red `unit-tests` runs sit on `main` history on 2026-10-09; `CLAUDE.md` claims protection                                                                                                                                                                                                                                      | Add required checks `build`, `unit-tests`, `lint`, `linkcheck` to the ruleset (maintainer action)                        |
+| 4   | **GitHub Pages: single host, prefix, no headers**         | `curl -I` shows no CSP, no `x-content-type-options`, no `x-frame-options`, `cache-control: max-age=600`; host-root `robots.txt` 404; sitemap lives under `/letstalkcdc/`; `smoke.mjs` CSP check is a no-op without `.htaccess`                                                                                                                                         | Plan the own-domain move (P15-13, `DOMAIN-MIGRATION.md`); put a CDN in front only if headers matter                      |
+| 5   | **Third-party scripts at runtime**                        | `/overview/` transfers 936 KB of Mermaid from jsdelivr (floating `mermaid@11`, no integrity); `/intro/` loads Chart.js (68 KB); `/overview/` is 1.19 MB in Lighthouse                                                                                                                                                                                                  | Vendor and pin the files, or lazy-load behind a click; add SRI                                                           |
+| 6   | **Supabase publishable key in the browser, RLS reliance** | Key is public by design; `anon` holds INSERT on three tables and SELECT on `events` per `schema.sql`; `events` is public and takes visitor-typed data; the schema file is "desired state", never applied by CI, and I could not inspect the live DB                                                                                                                    | Run the section 5 queries and compare grants with `pg_policies`; add a scheduled drift check; keep the made-up-data note |
+| 7   | **Performance and layout-shift variability**              | Lighthouse floors are `warn` at 0.9 except `/intro/` (`error`, 0.82); `/intro/` scored 0.91 to 0.92; CLS 0.25 under Slow 4G plus 4x CPU (P15-45); NO_LCP flake                                                                                                                                                                                                         | P15-45 and P15-44; add a throttled e2e bound                                                                             |
+| 8   | **Accessibility coverage gaps**                           | `/playground/` fails axe contrast on the live site and CI cannot see it; gradient headline text unmeasured (P15-35); no assistive-technology test is recorded anywhere                                                                                                                                                                                                 | Publish the playground in the CI artifact; real screen-reader pass (section 9)                                           |
+| 9   | **Dependency advisories (dev-only) and Node range**       | `npm audit`: 9 findings (4 moderate, 5 high), `npm audit --omit=dev`: 0; chain is `braces` through `chokidar`/`nunjucks`/`@11ty/eleventy-dev-server`. Playground lockfile: 5 high, 0 with `--omit=dev`. GitHub reports 0 open Dependabot alerts (100 or more fixed). No `dependabot.yml`. `engines` is `^22.22.3 \|\| ^24.15.0 \|\| >=26`; CI and `.nvmrc` use 24 only | Keep `--omit=dev` at 0; add a Node 22 CI job or narrow `engines`                                                         |
+| 10  | **Licensing and provenance of images**                    | Cover art (`src/static/images/cdc-cover.jpg`, the only `og:image`) is AI-generated and the maintainer's own, per the maintainer's notes; its copyright status is legally unsettled; the licence split is MIT code + CC BY 4.0 content                                                                                                                                  | State it plainly in `LICENSE-CONTENT.md` if images are classified there                                                  |
+| 11  | **No measured audience yet**                              | GoatCounter live today; Search Console state unknown; assistant feedback about 1 to 2 rows                                                                                                                                                                                                                                                                             | Wait for data before choosing the next phase's content; section 9                                                        |
+| 12  | **Documentation drift**                                   | Items 2 to 5 under "Found while writing this brief"; `STATE-OF-PROJECT.md` is 5 months old; README "44" versus 55 host occurrences                                                                                                                                                                                                                                     | Land P13-9 and P15-13; make doc facts commands, as this brief does                                                       |
+
+## 9. Questions for the autopsy, and a two-week schedule
+
+### Questions the autopsy should answer
+
+| #   | Question                                                               | Evidence to use                                                                |
+| --- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | Is the content correct enough to promote? Which pages are not?         | Section 4 sample; executed versus unexecuted SQL; labs run on current versions |
+| 2   | Do readers exist, and which pages do they use?                         | GoatCounter, Search Console, feedback rows (all too young today)               |
+| 3   | Can everyone use it? (keyboard, screen reader, mobile, reduced motion) | Real assistive-technology pass; the `/playground/` contrast failure            |
+| 4   | Is it fast enough on real devices and networks?                        | Lighthouse field data is absent; lab only                                      |
+| 5   | Is it findable? Is anything wrongly excluded or duplicated in search?  | Search Console coverage; the audit's headline numbers                          |
+| 6   | Is the build and process safe to hand to a second person?              | Section 7 gates, required checks, secrets, who can deploy                      |
+| 7   | What should the next phase be: depth, growth, demos, or hardening?     | Answers 1 to 6 plus the maintainer's stated priorities                         |
+
+### Suggested schedule
+
+| Days   | Work                                                                                                                                                                      | Deliverable                                                                   |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 1      | Clone, `npm ci`, reproduce every number in section 3, note differences                                                                                                    | One-page reproduction log with commands and deltas                            |
+| 2      | Get access (section 5); read feedback, GoatCounter, Search Console; check the live Supabase grants and cron jobs                                                          | Data-source status table; any drift from `supabase/schema.sql`                |
+| 3 to 5 | Content accuracy sample: 12 pages chosen from the section 4 table (suggest at least 2 per claim family), each against the checklist, with a second reviewer               | Per-page verdicts with sources; list of errata candidates                     |
+| 6      | Run the unexecuted SQL: at least Snowflake or BigQuery from the merge cookbook, and the T-SQL and MySQL pages                                                             | Executed versus not executed table, updated                                   |
+| 7      | Run the labs on Docker (`compose.yaml`, one quickstart) and compare with what the pages claim                                                                             | Lab run log; decision on P15-46 effort                                        |
+| 8 to 9 | Accessibility with real assistive technology (VoiceOver plus one other; keyboard only; 200 percent zoom) on `/`, `/intro/`, a module, `/playground/`, the assistant panel | Issues list with severity; checks the P15-15, P15-35 and `/playground/` items |
+| 10     | Performance on two real phones and one throttled network; three Lighthouse runs on a quiet machine (P13-5 recipe)                                                         | Numbers table; verdict on P15-44 and P15-45                                   |
+| 11     | SEO and discoverability: Search Console indexing report, sitemap status, rich results, social previews                                                                    | Indexed versus 57 sitemap URLs; list of exclusions                            |
+| 12     | Audience and feedback: group questions per `content-gap-plan` section 8 if there are 30 or more rows (P16-25)                                                             | Updated section 4 of the gap plan, or a note that the data is too thin        |
+| 13     | Roadmap options with effort sizes (S, M, L as the plan uses them) and risks from section 8                                                                                | Three options, each with scope, size, owner, dependencies                     |
+| 14     | Readout to the maintainer; collect decisions below                                                                                                                        | Decision log; an updated `IMPLEMENTATION-PLAN.md` Phase 17 draft              |
+
+### Decisions needed from the maintainer before the next phase
+
+1. **Domain:** the name, and when (P15-13). It changes canonicals, the sitemap,
+   Search Console and every `sandgraal.github.io` link; do it before building
+   search history on the current host.
+2. **Search Console:** verify the property and submit the sitemap (P16-12), or
+   say it is already done and when.
+3. **Merge policy:** whether to keep conductor-merges under the standing grant,
+   and whether to add required status checks to the ruleset.
+4. **Who reviews content:** name the SME or a second human, and where review
+   texts are kept.
+5. **Labs on Debezium 3.x (P15-46, Size L):** fund it, or add "check your
+   version" notes and leave the labs at 2.7.
+6. **Upstream docs issue** on `wal_keep_size` (P15-39): file it or not.
+7. **Codacy:** is it in use (P15-52)?
+8. **Playground:** is the playground owner available for P16-26 and P16-27, and
+   may the contrast failure be fixed under `playground/`?
+9. **Third-party scripts:** pin and vendor Mermaid and Chart.js, or accept the
+   CDN dependency.
+10. **Next phase's theme:** depth, growth, demos or hardening, once the data
+    from days 2 and 12 is in.
+
+## 10. Appendix
+
+### Repository map
+
+| Path                                                  | What                                                                                                        |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `src/`                                                | Site source: pages (one directory each), `_data/`, `_includes/`, `assets/`, `static/`, `data/assistant.yml` |
+| `src/assets/css/`                                     | CSS; `main.css` is the only shipped entry. Do not edit `styles.min.css`                                     |
+| `src/assets/js/`                                      | ES modules bundled by Vite into `dist/`                                                                     |
+| `lib/`                                                | Small shared Node modules (path prefix, site host, newsletter and GoatCounter validation, head renderer)    |
+| `scripts/`                                            | Smoke tests, SEO audit, Lighthouse runner, deployment verify, playground publisher                          |
+| `tests/unit/`, `tests/e2e/`                           | Vitest (jsdom) and Playwright specs                                                                         |
+| `playground/`                                         | Separate app: React sources, committed bundles, scenarios, harness, its own CI                              |
+| `supabase/`                                           | `schema.sql`: desired state and recorded migrations; not applied by CI                                      |
+| `sandbox/`, `compose.yaml`                            | Docker lab for readers (Postgres, MySQL, Kafka, Debezium)                                                   |
+| `docs/`                                               | Guides, the plan, audits; `docs/archive/` is historical                                                     |
+| `.github/`                                            | Workflows, CODEOWNERS, agent instruction files                                                              |
+| `.claude/`                                            | Conductor settings, role definitions, slash commands, hooks                                                 |
+| `_site/`, `dist/`, `.lighthouseci/`, `seo-audit.json` | Generated; ignored by git                                                                                   |
+
+### Glossary of repo terms
+
+| Term               | Meaning                                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| conductor          | The main AI session: plans, briefs roles, integrates, verifies; has no edit tools                                 |
+| roles              | `scout`, `verifier`, `scribe`, `implementer`, `reviewer`, `css-refactor` (`.claude/agents/`)                      |
+| byte-identity      | Proof that a CSS change did not alter the production bundle: same sha256 of `styles.min.css`                      |
+| `viteAsset`        | Eleventy filter mapping a source path to the hashed Vite output through `dist/.vite/manifest.json`                |
+| `\| url`           | Nunjucks filter that adds the path prefix; hardcoding `/` breaks GitHub Pages                                     |
+| path prefix        | `/letstalkcdc/` in production; `/` for the Lighthouse build (`build:lhci`)                                        |
+| redirect stub      | Legacy `*.html` page that meta-refreshes to the directory URL; 26 of them                                         |
+| errata callout     | Per-page correction notice driven by `src/_data/errata.mjs`                                                       |
+| `tools` / `tested` | Latest stable versus what the labs pin, in `toolVersions.mjs`                                                     |
+| Phase 13 to 16     | Plan phases: 13 maintenance queue, 14 decision register, 15 maintainer-directed work, 16 growth and content depth |
+| log position       | LSN, SCN or GTID: the ordering key the site teaches                                                               |
+
+### Agent worktrees and logs
+
+Isolated agents work in git worktrees under `.claude/worktrees/` (ignored by
+git, see `.gitignore`). On 2026-10-09 the maintainer's checkout had 77
+directories there using about 25 GB, and `git worktree list` showed 93
+registered worktrees, none marked prunable. They are disposable once their
+branch is merged or pushed; remove with `git worktree remove <path>`, then
+`git worktree prune`. Scratch output lives in the session's temporary
+directory, not in the repo. There is no handoff log: cross-session context is
+`IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]` and `git log`.
