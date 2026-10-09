@@ -246,6 +246,90 @@ describe("the router content matches the Debezium reference", () => {
     );
     expect(cfg).not.toMatch(/ts_ms/);
   });
+
+  it("pins the config to the prose, the option table and the producer DDL", () => {
+    const cfg = codeById("cfg-router");
+    const prop = (k) =>
+      new RegExp(
+        `^transforms\\.outbox\\.${k.replace(/\./g, "\\.")}=(.*)$`,
+        "m",
+      ).exec(cfg)?.[1];
+    const ddl = /CREATE TABLE outbox \(([\s\S]*?)\);/.exec(
+      codeById("sql-producer"),
+    )[1];
+    const columns = [...ddl.matchAll(/^\s+(\w+)\s+\w+/gm)].map((m) => m[1]);
+    // key and routing columns exist in the outbox table the page creates
+    expect(prop("table.field.event.key")).toBe("aggregateid");
+    expect(columns).toContain(prop("table.field.event.key"));
+    expect(prop("route.by.field")).toBe("aggregatetype");
+    expect(columns).toContain(prop("route.by.field"));
+    expect(prop("route.topic.replacement")).toBe(
+      "outbox.event.${routedByValue}",
+    );
+    // the JSON expansion needs a JSON column and the JsonConverter
+    expect(prop("table.expand.json.payload")).toBe("true");
+    expect(ddl).toMatch(/payload\s+jsonb/);
+    expect(cfg).toMatch(
+      /^value\.converter=org\.apache\.kafka\.connect\.json\.JsonConverter$/m,
+    );
+    expect(cfg).toMatch(/^value\.converter\.schemas\.enable=false$/m);
+    // the additional field is a real column, named in the prose as well
+    const extra = prop("table.fields.additional.placement");
+    expect(extra).toBe("seq:header:seq");
+    expect(columns).toContain(extra.split(":")[0]);
+    // the prose describes exactly this config: topic, key and header
+    expect(prose).toMatch(
+      /sends the OrderShipped row above to the topic outbox\.event\.order with the key ORD-221 ?, the event id in the id header, the version in a seq header/,
+    );
+    expect(codeById("sql-producer")).toMatch(
+      /'order', 'ORD-221', 1, 'OrderCreated'/,
+    );
+  });
+
+  it("says the router passes snapshot reads through, so retained rows are re-published", () => {
+    expect(prose).toMatch(/Passes snapshot reads through/);
+    expect(prose).toMatch(/op=r/);
+    expect(prose).toMatch(/only deletes, tombstones and updates are dropped/);
+    expect(prose).toMatch(/3\.0\.0\.Final and 3\.4\.0\.Final/);
+    expect(prose).toMatch(/route\.tombstone\.on\.empty\.payload/);
+    const dup = text(
+      body.slice(
+        body.indexOf('<section id="duplicates"'),
+        body.indexOf("</table>", body.indexOf('<section id="duplicates"')),
+      ),
+    );
+    expect(dup).toMatch(
+      /Snapshot or incremental snapshot of an outbox table that still holds rows/,
+    );
+    // five rows of causes
+    const rows = body
+      .slice(
+        body.indexOf('<section id="duplicates"'),
+        body.indexOf("</table>", body.indexOf('<section id="duplicates"')),
+      )
+      .match(/<tr>/g);
+    expect(rows.length).toBe(1 + 5);
+    expect(prose).not.toMatch(
+      /a snapshot of an empty table recovers nothing\.(?! Keeping)/,
+    );
+    expect(prose).toMatch(/Keeping rows cuts both ways/);
+  });
+
+  it("conditions the dense-version check and names the id-reuse hole", () => {
+    expect(prose).toMatch(/every version bump writes exactly one outbox row/);
+    expect(prose).toMatch(/UPDATE orders SET version = version \+ 1/);
+    expect(prose).toMatch(/parks every later event for that aggregate forever/);
+    expect(prose).toMatch(/The id-reuse hole/);
+    expect(prose).toMatch(/changed 0 rows/);
+    expect(prose).toMatch(/never reuse an aggregate id/);
+  });
+
+  it("labels what the reviewer reproduced on PostgreSQL 18", () => {
+    expect(prose).toMatch(/0\/17C1868/);
+    expect(prose).toMatch(/0\/17C19A8/);
+    expect(prose).toMatch(/id 1 uncommitted and id 2 committed/);
+    expect(prose).not.toMatch(/I did not run it\./);
+  });
 });
 
 describe("the thesis", () => {
@@ -654,6 +738,40 @@ describe("the consumer SQL on the page, executed against SQLite", () => {
   it("the guard changes zero rows for a duplicate and for a stale event", () => {
     const { changes } = run([U(1), U(2), U(2), U(1), U(3)], "guard");
     expect(changes).toEqual([1, 1, 0, 0, 1]);
+  });
+
+  it("a re-created id restarting at version 1 is silently dropped by the plain guard", () => {
+    const { row, changes } = run([U(1), U(2), [3, "d"], U(1)], "guard");
+    expect(changes).toEqual([1, 1, 1, 0]);
+    expect(row.deleted).toBe(1);
+    expect(row.last_seq).toBe(3);
+  });
+
+  it("the (epoch, version) guard on the page accepts the re-created id and refuses the old generation", () => {
+    const epoch = codeById("sql-epoch");
+    const ddl2 = epoch.match(/CREATE TABLE shipments \([\s\S]*?\);/)[0];
+    const up = epoch.match(/INSERT INTO shipments[\s\S]*?;/)[0];
+    const V = "VALUES ('ORD-221', 'created', false, 2, 1)";
+    expect(up).toContain(V);
+    const db = new sqlite.DatabaseSync(":memory:");
+    db.exec(ddl2);
+    const apply = (status, deleted, e, q) =>
+      db
+        .prepare(
+          up
+            .replace(V, `VALUES ('ORD-221', ${status}, ${deleted}, ${e}, ${q})`)
+            .replace(/;$/, ""),
+        )
+        .run().changes;
+    expect(apply("'s1'", "false", 1, 1)).toBe(1);
+    expect(apply("NULL", "true", 1, 3)).toBe(1);
+    expect(apply("'new1'", "false", 2, 1)).toBe(1);
+    expect(apply("'late'", "false", 1, 2)).toBe(0);
+    expect(db.prepare("SELECT * FROM shipments").get()).toMatchObject({
+      status: "new1",
+      epoch: 2,
+      last_seq: 1,
+    });
   });
 
   it("a delete keeps the row as a marker with its version", () => {

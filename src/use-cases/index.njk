@@ -89,8 +89,8 @@ head_extra: |
             record to an "outbox" table in the same atomic transaction. The CDC
             agent streams only the committed outbox events to a Kafka topic.
             Downstream services (shipping`, `billing`) simply subscribe to this
-            topic to receive guaranteed, in-order state changes without ever
-            calling the `orders` service directly.
+            topic to receive state changes without ever calling the `orders`
+            service directly.
           </p>
           <p>
             Delivery is at-least-once and ordered only per message key, so the

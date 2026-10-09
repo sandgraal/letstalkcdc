@@ -278,9 +278,11 @@ UPDATE outbox SET published_at = now() WHERE id = :event_id;</code></pre>
       past a failure, publishes seq 6 before seq 5.
     </p>
     <p>
-      Do not poll on a global counter such as <code>WHERE id &gt; :last_seen_id</code> with an auto-increment id. My
-      reasoning, not a tested result: a sequence value is assigned at insert, but the row becomes visible at commit, so a
-      transaction with a lower id can commit after the poller has moved past it and its event is never read. The
+      Do not poll on a global counter such as <code>WHERE id &gt; :last_seen_id</code> with an auto-increment id. A
+      sequence value is assigned at insert, but the row becomes visible at commit, so a transaction with a lower id can
+      commit after the poller has moved past it and its event is never read. A reviewer reproduced this on PostgreSQL 18
+      (not by me, not on PGlite): with id 1 uncommitted and id 2 committed, a poller asking for <code>id &gt; 0</code> saw
+      only id 2. The
       per-aggregate version above does not have this problem for events of one aggregate, because a transaction cannot
       get version N+1 until version N has committed.
     </p>
@@ -376,19 +378,23 @@ transforms.outbox.table.field.event.key=aggregateid
 transforms.outbox.table.expand.json.payload=true
 transforms.outbox.table.fields.additional.placement=seq:header:seq
 
-value.converter=org.apache.kafka.connect.json.JsonConverter</code></pre>
+value.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter.schemas.enable=false</code></pre>
     </details>
     <p>
       That configuration sends the <code>OrderShipped</code> row above to the topic <code>outbox.event.order</code> with the
       key <code>ORD-221</code>, the event id in the <code>id</code> header, the version in a <code>seq</code> header and the
       JSON payload as the value. <code>seq:header:seq</code> uses the documented <code>column:placement:alias</code> form;
       <code>seq:envelope:seq</code> would put it in the value instead. Either way, test what your consumer actually sees:
-      a header reaches a plain consumer as bytes.
+      a header reaches a plain consumer as bytes. With <code>value.converter.schemas.enable=false</code> the value is the
+      bare JSON; Kafka Connect&rsquo;s <code>JsonConverter</code> otherwise defaults to wrapping each value in a
+      <code>schema</code> and <code>payload</code> envelope (check your version), which your consumer would then have to unwrap.
     </p>
     <h3 id="router-does">What the router keeps, drops and refuses</h3>
     <ul>
       <li><strong>Keeps.</strong> The key, the payload, the event id (as a header), the topic route, any additional columns you name, and a timestamp.</li>
-      <li><strong>Drops deletes.</strong> The reference says the SMT automatically filters out <code>DELETE</code> operations on an outbox table. The 3.0.0.Final source I read also drops null-valued records (tombstones).</li>
+      <li><strong>Drops deletes.</strong> The reference says the SMT automatically filters out <code>DELETE</code> operations on an outbox table. The 3.0.0.Final and 3.4.0.Final sources I read also drop null-valued records (tombstones); the separate <code>route.tombstone.on.empty.payload</code> option (default <code>false</code>) is about a row whose payload is empty, which can emit a tombstone on purpose.</li>
+      <li><strong>Passes snapshot reads through.</strong> In those two sources only deletes, tombstones and updates are dropped; <code>op=r</code> (snapshot read) and inserts go on to become messages. So a snapshot of an outbox table that still holds rows re-publishes every retained row, with the same id and <code>seq</code> at new offsets (3.0.0.Final and 3.4.0.Final source; the class moved in later releases and I did not read it there, so check your version).</li>
       <li><strong>Refuses updates.</strong> The reference says all changes to an outbox table are expected to be inserts: the table is a queue. An update is handled by <code>table.op.invalid.behavior</code>. So a log-tailing relay and a polling-style <code>published_at</code> flag do not mix.</li>
       <li><strong>Does not forward the source position.</strong> The reference&rsquo;s example shows the raw change event with <code>source.lsn</code> and <code>source.txId</code>, and the routed message without them. Reading <code>apply()</code> in the 3.0.0.Final source agrees: the new record is built from the outbox row&rsquo;s columns, not the <code>source</code> block. If you want a position on the consumer side, put it in a column. This matters in the <a href="#consumer">consumer section</a>.</li>
       <li><strong>One structure per connector.</strong> A connector can capture more than one outbox table only if each has the same structure.</li>
@@ -439,6 +445,12 @@ value.converter=org.apache.kafka.connect.json.JsonConverter</code></pre>
           <td>Yes</td>
           <td>Yes</td>
           <td>No</td>
+        </tr>
+        <tr>
+          <th scope="row">Snapshot or incremental snapshot of an outbox table that still holds rows (first start, re-snapshot after slot loss, an incremental snapshot signal)</th>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>No, a new send. The router passes snapshot reads through (see <a href="#router-does">what the router drops</a>).</td>
         </tr>
         <tr>
           <th scope="row">Consumer crashes after processing and before committing its offset</th>
@@ -548,7 +560,11 @@ value.converter=org.apache.kafka.connect.json.JsonConverter</code></pre>
       transaction A updates the aggregate and inserts its row and commits, and only then B updates the aggregate and commits,
       the log shows A before B, and B&rsquo;s outbox insert has the <em>lower</em> position. A guard that says &ldquo;higher
       position wins&rdquo; would discard B&rsquo;s event. The version has no such problem because it is taken <em>after</em>
-      the lock. This interleaving needs two connections and I did not run it. If you take the aggregate&rsquo;s lock first
+      the lock. This interleaving needs several connections, so I did not run it; a reviewer reproduced it on PostgreSQL 18
+      with three connections. Insert order and commit order differed. With <code>test_decoding</code>, B&rsquo;s insert was at LSN
+      <code>0/17C1868</code> and A&rsquo;s at <code>0/17C19A8</code>, so LSN order followed insert order, while the transactions
+      were decoded in commit order, A&rsquo;s first. That is the inversion described here: B&rsquo;s event arrives second
+      with the lower position. If you take the aggregate&rsquo;s lock first
       in every transaction, the positions agree with commit order too, and you may read <code>source.lsn</code> from the raw
       change event instead of using the router (verify the position field for your connector, as described on
       <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>).
@@ -631,10 +647,43 @@ ON CONFLICT (order_id) DO UPDATE
       <li><strong>If you must keep ids, prune by time, not offset,</strong> and keep them longer than the longest rewind you can perform: the topic retention, the slot&rsquo;s WAL retention or the longest offset reset you would run, whichever is greatest.</li>
     </ul>
     <p>
-      One more use for dense versions: because the version rolls back with the transaction, there are no gaps in an
-      aggregate&rsquo;s versions. A consumer that sees 4 after 2 knows event 3 is missing or late, and can park the event
-      and alert rather than apply it. That check is the application&rsquo;s to write; it is stricter than the SQL above,
-      which accepts any higher version.
+      <strong>Dense versions, with one condition.</strong> Because the version rolls back with the transaction, there are no
+      gaps in an aggregate&rsquo;s versions, so a consumer that sees 4 after 2 can conclude that event 3 is missing or late,
+      park the event and alert rather than apply it. That holds only if <em>every</em> version bump writes exactly one outbox
+      row. A repair script that runs <code>UPDATE orders SET version = version + 1</code> without an outbox insert leaves a
+      permanent gap, and a strict consumer then parks every later event for that aggregate forever. Route all changes through
+      the same code path, or give the repair script an outbox insert. The check is the application&rsquo;s to write; it is
+      stricter than the SQL above, which accepts any higher version.
+    </p>
+    <p>
+      <strong>The id-reuse hole.</strong> The guard compares versions per id, so it breaks if an id is deleted and then
+      created again with its version starting over. On PGlite, after versions 1 and 2 and a delete marker at version 3,
+      applying the re-created aggregate&rsquo;s first event (version 1) changed 0 rows: the new aggregate was silently dropped.
+      Either never reuse an aggregate id, or add a generation (epoch) to the version and compare the pair, as below. A
+      late event from the old generation then also loses (0 rows on PGlite), which is correct.
+    </p>
+    <details>
+      <summary>Consumer: the guard keyed on (epoch, version) (run on PGlite)</summary>
+      <pre><code class="language-sql" id="sql-epoch">CREATE TABLE shipments (
+  order_id text    PRIMARY KEY,
+  status   text,
+  deleted  boolean NOT NULL DEFAULT false,
+  epoch    bigint  NOT NULL,
+  last_seq bigint  NOT NULL
+);
+
+INSERT INTO shipments (order_id, status, deleted, epoch, last_seq)
+VALUES ('ORD-221', 'created', false, 2, 1)
+ON CONFLICT (order_id) DO UPDATE
+   SET status   = excluded.status,
+       deleted  = excluded.deleted,
+       epoch    = excluded.epoch,
+       last_seq = excluded.last_seq
+ WHERE (shipments.epoch, shipments.last_seq) &lt; (excluded.epoch, excluded.last_seq);</code></pre>
+    </details>
+    <p>
+      The producer must then write the epoch with each event (a column on the aggregate that increments on re-creation).
+      Without a deliberate epoch, treat id reuse as a design error.
     </p>
   </section>
 
@@ -696,8 +745,11 @@ COMMIT;</code></pre>
       <strong>What you give up (my reasoning, not from the sources).</strong> If the outbox table holds nothing, the log is
       the only copy of the events. If the connector&rsquo;s slot is dropped, or invalidated because it fell too far behind,
       the events committed in the gap cannot be rebuilt from the outbox: a snapshot of an empty table recovers nothing, and you
-      must reconstruct from the business tables. Keeping rows for a few days, or in a partition you drop later, buys a record to
-      compare against the topic. PostgreSQL&rsquo;s documentation notes that dropping or detaching a partition is much faster than a bulk
+      must reconstruct from the business tables. Keeping rows cuts both ways. A few days of rows, or a partition you drop later,
+      buys a record to compare against the topic and something a snapshot can re-send. But a snapshot or incremental snapshot
+      of a table that still holds rows publishes every retained row again (the router passes snapshot reads through), with
+      the same id and <code>seq</code> at new offsets. The consumer guard absorbs that; an id-only dedupe with pruned ids does
+      not. PostgreSQL&rsquo;s documentation notes that dropping or detaching a partition is much faster than a bulk
       <code>DELETE</code> and avoids its <code>VACUUM</code> overhead. The slot risk is covered on
       <a href="{{ '/postgres-replication-slots/' | url }}">Postgres replication slots and WAL growth</a>.
     </p>
@@ -832,9 +884,9 @@ COMMIT;</code></pre>
   <section id="verified" aria-labelledby="verified-title">
     <h2 id="verified-title">What was run, and what was not</h2>
     <ul>
-      <li><strong>Read on 2026-10-09:</strong> the Debezium Outbox Event Router reference (stable pages, which are 3.7, and the 1.9, 2.7, 3.0 and 3.3 versions for option names), the Debezium blog post on the outbox pattern, the Debezium PostgreSQL connector page (&ldquo;Behavior when things go wrong&rdquo;), the Debezium exactly-once page, microservices.io (the transactional outbox, polling publisher and transaction log tailing pages), the PostgreSQL pages on logical decoding, output plugins, transaction isolation and partitioning, and the Kafka introduction, producer configuration and operations pages. The router&rsquo;s <code>apply()</code> method was read in the 3.0.0.Final source.</li>
-      <li><strong>Run:</strong> the producer SQL (the two transactions, a rolled-back transaction, a global sequence consumed by a rollback, the polling cycle with a repeated <code>SELECT</code>, and the insert-then-delete transaction) on PGlite, which embeds PostgreSQL. The consumer guard and the four arrival sequences in the table ran on PGlite and on SQLite; the SQLite run is part of this repository&rsquo;s tests.</li>
-      <li><strong>Not run:</strong> Debezium, Kafka Connect and Kafka, so the connector configuration, the routed message layout (including a header arriving as bytes) and the router&rsquo;s behaviour on an update or on a tombstone are from the documentation and the 3.0.0.Final source only. Two concurrent database sessions: PGlite has one, so the lock-wait behaviour and the interleaving in the consumer section are from the PostgreSQL documentation and my reasoning. The effect of an immediately-deleted outbox on slot loss is my reasoning. No managed database service was used.</li>
+      <li><strong>Read on 2026-10-09:</strong> the Debezium Outbox Event Router reference (stable pages, which are 3.7, and the 1.9, 2.7, 3.0 and 3.3 versions for option names), the Debezium blog post on the outbox pattern, the Debezium PostgreSQL connector page (&ldquo;Behavior when things go wrong&rdquo;), the Debezium exactly-once page, microservices.io (the transactional outbox, polling publisher and transaction log tailing pages), the PostgreSQL pages on logical decoding, output plugins, transaction isolation and partitioning, and the Kafka introduction, producer configuration and operations pages. The router&rsquo;s <code>apply()</code> method was read in the 3.0.0.Final and 3.4.0.Final sources (the class moved in later releases and was not read there).</li>
+      <li><strong>Run:</strong> the producer SQL (the two transactions, a rolled-back transaction, a global sequence consumed by a rollback, the polling cycle with a repeated <code>SELECT</code>, the insert-then-delete transaction, and the id-reuse case with its (epoch, version) guard) on PGlite, which embeds PostgreSQL. The consumer guard and the four arrival sequences in the table ran on PGlite and on SQLite; the SQLite run is part of this repository&rsquo;s tests.</li>
+      <li><strong>Not run:</strong> Debezium, Kafka Connect and Kafka, so the connector configuration, the routed message layout (including a header arriving as bytes) and the router&rsquo;s behaviour on an update or on a tombstone are from the documentation and the 3.0.0.Final source only. Concurrent database sessions: PGlite has one, so I did not run the lock-wait behaviour or the interleavings. A reviewer reproduced the commit-order inversion (with <code>test_decoding</code>) and the polling gap on PostgreSQL 18 with three connections; the lock wait is from the PostgreSQL documentation. The effect of an immediately-deleted outbox on slot loss is my reasoning. No managed database service was used.</li>
       <li><strong>Check your version:</strong> router option names and defaults, the <code>partition</code> placement, whether tombstones are dropped, producer defaults in your Kafka Connect worker, and the isolation level your application uses.</li>
     </ul>
   </section>
