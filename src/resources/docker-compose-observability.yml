@@ -55,7 +55,7 @@ services:
       - cdc-network
 
   connect:
-    image: debezium/connect:2.7
+    image: quay.io/debezium/connect:2.7.4.Final
     container_name: cdc-connect
     depends_on:
       - kafka
@@ -85,7 +85,7 @@ services:
       - cdc-network
 
   pg:
-    image: debezium/example-postgres:2.7
+    image: quay.io/debezium/example-postgres:2.7.4.Final
     container_name: cdc-postgres
     environment:
       POSTGRES_USER: postgres

@@ -95,11 +95,23 @@ describe("toolVersions: what the labs pin", () => {
     expect(tested.apacheKafka).toBe(`3.${cpMinor}`);
   });
 
-  it("matches the debezium/connect tag in every lab compose file", () => {
+  it("matches the quay.io/debezium/connect tag in every lab compose file", () => {
     for (const file of [LAB_PAGE, ROOT_COMPOSE, OBSERVABILITY]) {
-      const tags = tagsOf(file, "debezium/connect");
+      const tags = tagsOf(file, "quay.io/debezium/connect");
       expect(tags.length, file).toBeGreaterThan(0);
       for (const tag of tags) expect(tag, file).toBe(tested.debeziumConnect);
+    }
+  });
+
+  it("pulls the Debezium example images from the same registry and tag", () => {
+    // The floating 2.7 tag exists only on quay.io, so a bare
+    // debezium/<image>:2.7 on Docker Hub fails to pull.
+    for (const file of [ROOT_COMPOSE, OBSERVABILITY]) {
+      for (const { repo, tag } of images(file)) {
+        if (!/debezium\/(connect|example-)/.test(repo)) continue;
+        expect(repo, file).toMatch(/^quay\.io\/debezium\//);
+        expect(tag, `${file} ${repo}`).toBe(tested.debeziumConnect);
+      }
     }
   });
 
@@ -114,6 +126,7 @@ describe("toolVersions: what the labs pin", () => {
     const note = read(LAB_PAGE).match(/<div class="note">([\s\S]*?)<\/div>/)[1];
     expect(note).toContain("{{ toolVersions.tested.confluentPlatform }}");
     expect(note).toContain("{{ toolVersions.tested.debeziumConnect }}");
+    expect(note).toContain("{{ toolVersions.tested.confluentPlatform }}");
     expect(note).not.toMatch(/Tested with/i);
   });
 });

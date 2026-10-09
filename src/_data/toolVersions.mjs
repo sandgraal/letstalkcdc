@@ -23,10 +23,18 @@ export default {
     // Apache Kafka 3.7.x (docs.confluent.io, versions-interoperability).
     confluentPlatform: "7.7.0",
     apacheKafka: "3.7",
-    // Docker Hub tag on debezium/connect: a release series, not a patch.
-    debeziumConnect: "2.7",
+    // Tag on quay.io/debezium/connect, example-postgres and example-mysql.
+    // Fully qualified on purpose: the floating "2.7" tag exists only on
+    // quay.io, not on Docker Hub, so a bare "debezium/connect:2.7" fails to
+    // pull. 2.7.4.Final is on quay.io only; Docker Hub stops at 2.7.3.Final.
+    debeziumConnect: "2.7.4.Final",
     // Major version of the debezium/postgres image in the lab compose file.
     postgresMajor: "15",
+    // Major version of PostgreSQL inside the example-postgres image used by
+    // compose.yaml and the observability compose. Not read from a compose
+    // file, so it has no test tie: upstream examples/postgres/2.7/Dockerfile
+    // is FROM quay.io/debezium/postgres:16 (checked 2026-10-09).
+    examplePostgresMajor: "16",
   },
   tools: {
     debezium: {
