@@ -20,6 +20,9 @@
    unstyled on all eight pages that use them. Bundling it here is the
    documented pattern for a shared component. */
 @import "components/panels.css";
+/* The code-block wrapper/header/copy-button classes are created by
+   code-blocks.js on every page and had no rules at all (P15-21). */
+@import "components/code-block.css";
 
 /* Buttons - Modern, sophisticated */
 .button {
