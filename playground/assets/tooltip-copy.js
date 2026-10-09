@@ -6,6 +6,11 @@ export const TOOLTIP_COPY = {
   triggerWriteAmplification:
     "Trigger audit-table writes versus source ops; >1x highlights extra load (~extra writes per change).",
   logFetchInterval: "Shorter fetch intervals decrease lag but require more connector and network throughput.",
+  metricLag: "Latency only: simulated clock minus the newest event's commit timestamp. It does not decide ordering.",
+  metricOrdering:
+    "OK when, for every row key, each event's log position (offset/LSN) is no lower than the previous one. Ordering follows the log, never the clock.",
+  metricConsistency:
+    "Ordering holds and, for polling, every delete the scenario issued was captured. Drift means a lane diverged from the source.",
   backlog: "Events queued on the bus waiting for apply to catch up.",
   lagPercentile: "Latency from commit to apply; percentiles show typical versus tail delay.",
   lagSpread: "Difference between the fastest and slowest lane latency.",

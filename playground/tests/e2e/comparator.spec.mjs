@@ -66,6 +66,22 @@ suite("Comparator basics", () => {
     await expect(destination.locator('th[data-highlight="true"]')).toHaveCount(0);
   });
 
+  test("ordering reads OK on every lane when events arrive in log order, even across tables", async ({ page }) => {
+    await loadComparator(page);
+
+    const scenarioSelect = page.locator('select[aria-label="Scenario"]');
+    await scenarioSelect.waitFor({ timeout: 10000 });
+    // Multi-table scenario: its interleaved ts_ms used to flip Ordering to KO on the trigger lane.
+    await scenarioSelect.selectOption({ label: "Omnichannel Orders" });
+    await page.evaluate(() => window.cdcComparatorClock?.play?.());
+    await page.waitForTimeout(4500);
+
+    const orderingBadges = page.locator('[role="status"]', { hasText: "Ordering:" });
+    await expect(orderingBadges).toHaveCount(3);
+    await expect(orderingBadges.filter({ hasText: "Ordering: KO" })).toHaveCount(0);
+    await expect(orderingBadges.filter({ hasText: "Ordering: OK" })).toHaveCount(3);
+  });
+
   test("transactions scenario exposes apply-on-commit toggle", async ({ page }) => {
     await loadComparator(page);
 
