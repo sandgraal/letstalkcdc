@@ -2,6 +2,9 @@
   "name": "cdc-missing-manual",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "clean": "rimraf dist _site src/assets/css/styles.min.css",
     "build:css": "postcss src/assets/css/main.css -o src/assets/css/styles.min.css",

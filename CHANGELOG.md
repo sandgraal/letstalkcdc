@@ -60,6 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Dependencies: in-range updates (P13-4).** All packages are at the
+  newest version their current semver range allows (Eleventy 3.1.6, Vite
+  8.3.4, ESLint 10.12, Prettier 3.9.9, Playwright 1.64, and others); no
+  major bumps. `package.json` now declares `engines.node >=20`, matching
+  `.nvmrc` and CI. The production CSS hash moved because cssnano now keeps
+  one `rgba()` colour exact instead of a lossy `hsla()`; the baseline in
+  `CLAUDE.md` is updated.
 - **Assistant feedback moved from Appwrite to Supabase, and Appwrite was
   removed entirely (P13-10).** Votes are sent with plain `fetch` and the
   publishable key (no SDK, no CDN script). Each vote carries a
