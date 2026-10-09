@@ -155,7 +155,7 @@ intents:
       committed outbox row from the log and publishes it to a message bus such
       as Kafka. An event is published if and only if the business transaction
       committed. It does not make delivery exactly-once, though. The publish
-      step is still at-least-once, so the sinks still need to be idempotent.
+      step is at-least-once by default, so the sinks still need to be idempotent.
     links:
       - label: The Transactional Outbox Pattern
         url: /exactly-once/
@@ -185,7 +185,7 @@ intents:
       ]
     modules: []
     answer: >
-      CDC delivery is at-least-once, and end-to-end exactly-once across
+      CDC delivery is at-least-once by default, and end-to-end exactly-once across
       systems is not achievable in general, so correctness comes from an
       idempotent sink. Upsert or MERGE on the primary key, and keep one row per
       key by ordering on the source log position (LSN or SCN), not on ts_ms,
@@ -228,12 +228,20 @@ intents:
     answer: >
       Exactly-once semantics (EOS) ensure each change event is applied exactly
       one time at the destination. This requires idempotent writes, transactional
-      coordination, or deduplication. Most CDC pipelines use at-least-once
-      delivery with idempotent sinks as a practical alternative to full EOS.
+      coordination, or deduplication. It depends on the hop. Kafka Connect
+      offers an opt-in exactly-once mode for source connectors (Debezium
+      documents it from 3.3) for the hop into Kafka, with caveats, and it is
+      off by default. Kafka transactions do not reach a database, a warehouse
+      load or an HTTP call, so the hop out of Kafka into a sink, and the
+      pipeline end to end, are not exactly-once delivery. Most CDC pipelines
+      use at-least-once delivery with idempotent sinks (primary key, ordered
+      by source log position) to get exactly-once processing, and that is
+      still needed even when the first hop is exactly-once.
     links:
       - label: Exactly-Once Semantics
         url: /exactly-once/
-        preview: Visual walkthrough of ALO vs EOS plus transactional outbox.
+        anchor: "#per-hop"
+        preview: Which hop can be exactly-once, how, and the caveats.
       - label: Event Envelope and Delivery
         url: /event-envelope/
         anchor: "#delivery-title"
@@ -657,7 +665,7 @@ intents:
       window (24 hours by default) and no compaction, and resharding moves keys
       between shards. Google Pub/Sub has no ordering by default, so ordering
       must come from the event's log position, never from arrival. All four are
-      at-least-once and none gives exactly-once into an external sink, so
+      at-least-once by default and none gives exactly-once into an external sink, so
       upsert on the primary key and break ties on log position, not ts_ms.
     links:
       - label: Transports other than Kafka
@@ -729,7 +737,7 @@ intents:
       ]
     modules: []
     answer: >
-      Every platform compared here delivers at-least-once at the wire, and none
+      Every platform compared here delivers at-least-once at the wire by default, and none
       gives end-to-end exactly-once across systems. Correctness comes from an
       idempotent sink - upsert on the primary key, ordered by the source log
       position, not ts_ms. The comparison matrix covers Debezium with Kafka

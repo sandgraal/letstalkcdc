@@ -118,9 +118,9 @@ export default [
   },
   {
     name: "Airbyte",
-    tags: ["open source", "mixed CDC"],
+    tags: ["source-available", "mixed CDC"],
     blurb:
-      "Open-source ELT; CDC varies by connector (check docs for log-based " +
+      "Source-available (ELv2) ELT; CDC varies by connector (check docs for log-based " +
       "maturity per source).",
   },
 ];
