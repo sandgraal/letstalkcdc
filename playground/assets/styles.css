@@ -950,11 +950,11 @@ body[data-theme="light"] .template-card__kicker {
 }
 
 body[data-theme="light"] .template-card__difficulty--beginner {
-  color: #15803d;
+  color: #166534;
 }
 
 body[data-theme="light"] .template-card__difficulty--intermediate {
-  color: #a16207;
+  color: #854d0e;
 }
 
 body[data-theme="light"] .template-card__difficulty--advanced {
@@ -2447,6 +2447,18 @@ select:focus {
   color: #fecaca;
 }
 
+body[data-theme="light"] .cdc-event-log {
+  color: var(--ink);
+}
+
+body[data-theme="light"] .cdc-event-log__op {
+  color: var(--accent-strong);
+}
+
+body[data-theme="light"] .cdc-event-log__op[data-op="d"] {
+  color: #991b1b;
+}
+
 .cdc-event-log__meta {
   color: var(--muted);
   text-align: right;
@@ -2972,6 +2984,10 @@ body.is-onboarding {
   border-top: 1px solid rgba(82, 114, 169, 0.25);
   background: rgba(6, 14, 28, 0.7);
   text-align: center;
+}
+
+body[data-theme="light"] .footer {
+  background: var(--bg-surface);
 }
 
 code {
@@ -3655,7 +3671,8 @@ body.megadesk-mode .hero-ambient .orb {
 }
 
 .simulator__tab[aria-selected="true"] .simulator__tab-hint {
-  color: rgba(255, 255, 255, 0.78);
+  color: #ffffff;
+  opacity: 1;
 }
 
 .simulator__tab:focus-visible {
@@ -3721,6 +3738,11 @@ body.megadesk-mode .hero-ambient .orb {
   margin: 0 0 12px;
   color: #d7e3fa;
   line-height: 1.5;
+}
+
+/* This panel keeps a dark surface in both themes, so its lead text stays light. */
+.method-guidance .section-lead {
+  color: #bac8e6;
 }
 
 .method-guidance__heading {
@@ -4057,6 +4079,15 @@ body[data-theme="light"] .method-guidance__chip {
   border-color: rgba(96, 165, 250, 0.35);
 }
 
+/* Light theme: the translucent fills composite to mid-tones under #f8fafc text. */
+body[data-theme="light"] .toast--success {
+  background: #047857;
+}
+
+body[data-theme="light"] .toast--warning {
+  background: #b45309;
+}
+
 .toast--leaving {
   opacity: 0;
   transform: translateY(-12px);
@@ -4071,7 +4102,7 @@ body[data-theme="light"] .method-guidance__chip {
 
 .section-lead {
   margin: 6px 0 0;
-  color: #bac8e6;
+  color: var(--muted-strong);
   line-height: 1.5;
 }
 
