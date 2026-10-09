@@ -2074,8 +2074,11 @@ ready to start; the first job is to turn it into measured, specific items.
       Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
       does not yet link out to the owning lesson; that needs a curated
       `lesson` field on the 33 entries._
-      _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
-      _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
+  - [ ] Related-lessons list has no styling (bullets/indent: `.series-nav*`
+        classes have no rules in the shipped stylesheet); needs a
+        `css-refactor` pass.
+        _2026-10-09: in flight as PR #376 (open, not merged; stays open until it merges). Its reported numbers: broken fragments 2 → 0, duplicate ids 0, orphan lessons 21 → 5._
+        _2026-10-09: #376 merged (kept open). Met: broken fragments 2 -> 0, duplicate ids 0, orphan lessons 21 -> 5 (`/mermaid-sandbox/`, `/privacy/`, `/styleguide/`, `/dashboard/`, `/`), `/compare/` and `/methodology/` inbound 0 -> 7 and 0 -> 3, `tests/unit/internal-links-headings.test.js` added. Not met: the data-driven "Related lessons" block, `/glossary/` linking out to the owning lesson, reciprocal links on `/tooling/` and `/compare/`, and content links to `/privacy/` and `/dashboard/`. Accept needs those, so the box stays open._
 - [ ] **P16-9 · Heading and fragment fixes.** Outcome: every content page has
       one `<h1>` and no skipped levels. Accept: `/merge-cookbook/` has an
       `<h1>`; the 10 pages with skips are corrected; the `#setup` link on

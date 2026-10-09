@@ -44,7 +44,7 @@ export default [
   },
   {
     key: "exactly-once",
-    related: ["is-cdc-exactly-once", "transactional-outbox", "which-row-wins"],
+    related: ["is-cdc-exactly-once", "transactional-outbox", "errata"],
     title: "Exactly-Once Semantics",
     description: "Visual walkthrough of ALO vs EOS + transactional outbox.",
     href: "exactly-once/",
@@ -53,7 +53,7 @@ export default [
   },
   {
     key: "is-cdc-exactly-once",
-    related: ["exactly-once", "ops-offsets", "test-your-pipeline", "errata"],
+    related: ["exactly-once", "which-row-wins", "materialization"],
     title: "Is CDC Exactly-Once? Per Hop",
     description:
       "Check any exactly-once claim hop by hop: Kafka Connect and Debezium opt-in settings, Kafka transactions, offsets in the sink, and how to verify.",
@@ -64,7 +64,7 @@ export default [
   },
   {
     key: "non-kafka-cdc",
-    related: ["tooling", "ops-offsets", "connector-builder"],
+    related: ["tooling", "ops-offsets"],
     title: "CDC Without Kafka",
     description:
       "Debezium Server, the embedded engine, managed services and search-index sync: what each guarantees, what a crash repeats, and why the log position is the version.",
@@ -86,7 +86,7 @@ export default [
   },
   {
     key: "multi-tenancy",
-    related: ["partitioning", "security", "schema-evolution"],
+    related: ["partitioning", "security", "observability"],
     title: "Multi-Tenancy",
     description: "Isolation patterns, topic math, and rough egress estimates.",
     href: "multi-tenancy/",
@@ -198,7 +198,7 @@ export default [
   },
   {
     key: "security",
-    related: ["multi-tenancy", "cdc-data-contracts", "strategy"],
+    related: ["multi-tenancy", "deletes-stay-deleted", "cdc-data-contracts"],
     title: "Security, PII & Access Control",
     description:
       "Mask columns before they reach the broker, size the privileges CDC actually needs, and plan for a log that outlives the row.",
@@ -327,6 +327,7 @@ export default [
   },
   {
     key: "failure-drills",
+    // Not rendered yet: this page has no `seriesKey`, so no series navigation.
     related: ["test-your-pipeline", "observability", "dlq-triage"],
     title: "Failure Scenario Drills",
     description:
@@ -338,6 +339,7 @@ export default [
   },
   {
     key: "cloud-labs",
+    // Not rendered yet: this page has no `seriesKey`, so no series navigation.
     related: ["quickstarts", "lab-kafka-debezium", "tooling"],
     title: "Cloud CDC Labs",
     description:
@@ -382,7 +384,7 @@ export default [
   },
   {
     key: "errata",
-    related: ["exactly-once", "is-cdc-exactly-once", "event-envelope"],
+    related: ["is-cdc-exactly-once", "which-row-wins", "materialization"],
     title: "Nuances & Errata",
     description:
       "Corrections, caveats, and sharp edges across CDC: effectively-once vs exactly-once, snapshots & replays, tombstones/compaction, schema evolution, and ops guardrails.",
