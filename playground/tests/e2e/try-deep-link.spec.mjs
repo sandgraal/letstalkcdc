@@ -117,6 +117,34 @@ suite("?try=<scenario-id> deep links under the Pages prefix", () => {
     await expect(page.getByTestId("sink-markers").last()).toContainText("ORD-9");
   });
 
+  test("synthetic generator ops do not shift redeliver targets: ?try plus an immediate Burst keeps the lab's result", async ({ page }) => {
+    await open(page, "?try=delete-then-late-update#simulator");
+    await expect(page.locator("#simTabCompare")).toHaveAttribute("aria-selected", "true", { timeout: 15000 });
+    await page.getByRole("button", { name: /^Burst \+/ }).click();
+    // The lab's own writes still happen, and the repeat still targets ORD-9's packed update.
+    await expect(logDestination(page)).toContainText("ORD-9", { timeout: 15000 });
+    await expect(logDestination(page)).toContainText("packed");
+    await expect(counters(page)).toHaveText(/Stale applies [1-9]/, { timeout: 15000 });
+  });
+
+  test("a linked lab shows the log lane even when saved preferences had it off, and saves nothing", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "cdc_comparator_prefs_v1",
+        JSON.stringify({ scenarioId: "CRUD Basic", activeMethods: ["polling", "trigger"] }),
+      );
+    });
+    await open(page, "?try=replay-guard#simulator");
+    await expect(page.getByTestId("sink-counters")).toHaveCount(1, { timeout: 15000 });
+    // The linked visit must not overwrite the saved preferences.
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("cdc_comparator_prefs_v1")));
+    expect(saved.scenarioId).toBe("CRUD Basic");
+    expect(saved.activeMethods).toEqual(["polling", "trigger"]);
+    // A later plain visit opens the saved/default scenario, not the lab.
+    await open(page, "");
+    await expect(page.locator("#simTabFeed")).toHaveAttribute("aria-selected", "true");
+  });
+
   test("an unknown id is ignored: the page opens as it does without the parameter", async ({ page }) => {
     await open(page, "?try=does-not-exist");
     await expect(page.locator("#simTabFeed")).toHaveAttribute("aria-selected", "true");

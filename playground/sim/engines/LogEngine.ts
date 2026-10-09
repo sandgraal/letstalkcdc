@@ -9,8 +9,6 @@ export class LogEngine extends BaseEngine {
   private lsn = 0;
   private fetchIntervalMs = 100;
   private lastFetch = 0;
-  // Index of the next applySourceOp call, so `redeliver.ref` can name an op.
-  private opCounter = 0;
   // op index -> the WAL record that op produced.
   private walByOp = new Map<number, WalRecord>();
 
@@ -24,17 +22,15 @@ export class LogEngine extends BaseEngine {
     this.wal = [];
     this.lsn = 0;
     this.lastFetch = 0;
-    this.opCounter = 0;
     this.walByOp.clear();
   }
 
-  applySourceOp(op: SourceOp) {
-    const opIndex = this.opCounter++;
+  applySourceOp(op: SourceOp, scenarioIndex?: number) {
     if (op.op === "redeliver") {
       // Delivery-layer repeat: the same record, the same lsn. Nothing is
       // written at the source and the log position does not advance.
       const original = this.walByOp.get(op.ref);
-      if (original) {
+      if (original && original.table === op.table && original.pk.id === op.pk.id) {
         this.wal.push({
           ...original,
           before: original.before ? { ...original.before } : null,
@@ -60,7 +56,7 @@ export class LogEngine extends BaseEngine {
         updated_at_ms: op.t,
         deleted: false,
       });
-      this.pushRecord(opIndex, {
+      this.pushRecord(scenarioIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -87,7 +83,7 @@ export class LogEngine extends BaseEngine {
         deleted: false,
       });
 
-      this.pushRecord(opIndex, {
+      this.pushRecord(scenarioIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -104,7 +100,7 @@ export class LogEngine extends BaseEngine {
       const cur = this.table.get(op.pk.id);
       this.table.delete(op.pk.id);
 
-      this.pushRecord(opIndex, {
+      this.pushRecord(scenarioIndex, {
         lsn: ++this.lsn,
         tx_id,
         tx_index,
@@ -120,8 +116,8 @@ export class LogEngine extends BaseEngine {
     }
   }
 
-  private pushRecord(opIndex: number, record: WalRecord) {
-    this.walByOp.set(opIndex, record);
+  private pushRecord(scenarioIndex: number | undefined, record: WalRecord) {
+    if (scenarioIndex !== undefined) this.walByOp.set(scenarioIndex, record);
     this.wal.push(record);
   }
 

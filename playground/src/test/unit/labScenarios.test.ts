@@ -28,7 +28,10 @@ function runLogLane(ops: SourceOp[], sink?: SinkOptions) {
   const horizon = (ops.length ? Math.max(...ops.map(op => op.t)) : 0) + 1000;
   let next = 0;
   for (let now = 0; now <= horizon; now += 50) {
-    while (next < ops.length && ops[next].t <= now) adapter.applySource?.(ops[next++]);
+    while (next < ops.length && ops[next].t <= now) {
+      adapter.applySource?.(ops[next], next);
+      next += 1;
+    }
     adapter.tick?.(now);
     for (const event of bus.consume(TOPIC, 100)) {
       storage.applyEvent(event);

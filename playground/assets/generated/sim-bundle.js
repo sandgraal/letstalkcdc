@@ -220,19 +220,18 @@ function i() {
 //#region sim/engines/LogEngine.ts
 var a = class extends t {
 	constructor(...e) {
-		super(...e), this.name = "log", this.table = /* @__PURE__ */ new Map(), this.wal = [], this.lsn = 0, this.fetchIntervalMs = 100, this.lastFetch = 0, this.opCounter = 0, this.walByOp = /* @__PURE__ */ new Map();
+		super(...e), this.name = "log", this.table = /* @__PURE__ */ new Map(), this.wal = [], this.lsn = 0, this.fetchIntervalMs = 100, this.lastFetch = 0, this.walByOp = /* @__PURE__ */ new Map();
 	}
 	configure(e) {
 		e.fetch_interval_ms !== void 0 && (this.fetchIntervalMs = e.fetch_interval_ms);
 	}
 	reset(e) {
-		super.reset(e), this.table.clear(), this.wal = [], this.lsn = 0, this.lastFetch = 0, this.opCounter = 0, this.walByOp.clear();
+		super.reset(e), this.table.clear(), this.wal = [], this.lsn = 0, this.lastFetch = 0, this.walByOp.clear();
 	}
-	applySourceOp(e) {
-		let t = this.opCounter++;
+	applySourceOp(e, t) {
 		if (e.op === "redeliver") {
 			let t = this.walByOp.get(e.ref);
-			t && this.wal.push({
+			t && t.table === e.table && t.pk.id === e.pk.id && this.wal.push({
 				...t,
 				before: t.before ? { ...t.before } : null,
 				after: t.after ? { ...t.after } : null,
@@ -309,7 +308,7 @@ var a = class extends t {
 		}
 	}
 	pushRecord(e, t) {
-		this.walByOp.set(e, t), this.wal.push(t);
+		e !== void 0 && this.walByOp.set(e, t), this.wal.push(t);
 	}
 	tick(e) {
 		if (e - this.lastFetch < this.fetchIntervalMs) return;
@@ -365,8 +364,8 @@ var a = class extends t {
 		this.now += e;
 		let { ops: t } = this.scenario;
 		for (; this.idx < t.length && t[this.idx].t <= this.now;) {
-			let e = t[this.idx++];
-			this.engines.forEach((t) => t.applySourceOp(e));
+			let e = this.idx, n = t[this.idx++];
+			this.engines.forEach((t) => t.applySourceOp(n, e));
 		}
 		this.engines.forEach((e) => e.tick(this.now)), this.onTickCb?.(this.now);
 	}

@@ -666,6 +666,7 @@ const SCENARIO_TEMPLATES = Object.freeze(
       rows: cloneTemplateRows(template.rows),
       events: cloneTemplateEvents(template.events),
       ops: cloneTemplateOps(template.ops, index),
+      sink: template.sink && typeof template.sink === "object" ? { ...template.sink } : undefined,
     }))
     .filter(template => template.id && template.ops.length > 0)
 );
@@ -1685,8 +1686,15 @@ function renderPreviewOps(ops) {
   }
   ops.slice(0, 10).forEach(op => {
     const li = document.createElement("li");
-    const verb = op.op === "insert" ? "Insert" : op.op === "update" ? "Update" : "Delete";
-    li.textContent = `${verb} ${op.table || "table"}#${op.pk?.id ?? "?"}`;
+    const target = `${op.table || "table"}#${op.pk?.id ?? "?"}`;
+    if (op.op === "redeliver") {
+      li.textContent = `Redeliver (ref ${op.ref}) ${target}`;
+    } else if (op.op === "insert" || op.op === "update" || op.op === "delete") {
+      const verb = op.op === "insert" ? "Insert" : op.op === "update" ? "Update" : "Delete";
+      li.textContent = `${verb} ${target}`;
+    } else {
+      li.textContent = `${String(op.op || "Unknown operation")} ${target}`;
+    }
     list.appendChild(li);
   });
 }
@@ -4877,6 +4885,7 @@ function downloadScenarioTemplate(template) {
     rows: template.rows,
     events: template.events,
     ops: template.ops,
+    ...(template.sink ? { sink: { ...template.sink } } : {}),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const a = document.createElement("a");

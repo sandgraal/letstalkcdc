@@ -4,7 +4,7 @@ export interface MethodEngine {
   name: "polling" | "trigger" | "log";
   configure(opts: Record<string, any>): void;
   reset(seed: number): void;
-  applySourceOp(op: SourceOp): void;
+  applySourceOp(op: SourceOp, scenarioIndex?: number): void;
   applySchemaChange?(table: string, action: "add" | "drop", column: { name: string; type: string; nullable?: boolean }, commitTs: number): void;
   tick(nowMs: number): void;
   onEvent(cb: (e: CdcEvent) => void): () => void;

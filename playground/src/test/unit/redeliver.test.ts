@@ -21,9 +21,13 @@ function startLane(adapter: ModeAdapter, topic = TOPIC) {
     return enriched;
   });
   let now = 0;
+  let scenarioIndex = 0;
   return {
     delivered,
-    apply: (op: SourceOp) => adapter.applySource?.(op),
+    // A scenario op, as the runner applies it: it carries its index in ops.
+    apply: (op: SourceOp) => adapter.applySource?.(op, scenarioIndex++),
+    // A synthetic op (the generator): no scenario index, outside ops.
+    generate: (op: SourceOp) => adapter.applySource?.(op),
     advance: (ms: number) => {
       now += ms;
       adapter.tick?.(now);
@@ -128,6 +132,37 @@ describe("redeliver (at-least-once redelivery of a log record)", () => {
     lane.apply(redeliver(220, 2)); // op 2 is itself a redelivery
     lane.advance(50);
     expect(lane.delivered.filter(e => e.redelivered)).toHaveLength(1);
+  });
+
+  it("generator ops applied before scenario ops do not shift what ref points at", () => {
+    const lane = startLane(createLogBasedAdapter());
+    const gen = (id: string): SourceOp => ({
+      t: 50,
+      op: "insert",
+      table: "orders",
+      pk: { id },
+      after: { status: "generated" },
+    });
+    lane.generate(gen("gen-1"));
+    lane.generate(gen("gen-2"));
+    lane.apply(order(100, "insert", "created")); // ops[0]
+    lane.apply(order(200, "update", "paid")); // ops[1]
+    lane.advance(50);
+    lane.apply(redeliver(400, 1));
+    lane.advance(50);
+    const copy = lane.delivered.find(e => e.redelivered);
+    expect(copy?.after?.status).toBe("paid");
+    expect(copy?.after?.id).toBe("ORD-1");
+  });
+
+  it("ignores a redeliver whose table or key does not match ops[ref]", () => {
+    const lane = startLane(createLogBasedAdapter());
+    lane.apply(order(100, "insert", "created"));
+    lane.advance(50);
+    lane.apply({ t: 200, op: "redeliver", ref: 0, table: "orders", pk: { id: "ORD-2" } });
+    lane.apply({ t: 210, op: "redeliver", ref: 0, table: "other", pk: { id: "ORD-1" } });
+    lane.advance(50);
+    expect(lane.delivered.filter(e => e.redelivered)).toHaveLength(0);
   });
 
   it("is a log-lane concept: polling and trigger lanes emit nothing for it", () => {

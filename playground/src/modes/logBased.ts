@@ -59,10 +59,9 @@ export function createLogBasedAdapter(): ModeAdapter {
   const rows = new Map<string, StoredRow>();
   const wal: Event[] = [];
   let lastEmittedIndex = 0;
-  // Index of the next applySource call. A scenario's `redeliver.ref` is a
-  // 0-based index into its ops, and the runner applies ops in order.
-  let opCounter = 0;
-  // op index -> index into `wal` of the record that op produced.
+  // scenario op index -> index into `wal` of the record that op produced. Only
+  // ops that carry a scenarioIndex are recorded, so synthetic (generator) ops
+  // never shift what a scenario's `redeliver.ref` points at.
   const walIndexByOp = new Map<number, number>();
   // wal index -> the event as published (carries the bus offset). A redelivery
   // copies this, so it keeps the position the first delivery was given.
@@ -151,9 +150,13 @@ export function createLogBasedAdapter(): ModeAdapter {
     lastEmittedIndex = wal.length;
   };
 
-  const redeliver = (ref: number) => {
-    const walIndex = walIndexByOp.get(ref);
+  const redeliver = (op: Extract<SourceOp, { op: "redeliver" }>) => {
+    const walIndex = walIndexByOp.get(op.ref);
     if (walIndex === undefined || !emitFn) return;
+    // The op must name the record it repeats: same table and key as ops[ref].
+    const target = wal[walIndex];
+    const targetKey = target?.after?.id ?? target?.before?.id;
+    if (!target || target.table !== op.table || String(targetKey) !== String(op.pk.id)) return;
     // Make sure the first delivery has happened, so there is an original
     // position to preserve.
     flush();
@@ -228,11 +231,10 @@ export function createLogBasedAdapter(): ModeAdapter {
     startTailing(emit) {
       emitFn = emit;
     },
-    applySource(op) {
+    applySource(op, scenarioIndex) {
       if (!runtime) return;
-      const opIndex = opCounter++;
       if (op.op === "redeliver") {
-        redeliver(op.ref);
+        redeliver(op);
         return;
       }
       const commitTs = op.t;
@@ -249,7 +251,7 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: false,
         });
-        walIndexByOp.set(opIndex, wal.length);
+        if (scenarioIndex !== undefined) walIndexByOp.set(scenarioIndex, wal.length);
         wal.push(
           buildRowEvent(op, "INSERT", null, cloneRowPayload(op.after), eventTs),
         );
@@ -265,7 +267,7 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: false,
         });
-        walIndexByOp.set(opIndex, wal.length);
+        if (scenarioIndex !== undefined) walIndexByOp.set(scenarioIndex, wal.length);
         wal.push(
           buildRowEvent(op, "UPDATE", before, cloneRowPayload(merged), eventTs),
         );
@@ -279,7 +281,7 @@ export function createLogBasedAdapter(): ModeAdapter {
           updatedAt: commitTs,
           deleted: true,
         });
-        walIndexByOp.set(opIndex, wal.length);
+        if (scenarioIndex !== undefined) walIndexByOp.set(scenarioIndex, wal.length);
         wal.push(
           buildRowEvent(op, "DELETE", current ? cloneRowPayload(current.data) : null, null, eventTs),
         );
@@ -324,7 +326,6 @@ export function createLogBasedAdapter(): ModeAdapter {
       rows.clear();
       wal.length = 0;
       lastEmittedIndex = 0;
-      opCounter = 0;
       walIndexByOp.clear();
       delivered.clear();
       emitFn = null;

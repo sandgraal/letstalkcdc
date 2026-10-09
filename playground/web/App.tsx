@@ -783,8 +783,8 @@ function createControllerEngineInstance(
       runtime = { bus, metrics, scheduler, topic };
       initialiseController();
     },
-    applySourceOp(op) {
-      adapter.applySource?.(op);
+    applySourceOp(op, scenarioIndex) {
+      adapter.applySource?.(op, scenarioIndex);
     },
     applySchemaChange(tableName, action, column, commitTs) {
       const mapped: "ADD_COLUMN" | "DROP_COLUMN" = action === "add" ? "ADD_COLUMN" : "DROP_COLUMN";
@@ -1277,10 +1277,27 @@ export function App() {
         : METHOD_ORDER.filter((method): method is MethodOption => method !== "trigger"),
     [triggerModeEnabled],
   );
-  const initialActiveMethods = useMemo(
-    () => sanitizeActiveMethods(storedPrefs?.activeMethods, effectiveMethodOrder),
-    [effectiveMethodOrder, storedPrefs?.activeMethods],
-  );
+  // ?try=<scenario-id>: resolved once, against the known scenario ids only.
+  const tryScenarioRef = useRef<ShellScenario | null | undefined>(undefined);
+  if (tryScenarioRef.current === undefined) {
+    tryScenarioRef.current =
+      typeof window === "undefined" ? null : resolveTryScenario(window.location.search, SCENARIOS);
+  }
+  const tryScenario = tryScenarioRef.current;
+  const pendingTryStartRef = useRef<string | null>(tryScenario?.name ?? null);
+  // True while the visit is driven by the link. Such a visit saves no comparator
+  // preferences (so a later plain visit opens the default scenario) until the
+  // reader picks a scenario themselves.
+  const tryVisitRef = useRef(Boolean(tryScenario));
+  const initialActiveMethods = useMemo(() => {
+    const stored = sanitizeActiveMethods(storedPrefs?.activeMethods, effectiveMethodOrder);
+    // The guard demo acts on the log lane, so a linked lab always shows it, even
+    // when saved preferences had it switched off.
+    if (tryScenario && !stored.includes("log")) {
+      return effectiveMethodOrder.filter(method => method === "log" || stored.includes(method));
+    }
+    return stored;
+  }, [effectiveMethodOrder, storedPrefs?.activeMethods, tryScenario]);
   const initialMethodConfig = sanitizeMethodConfig(storedPrefs?.methodConfig);
   const initialPresetId: VendorPresetId = storedPrefs?.presetId && isVendorPresetId(storedPrefs.presetId)
     ? storedPrefs.presetId
@@ -1300,14 +1317,6 @@ export function App() {
   }, [safeLocalStorage]);
 
   const [liveScenario, setLiveScenario] = useState<ShellScenario | null>(null);
-  // ?try=<scenario-id>: resolved once, against the known scenario ids only.
-  const tryScenarioRef = useRef<ShellScenario | null | undefined>(undefined);
-  if (tryScenarioRef.current === undefined) {
-    tryScenarioRef.current =
-      typeof window === "undefined" ? null : resolveTryScenario(window.location.search, SCENARIOS);
-  }
-  const tryScenario = tryScenarioRef.current;
-  const pendingTryStartRef = useRef<string | null>(tryScenario?.name ?? null);
   const [scenarioId, setScenarioId] = useState<string>(
     () => tryScenario?.name ?? storedPrefs?.scenarioId ?? SCENARIOS[0].name,
   );
@@ -2338,6 +2347,7 @@ export function App() {
   }, [applyComparatorPreferences]);
 
   useEffect(() => {
+    if (tryVisitRef.current) return;
     savePreferences({
       scenarioId,
       presetId,
@@ -2887,6 +2897,7 @@ export function App() {
   );
 
   const handleScenarioSelect = useCallback((value: string) => {
+    tryVisitRef.current = false;
     userSelectedScenarioRef.current = true;
     setScenarioId(value);
     track("comparator.scenario.select", { scenario: value });
@@ -3338,6 +3349,7 @@ export function App() {
         rows: target.rows ?? [],
         events: target.events ?? [],
         ops: target.ops,
+        ...(target.sink ? { sink: { ...target.sink } } : {}),
         version: 2,
         exportedAt,
         comparator: comparatorPayload,
