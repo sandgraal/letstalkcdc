@@ -207,6 +207,80 @@ intents:
         anchor: "#delivery-title"
         preview: At-least-once, and the sink-side dedupe key.
 
+  - id: target_ordering
+    triggers:
+      [
+        "which row wins",
+        "_change_sequence_number",
+        "change sequence number",
+        "sequence by",
+        "auto cdc",
+        "ordering field",
+        "precombine",
+        "merge mode",
+        "commit time ordering",
+        "event time ordering",
+        "equality delete",
+        "upsert-dedup-column",
+        "bigquery cdc",
+        "hudi ordering",
+        "iceberg upsert",
+        "delta merge",
+        "snowflake stream",
+      ]
+    modules: ["which-row-wins"]
+    answer: >
+      Each warehouse or lakehouse target decides which version of a row wins in
+      its own way, and several default to arrival or commit order. Name three
+      things per target: the key, the ordering column and the delete marker. Make
+      the ordering column the source log position, for example
+      _CHANGE_SEQUENCE_NUMBER in BigQuery, SEQUENCE BY in Databricks, the
+      ordering field in Hudi, or a position guard in a MERGE for Iceberg, Delta
+      and Snowflake. Check each setting against your version of the vendor
+      documentation.
+    links:
+      - label: Which row wins in your target
+        url: /which-row-wins/
+        anchor: "#at-a-glance-title"
+        preview: Key, ordering and delete handling for six targets.
+      - label: Making Sinks Bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Why the log position, not a timestamp, is the version.
+
+  - id: delete_markers
+    triggers:
+      [
+        "delete marker",
+        "soft delete",
+        "deleted flag",
+        "resurrect",
+        "row came back",
+        "deleted row came back",
+        "zombie row",
+        "apply as delete",
+        "_change_type",
+        "physical delete",
+        "hard delete",
+      ]
+    modules: ["which-row-wins"]
+    answer: >
+      A physical delete removes the version along with the row, so a replayed
+      older update can bring the key back. Keep a delete marker, which is a
+      deleted flag plus the delete's log position, or rely on a target feature
+      that remembers the delete for a stated time (two days by default in
+      BigQuery CDC ingestion and Databricks AUTO CDC) and know that time. Act on
+      the delete change event, not on the Kafka tombstone alone.
+    links:
+      - label: Delete markers
+        url: /which-row-wins/
+        anchor: "#deletes-title"
+        preview: Why a physical delete is not enough.
+      - label: Build idempotent merge logic
+        url: /materialization/
+        anchor: "#merge-title"
+        preview: Delete markers in a MERGE.
+
   - id: exactly_once
     triggers:
       [
