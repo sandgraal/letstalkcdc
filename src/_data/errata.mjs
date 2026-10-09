@@ -73,4 +73,26 @@ export default [
         with the new schema, so you upgrade producers first and let
         consumers catch up. The card has been corrected.</p>`,
   },
+  {
+    id: "reconcile-by-log-position-2026-10-09",
+    urls: ["/errata/", "/snapshotting/", "/materialization/"],
+    title: "Corrected: reconcile by log position, not a timestamp",
+    dateModified: "2026-10-09",
+    body: `<p>Several examples ordered or reconciled changes by a
+        timestamp or left them unguarded. The snapshotting page's
+        warehouse MERGE had no version guard, so a replay or an
+        overlapping snapshot chunk could overwrite a newer row, and its
+        "no primary key" advice said to dedupe on a hash plus the latest
+        timestamp. The errata page said to reconcile snapshots using
+        version columns or <code>op_ts</code>, and its soft-delete note
+        suggested physical deletes where a delete marker is the safe
+        choice. The dbt incremental model
+        on the materialization page filtered deletes out before the
+        target, so the deleted key's old row stayed, and had no
+        incremental bound or guard; its BigQuery rebuild also dropped
+        deletes instead of marking them. All now key the sink on the primary key and apply
+        a change only if its source log position is greater than the one
+        stored, keeping deletes as delete markers. Delivery stays
+        at-least-once; none of this is end-to-end exactly-once.</p>`,
+  },
 ];
