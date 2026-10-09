@@ -95,4 +95,27 @@ export default [
         stored, keeping deletes as delete markers. Delivery stays
         at-least-once; none of this is end-to-end exactly-once.</p>`,
   },
+  {
+    id: "exactly-once-per-hop-2026-10-09",
+    urls: ["/exactly-once/"],
+    title: "Corrected: exactly-once is a per-hop question",
+    dateModified: "2026-10-09",
+    body: `<p>This page said exactly-once was not achievable and that
+        source connectors such as Debezium are at-least-once into Kafka.
+        That is too blunt. Since Debezium 3.3 the documentation describes
+        an opt-in exactly-once mode for Kafka Connect source connectors
+        (MariaDB, MongoDB, MySQL, Oracle, PostgreSQL, SQL Server), built on
+        Kafka transactions. It needs distributed mode, Kafka Connect 3.3.0
+        or later, <code>exactly.once.source.support=enabled</code> on the
+        workers and <code>exactly.once.support=required</code> on the
+        connector. It is off by default, and Debezium's own page still says
+        it provides at-least-once delivery, has no internal deduplication
+        layer, and that it is unclear whether the implementation is fully
+        correct. Kafka transactions make writes and offsets atomic inside
+        Kafka; they do not cover a database, a warehouse load or an HTTP
+        call. The page now answers hop by hop. The sink still has to be
+        idempotent, keyed on the primary key and ordered by source log
+        position. The errata page's source-connector note was updated to
+        match.</p>`,
+  },
 ];

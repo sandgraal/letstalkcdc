@@ -155,7 +155,7 @@ intents:
       committed outbox row from the log and publishes it to a message bus such
       as Kafka. An event is published if and only if the business transaction
       committed. It does not make delivery exactly-once, though. The publish
-      step is still at-least-once, so the sinks still need to be idempotent.
+      step is at-least-once by default, so the sinks still need to be idempotent.
     links:
       - label: The Transactional Outbox Pattern
         url: /exactly-once/
@@ -228,12 +228,20 @@ intents:
     answer: >
       Exactly-once semantics (EOS) ensure each change event is applied exactly
       one time at the destination. This requires idempotent writes, transactional
-      coordination, or deduplication. Most CDC pipelines use at-least-once
-      delivery with idempotent sinks as a practical alternative to full EOS.
+      coordination, or deduplication. It depends on the hop. Kafka Connect
+      offers an opt-in exactly-once mode for source connectors (Debezium
+      documents it from 3.3) for the hop into Kafka, with caveats, and it is
+      off by default. Kafka transactions do not reach a database, a warehouse
+      load or an HTTP call, so the hop out of Kafka into a sink, and the
+      pipeline end to end, is not exactly-once delivery. Most CDC pipelines
+      use at-least-once delivery with idempotent sinks (primary key, ordered
+      by source log position) to get exactly-once processing, and that is
+      still needed even when the first hop is exactly-once.
     links:
       - label: Exactly-Once Semantics
         url: /exactly-once/
-        preview: Visual walkthrough of ALO vs EOS plus transactional outbox.
+        anchor: "#per-hop"
+        preview: Which hop can be exactly-once, how, and the caveats.
       - label: Event Envelope and Delivery
         url: /event-envelope/
         anchor: "#delivery-title"
