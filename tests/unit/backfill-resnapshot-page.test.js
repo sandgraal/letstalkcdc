@@ -9,13 +9,16 @@
  *     promises end-to-end exactly-once, or promises a risk-free backfill;
  *   - behaviour: the SQL printed on the page is executed against SQLite
  *     (`node:sqlite`, no flag needed on the Node floor in package.json) and
- *     must give the rows the page claims. It is not run on PostgreSQL here.
+ *     must give the rows the page claims. The straddling-transaction stamp
+ *     and the payload checksum query are also run on PGlite (a
+ *     PostgreSQL-compatible engine), because they use PostgreSQL syntax.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { PGlite } from "@electric-sql/pglite";
 
 import series from "../../src/_data/series.mjs";
 import glossary from "../../src/_data/glossary.mjs";
@@ -254,6 +257,49 @@ describe("banned wording", () => {
       /\b(?:seamless(?:ly)?|robust|leverage|game-?changer)\b/i,
     );
     expect(source).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+  });
+});
+
+describe("the stamp rule of choice 5", () => {
+  const start = body.indexOf('<section id="sql-reload"');
+  const section = text(body.slice(start, body.indexOf("</section>", start)));
+  const rule = /The rule: (.*?)\. The reason/.exec(section)?.[1] ?? "";
+
+  it("states the rule as a position at or below the first change of every open transaction", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(rule).toMatch(/stamp the loaded rows with a position at or below/);
+    expect(rule).not.toMatch(/after the read|start position/i);
+  });
+
+  it("names restart_lsn and explains why positions below the start arrive", () => {
+    expect(section).toMatch(/restart_lsn/);
+    expect(section).toMatch(/arrives with positions below that start/);
+    expect(section).toMatch(/at or below/);
+  });
+
+  it("never recommends stamping the start position or a position after the read", () => {
+    expect(section).not.toMatch(
+      /\b(?:should|must|always)\s+stamp\b[^.]*(?:start position|after the read)/i,
+    );
+    expect(section).toMatch(
+      /Do not stamp the loaded rows with the position after the read/,
+    );
+  });
+
+  it("carries the slot caveats and the wait-for-quiet procedure in order", () => {
+    expect(section).toMatch(/wal_status is not lost/);
+    expect(section).toMatch(
+      /only costs you coverage: the reload repairs rows stored below the stamp and leaves rows stored above it/,
+    );
+    const steps = [
+      "pg_current_wal_lsn()",
+      "pg_snapshot_xmax(pg_current_snapshot())",
+      "pg_snapshot_xmin(pg_current_snapshot())",
+    ].map((t) => section.indexOf(t));
+    expect(steps.every((i) => i > -1)).toBe(true);
+    expect(steps).toEqual([...steps].sort((x, y) => x - y));
+    expect(section).toMatch(/pg_prepared_xacts/);
+    expect(section).toMatch(/txid_\*/);
   });
 });
 
@@ -683,38 +729,37 @@ describe("the SQL on the page, executed against SQLite", () => {
       ]);
     });
 
-    // The same page statement on a PostgreSQL-compatible engine, when the
-    // package is installed (it is not a dependency of this site).
-    const pgliteName = "@electric-sql/pglite";
-    let PGlite = null;
-    it("on PGlite (skipped when the package is not installed)", async (ctx) => {
-      try {
-        ({ PGlite } = await import(/* @vite-ignore */ pgliteName));
-      } catch {
-        ctx.skip();
-        return;
-      }
+    // The same page statement on a PostgreSQL-compatible engine. One engine
+    // for the whole block: a cold PGlite start is the slow part, and it can
+    // exceed vitest's 5s default when the full suite is running.
+    let pg;
+    beforeAll(async () => {
+      pg = new PGlite();
+      await pg.waitReady;
+    }, 60_000);
+    afterAll(async () => pg?.close());
+
+    it("on PGlite, the same statement gives the same outcomes", async () => {
       const literal = ([id, email, del, lsn]) =>
         upsert.replace(
           VALUES,
           `VALUES (${id}, ${email === null ? "NULL" : `'${email}'`}, ${del ? "TRUE" : "FALSE"}, ${lsn})`,
         );
       const run = async (stamp, streamFirst) => {
-        const pg = new PGlite();
+        await pg.exec("DROP TABLE IF EXISTS customers");
         await pg.exec(ddl);
         const seq = streamFirst
           ? [STREAMED, loaded(stamp)]
           : [loaded(stamp), STREAMED];
         for (const r of seq) await pg.exec(literal(r));
         const { rows } = await pg.query("SELECT email FROM customers");
-        await pg.close();
         return rows[0].email;
       };
       expect(await run(150, false)).toBe("loaded");
       expect(await run(150, true)).toBe("loaded");
       expect(await run(100, false)).toBe("streamed-straddling");
       expect(await run(100, true)).toBe("streamed-straddling");
-    });
+    }, 60_000);
   });
 
   describe("rows the snapshot never mentions", () => {
@@ -961,5 +1006,37 @@ describe("the SQL on the page, executed against SQLite", () => {
       { bucket: 0, live: 2, max: 200 },
       { bucket: 1, live: 1, max: 90 },
     ]);
+  });
+
+  describe("the payload checksum query, on PGlite", () => {
+    const checksumBlock = codeBlocks.find((b) => /string_agg/.test(b));
+    let pg;
+    beforeAll(async () => {
+      pg = new PGlite();
+      await pg.exec(ddl);
+    }, 60_000);
+    afterAll(async () => pg?.close());
+
+    it("hashes live rows per 1000-key bucket and ignores markers", async () => {
+      await pg.exec(`
+        INSERT INTO customers VALUES
+          (1, 'a', FALSE, 150), (2, 'b', FALSE, 150),
+          (3, NULL, TRUE, 160), (1500, 'c', FALSE, 150)`);
+      const query = strip(checksumBlock)
+        .split(";")
+        .find((q) => /string_agg/.test(q));
+      const { rows } = await pg.query(query);
+      expect(rows.map((r) => [Number(r.bucket), Number(r.live_rows)])).toEqual([
+        [0, 2],
+        [1, 1],
+      ]);
+      // The page hashes id:email joined by commas; compute that by hand so a
+      // changed expression on the page shows up here.
+      const { rows: expected } = await pg.query(
+        "SELECT md5('1:a,2:b') AS m, md5('1500:c') AS n",
+      );
+      expect(rows[0].checksum).toBe(expected[0].m);
+      expect(rows[1].checksum).toBe(expected[0].n);
+    }, 60_000);
   });
 });

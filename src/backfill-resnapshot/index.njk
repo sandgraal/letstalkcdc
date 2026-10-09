@@ -198,7 +198,7 @@ scripts:
         </tr>
         <tr>
           <th scope="row"><code>recovery</code> (MySQL; replaces <code>schema_only_recovery</code>)</th>
-          <td>Rebuilds a lost or corrupted schema history topic from the current table structure. It does not use it for data; do not use it if schema changes were committed after the last shutdown.</td>
+          <td>Rebuilds a lost or corrupted schema history topic from the current table structure; do not use it if schema changes were committed after the last shutdown.</td>
           <td>Repair, not reload. Listed here because the names are easy to confuse with a data snapshot.</td>
         </tr>
         <tr>
@@ -333,16 +333,45 @@ VALUES ('backfill-2026-10-09-1',
       The reason is where a streamed position comes from. On PostgreSQL the <code>source.lsn</code> of a streamed event
       is the position of the change&rsquo;s WAL record, not of the commit (the Debezium 3.7 PostgreSQL page says it is
       &ldquo;the position in the write-ahead log where the transaction changes were written&rdquo;; in PostgreSQL&rsquo;s
-      <code>logical.c</code> the change callback reports the change&rsquo;s own LSN and only the commit message uses the
-      transaction&rsquo;s end LSN). A transaction that began before the stream&rsquo;s start position and commits after
+      <code>logical.c</code> the change callback reports the change&rsquo;s own LSN, while commit-time messages use the
+      transaction&rsquo;s end LSN or an abort LSN). A transaction that began before the stream&rsquo;s start position and commits after
       your read therefore arrives with positions <em>below</em> that start. If you stamped the loaded row with the start
       position, the loaded row would beat that change, which would then be skipped permanently.
     </p>
     <ul>
       <li>
-        <strong>Take a lower bound.</strong> For example the slot&rsquo;s <code>restart_lsn</code> read before the read
-        starts (verify that on your version), or wait until no transaction older than the stream start is open before you
-        read.
+        <strong>Take a lower bound.</strong> For example the <code>restart_lsn</code> of the slot, read before the read
+        starts (PostgreSQL documents it as the address of the oldest WAL the slot&rsquo;s consumer might still need;
+        verify that it is below the first change of every open transaction on your version).
+        <ul>
+          <li>
+            Use the connector&rsquo;s own slot, on the primary. Check that <code>restart_lsn</code> is not
+            <code>NULL</code> and that <code>wal_status</code> is not <code>lost</code>; a lost slot has no usable bound.
+          </li>
+          <li>
+            A lower bound that is far behind only costs you coverage: the reload repairs rows stored below the stamp
+            and leaves rows stored above it.
+          </li>
+        </ul>
+      </li>
+      <li>
+        <strong>Or wait until no older transaction is open</strong> before you read. In order (the order matters):
+        <ol>
+          <li>Take <code>P = pg_current_wal_lsn()</code>.</li>
+          <li>Then take <code>X = pg_snapshot_xmax(pg_current_snapshot())</code>.</li>
+          <li>
+            Poll <code>pg_snapshot_xmin(pg_current_snapshot())</code> until it is at or above <code>X</code>. The
+            PostgreSQL documentation defines <code>xmin</code> as the lowest transaction id that is still active.
+          </li>
+          <li>Only then read the data, and stamp the loaded rows with <code>P</code>.</li>
+        </ol>
+        Take <code>P</code> before <code>X</code>. Also check <code>pg_prepared_xacts</code>: a prepared transaction
+        stays active until it is committed or rolled back. On PostgreSQL older than 13 use the <code>txid_*</code>
+        equivalents (<code>txid_current_snapshot</code>, <code>txid_snapshot_xmax</code>,
+        <code>txid_snapshot_xmin</code>). <code>pg_stat_activity.xact_start</code> and <code>backend_xmin</code> are the
+        wrong tools: neither says which transaction ids are still active. The functions and the definition of
+        <code>xmin</code> are documented; that this makes <code>P</code> a safe stamp is my reasoning (every
+        transaction that wrote before <code>X</code> has finished, and every later one wrote after <code>P</code>).
       </li>
       <li>
         <strong>A new, empty target</strong> can take the lowest possible position, so loaded rows only fill keys the
@@ -593,8 +622,8 @@ GROUP BY id / 1000
 ORDER BY bucket;</code></pre>
     <p class="muted small">
       The first two queries are executed by the unit tests on SQLite. The checksum query uses <code>md5</code> and
-      <code>string_agg</code>, which SQLite does not have; I ran it once by hand on a PostgreSQL-compatible engine
-      (PGlite) outside the test suite, so treat it as lightly checked. Checksums also have blind spots: columns you do
+      <code>string_agg</code>, which SQLite does not have; the unit tests run it on a
+      PostgreSQL-compatible engine (PGlite). Checksums also have blind spots: columns you do
       not hash, and rows the source changed since you read. See the lies section of
       <a href="{{ '/test-your-pipeline/' | url }}#reconciliation-title">Testing a CDC Pipeline</a>.
     </p>
@@ -608,6 +637,7 @@ ORDER BY bucket;</code></pre>
       <li><strong>Rehearse in staging</strong> with a copy of the table. Include a long transaction that starts before the snapshot and commits after it, and confirm that the changed row ends with the newer value.</li>
       <li><strong>Check the log is still there</strong> from the position you need. On MySQL, binlog retention: a snapshot that runs longer than it loses the handoff. On PostgreSQL the slot keeps WAL for you, so the risk is the opposite: disk growth while the snapshot runs, or the slot being invalidated by <code>max_slot_wal_keep_size</code> (see <a href="{{ '/postgres-replication-slots/' | url }}">the slots runbook</a>). In Kafka, topic retention.</li>
       <li><strong>Pick the choice</strong> from <a href="#choices">the table</a> and write the signal or the command down before you run it, including the filter.</li>
+      <li><strong>For choices 2 and 3 on PostgreSQL, record the slot&rsquo;s <code>restart_lsn</code> before the run and check a sample.</strong> My reasoning, not a vendor statement: the straddling-transaction hazard of <a href="#sql-reload">choice 5</a> may apply if an incremental-snapshot read event carries a position near the close of its chunk window. After the run, take a few keys that changed during it and confirm the sink holds the newer value.</li>
       <li><strong>Inspect a sample</strong> of the first backfill rows: <code>op</code>, <code>source.snapshot</code> and the position they carry. If the position is not what the guard expects, stop.</li>
       <li><strong>Set the pace</strong> (chunk size, threads, fetch size), and agree who may pause the snapshot if the source is under load.</li>
       <li><strong>Run it</strong> and watch lag, retained WAL, topic size and the sink&rsquo;s write latency.</li>
@@ -626,8 +656,8 @@ ORDER BY bucket;</code></pre>
     <h2 id="limits-title">What was tested and what was not</h2>
     <ul>
       <li>No Debezium, Kafka, Kafka Connect or database service was run for this page. Every statement about them comes from the documentation linked below, read on 2026-10-09.</li>
-      <li>The guarded upsert, the interleaving of backfill and stream rows (all 5,040 orders of seven rows, plus a reversed replay), the idempotent re-run, the sweep and its scoping, the incomplete-key-list hazard, and the counts and suspect-row queries are executed in the site&rsquo;s unit tests on SQLite only. The straddling-transaction case also runs on PGlite when that package is installed, and is skipped otherwise.</li>
-      <li>The payload checksum query uses PostgreSQL-only functions, so the SQLite tests cannot run it. It was run once by hand on PGlite, a PostgreSQL-compatible engine. If PGlite becomes a dependency of this site, move the query into the suite. Until then treat it as lightly checked.</li>
+      <li>The guarded upsert, the interleaving of backfill and stream rows (all 5,040 orders of seven rows, plus a reversed replay), the idempotent re-run, the sweep and its scoping, the incomplete-key-list hazard, and the counts and suspect-row queries are executed in the site&rsquo;s unit tests on SQLite only. The straddling-transaction case also runs on PGlite, a PostgreSQL-compatible engine, in the same unit tests.</li>
+      <li>The payload checksum query uses PostgreSQL-only functions, so the SQLite tests cannot run it. It runs on PGlite in the same unit tests, on a few fixed rows.</li>
       <li>The <code>execute-snapshot</code> example follows the documentation and was not run.</li>
       <li>Check your version: the position that read events carry on PostgreSQL and for incremental snapshots; whether events of a transaction that straddles the boundary carry a higher position; the exact <code>snapshot.mode</code> names on your release; and how your sink treats an equal position.</li>
       <li>Not covered: sizes and prices, connector-specific tuning beyond the properties named above, and backfills of non-relational sources.</li>
