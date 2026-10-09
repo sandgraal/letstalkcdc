@@ -48,5 +48,5 @@
 - [x] Enable `ff_trigger_mode` after UI work completion - **COMPLETED** (enabled in index.html)
 
 ### P2 - Future Work
-- [ ] Appwrite persistence + configuration ([docs/issues/appwrite-persistence.md](./issues/appwrite-persistence.md))
+- [ ] ~~Appwrite persistence + configuration~~ superseded 2026-10: persistence is Supabase ([supabase-setup.md](./supabase-setup.md)). Original issue closed as superseded: [docs/issues/appwrite-persistence.md](./issues/appwrite-persistence.md)
 - [ ] Persistent scenarios & shareable experiences ([docs/issues/shareable-experiences.md](./issues/shareable-experiences.md))

@@ -1,4 +1,7 @@
 # Implementation Status Report
+
+> **2026-10: partly superseded.** The Appwrite config source named in section 1 no longer exists. `assets/feature-flags.js` reads the querystring, `CDC_FEATURE_FLAGS`, localStorage and `PLAYGROUND_CFG.featureFlags`. Persistence is now Supabase; see [supabase-setup.md](./supabase-setup.md).
+
 **Review Date:** 2025-11-17
 **Reviewer:** GitHub Copilot Agent
 **Repository:** sandgraal/Lets-Talk-CDC-Change-Feed-Playground
@@ -24,7 +27,7 @@ Health is **8.5/10** (improved from 8.0). The zero-dependency playground remains
 ## 1) Architecture & Code Quality
 **Strengths**
 - Clear layering between static shell (`index.html` + `assets/app.js`), simulator engines (`src/` + `sim/`), and React comparator shell (`web/`, consumed via `assets/generated/ui-shell.js`).
-- Feature flag loader (`assets/feature-flags.js`) supports querystring, Appwrite config, and localStorage sources with safe parsing and event broadcasts.
+- Feature flag loader (`assets/feature-flags.js`) supports querystring, `CDC_FEATURE_FLAGS`, `PLAYGROUND_CFG.featureFlags` and localStorage sources with safe parsing and event broadcasts (this line originally listed an Appwrite config source, which no longer exists).
 - UI shell lazy-loads only when `comparator_v2` is enabled, keeping the base experience lightweight.
 
 **Gaps / Risks**

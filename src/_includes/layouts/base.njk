@@ -44,7 +44,9 @@
           "author": {
             "@type": "Person",
             "name": {{ author.name | dump | safe }}{% if author.url %},
-            "url": {{ author.url | dump | safe }}{% endif %}
+            "url": {{ author.url | dump | safe }}{% endif %}{% if author.image %},
+            "image": {{ (site.host ~ author.image) | dump | safe }}{% endif %}{% if author.sameAs and author.sameAs.length %},
+            "sameAs": {{ author.sameAs | dump | safe }}{% endif %}
           },
           "publisher": {
             "@type": "Organization",
@@ -212,6 +214,10 @@
       {% if seriesKey and (datePublished or dateModified) %}
         <aside class="page-meta" aria-label="Page metadata">
           <p class="page-meta__author">
+            {% if author.image %}
+              {# alt="" on purpose: the author's name is printed next to the photo, so it is decorative. #}
+              <img class="author-photo" src="{{ (author.imageSmall or author.image) | url }}"{% if author.imageSmall %} srcset="{{ author.imageSmall | url }} 128w, {{ author.image | url }} 400w" sizes="48px"{% endif %} alt="" width="48" height="48" loading="lazy" decoding="async">
+            {% endif %}
             By <a href="{{ author.url }}" rel="author">{{ author.name }}</a>
           </p>
           {% if dateModified %}
@@ -224,8 +230,8 @@
           {% endif %}
           {% if author.advisoryUrl %}
             <p class="page-meta__cta">
-              Need a second opinion on your CDC design?
-              <a href="{{ author.advisoryUrl }}">See advisory →</a>
+              Questions or feedback?
+              <a href="{{ author.advisoryUrl }}" rel="noopener">Get in touch on LinkedIn</a>
             </p>
           {% endif %}
         </aside>
