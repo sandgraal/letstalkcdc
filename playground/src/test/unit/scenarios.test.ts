@@ -52,10 +52,11 @@ const EXPECTED_SCENARIOS = [
   },
   {
     id: "snapshot-to-stream",
-    name: "Snapshot ➜ Stream Handoff",
-    description: "Showing snapshot catch-up handing off to change feed tails.",
-    highlight: "Updates, an insert and a delete across three accounts; compare what each method captures.",
-    tags: ["snapshot", "resume"],
+    name: "Account Changes",
+    description:
+      "Updates, an insert and a delete across three accounts. It has no snapshot phase and no handoff.",
+    highlight: "Compare what each capture method reports for the same writes.",
+    tags: ["accounts", "updates", "deletes"],
   },
   {
     id: "iot-telemetry",

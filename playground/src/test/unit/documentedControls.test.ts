@@ -64,6 +64,28 @@ describe("snapshot-replay scenario is honest about what it models", () => {
   });
 });
 
+describe("snapshot-to-stream scenario does not promise a snapshot phase", () => {
+  const scenario = sharedScenarios.find(entry => entry.id === "snapshot-to-stream");
+
+  it("keeps its id and says there is no snapshot phase or handoff", () => {
+    expect(scenario?.name).toBe("Account Changes");
+    expect(scenario?.description).toMatch(/no snapshot phase and no handoff/i);
+    expect(scenario?.tags).not.toContain("snapshot");
+  });
+
+  it("has honest guidance under the new name and none under the old one", () => {
+    const guidance = getScenarioGuidance("Account Changes");
+    expect(guidance?.summary).toMatch(/no snapshot phase/i);
+    expect(JSON.stringify(guidance)).not.toMatch(/backlog|duplicate delivery|hand(s)? control/i);
+    expect(getScenarioGuidance("Snapshot ➜ Stream Handoff")).toBeNull();
+  });
+
+  it("outbox guidance does not claim retries or replays the simulator never performs", () => {
+    const text = JSON.stringify(getScenarioGuidance("Outbox Relay"));
+    expect(text).not.toMatch(/even if retries occur|prove outbox emits/i);
+  });
+});
+
 describe("brand text", () => {
   it("uses the site's form, with a typographic apostrophe, in the pill and footer", () => {
     const html = readFileSync(resolve(root, "index.html"), "utf8");

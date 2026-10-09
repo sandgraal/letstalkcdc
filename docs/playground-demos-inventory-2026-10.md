@@ -360,14 +360,15 @@ S (one scenario object, one lesson link, one test).
 - **Generated bundles.** `web/**` and `src/**` changes need the committed
   bundles in `playground/assets/generated/` rebuilt (CI guards it).
 - **The playground is a separate site in tone.** Its README, docs and copy
-  teach "dedupe on PK" as the answer; the lessons teach version guards on log
-  position. A link into it should not outrun the lessons until findings 4 and 5
-  are reconciled.
+  used to teach "dedupe on PK" as the answer while the lessons teach version
+  guards on log position. Slice B removed that copy (finding 4); finding 5
+  (a), (c) were fixed in #384, (b) and (d) remain.
 
 ## 8. Playground defects (to become plan items)
 
-In priority order. All are Read unless stated; none is fixed here, and each
-needs the playground code owner first.
+In priority order. All are Read unless stated. Items 1 (a, c), 3 and 6 were
+fixed in #384 and items 2, 4, 5 (documented) and 7 in slice B (#393); the
+notes below say which.
 
 1. **Timestamp-first ordering** (thesis conflict): the Compare `orderingOk`
    metric (`web/App.tsx:961-965`) and the Drive-one-feed apply-on-commit sort
@@ -405,11 +406,14 @@ needs the playground code owner first.
 2. Accept the 6.0 primitive (`redeliver` op, `position` on events, sink modes),
    or should the three labs be inline lesson widgets instead?
 3. Fix, remove or implement the "Drop snapshot rows" / "Dedupe on PK" claims
-   (finding 4, defect 2)?
+   (finding 4, defect 2)? **Answered in slice B:** removed.
 4. Is the `ts_ms`-based `orderingOk` and `commitTs`-first apply order intended
-   (finding 5)? The lessons say position, not timestamp.
-5. Increment `broker.dropped` when `shouldDrop` fires (finding 6)?
-6. Should seed rows be loaded into the Compare lanes (finding 7)?
+   (finding 5)? The lessons say position, not timestamp. **Answered in
+   #384:** position.
+5. Increment `broker.dropped` when `shouldDrop` fires (finding 6)? **Done in
+   #384.**
+6. Should seed rows be loaded into the Compare lanes (finding 7)? **Slice B:
+   not yet; documented** (see defect 5).
 
 ## 10. Evidence and how to re-run
 

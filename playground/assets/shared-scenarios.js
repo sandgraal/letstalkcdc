@@ -610,11 +610,12 @@ const defaultScenarios = [
   {
     id: "snapshot-to-stream",
     difficulty: "advanced",
-    name: "Snapshot ➜ Stream Handoff",
-    label: "Snapshot ➜ Stream",
-    description: "Showing snapshot catch-up handing off to change feed tails.",
-    highlight: "Updates, an insert and a delete across three accounts; compare what each method captures.",
-    tags: ["snapshot", "resume"],
+    name: "Account Changes",
+    label: "Account Changes",
+    description:
+      "Updates, an insert and a delete across three accounts. It has no snapshot phase and no handoff.",
+    highlight: "Compare what each capture method reports for the same writes.",
+    tags: ["accounts", "updates", "deletes"],
     seed: 118,
     table: "accounts",
     schema: [

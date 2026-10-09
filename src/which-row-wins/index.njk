@@ -528,11 +528,13 @@ WHEN NOT MATCHED THEN
     <h2 id="try-it-title">Try it</h2>
     <p>
       Open the <a href="{{ '/playground/' | url }}">Change Feed Playground</a> and pick the
-      <strong>Snapshot Replay</strong> scenario (<code>snapshot-replay</code>). In its event list the ledger row
-      <code>LED-100</code> is updated to version <code>v2</code>, then an older <code>v1</code> image arrives again, then
-      <code>v3</code> follows. Write down which version each target above would hold after the <code>v1</code> image under
-      its default, then under the position-based setting. The playground compares capture methods; it does not simulate
-      these six targets, so the exercise is on paper.
+      <strong>Re-insert after Update</strong> scenario (its id is <code>snapshot-replay</code>). In its event list the ledger row
+      <code>LED-100</code> is updated to version <code>v2</code>, then written again with its old <code>v1</code> values, then
+      <code>v3</code> follows. That re-insert is an ordinary later source write, not a redelivered old event, so every target
+      applies it, and a position guard would too. Write down what each target above would hold after the <code>v1</code> write,
+      then work out what would change if the same <code>v1</code> record arrived a second time after <code>v3</code>: that is
+      the case your default and the position-based setting disagree on, and the playground cannot produce it. It compares
+      capture methods; it does not simulate these six targets, so the exercise is on paper.
     </p>
   </section>
 

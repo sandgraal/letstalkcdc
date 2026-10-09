@@ -10,36 +10,31 @@ export type ScenarioGuidance = {
 };
 
 const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
-  "snapshot ➜ stream handoff": {
+  "account changes": {
     summary:
-      "Show how a snapshot catch-up hands control to the streaming tail while keeping tables consistent across methods.",
+      "Three accounts get updates, an insert and a delete. There is no snapshot phase and no handoff: compare what each capture method reports for the same writes.",
     controls: [
       {
-        title: "Keep log + trigger enabled",
+        title: "Enable Log, Trigger and Polling",
         detail:
-          "Run both streaming lanes to compare how quickly they drain the backlog once the snapshot is done.",
+          "Run all three lanes over the same writes and compare how many events each reports and when.",
       },
       {
         title: "Apply on commit",
         detail:
-          "Ensure atomic updates across tables once the stream takes over so item/order rows never drift during the handoff.",
-      },
-      {
-        title: "Throttle apply briefly",
-        detail:
-          "Enable the apply rate limiter to surface how much backlog accumulates during the snapshot phase versus live tailing.",
+          "Toggle it to see whether grouped writes reach the destination together or one at a time.",
       },
     ],
     observations: [
       {
-        title: "Mind duplicate delivery",
+        title: "Delete capture",
         detail:
-          "Use the event log filters to confirm the first stream event after the snapshot resumes doesn't replay rows already applied.",
+          "Check which lanes report the delete of AC-301. Polling only sees what is still in the table when it polls.",
       },
       {
-        title: "Lag recovery",
+        title: "last_change_id",
         detail:
-          "Track lag spread to show which capture method clears the handoff backlog fastest once throttling is removed.",
+          "Each row carries a rising last_change_id. The simulator does not use it; it shows the kind of marker a real sink would compare.",
       },
     ],
   },
@@ -127,12 +122,12 @@ const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
       {
         title: "Idempotent keys",
         detail:
-          "Call out event_key usage and show how downstream sinks can dedupe on that key even if retries occur.",
+          "Point out the stable event_key on each outbox row. Every event is delivered once here, so this shows the key a downstream sink could dedupe on, not a dedupe or a retry.",
       },
       {
-        title: "Replay behaviour",
+        title: "Stable ids on re-run",
         detail:
-          "Reset and step through to prove outbox emits stable events even when upstream rows churn.",
+          "Reset and run again: the same writes produce the same outbox ids (EVT-221-*). Nothing is redelivered.",
       },
     ],
   },

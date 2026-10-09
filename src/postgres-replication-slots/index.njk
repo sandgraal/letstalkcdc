@@ -819,14 +819,17 @@ WHERE synced;</code></pre>
   </section>
 
   <section id="try-it" aria-labelledby="try-it-title">
-    <h2 id="try-it-title">Try the recovery sequence</h2>
+    <h2 id="try-it-title">Try a re-insert in the playground</h2>
     <p>
       The <a href="{{ '/playground/' | url }}">Change Feed Playground</a> has a
-      <strong>Snapshot Replay</strong> template (offset resets and re-seeding a
-      change feed, with dedupe controls). Pick it from the template list and
-      replay the feed to see an older change arrive after a newer one: the same
-      problem you meet after a slot is lost and the sink is re-seeded. The
-      playground is a simulation with made-up data; it has no Postgres slots.
+      <strong>Re-insert after Update</strong> template. It is not a replay: an
+      earlier version of a row is written again as an ordinary later source
+      write, and the sink applies it in order. No old event is delivered a
+      second time, so it cannot show a stale change losing to a newer one; for
+      that, see the guarded-apply examples <a href="#replay">above</a>. Pick it
+      from the template list to see how each capture method reports that write.
+      The playground is a simulation with made-up data; it has no Postgres
+      slots.
     </p>
   </section>
 

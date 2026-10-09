@@ -96,19 +96,18 @@ For a fast orientation to the comparator UI before presenting these flows, skim 
 - How retention windows/holds mean log streams keep emitting events even when soft-deleted rows linger for compliance.
 - Why a sink that replays erasure workflows from a change feed has to apply deletes and masking in order; the playground does not model that replay.
 
-## Demo 6 – Snapshot handoff to live tail
+## Demo 6 – Account changes across capture methods
 
-1. Load **Snapshot ➜ Stream** from the gallery.
-2. Enable **Polling**, **Trigger**, and **Log** to mirror a typical snapshot-then-stream rollout.
-3. Start the run and filter the Event Log to `accounts`. The scenario has no snapshot phase: it replays updates, an insert and a delete, each row carrying a rising `last_change_id`.
-4. Pause when `AC-301` updates and point at `last_change_id`, the kind of marker a sink compares to tell newer from older.
-5. Flip **Trigger** off midway to demonstrate how application-driven captures can stop while log streaming continues for the live tail.
-6. Re-run with **Polling interval** widened to emphasise how snapshot copies can drift if polling misses intervening updates.
+1. Load **Account Changes** from the gallery. It has no snapshot phase and no handoff to a live tail.
+2. Enable **Polling**, **Trigger**, and **Log** so all three lanes see the same writes.
+3. Start the run and filter the Event Log to `accounts` to see the updates, the insert and the delete.
+4. Pause when `AC-301` updates and point at `last_change_id`, the kind of marker a sink compares to tell newer from older. The simulator does not use it.
+5. Flip **Trigger** off midway to show a lane that stops reporting while the others continue.
+6. Re-run with **Polling interval** widened to show how polling can miss intervening updates.
 
 **Talking points**
-- Snapshot vs. stream sequencing: why a sink needs a position or version to tell snapshot rows from later changes (the playground does not model the handoff itself).
-- Resume semantics: what a connector restart mid-snapshot can duplicate; the playground does not simulate restarts.
-- Why pairing log/trigger streams with a one-time snapshot is the safest way to accelerate initial loads without sacrificing ordering.
+- What each method reports for the same writes, and when.
+- Snapshot vs. stream sequencing is a real concern (a sink needs a position or version to tell snapshot rows from later changes), but the playground does not model a snapshot or the handoff.
 
 ## Tips for live sessions
 
