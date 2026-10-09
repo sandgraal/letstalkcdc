@@ -39,10 +39,8 @@ ai-generated: true
     </figure>
   </section>
 
-  {% set publishedLabs = 0 %}
   <div class="qs-grid" id="cloud-labs-grid">
     {% if collections.all | pageExists('/cloud-labs/aws-dms/') %}
-    {% set publishedLabs = publishedLabs + 1 %}
     <a class="qs-card" href="{{ '/cloud-labs/aws-dms/' | url }}">
       <div>
         <h2>AWS DMS</h2>
@@ -64,7 +62,6 @@ ai-generated: true
     {% endif %}
 
     {% if collections.all | pageExists('/cloud-labs/snowflake-cdc/') %}
-    {% set publishedLabs = publishedLabs + 1 %}
     <a class="qs-card" href="{{ '/cloud-labs/snowflake-cdc/' | url }}">
       <div>
         <h2>Snowflake</h2>
@@ -86,7 +83,6 @@ ai-generated: true
     {% endif %}
 
     {% if collections.all | pageExists('/cloud-labs/matillion-cdc/') %}
-    {% set publishedLabs = publishedLabs + 1 %}
     <a class="qs-card" href="{{ '/cloud-labs/matillion-cdc/' | url }}">
       <div>
         <h2>Matillion</h2>
@@ -109,7 +105,6 @@ ai-generated: true
     {% endif %}
 
     {% if collections.all | pageExists('/cloud-labs/goldengate/') %}
-    {% set publishedLabs = publishedLabs + 1 %}
     <a class="qs-card" href="{{ '/cloud-labs/goldengate/' | url }}">
       <div>
         <h2>Oracle GoldenGate</h2>
@@ -131,7 +126,6 @@ ai-generated: true
     {% endif %}
 
     {% if collections.all | pageExists('/cloud-labs/fivetran/') %}
-    {% set publishedLabs = publishedLabs + 1 %}
     <a class="qs-card" href="{{ '/cloud-labs/fivetran/' | url }}">
       <div>
         <h2>Fivetran</h2>
@@ -152,18 +146,6 @@ ai-generated: true
     </a>
     {% endif %}
   </div>
-
-  {% if publishedLabs == 0 %}
-    <section class="box callout" aria-labelledby="cloud-labs-coming-soon">
-      <h2 id="cloud-labs-coming-soon">Cloud labs are coming soon</h2>
-      <p class="muted">
-        We’re still documenting the managed CDC walkthroughs. Check back soon for AWS DMS, Snowflake, Matillion, GoldenGate, and Fivetran guides.
-      </p>
-      <p>
-        In the meantime, continue with the <a href="{{ '/lab-kafka-debezium/' | url }}">Kafka + Debezium lab</a> or explore the <a href="{{ '/quickstarts/' | url }}">database quickstarts</a> to get hands-on with CDC fundamentals.
-      </p>
-    </section>
-  {% endif %}
 
   <section class="comparison-section">
     <h2>Choosing the Right Platform</h2>
