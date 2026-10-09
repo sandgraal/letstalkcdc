@@ -4,7 +4,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=22.22.3"
+    "node": "^22.22.3 || ^24.15.0 || >=26"
   },
   "scripts": {
     "clean": "rimraf dist _site src/assets/css/styles.min.css",
