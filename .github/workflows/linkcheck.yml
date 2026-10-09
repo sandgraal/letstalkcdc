@@ -20,7 +20,34 @@ jobs:
           # with an empty string.
           ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '/letstalkcdc' }}
           SITE_HOST: ${{ vars.SITE_HOST || 'https://sandgraal.github.io' }}
+          # pa11y-ci (a devDependency) pulls in puppeteer, whose postinstall
+          # downloads Chrome and fails `npm ci` when that download flakes.
+          # Building the site needs no browser.
+          PUPPETEER_SKIP_DOWNLOAD: "true"
         run: npm ci && npm run build && scripts/publish-playground.sh
+      - name: Resolve this site's public URL (for --remap)
+        id: own-site
+        env:
+          SITE_HOST: ${{ vars.SITE_HOST || 'https://sandgraal.github.io' }}
+          ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '/letstalkcdc' }}
+        run: |
+          # Same host + prefix the build used, as an anchored regex for
+          # lychee's --remap (a root-served site has an empty prefix).
+          host="${SITE_HOST%/}"
+          prefix="$(printf '%s' "$ELEVENTY_PATH_PREFIX" | sed 's#^/*##; s#/*$##')"
+          if [ -n "$prefix" ]; then prefix="/${prefix}"; fi
+          pattern="^$(printf '%s/' "${host}${prefix}" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+          echo "pattern=${pattern}" >> "$GITHUB_OUTPUT"
+      - name: Restore lychee cache
+        uses: actions/cache@v4
+        with:
+          path: .lycheecache
+          # actions/cache never overwrites an existing key, so key on the
+          # commit and restore the newest earlier cache by prefix. The cache
+          # is only saved when the job passes, so it holds successes only;
+          # a failed link is never remembered across runs.
+          key: lychee-${{ github.sha }}
+          restore-keys: lychee-
       - uses: lycheeverse/lychee-action@v2.0.2
         env:
           # Authenticated requests to github.com avoid the rate-limited 404s
@@ -30,14 +57,45 @@ jobs:
           # --exclude-loopback skips localhost/127.0.0.1 URLs that appear
           # inside <code> blocks documenting curl commands (Kafka Connect REST
           # examples). Those aren't reachable links.
-          # --max-retries / --retry-wait-time make lychee retry a failed
-          # request (a transient 5xx or timeout, e.g. the lone 503 from
-          # GitHub Pages /versions/ that was healthy moments later) with a
-          # longer pause than the 1s default. Retries, not --accept, are the
-          # fix: a real 404 still fails the job.
           # --exclude skips the YouTube player embed only: youtube-nocookie.com
           # answers 404 to non-browser clients from CI runners while the same
           # URL returns 200 in a browser (checked with a browser User-Agent).
           # The video is still real; thumbnails and every other link are
           # still checked.
-          args: --no-progress --verbose --exclude-loopback --exclude '^https://www\.youtube-nocookie\.com/embed/' --max-retries 5 --retry-wait-time 10 "_site/**/*.html"
+          #
+          # Request bursts (the cause of the [503] Service Unavailable runs on
+          # github.com/<this repo>/blob/main/...): the page footer links
+          # LICENSE-CONTENT.md from every page, so one URL was requested ~45
+          # times at once under lychee's default of 128 concurrent requests,
+          # and many PR runs do this at the same moment from shared runner
+          # IPs. Fixed at the source, not by accepting 503:
+          # --remap points this site's own URLs at the files in this
+          # checkout, so they are checked locally instead of over the
+          # network. https://<host>/<prefix>/ -> _site/ means a page's
+          # canonical/og:url is verified against the page built in this run
+          # (a brand-new page no longer 404s until it deploys, and a link to
+          # a page that does not exist still fails: "Cannot find file").
+          # https://github.com/sandgraal/letstalkcdc/{blob,tree,edit}/main/
+          # -> the checkout means a link to a repo file is verified against
+          # the PR's own tree instead of the remote main branch; a missing
+          # file still fails. The repo name is `repository` in
+          # src/_data/site.mjs.
+          # --max-concurrency 8 (default 128) bounds what is left: lychee's
+          # in-run cache only answers a URL once a first request for it has
+          # finished, so fewer requests in flight means fewer duplicates
+          # hit the network.
+          # --cache/--max-cache-age 1d reuse earlier passing results via the
+          # actions/cache step above.
+          # --max-retries/--retry-wait-time are kept for timeouts. Note that
+          # lychee does NOT retry a 5xx response (checked against the 0.16.1
+          # this action bundles: one request, no wait), so retries were never
+          # a fix for a 503; the settings above are.
+          args: >-
+            --no-progress --verbose --exclude-loopback
+            --exclude '^https://www\.youtube-nocookie\.com/embed/'
+            --max-concurrency 8
+            --cache --max-cache-age 1d
+            --max-retries 5 --retry-wait-time 10
+            --remap '${{ steps.own-site.outputs.pattern }} file://${{ github.workspace }}/_site/'
+            --remap '^https://github\.com/sandgraal/letstalkcdc/(blob|tree|edit)/main/ file://${{ github.workspace }}/'
+            "_site/**/*.html"
