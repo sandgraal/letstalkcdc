@@ -16,6 +16,11 @@
  *                 inline (e.g. "binlog" for "WAL").
  *   - related:    optional array of other entries' slugs to
  *                 render as "See also" cross-links.
+ *   - lessons:    optional array of `{ slug, anchor? }` (1-3) naming the
+ *                 lessons that actually teach the term. `slug` is the
+ *                 lesson's `key` in series.mjs; `anchor` is an element id
+ *                 on that page. Rendered as a "Learn more" line. Leave it
+ *                 out when no lesson really teaches the term.
  *
  * Sort order in the rendered page is alphabetical by `term`; this
  * file can stay grouped by concept area for editor sanity.
@@ -35,6 +40,10 @@ export default [
         same role: a durable, ordered stream of every committed
         change.</p>`,
     related: ["lsn-scn", "log-retention"],
+    lessons: [
+      { slug: "postgres-replication-slots", anchor: "how-slots-work-title" },
+      { slug: "sql-server-mysql-cdc", anchor: "mysql-title" },
+    ],
   },
   {
     term: "LSN / SCN",
@@ -49,6 +58,10 @@ export default [
         applied LSN/SCN so a restart resumes without gaps or
         duplicates.</p>`,
     related: ["wal-redo-log", "checkpoint"],
+    lessons: [
+      { slug: "sql-server-mysql-cdc", anchor: "positions-title" },
+      { slug: "which-row-wins" },
+    ],
   },
   {
     term: "Log retention",
@@ -64,6 +77,10 @@ export default [
         <code>wal_keep_size</code> is only a minimum kept for
         standbys.</p>`,
     related: ["wal-redo-log", "snapshot", "replication-slot"],
+    lessons: [
+      { slug: "sql-server-mysql-cdc", anchor: "mysql-title" },
+      { slug: "postgres-replication-slots", anchor: "cap-title" },
+    ],
   },
   {
     term: "Checkpoint",
@@ -75,6 +92,10 @@ export default [
         this. Most connectors checkpoint after a confirmed sink
         write, not after a read.</p>`,
     related: ["lsn-scn", "idempotent-write"],
+    lessons: [
+      { slug: "ops-offsets", anchor: "storage-title" },
+      { slug: "postgres-replication-slots", anchor: "replay-title" },
+    ],
   },
 
   // ---- Event shapes ----
@@ -94,6 +115,10 @@ export default [
         <code>delete.retention.ms</code> long enough for every
         consumer to see them before compaction reclaims the slot.</p>`,
     related: ["compaction"],
+    lessons: [
+      { slug: "deletes-stay-deleted", anchor: "tombstone-not-delete" },
+      { slug: "event-envelope", anchor: "ordering-title" },
+    ],
   },
   {
     term: "Compaction",
@@ -107,6 +132,10 @@ export default [
         readers still see every intermediate value; until
         <code>delete.retention.ms</code> elapses, tombstones linger.</p>`,
     related: ["tombstone"],
+    lessons: [
+      { slug: "event-envelope", anchor: "ordering-title" },
+      { slug: "deletes-stay-deleted" },
+    ],
   },
   {
     term: "Snapshot",
@@ -125,6 +154,7 @@ export default [
         subset without taking down the whole connector, at the
         cost of potential duplicates the sink has to dedupe.</p>`,
     related: ["log-retention", "idempotent-write", "backfill", "watermark"],
+    lessons: [{ slug: "snapshotting" }, { slug: "backfill-resnapshot" }],
   },
   {
     term: "Schema evolution",
@@ -137,6 +167,10 @@ export default [
         Karapace, AWS Glue) enforces compatibility rules at
         produce time.</p>`,
     related: ["schema-registry", "backfill"],
+    lessons: [
+      { slug: "schema-evolution" },
+      { slug: "cdc-data-contracts", anchor: "ddl-map-title" },
+    ],
   },
 
   // ---- Delivery semantics ----
@@ -153,6 +187,10 @@ export default [
         delivery from the source amplifies into duplicate rows in
         the sink on every connector restart.</p>`,
     related: ["exactly-once", "effectively-once", "upsert", "at-least-once"],
+    lessons: [
+      { slug: "exactly-once", anchor: "idempotency" },
+      { slug: "materialization", anchor: "merge-title" },
+    ],
   },
   {
     term: "Exactly-once",
@@ -168,6 +206,10 @@ export default [
         + idempotent sinks + a deduplication ledger). The errata
         page covers the specific traps.</p>`,
     related: ["effectively-once", "idempotent-write", "at-least-once"],
+    lessons: [
+      { slug: "exactly-once", anchor: "per-hop" },
+      { slug: "is-cdc-exactly-once" },
+    ],
   },
   {
     term: "Effectively-once",
@@ -181,6 +223,7 @@ export default [
         row's. This is what most production CDC pipelines actually
         ship.</p>`,
     related: ["exactly-once", "idempotent-write", "at-least-once"],
+    lessons: [{ slug: "is-cdc-exactly-once" }],
   },
   {
     term: "Convergence test",
@@ -193,6 +236,7 @@ export default [
         late and replayed changes still converge), not the absence of
         duplicates. See the testing module for runnable examples.</p>`,
     related: ["idempotent-write", "effectively-once", "resurrection"],
+    lessons: [{ slug: "test-your-pipeline", anchor: "reorder-title" }],
   },
   {
     term: "Resurrection",
@@ -205,6 +249,10 @@ export default [
         the delete as a marker that carries its log position, and
         guarding updates on position, prevents it.</p>`,
     related: ["tombstone", "idempotent-write", "lsn-scn"],
+    lessons: [
+      { slug: "deletes-stay-deleted", anchor: "resurrection-title" },
+      { slug: "test-your-pipeline", anchor: "resurrection-title" },
+    ],
   },
   {
     term: "Lag",
@@ -214,6 +262,7 @@ export default [
         the mean — CDC lag is bursty (DDL, large transactions,
         consumer restarts), and the average hides the tail you
         actually have to capacity-plan against.</p>`,
+    lessons: [{ slug: "observability", anchor: "signals-title" }],
   },
 
   // ---- Streaming infrastructure ----
@@ -228,6 +277,7 @@ export default [
         the key to match the unit of ordering your downstream
         actually needs.</p>`,
     related: ["compaction"],
+    lessons: [{ slug: "partitioning", anchor: "key-choice" }],
   },
   {
     term: "Dead-letter queue",
@@ -239,6 +289,10 @@ export default [
         the connector either drops the event (data loss) or stalls
         the whole partition (head-of-line blocking). With one, the
         bad records are visible and triageable.</p>`,
+    lessons: [
+      { slug: "failure-drills", anchor: "drill-2-title" },
+      { slug: "dlq-triage" },
+    ],
   },
 
   // ---- Added from usage (P16-14) ----
@@ -256,6 +310,10 @@ export default [
         older event from overwriting a newer one; guard it with the
         source log position.</p>`,
     related: ["idempotent-write", "deduplication", "lsn-scn"],
+    lessons: [
+      { slug: "materialization", anchor: "merge-title" },
+      { slug: "which-row-wins" },
+    ],
   },
   {
     term: "Kafka Connect",
@@ -269,6 +327,10 @@ export default [
         distributed mode (standalone mode stores offsets in a file),
         and a restart resumes from the last committed one.</p>`,
     related: ["smt", "dead-letter-queue", "checkpoint", "at-least-once"],
+    lessons: [
+      { slug: "lab-kafka-debezium" },
+      { slug: "is-cdc-exactly-once", anchor: "connect-eos-title" },
+    ],
   },
   {
     term: "Kafka transaction",
@@ -284,6 +346,7 @@ export default [
         transactions. The atomicity stops at Kafka: it does not include a
         database, a warehouse load or an HTTP call.</p>`,
     related: ["exactly-once", "fencing", "at-least-once"],
+    lessons: [{ slug: "is-cdc-exactly-once", anchor: "kafka-to-kafka-title" }],
   },
   {
     term: "Fencing",
@@ -296,6 +359,7 @@ export default [
         exactly-once source mode gives each task its own transactional ID
         so that a zombie task is fenced out.</p>`,
     related: ["kafka-transaction", "kafka-connect", "exactly-once"],
+    lessons: [{ slug: "is-cdc-exactly-once", anchor: "connect-eos-title" }],
   },
   {
     term: "Offsets in the sink transaction",
@@ -309,6 +373,7 @@ export default [
         offset, so the upsert still needs a guard on the source log
         position.</p>`,
     related: ["idempotent-write", "upsert", "effectively-once"],
+    lessons: [{ slug: "is-cdc-exactly-once", anchor: "sink-title" }],
   },
   {
     term: "Debezium Server",
@@ -320,6 +385,7 @@ export default [
         at-least-once, so a crash repeats some events and the consumer
         deduplicates on the source log position.</p>`,
     related: ["embedded-engine", "at-least-once", "deduplication"],
+    lessons: [{ slug: "non-kafka-cdc", anchor: "server-title" }],
   },
   {
     term: "Embedded engine",
@@ -332,6 +398,7 @@ export default [
         from those calls. Mark a record only after its effect is durable:
         a crash then repeats it instead of losing it.</p>`,
     related: ["debezium-server", "at-least-once", "idempotent-write"],
+    lessons: [{ slug: "non-kafka-cdc", anchor: "engine-title" }],
   },
   {
     term: "External versioning",
@@ -345,6 +412,7 @@ export default [
         refused. A deleted document&rsquo;s version is remembered only
         for <code>index.gc_deletes</code> (60 seconds by default).</p>`,
     related: ["idempotent-write", "lsn-scn", "tombstone"],
+    lessons: [{ slug: "non-kafka-cdc", anchor: "search-title" }],
   },
   {
     term: "Deduplication",
@@ -360,6 +428,10 @@ export default [
         can tie or move backwards, and an offset is local to one
         topic partition.</p>`,
     related: ["idempotent-write", "upsert", "effectively-once", "lsn-scn"],
+    lessons: [
+      { slug: "transactional-outbox", anchor: "consumer-title" },
+      { slug: "backfill-resnapshot", anchor: "idempotent-title" },
+    ],
   },
   {
     term: "Replication slot",
@@ -375,6 +447,9 @@ export default [
         further behind is invalidated and the connector must
         re-snapshot, and drop slots you no longer use.</p>`,
     related: ["wal-redo-log", "log-retention", "checkpoint", "snapshot"],
+    lessons: [
+      { slug: "postgres-replication-slots", anchor: "how-slots-work-title" },
+    ],
   },
   {
     term: "Backfill",
@@ -388,6 +463,7 @@ export default [
         primary-key-keyed writes as streaming and must never replace
         a newer streamed value with an older snapshot read.</p>`,
     related: ["snapshot", "idempotent-write", "watermark", "upsert"],
+    lessons: [{ slug: "backfill-resnapshot" }],
   },
   {
     term: "At-least-once",
@@ -411,6 +487,10 @@ export default [
       "idempotent-write",
       "deduplication",
     ],
+    lessons: [
+      { slug: "exactly-once", anchor: "at-least-once" },
+      { slug: "is-cdc-exactly-once", anchor: "hops-title" },
+    ],
   },
   {
     term: "Schema registry",
@@ -423,6 +503,10 @@ export default [
         Registry are common implementations. It guards the payload
         shape only; it does nothing about ordering or duplicates.</p>`,
     related: ["schema-evolution", "kafka-connect", "dead-letter-queue"],
+    lessons: [
+      { slug: "schema-evolution" },
+      { slug: "cdc-data-contracts", anchor: "registry-title" },
+    ],
   },
   {
     term: "Outbox",
@@ -436,6 +520,7 @@ export default [
         so consumers deduplicate on a stable event id. Debezium ships
         an Outbox Event Router SMT for it.</p>`,
     related: ["smt", "at-least-once", "deduplication", "effectively-once"],
+    lessons: [{ slug: "transactional-outbox" }],
   },
   {
     term: "SMT (single message transform)",
@@ -449,6 +534,10 @@ export default [
         SMT sees one record at a time, so it cannot join, aggregate
         or reorder across records.</p>`,
     related: ["kafka-connect", "outbox"],
+    lessons: [
+      { slug: "cdc-data-contracts", anchor: "shape-title" },
+      { slug: "transactional-outbox", anchor: "router-title" },
+    ],
   },
   {
     term: "Watermark",
@@ -463,5 +552,9 @@ export default [
         for aggregates) only bounds replay or window closing — it
         never decides which version of a row wins; log position does.</p>`,
     related: ["snapshot", "lsn-scn", "checkpoint", "backfill"],
+    lessons: [
+      { slug: "snapshotting", anchor: "watermarks" },
+      { slug: "backfill-resnapshot" },
+    ],
   },
 ];

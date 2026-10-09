@@ -52,6 +52,18 @@ canonicalPath: "/glossary/"
             {% endfor %}
           </p>
         {% endif %}
+        {% if entry.lessons and entry.lessons.length %}
+          <p class="glossary__related">
+            Learn more:
+            {% for ref in entry.lessons %}
+              {%- set lesson = null -%}
+              {%- for candidate in series -%}
+                {%- if candidate.key == ref.slug -%}{% set lesson = candidate %}{%- endif -%}
+              {%- endfor -%}
+              {% if lesson %}<a href="{{ ('/' + lesson.href) | url }}{% if ref.anchor %}#{{ ref.anchor }}{% endif %}">{{ lesson.title }}</a>{% if not loop.last %}, {% endif %}{% endif %}
+            {% endfor %}
+          </p>
+        {% endif %}
       </dd>
     {% endfor %}
   </dl>

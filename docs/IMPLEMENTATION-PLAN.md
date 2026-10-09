@@ -2094,9 +2094,12 @@ ready to start; the first job is to turn it into measured, specific items.
       "Related lessons" list now ends 34 of 36 module pages (`related` keys
       in `src/_data/series.mjs`, rendered by `series-nav.njk`; `cloud-labs`
       and `failure-drills` have no `seriesKey`, so no series navigation).
-      Not done: the glossary has no term-to-lesson mapping, so `/glossary/`
-      does not yet link out to the owning lesson; that needs a curated
-      `lesson` field on the 33 entries._
+      Glossary link-out done: all 32 entries carry a curated
+      `lessons: [{ slug, anchor? }]` (1-2 each, 50 links, every anchor
+      checked against the built page by `tests/unit/glossary.test.js`),
+      rendered as a "Learn more" line on `/glossary/`. Still open: the
+      sub-item below (the unstyled related-lessons list, a `css-refactor`
+      job)._
   - [ ] Related-lessons list has no styling (bullets/indent: `.series-nav*`
         classes have no rules in the shipped stylesheet); needs a
         `css-refactor` pass.
