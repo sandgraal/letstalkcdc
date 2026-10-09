@@ -2227,12 +2227,13 @@ criteria as the first batch. Size: M each. Role: `implementer`, `reviewer`.
       link to them with `| url`. The playground owner coordinates every change
       under `playground/`. Size: L. Role: `implementer`, `reviewer`.
       _2026-10-09: still nothing built. #393 relabelled the old duplicate-insert scenario and did not add a `redeliver` op; the three labs, the `?try=<id>` deep link and the redeliver op remain this item._
-- [ ] **P16-27 · Playground fixes, slice B.** Outcome: the remaining
+- [x] **P16-27 · Playground fixes, slice B.** Outcome: the remaining
       playground defects found in review are fixed. Accept: the phantom Dedupe
       on the PK and Drop snapshot rows copy; honesty about snapshot replay;
       seed rows; the orphan `scenarios.json`; the brand pill. Size: M. Role:
       `implementer`, `reviewer`.
       _2026-10-09: #393 merged (phantom Dedupe/Drop-snapshot copy removed everywhere and guarded by a test; `snapshot-replay` relabelled "Re-insert after Update"; orphan `scenarios.json`, `playground/.eleventy.js` and `ui-index.js` deleted; brand pill fixed). Stays open: seed rows are documented, not fixed (9 of 11 scenarios have a `rows` entry that duplicates an `insert` op, so loading `rows` would be a duplicate-key insert), and `snapshot-to-stream` still says it shows "snapshot catch-up handing off to change feed tails", which is not modelled._
+      _2026-10-09: closed. `ops` is now the single source of truth for rows: the 9 duplicate `rows` entries were removed from `shared-scenarios.js` (only `retention-erasure`, `snapshot-to-stream` and `LED-101` in `snapshot-replay` keep rows, none of which any `insert` op creates), a unit test fails on any `rows` entry that repeats an `insert` op's table and key, and the "N rows" label counts distinct rows from `ops` plus `rows`. The `snapshot-to-stream` copy ("Account Changes": "no snapshot phase and no handoff") was already honest on main; the stale mention in the demos inventory was updated. Loading seed rows into the lanes stays out of scope._
 - [ ] **P16-28 · Remaining SEO leftovers not tracked elsewhere.** Outcome: the
       SEO work has no orphaned remainder. Accept: (a) the CSS hook for the 10
       heading-level skips (the other half of P16-9), routed to `css-refactor`

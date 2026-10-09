@@ -1,14 +1,16 @@
-// `rows` is a preview of the table (schema and a sample of final-state rows) for
-// the UI. It is NOT loaded into the Compare lanes: the lanes start empty
+// Single source of truth: `ops` creates rows. The Compare lanes start empty
 // (web/App.tsx calls `controller.startSnapshot([])`) and build state only from
-// `ops`. In 9 of the 11 scenarios a `rows` entry has the same table and key as
-// an `insert` op, so loading it as seed data would be a duplicate-key insert.
-// A scenario that updates or deletes a row with no insert in `ops`
-// (retention-erasure, snapshot-to-stream, and the delete of LED-101 in
-// snapshot-replay) therefore emits an event with no prior state.
-// Loading seed rows would also make the log and polling adapters emit snapshot
-// INSERT events (the trigger adapter emits none), changing event counts and
-// metrics per method, so it is a separate piece of work, not a data tweak.
+// `ops`.
+// `rows`, when present, is ONLY for pre-existing rows that `ops` never inserts
+// (retention-erasure, snapshot-to-stream, and LED-101 in snapshot-replay). It
+// is not loaded into the lanes, and it must never repeat the table and key of
+// an `insert` op: loading such a row would be a duplicate-key insert.
+// src/test/unit/scenarios.test.ts fails if it does.
+// A scenario that updates or deletes a row with no insert in `ops` (those
+// three) emits an event with no prior state. Loading seed rows would also make
+// the log and polling adapters emit snapshot INSERT events (the trigger
+// adapter emits none), changing event counts and metrics per method, so it is
+// a separate piece of work, not a data tweak.
 const defaultScenarios = [
   {
     id: "crud-basic",
@@ -24,9 +26,6 @@ const defaultScenarios = [
       { name: "id", type: "string", pk: true },
       { name: "name", type: "string", pk: false },
       { name: "email", type: "string", pk: false },
-    ],
-    rows: [
-      { id: "1", name: "Alice", email: "alice@contoso.io" },
     ],
     events: [],
     ops: [
@@ -52,9 +51,6 @@ const defaultScenarios = [
       { name: "channel", type: "string", pk: false },
       { name: "total", type: "number", pk: false },
       { name: "pickup_ts", type: "number", pk: false },
-    ],
-    rows: [
-      { id: "ORD-501", customer_id: "C-19", status: "collected", channel: "store-108", total: 189.5, pickup_ts: 420 },
     ],
     events: [],
     ops: [
@@ -108,9 +104,6 @@ const defaultScenarios = [
       { name: "released_by", type: "string", pk: false },
       { name: "settled_ts", type: "number", pk: false },
     ],
-    rows: [
-      { id: "PAY-009", account_id: "AC-77", amount: 985.4, currency: "USD", status: "settled", settled_ts: 280 },
-    ],
     events: [],
     ops: [
       {
@@ -149,15 +142,6 @@ const defaultScenarios = [
       { name: "status", type: "string", pk: false },
       { name: "total", type: "number", pk: false },
       { name: "last_event_id", type: "string", pk: false },
-    ],
-    rows: [
-      {
-        id: "ORD-221", // baseline row to show change feed behaviour
-        customer_id: "C-14",
-        status: "packed",
-        total: 275,
-        last_event_id: "EVT-220",
-      },
     ],
     events: [],
     ops: [
@@ -250,9 +234,6 @@ const defaultScenarios = [
       { name: "humidity", type: "number", pk: false },
       { name: "anomaly", type: "bool", pk: false },
       { name: "anomaly_reason", type: "string", pk: false },
-    ],
-    rows: [
-      { id: "DEV-5@130", device_id: "DEV-5", temp_c: 19.2, humidity: 0.39, anomaly: false },
     ],
     events: [],
     ops: [
@@ -429,15 +410,6 @@ const defaultScenarios = [
       { name: "preferences", type: "json", pk: false },
     ],
     schemaVersion: 2,
-    rows: [
-      {
-        id: "C-881",
-        name: "Ishaan",
-        email: "ishaan@example.net",
-        loyalty_tier: "bronze",
-        preferences: { marketing_opt_in: false, locale: "en-GB" },
-      },
-    ],
     events: [],
     ops: [
       {
@@ -486,9 +458,6 @@ const defaultScenarios = [
       { name: "status", type: "string", pk: false },
       { name: "subtotal", type: "number", pk: false },
       { name: "shipped_ts", type: "number", pk: false },
-    ],
-    rows: [
-      { id: "ORD-720", customer_id: "C-32", status: "shipped", subtotal: 412.5, shipped_ts: 520 },
     ],
     events: [],
     ops: [
@@ -545,7 +514,6 @@ const defaultScenarios = [
       { name: "version", type: "string", pk: false },
     ],
     rows: [
-      { id: "LED-100", account_id: "AC-9", balance: 12500, checkpoint_ts: 1000, version: "v1" },
       { id: "LED-101", account_id: "AC-21", balance: 8800, checkpoint_ts: 1000, version: "v1" },
     ],
     events: [],
@@ -594,9 +562,6 @@ const defaultScenarios = [
     schema: [
       { name: "id", type: "string", pk: true },
       { name: "status", type: "string", pk: false },
-    ],
-    rows: [
-      { id: "W-1", status: "ready" },
     ],
     events: [],
     ops: [

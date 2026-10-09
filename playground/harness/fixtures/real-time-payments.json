@@ -44,16 +44,6 @@
       "pk": false
     }
   ],
-  "rows": [
-    {
-      "id": "PAY-009",
-      "account_id": "AC-77",
-      "amount": 985.4,
-      "currency": "USD",
-      "status": "settled",
-      "settled_ts": 280
-    }
-  ],
   "ops": [
     {
       "t": 50,
