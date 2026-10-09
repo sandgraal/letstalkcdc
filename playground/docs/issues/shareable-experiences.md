@@ -1,5 +1,7 @@
 # Issue: Persistent scenarios & shareable experience enhancements
 
+> **2026-10: partly superseded.** The Appwrite realtime item now runs on Supabase Realtime, not Appwrite. See [`../supabase-setup.md`](../supabase-setup.md). The other items are unchanged.
+
 ## Summary
 Deliver the longer-term roadmap items around persistent scenarios, Appwrite realtime sync, and shareable links for comparator sessions.
 
@@ -7,7 +9,7 @@ Deliver the longer-term roadmap items around persistent scenarios, Appwrite real
 These enhancements extend the playground beyond single-session demos, enabling teams to collaborate asynchronously and embed guided tours in documentation.
 
 ## Task Checklist
-- [ ] Prototype Appwrite realtime sync to broadcast scenario changes across clients.
+- [ ] Prototype realtime sync to broadcast scenario changes across clients. Realtime is now Supabase Realtime over the `events` table (see [`../supabase-setup.md`](../supabase-setup.md)); no Appwrite code remains.
 - [ ] Design persistent scenario model (naming, access control) and implement CRUD flows in the simulator/comparator.
 - [ ] Add deep-link/shareable URLs that encode scenario + flag state, with validation for stale links.
 - [ ] Update UI affordances (save/share buttons, toasts) with accessibility considerations.

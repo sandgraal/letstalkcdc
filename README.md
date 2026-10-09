@@ -3,6 +3,8 @@
 [![CI](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/ci.yml)
 [![Deploy](https://github.com/sandgraal/letstalkcdc/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/deploy.yml)
 [![Link check](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml/badge.svg?branch=main)](https://github.com/sandgraal/letstalkcdc/actions/workflows/linkcheck.yml)
+[![License: MIT + CC BY 4.0](https://img.shields.io/badge/license-MIT%20%2B%20CC%20BY%204.0-blue)](LICENSE-CONTENT.md)
+[![Lighthouse /intro/ floor](https://img.shields.io/badge/lighthouse%20%2Fintro%2F-perf%20%E2%89%A5%2082%20%C2%B7%20a11y%20%E2%89%A5%2093-orange)](.lighthouserc.json)
 
 _A lightweight, open learning project for Change Data Capture (CDC) and streaming. Built with Eleventy as a static site (all HTML/CSS/JS generated at build time) so anyone can clone, run locally, and contribute._
 
@@ -175,3 +177,10 @@ npm run verify:deployment # Verify production deployment
 - **LCP** (Largest Contentful Paint) — Target: < 2.5s
 - **FID** (First Input Delay) — Target: < 100ms
 - **CLS** (Cumulative Layout Shift) — Target: < 0.1
+
+## License
+
+Code is MIT ([LICENSE](LICENSE)). Written lessons, diagrams and images are
+CC BY 4.0 ([LICENSE-CC-BY-4.0.txt](LICENSE-CC-BY-4.0.txt)). Which files fall
+under which licence, and the attribution wording to use, is in
+[LICENSE-CONTENT.md](LICENSE-CONTENT.md).

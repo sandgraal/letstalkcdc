@@ -1,4 +1,6 @@
-# Issue: Appwrite-backed persistence for scenarios and telemetry
+# Issue (closed, superseded): Appwrite-backed persistence for scenarios and telemetry
+
+> **2026-10: closed as superseded.** Persistence shipped on Supabase, not Appwrite. See [`../supabase-setup.md`](../supabase-setup.md) for the tables, policies and share-link function. The task list below is history, not open work, and the Appwrite console steps in the 2026-06 update no longer apply. No Appwrite code remains in the playground.
 
 > **Update (2026-06):** the client integration is repaired (#285) and the required collections/attributes/permissions are now documented in [`../supabase-setup.md`](../supabase-setup.md). That covers the "document required schemas" item; the open work is the `scenarios` serialization change (Option A/B in that doc) so snapshots persist, plus configuring the collections in the Appwrite console.
 
