@@ -43,36 +43,31 @@ const GUIDANCE_BY_SCENARIO: Record<string, ScenarioGuidance> = {
       },
     ],
   },
-  "snapshot replay": {
+  "re-insert after update": {
     summary:
-      "Rebuild state from a snapshot, then keep tails aligned while new mutations arrive mid-replay.",
+      "Follow one ledger row through an update, a re-insert of its older values, and a later update. The re-insert is a new source write, not a redelivered event.",
     controls: [
       {
-        title: "Leave polling disabled",
+        title: "Enable Log and Trigger",
         detail:
-          "Focus on trigger/log methods so the replay highlights ordered change events instead of bulk diffs.",
+          "Both report every write in order, so the re-insert shows up as its own event between the two updates.",
       },
       {
-        title: "Pause/resume apply",
+        title: "Add Polling to compare",
         detail:
-          "Pause apply mid-snapshot to show partially hydrated tables, then resume to watch the tail catch up.",
-      },
-      {
-        title: "Filter snapshot ops",
-        detail:
-          "Filter the event log to op=s to separate snapshot seeds from live updates when explaining offsets.",
+          "Polling samples the table, so it can collapse the update and the re-insert into one observed change.",
       },
     ],
     observations: [
       {
-        title: "Offset safety",
+        title: "Later write wins",
         detail:
-          "Demonstrate that once the snapshot completes, resumed streams continue without reprocessing completed chunks.",
+          "The sink ends on the last update because it was the last write. The re-insert is applied in order, not rejected.",
       },
       {
-        title: "Backlog pressure",
+        title: "Not a replay",
         detail:
-          "Watch backlog counters while the replay runs; streaming methods should stay ahead of trigger overhead.",
+          "No old event is delivered a second time here, so this scenario cannot show a stale record losing to a newer one.",
       },
     ],
   },

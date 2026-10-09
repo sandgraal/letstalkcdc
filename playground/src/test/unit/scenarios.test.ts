@@ -36,10 +36,12 @@ const EXPECTED_SCENARIOS = [
   },
   {
     id: "snapshot-replay",
-    name: "Snapshot Replay",
-    description: "Offset resets and re-seeding change feeds.",
-    highlight: "Drop-snapshot and dedupe controls for idempotent apply.",
-    tags: ["snapshot", "replay", "dedupe"],
+    name: "Re-insert after Update",
+    description:
+      "A source write re-inserts an earlier version of a row after an update. It does not model redelivery of an old event.",
+    highlight:
+      "The re-insert is a new, later source write, so every method reports it and the sink applies it in order.",
+    tags: ["insert", "update", "ordering"],
   },
   {
     id: "retention-erasure",
@@ -52,8 +54,8 @@ const EXPECTED_SCENARIOS = [
     id: "snapshot-to-stream",
     name: "Snapshot ➜ Stream Handoff",
     description: "Showing snapshot catch-up handing off to change feed tails.",
-    highlight: "Compare drop-snapshot + dedupe toggles; log vs. trigger resume semantics.",
-    tags: ["snapshot", "resume", "dedupe"],
+    highlight: "Updates, an insert and a delete across three accounts; compare what each method captures.",
+    tags: ["snapshot", "resume"],
   },
   {
     id: "iot-telemetry",

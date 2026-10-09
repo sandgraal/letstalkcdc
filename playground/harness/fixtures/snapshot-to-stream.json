@@ -4,8 +4,7 @@
   "description": "Showing snapshot catch-up handing off to change feed tails.",
   "tags": [
     "snapshot",
-    "resume",
-    "dedupe"
+    "resume"
   ],
   "schema": [
     {

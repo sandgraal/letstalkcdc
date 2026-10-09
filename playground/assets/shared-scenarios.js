@@ -1,3 +1,14 @@
+// `rows` is a preview of the table (schema and a sample of final-state rows) for
+// the UI. It is NOT loaded into the Compare lanes: the lanes start empty
+// (web/App.tsx calls `controller.startSnapshot([])`) and build state only from
+// `ops`. In 9 of the 11 scenarios a `rows` entry has the same table and key as
+// an `insert` op, so loading it as seed data would be a duplicate-key insert.
+// A scenario that updates or deletes a row with no insert in `ops`
+// (retention-erasure, snapshot-to-stream, and the delete of LED-101 in
+// snapshot-replay) therefore emits an event with no prior state.
+// Loading seed rows would also make the log and polling adapters emit snapshot
+// INSERT events (the trigger adapter emits none), changing event counts and
+// metrics per method, so it is a separate piece of work, not a data tweak.
 const defaultScenarios = [
   {
     id: "crud-basic",
@@ -517,11 +528,13 @@ const defaultScenarios = [
   {
     id: "snapshot-replay",
     difficulty: "advanced",
-    name: "Snapshot Replay",
-    label: "Snapshot Replay",
-    description: "Offset resets and re-seeding change feeds.",
-    highlight: "Drop-snapshot and dedupe controls for idempotent apply.",
-    tags: ["snapshot", "replay", "dedupe"],
+    name: "Re-insert after Update",
+    label: "Re-insert after Update",
+    description:
+      "A source write re-inserts an earlier version of a row after an update. It does not model redelivery of an old event.",
+    highlight:
+      "The re-insert is a new, later source write, so every method reports it and the sink applies it in order.",
+    tags: ["insert", "update", "ordering"],
     seed: 81,
     table: "ledgers",
     schema: [
@@ -600,8 +613,8 @@ const defaultScenarios = [
     name: "Snapshot ➜ Stream Handoff",
     label: "Snapshot ➜ Stream",
     description: "Showing snapshot catch-up handing off to change feed tails.",
-    highlight: "Compare drop-snapshot + dedupe toggles; log vs. trigger resume semantics.",
-    tags: ["snapshot", "resume", "dedupe"],
+    highlight: "Updates, an insert and a delete across three accounts; compare what each method captures.",
+    tags: ["snapshot", "resume"],
     seed: 118,
     table: "accounts",
     schema: [
