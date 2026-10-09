@@ -71,13 +71,25 @@ function jsonLd(html) {
   ].map((m) => JSON.parse(m[1]));
 }
 
+// Single pass over a lookup map, so "&amp;lt;" decodes to "&lt;", not "<".
+const ENTITIES = {
+  "&amp;": "&",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&lt;": "<",
+  "&gt;": ">",
+};
 const decode = (s) =>
-  s
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+  s.replace(/&(?:amp|quot|#39|lt|gt);/g, (entity) => ENTITIES[entity]);
+
+/** True when `value` is an absolute URL whose origin is HOST and whose path is under PREFIX. */
+const isUnderBase = (value) => {
+  const url = new URL(value);
+  return (
+    url.origin === HOST &&
+    (url.pathname === PREFIX || url.pathname.startsWith(`${PREFIX}/`))
+  );
+};
 
 describe("social cards and structured data in the built site", () => {
   let outDir;
@@ -200,7 +212,7 @@ describe("social cards and structured data in the built site", () => {
       const images = new Set();
       for (const p of pages) {
         const img = p.meta["og:image"][0];
-        expect(img.startsWith(`${BASE}/`)).toBe(true);
+        expect(isUnderBase(img), img).toBe(true);
         expect(img).not.toMatch(/localhost|127\.0\.0\.1/);
         expect(p.meta["og:image:width"]).toEqual(["1200"]);
         expect(p.meta["og:image:height"]).toEqual(["630"]);
@@ -256,7 +268,7 @@ describe("social cards and structured data in the built site", () => {
         }
         // Same host name with a wrong prefix would be a prefix bug.
         for (const u of urls) {
-          if (u.startsWith(HOST) && u !== BASE && !u.startsWith(`${BASE}/`))
+          if (new URL(u).origin === HOST && !isUnderBase(u))
             bad.push(`${p.url}: ${u} is on the host but outside the prefix`);
         }
       }
