@@ -22,9 +22,11 @@ prove the shipped stylesheet hasn't changed.
 3. Compare against the baseline in `CLAUDE.md`. As of this writing the
    `main`-branch baseline is:
    ```
-   7ba70b5050df87cee4b5d9c7c2b4ca195d0b0861c0fe707b236100e3cda904a3
+   83943ab39baf798fdd5cfd1dc726035d030b0bd3d0dc4dc6bb322934d2d060b6
    ```
-   (re-baselined 2026-10-09 for P13-8: cssnano 7 to 9 tool upgrade, no
+   (re-baselined 2026-10-09 for P13-6: metric-matched fallback `@font-face`
+   rules and the `--font-*` tokens that list them, nothing else; previously
+   `7ba70b50…`, re-baselined the same day for P13-8: cssnano 7 to 9 tool upgrade, no
    source CSS change, output proven computed-style and pixel equivalent;
    previously `c32d01ac…`, re-baselined the same day for the P15-21 contrast debt: new
    `components/code-block.css`, light-theme `--color-success/-warning/-error`
