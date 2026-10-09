@@ -1,11 +1,11 @@
 {
   "id": "snapshot-replay",
-  "name": "Snapshot Replay",
-  "description": "Offset resets and re-seeding change feeds.",
+  "name": "Re-insert after Update",
+  "description": "A source write re-inserts an earlier version of a row after an update. It does not model redelivery of an old event.",
   "tags": [
-    "snapshot",
-    "replay",
-    "dedupe"
+    "insert",
+    "update",
+    "ordering"
   ],
   "schema": [
     {

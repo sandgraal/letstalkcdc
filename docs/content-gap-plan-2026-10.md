@@ -347,10 +347,11 @@ resources" list; **no CSS** (route anything visual to `css-refactor`).
   `/cloud-labs/snowflake-cdc/`, `/cloud-labs/fivetran/`, `/observability/`,
   `/snapshotting/`. **Out:** `/ops-offsets/`, `/snapshotting/`,
   `/reconciliation-surgery/`, `/connector-builder/`.
-- **Demo idea:** `/playground/` scenario `snapshot-to-stream` or `snapshot-replay`
-  for the "slot lost, re-snapshot, converge" sequence; a small table of
-  retained WAL against a stalled consumer can be an in-page widget later (CSS
-  would be routed to `css-refactor`).
+- **Demo idea:** none suitable in `/playground/` today. `snapshot-to-stream`
+  has no snapshot phase and `snapshot-replay` (now "Re-insert after Update")
+  is an ordinary later write, so neither shows "slot lost, re-snapshot,
+  converge". A small table of retained WAL against a stalled consumer can be
+  an in-page widget later (CSS would be routed to `css-refactor`).
 - **Prerequisite reading:** `/troubleshooting/`, `/ops-offsets/`,
   `/snapshotting/`. **Size:** M. **Role:** `scout` (check the Debezium and
   PostgreSQL sections against the current stable docs), `implementer`,
@@ -419,9 +420,10 @@ resources" list; **no CSS** (route anything visual to `css-refactor`).
 - **Internal links in:** `/tests/`, `/observability/`, `/merge-cookbook/`,
   `/materialization/`, `/lab-kafka-debezium/`. **Out:** `/event-envelope/`,
   `/exactly-once/`, `/reconciliation-surgery/`, `/debezium-decoder/`.
-- **Demo idea:** `/playground/` scenarios `crud-basic` and `snapshot-replay`: a
-  "replay the same log twice" step that ends in an equality check. Could be
-  proposed to the playground owner under P16-3; this module only links.
+- **Demo idea:** a "replay the same log twice" step that ends in an equality
+  check. No playground scenario does this today (`snapshot-replay`, now
+  "Re-insert after Update", writes once and delivers nothing twice); it needs
+  the proposed `redeliver` op under P16-3. This module only links.
 - **Prerequisite reading:** `/materialization/`, `/exactly-once/`, `/tests/`.
   **Size:** M. **Role:** `implementer` (examples, run them), `reviewer`.
 

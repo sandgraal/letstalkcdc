@@ -212,7 +212,8 @@ describe("/which-row-wins/ links", () => {
     ]) {
       expect(targets.has(t), t).toBe(true);
     }
-    expect(text).toMatch(/snapshot-replay/);
+    expect(text).toMatch(/Re-insert after Update/);
+    expect(text).not.toMatch(/Snapshot Replay/);
   });
 
   it("internal pages and anchors resolve", () => {

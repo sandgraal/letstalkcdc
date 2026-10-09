@@ -44,7 +44,7 @@ Use this page as a quick reference when deciding which capture pattern to demons
   - Schema drift needs careful handling to avoid deserialization failures.
   - Initial snapshots must be coordinated with log positions to avoid duplicate or missing events.
 - **Demo tips:**
-  - Pair the **Schema Evolution** or **Snapshot ➜ Stream Handoff** scenarios with log capture to show column additions flowing through immediately.
+  - Pair the **Schema Evolution** or **Account Changes** scenarios with log capture to show column additions flowing through immediately.
   - Stress-test ordering by toggling the **Burst Updates** scenario and comparing lag overlays between log and polling.
 
 ## Outbox
@@ -60,7 +60,7 @@ Use this page as a quick reference when deciding which capture pattern to demons
   - Consistency between outbox and source tables depends on reading both within the same transaction.
 - **Demo tips:**
   - Load the **Outbox Relay** scenario and enable log + outbox side by side in the comparator to illustrate business-event ordering vs. raw row changes.
-  - Show how the **Snapshot ➜ Stream Handoff** scenario behaves when the outbox feeds a downstream service that expects strict idempotency keys.
+  - Show the stable `event_key` ids on the **Outbox Relay** outbox rows, the keys a downstream service with strict idempotency would use. The playground delivers each event once and has no such service.
 
 ## Quick Selection Guide
 Use this decision helper during workshops or live demos:
