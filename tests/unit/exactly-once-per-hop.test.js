@@ -51,6 +51,12 @@ const visibleProse = text(
   ].join("\n"),
 );
 
+// Debezium's page lists KAFKA-17754 as open; that attribution is allowed, but
+// no other phrasing may call it open (JIRA: Resolved/Fixed 2026-08-12).
+const claimsOpen = (t) =>
+  t.replace(/lists KAFKA-17734, KAFKA-17754 and KAFKA-17582 as open/g, "");
+const KAFKA_17754_OPEN = /KAFKA-17754[^;,.]{0,40}\bopen\b/;
+
 const sentences = (s) => s.split(/(?<=[.!?])\s+/);
 
 describe("/exactly-once/ does not say exactly-once is flatly impossible", () => {
@@ -159,10 +165,47 @@ describe("/exactly-once/ per-hop table", () => {
     }
   });
 
+  it("does not call KAFKA-17754 open: it is resolved in JIRA (as of 2026-10-09)", () => {
+    const hop1 = text(body[0]);
+    expect(hop1).toMatch(
+      /lists KAFKA-17734, KAFKA-17754 and KAFKA-17582 as open/,
+    );
+    expect(hop1).toMatch(
+      /KAFKA-17754 .{0,80}is marked resolved in Apache JIRA/,
+    );
+    expect(hop1).toMatch(/the other two remain open/);
+    expect(claimsOpen(hop1)).not.toMatch(KAFKA_17754_OPEN);
+    expect(text(pageSrc)).not.toMatch(
+      /KAFKA-17734, KAFKA-17754 and KAFKA-17582 are (still )?open/,
+    );
+  });
+
+  it("Kafka to Kafka names the switches and the consumer isolation level", () => {
+    const k = text(body[1]);
+    expect(k).toMatch(/Yes, inside Kafka, when enabled/);
+    expect(k).toContain("processing.guarantee=exactly_once_v2");
+    expect(k).toContain("sendOffsetsToTransaction");
+    expect(k).toContain("isolation.level=read_committed");
+    expect(k).toContain("read_uncommitted");
+  });
+
   it("says Kafka transactions stop at Kafka, and idempotent sinks are still required", () => {
     const sink = text(body[2]);
-    expect(sink).toMatch(/Kafka transaction does not reach into the sink/);
-    expect(sink).toMatch(/Required even if the first hop is exactly-once/);
+    expect(sink).toMatch(/Kafka's transaction does not reach into the sink/);
+    expect(sink).toMatch(/required even if the first hop is exactly-once/);
+  });
+
+  it("does not contradict itself on offsets-in-the-sink-transaction", () => {
+    const sink = text(body[2]);
+    expect(sink).toMatch(/offsets in the sink's own transaction/);
+    expect(sink).toMatch(
+      /If you commit offsets separately from the sink write, a crash between the two replays the event/,
+    );
+    expect(sink).toMatch(/closes that window for this hop/);
+    // The old unconditional wording is gone.
+    expect(sink).not.toMatch(
+      /A crash between the sink write and the offset commit replays/,
+    );
   });
 
   it("keeps at-least-once as the default stance", () => {
@@ -184,6 +227,10 @@ describe("exactly-once per-hop errata and neighbours", () => {
     expect(body).toMatch(/opt-in/);
     expect(body).toMatch(/at-least-once/);
     expect(body).toMatch(/unclear whether the implementation is fully correct/);
+    expect(body).toMatch(
+      /KAFKA-17754 .{0,80}is marked resolved in Apache JIRA/,
+    );
+    expect(claimsOpen(body)).not.toMatch(KAFKA_17754_OPEN);
   });
 
   it("bumps dateModified on the pages it changed", () => {

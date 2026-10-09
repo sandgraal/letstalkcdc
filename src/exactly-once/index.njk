@@ -54,20 +54,22 @@ eleventyComputed:
               <td>
                 Off by default. Debezium's own page still opens with "at-least-once" and says it has no internal
                 deduplication layer. It also says it is unclear whether the implementation is fully correct, that no
-                comprehensive study exists, that Jepsen reports on Redpanda and Bufstream raise concerns about Kafka
-                transactions, and that KAFKA-17734, KAFKA-17754 and KAFKA-17582 are still open.
+                comprehensive study exists, and that Jepsen reports on Redpanda and Bufstream raise concerns about
+                Kafka transactions. It lists KAFKA-17734, KAFKA-17754 and KAFKA-17582 as open; as of 2026-10-09
+                KAFKA-17754 (a delayed EndTxn causing aborted reads and lost writes) is marked resolved in Apache
+                JIRA via KIP-890, and the other two remain open.
               </td>
             </tr>
             <tr>
               <th scope="row">Kafka → Kafka (Kafka Streams, transactional consume-process-produce)</th>
-              <td>Yes, inside Kafka</td>
+              <td>Yes, inside Kafka, when enabled</td>
               <td>
-                Idempotent producers plus transactional offset commits make the output writes and the consumer
-                offsets atomic.
+                Kafka Streams with <code>processing.guarantee=exactly_once_v2</code>, or transactional producers
+                using <code>sendOffsetsToTransaction</code>, make the output writes and the consumer offsets atomic.
               </td>
               <td>
-                The scope is Kafka topics only, and downstream consumers must read committed data. The same open
-                transaction issues apply.
+                The scope is Kafka topics only, and consumers must set <code>isolation.level=read_committed</code>
+                (the default is <code>read_uncommitted</code>). Related transaction issues remain open.
               </td>
             </tr>
             <tr>
@@ -76,11 +78,14 @@ eleventyComputed:
               <td>
                 Exactly-once <em>processing</em>: an idempotent upsert keyed on the primary key, applied only if the
                 change's source log position is newer than the one stored, with deletes kept as delete markers.
-                (Or store the offsets in the sink's own transaction with the data, where the sink supports one.)
+                Optionally also store the offsets in the sink's own transaction with the data, where the sink supports one.
               </td>
               <td>
-                A Kafka transaction does not reach into the sink. A crash between the sink write and the offset
-                commit replays the event, so the sink has to absorb it. Required even if the first hop is exactly-once.
+                Kafka's transaction does not reach into the sink. If you commit offsets separately from the sink
+                write, a crash between the two replays the event and the sink must absorb it. Storing the offsets in
+                the sink's own transaction closes that window for this hop when the sink supports it. An idempotent,
+                position-ordered upsert is still the default because it also covers replays, backfills and duplicates
+                from the first hop, so it is required even if the first hop is exactly-once.
               </td>
             </tr>
             <tr>

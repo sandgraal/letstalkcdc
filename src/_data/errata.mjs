@@ -111,7 +111,10 @@ export default [
         connector. It is off by default, and Debezium's own page still says
         it provides at-least-once delivery, has no internal deduplication
         layer, and that it is unclear whether the implementation is fully
-        correct. Kafka transactions make writes and offsets atomic inside
+        correct. It lists KAFKA-17734, KAFKA-17754 and KAFKA-17582 as open;
+        as of 2026-10-09 KAFKA-17754 (a delayed EndTxn causing aborted reads
+        and lost writes) is marked resolved in Apache JIRA via KIP-890, and
+        the other two remain open. Kafka transactions make writes and offsets atomic inside
         Kafka; they do not cover a database, a warehouse load or an HTTP
         call. The page now answers hop by hop. The sink still has to be
         idempotent, keyed on the primary key and ordered by source log
