@@ -11,7 +11,7 @@
  *     (`node:sqlite`, no flag needed on the Node floor in package.json) and
  *     must give the rows the page claims. It is not run on PostgreSQL here.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -685,12 +685,23 @@ describe("the SQL on the page, executed against SQLite", () => {
 
     // The same page statement on a PostgreSQL-compatible engine, when the
     // package is installed (it is not a dependency of this site).
+    // One engine for the whole block: a cold PGlite start is the slow part, and
+    // it can exceed vitest's 5s default when the full suite is running.
     const pgliteName = "@electric-sql/pglite";
-    let PGlite = null;
-    it("on PGlite (skipped when the package is not installed)", async (ctx) => {
+    let pg = null;
+    beforeAll(async () => {
       try {
-        ({ PGlite } = await import(/* @vite-ignore */ pgliteName));
+        const { PGlite } = await import(/* @vite-ignore */ pgliteName);
+        pg = new PGlite();
+        await pg.waitReady;
       } catch {
+        pg = null;
+      }
+    }, 60_000);
+    afterAll(async () => pg?.close());
+
+    it("on PGlite (skipped when the package is not installed)", async (ctx) => {
+      if (!pg) {
         ctx.skip();
         return;
       }
@@ -700,21 +711,20 @@ describe("the SQL on the page, executed against SQLite", () => {
           `VALUES (${id}, ${email === null ? "NULL" : `'${email}'`}, ${del ? "TRUE" : "FALSE"}, ${lsn})`,
         );
       const run = async (stamp, streamFirst) => {
-        const pg = new PGlite();
+        await pg.exec("DROP TABLE IF EXISTS customers");
         await pg.exec(ddl);
         const seq = streamFirst
           ? [STREAMED, loaded(stamp)]
           : [loaded(stamp), STREAMED];
         for (const r of seq) await pg.exec(literal(r));
         const { rows } = await pg.query("SELECT email FROM customers");
-        await pg.close();
         return rows[0].email;
       };
       expect(await run(150, false)).toBe("loaded");
       expect(await run(150, true)).toBe("loaded");
       expect(await run(100, false)).toBe("streamed-straddling");
       expect(await run(100, true)).toBe("streamed-straddling");
-    });
+    }, 60_000);
   });
 
   describe("rows the snapshot never mentions", () => {
