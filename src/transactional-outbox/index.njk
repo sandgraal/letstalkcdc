@@ -1,0 +1,865 @@
+---
+layout: base.njk
+title: "Transactional Outbox and Relay"
+description: "The transactional outbox with Debezium's Outbox Event Router: why dual writes fail, what at-least-once means for the relay, and how consumers order and dedupe."
+canonicalPath: "/transactional-outbox/"
+scripts:
+  - "/assets/js/lib/quiz.js"
+---
+{% import "components/ui.njk" as ui %}
+{% import "components/quiz.njk" as quizMacro %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<div class="page-wrap prose">
+  <section id="question" aria-labelledby="question-title">
+    <h2 id="question-title">The question</h2>
+    <p>
+      A service has to change its own database and tell the rest of the system about it. That is two writes to two
+      systems, and they can disagree. The transactional <a href="{{ '/glossary/' | url }}#outbox">outbox</a> removes the
+      disagreement on the producing side. What it leaves you is a <strong>relay</strong> that may publish an event more
+      than once, and a <strong>consumer</strong> that has to cope with duplicates and with order.
+    </p>
+    <p class="callout">
+      CDC delivery is <a href="{{ '/glossary/' | url }}#at-least-once">at-least-once</a>, and end-to-end exactly-once across
+      independent systems is not achievable in general. What you can reach is
+      <strong>exactly-once processing</strong> (see <a href="{{ '/glossary/' | url }}#effectively-once">effectively-once</a>):
+      at-least-once publishing into an <a href="{{ '/glossary/' | url }}#idempotent-write">idempotent consumer</a> keyed on the
+      aggregate id and ordered by a version or log position, with deletes kept as markers. The outbox gives you an
+      atomic <em>intent to publish</em>. It does not give you exactly-once delivery.
+    </p>
+    <p>
+      The pattern and its diagram are already on <a href="{{ '/exactly-once/' | url }}#outbox">Exactly-Once Semantics</a>,
+      and <a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC Exactly-Once?</a> scopes the claim hop by hop. This page does
+      not repeat them. It adds what is thin there: the table and the transaction as runnable SQL, the two kinds of relay
+      (a polling publisher and a log-tailing connector), Debezium&rsquo;s Outbox Event Router and what it keeps and drops,
+      what an id can and cannot do for ordering, and when an outbox row can be deleted.
+    </p>
+    <p class="muted">
+      Everything here was checked by reading the Debezium, Kafka, PostgreSQL and microservices.io documentation on
+      2026-10-09 (links at the end). The SQL was run on PGlite and on SQLite (see <a href="#verified">what was run</a>).
+      Debezium and Kafka were not run. Where a behaviour is not stated in the pages read, the text says &ldquo;check your
+      version&rdquo; instead of guessing.
+    </p>
+  </section>
+
+  <section id="dual-write" aria-labelledby="dual-write-title">
+    <h2 id="dual-write-title">Why a dual write fails</h2>
+    <p>
+      A <strong>dual write</strong> changes the database and publishes to the broker as two separate steps. Whatever order
+      you pick, a failure between the steps leaves the two disagreeing.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Dual write failure modes" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Four ways to combine the database write and the publish</caption>
+      <thead>
+        <tr>
+          <th scope="col">Approach</th>
+          <th scope="col">What can go wrong</th>
+          <th scope="col">Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Publish, then commit</th>
+          <td>The transaction rolls back (a constraint, a crash) after the message was sent.</td>
+          <td>An event for a change that never happened.</td>
+        </tr>
+        <tr>
+          <th scope="row">Commit, then publish</th>
+          <td>The process crashes, or the broker is unreachable, after the commit.</td>
+          <td>A change with no event. Nothing records that the send is owed.</td>
+        </tr>
+        <tr>
+          <th scope="row">Commit, then retry the publish in memory</th>
+          <td>The retry state lives in the process and dies with it. A retry after an unacknowledged send can also deliver twice.</td>
+          <td>The same loss as the row above, plus possible duplicates.</td>
+        </tr>
+        <tr>
+          <th scope="row">One distributed transaction (2PC) over both</th>
+          <td>The database or the broker may not support it, and it couples the service to both.</td>
+          <td>Usually not an option (see the sources below).</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      The Debezium blog on the pattern puts the last row this way: there cannot be one shared transaction spanning the
+      database and Kafka, because Kafka cannot be enlisted in distributed (XA) transactions. microservices.io gives the
+      same two reasons, and states the requirement: the service must update the database and send the message atomically,
+      with the message sent if and only if the transaction commits. That quote is from 2019 for Kafka; check your broker
+      if you are not on Kafka.
+    </p>
+  </section>
+
+  <section id="table" aria-labelledby="table-title">
+    <h2 id="table-title">The outbox table and the one transaction</h2>
+    <p>
+      The fix is to modify only one system synchronously. Write the event to an <strong>outbox table</strong> in the
+      service&rsquo;s own database, in the <em>same transaction</em> as the state change. If the transaction commits, the event row
+      exists and a separate process (the <strong>relay</strong>) will send it. If it rolls back, neither exists.
+    </p>
+    <p>
+      The columns below are the ones Debezium&rsquo;s router expects by default (<code>id</code>, <code>aggregatetype</code>,
+      <code>aggregateid</code>, <code>type</code>, <code>payload</code>), plus one of mine: <code>seq</code>, a version
+      number for the aggregate. Why it is there is the subject of the
+      <a href="#consumer">consumer section</a>.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Outbox columns" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Outbox columns and what each is for</caption>
+      <thead>
+        <tr>
+          <th scope="col">Column</th>
+          <th scope="col">Holds</th>
+          <th scope="col">Used for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>id</code></th>
+          <td>A unique id for this event (a UUID here).</td>
+          <td>Identifying and de-duplicating one event. Not an order.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>aggregatetype</code></th>
+          <td>The kind of aggregate root, such as <code>order</code>.</td>
+          <td>By default, picks the topic.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>aggregateid</code></th>
+          <td>The id of the aggregate root the event belongs to.</td>
+          <td>The Kafka message key, so one aggregate&rsquo;s events share a partition.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>seq</code></th>
+          <td>The aggregate&rsquo;s version after this change.</td>
+          <td>Ordering and stale-event detection on the consumer.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>type</code></th>
+          <td>The event type, such as <code>OrderShipped</code>.</td>
+          <td>Letting consumers pick a handler.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>payload</code></th>
+          <td>The event body as <code>jsonb</code>.</td>
+          <td>The message value.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <details open>
+      <summary>PostgreSQL: the tables and the transaction (run on PGlite)</summary>
+      <pre><code class="language-sql" id="sql-producer">CREATE TABLE orders (
+  id      text   PRIMARY KEY,
+  status  text   NOT NULL,
+  version bigint NOT NULL DEFAULT 1
+);
+
+CREATE TABLE outbox (
+  id            uuid   PRIMARY KEY,
+  aggregatetype text   NOT NULL,
+  aggregateid   text   NOT NULL,
+  seq           bigint NOT NULL,
+  type          text   NOT NULL,
+  payload       jsonb  NOT NULL
+);
+
+-- 1. Create the order and its first event together.
+BEGIN;
+INSERT INTO orders (id, status) VALUES ('ORD-221', 'created');
+INSERT INTO outbox (id, aggregatetype, aggregateid, seq, type, payload)
+VALUES (gen_random_uuid(), 'order', 'ORD-221', 1, 'OrderCreated',
+        '{"status": "created"}');
+COMMIT;
+
+-- 2. Change the order and write the event. The UPDATE takes the row lock and
+--    returns the new version; the event is written in the same statement.
+BEGIN;
+WITH bumped AS (
+  UPDATE orders
+     SET status = 'shipped', version = version + 1
+   WHERE id = 'ORD-221'
+  RETURNING id, status, version
+)
+INSERT INTO outbox (id, aggregatetype, aggregateid, seq, type, payload)
+SELECT gen_random_uuid(), 'order', id, version, 'OrderShipped',
+       jsonb_build_object('status', status)
+  FROM bumped;
+COMMIT;</code></pre>
+    </details>
+    <p>
+      Three details carry the weight. First, the version comes from the <code>UPDATE ... RETURNING</code>, not from a
+      read-then-write: under the default <code>READ COMMITTED</code> level a second writer to the same row waits for the
+      first to commit and then increments the <em>updated</em> row, so concurrent writers to one aggregate get
+      consecutive versions in commit order (PostgreSQL documents this wait-and-re-evaluate behaviour; at
+      <code>REPEATABLE READ</code> the second writer gets a serialization error instead and must retry). Second, a rollback
+      undoes the state change, the version bump and the event row together; on PGlite a rolled-back
+      <code>UPDATE</code> left <code>orders</code> at version 2 and <code>outbox</code> at two rows. Third, the application
+      writes the event as a normal, explicit row. The payload is a contract you choose, not a copy of whatever columns
+      changed, which is one reason to prefer it over capturing the business tables directly.
+    </p>
+  </section>
+
+  <section id="relay" aria-labelledby="relay-title">
+    <h2 id="relay-title">The relay: polling publisher or log tailing</h2>
+    <p>
+      The <strong>message relay</strong> moves committed outbox rows to the broker. microservices.io names two ways to
+      build it, and lists the drawbacks of each in the pattern pages.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Two relay designs compared" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Polling publisher and transaction-log tailing (benefits and drawbacks as listed by microservices.io)</caption>
+      <thead>
+        <tr>
+          <th scope="col">Aspect</th>
+          <th scope="col">Polling publisher</th>
+          <th scope="col">Log tailing (for example Debezium)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">What it reads</th>
+          <td>The outbox table, with a query.</td>
+          <td>The database transaction log (the WAL in PostgreSQL, the binlog in MySQL).</td>
+        </tr>
+        <tr>
+          <th scope="row">Benefits listed</th>
+          <td>Works with any SQL database.</td>
+          <td>No 2PC; &ldquo;guaranteed to be accurate&rdquo;.</td>
+        </tr>
+        <tr>
+          <th scope="row">Drawbacks listed</th>
+          <td>Tricky to publish events in order. Not all NoSQL databases support it.</td>
+          <td>Relatively obscure; needs database-specific solutions; &ldquo;tricky to avoid duplicate publishing&rdquo;.</td>
+        </tr>
+        <tr>
+          <th scope="row">Where the duplicate comes from</th>
+          <td>A crash after publishing and before recording that it did.</td>
+          <td>A restart that resumes from the last <em>recorded</em> position, which can be earlier than the last event sent.</td>
+        </tr>
+        <tr>
+          <th scope="row">Cleanup</th>
+          <td>You delete published rows.</td>
+          <td>The row can be deleted at once; see <a href="#cleanup">cleanup</a>.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      Both are <strong>at-least-once</strong>. microservices.io states it for the pattern: the relay might publish a message
+      more than once, for example by crashing after publishing and before recording the fact, and a consumer must therefore
+      be idempotent, perhaps by tracking the ids of messages it has already processed.
+    </p>
+    <h3 id="polling">A polling publisher, and where it duplicates</h3>
+    <details>
+      <summary>PostgreSQL: one poll cycle (run on PGlite)</summary>
+      <pre><code class="language-sql" id="sql-polling">ALTER TABLE outbox ADD COLUMN published_at timestamptz;
+
+-- Read pending events. Within one aggregate they come out in version order.
+SELECT id, aggregateid, seq, type, payload
+  FROM outbox
+ WHERE published_at IS NULL
+ ORDER BY aggregateid, seq
+ LIMIT 100;
+
+-- ... send each event to Kafka and wait for the broker to acknowledge it ...
+
+-- Record that it was sent. A crash before this line means the next poll
+-- returns the same rows again: that is the duplicate.
+UPDATE outbox SET published_at = now() WHERE id = :event_id;</code></pre>
+    </details>
+    <p>
+      The window between the send and the <code>UPDATE</code> is the duplicate. Run the <code>SELECT</code> again without
+      the <code>UPDATE</code> and you get the same rows. Two rules keep the polling publisher honest about order: run one
+      poller (or give each poller a fixed share of the aggregates), and on a failed send for an aggregate, stop publishing
+      that aggregate&rsquo;s later events until it succeeds. A second poller that skips locked rows, or a loop that carries on
+      past a failure, publishes seq 6 before seq 5.
+    </p>
+    <p>
+      Do not poll on a global counter such as <code>WHERE id &gt; :last_seen_id</code> with an auto-increment id. My
+      reasoning, not a tested result: a sequence value is assigned at insert, but the row becomes visible at commit, so a
+      transaction with a lower id can commit after the poller has moved past it and its event is never read. The
+      per-aggregate version above does not have this problem for events of one aggregate, because a transaction cannot
+      get version N+1 until version N has committed.
+    </p>
+  </section>
+
+  <section id="router" aria-labelledby="router-title">
+    <h2 id="router-title">Debezium&rsquo;s Outbox Event Router</h2>
+    <p>
+      With log tailing, the relay is a Debezium connector plus one single message transform
+      (<a href="{{ '/glossary/' | url }}#smt">SMT</a>), <code>io.debezium.transforms.outbox.EventRouter</code>. The connector
+      reads the insert on the outbox table from the log and the SMT turns that change event into the message you want:
+      a topic chosen from the row, a key, a header carrying the event id, and the payload as the value. The connector
+      should capture the outbox table only, and the transform should apply only to its events (the reference suggests an
+      SMT predicate, or <code>route.topic.regex</code>), because heartbeats, schema changes and transaction messages do not
+      have the outbox structure.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Outbox Event Router options" tabindex="0" data-table-scroll>
+    <table>
+      <caption>The router options this page uses, with the defaults in the Debezium reference</caption>
+      <thead>
+        <tr>
+          <th scope="col">Option</th>
+          <th scope="col">Default</th>
+          <th scope="col">Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row"><code>table.field.event.id</code></th>
+          <td><code>id</code></td>
+          <td>The column holding the unique event id. It is put in a message header named <code>id</code>, and the reference says you can use it to remove duplicate messages.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>table.field.event.key</code></th>
+          <td><code>aggregateid</code></td>
+          <td>The column used as the Kafka message key. The reference calls this important for correct order in Kafka partitions.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>table.field.event.payload</code></th>
+          <td><code>payload</code></td>
+          <td>The column used as the message value. With additional fields configured, the value becomes an envelope around the payload and those fields.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>table.field.event.timestamp</code></th>
+          <td>none (the Debezium event time)</td>
+          <td>A column to use as the Kafka message timestamp instead. It labels the message; it is not an ordering key.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>route.by.field</code></th>
+          <td><code>aggregatetype</code></td>
+          <td>The column whose value becomes part of the topic name.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>route.topic.replacement</code></th>
+          <td><code>outbox.event.${routedByValue}</code></td>
+          <td>The topic name pattern; <code>${routedByValue}</code> is replaced by the routing column&rsquo;s value.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>table.expand.json.payload</code></th>
+          <td><code>false</code></td>
+          <td>Parse a JSON string payload into real JSON instead of an escaped string. Needs a JSON column and the <code>JsonConverter</code>.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>table.fields.additional.placement</code></th>
+          <td>none</td>
+          <td>Extra outbox columns to put in a header or the envelope, as <code>column:placement[:alias]</code>. The reference also shows a <code>partition</code> placement; check your version.</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>table.op.invalid.behavior</code></th>
+          <td><code>warn</code></td>
+          <td>What to do when the outbox table is <em>updated</em>: <code>warn</code>, <code>error</code> (both skip the record) or <code>fatal</code> (stop the connector).</td>
+        </tr>
+        <tr>
+          <th scope="row"><code>tracing.span.context.field</code></th>
+          <td><code>tracingspancontext</code></td>
+          <td>The column holding a tracing span context. Two more options, <code>tracing.operation.name</code> and <code>tracing.with.context.field.only</code>, control the span. Tracing is optional.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <details open>
+      <summary>Kafka Connect: the router in a connector configuration (not run)</summary>
+      <pre><code class="language-properties" id="cfg-router"># Connection settings omitted. Capture the outbox table only.
+connector.class=io.debezium.connector.postgresql.PostgresConnector
+table.include.list=public.outbox
+tombstones.on.delete=false
+
+transforms=outbox
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.route.by.field=aggregatetype
+transforms.outbox.route.topic.replacement=outbox.event.${routedByValue}
+transforms.outbox.table.field.event.key=aggregateid
+transforms.outbox.table.expand.json.payload=true
+transforms.outbox.table.fields.additional.placement=seq:header:seq
+
+value.converter=org.apache.kafka.connect.json.JsonConverter</code></pre>
+    </details>
+    <p>
+      That configuration sends the <code>OrderShipped</code> row above to the topic <code>outbox.event.order</code> with the
+      key <code>ORD-221</code>, the event id in the <code>id</code> header, the version in a <code>seq</code> header and the
+      JSON payload as the value. <code>seq:header:seq</code> uses the documented <code>column:placement:alias</code> form;
+      <code>seq:envelope:seq</code> would put it in the value instead. Either way, test what your consumer actually sees:
+      a header reaches a plain consumer as bytes.
+    </p>
+    <h3 id="router-does">What the router keeps, drops and refuses</h3>
+    <ul>
+      <li><strong>Keeps.</strong> The key, the payload, the event id (as a header), the topic route, any additional columns you name, and a timestamp.</li>
+      <li><strong>Drops deletes.</strong> The reference says the SMT automatically filters out <code>DELETE</code> operations on an outbox table. The 3.0.0.Final source I read also drops null-valued records (tombstones).</li>
+      <li><strong>Refuses updates.</strong> The reference says all changes to an outbox table are expected to be inserts: the table is a queue. An update is handled by <code>table.op.invalid.behavior</code>. So a log-tailing relay and a polling-style <code>published_at</code> flag do not mix.</li>
+      <li><strong>Does not forward the source position.</strong> The reference&rsquo;s example shows the raw change event with <code>source.lsn</code> and <code>source.txId</code>, and the routed message without them. Reading <code>apply()</code> in the 3.0.0.Final source agrees: the new record is built from the outbox row&rsquo;s columns, not the <code>source</code> block. If you want a position on the consumer side, put it in a column. This matters in the <a href="#consumer">consumer section</a>.</li>
+      <li><strong>One structure per connector.</strong> A connector can capture more than one outbox table only if each has the same structure.</li>
+      <li><strong>Not for MongoDB.</strong> The reference says this SMT is not compatible with the MongoDB connector, which has its own outbox router.</li>
+    </ul>
+    <p>
+      <strong>Versions.</strong> The Debezium documentation I read (the stable pages, 3.7) lists the router as a standard SMT. The
+      options in the table above appear in the reference pages for 1.9, 2.7, 3.0, 3.3 and 3.7. Some names changed: the
+      option for a missing additional field is <code>table.fields.additional.error.on.missing</code> in 2.7 to 3.3 and
+      <code>table.field.additional.missing</code> in 3.7, and a few options (the JSON null and empty-array handling) were added
+      along the way. I read the source of 3.0.0.Final, not 3.7, so the behaviours above taken from the source are
+      &ldquo;check your version&rdquo;.
+    </p>
+  </section>
+
+  <section id="duplicates" aria-labelledby="duplicates-title">
+    <h2 id="duplicates-title">What at-least-once means here</h2>
+    <p>
+      The outbox makes the event <em>durable and atomic</em> with the state change. Publishing it is a separate step with
+      its own failures, and each failure repeats events rather than losing them.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Where duplicates come from" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Where a repeat of the same outbox event comes from, and what stays the same</caption>
+      <thead>
+        <tr>
+          <th scope="col">Cause</th>
+          <th scope="col">Same event id</th>
+          <th scope="col">Same <code>seq</code></th>
+          <th scope="col">Same Kafka offset</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Connector restart or Kafka Connect task crash: it resumes from the last recorded offset and re-reads events it already sent</th>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>No, a new send at a higher offset</td>
+        </tr>
+        <tr>
+          <th scope="row">Slot position persisted only at a checkpoint, so the slot returns to an earlier position after a database crash</th>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <th scope="row">Polling publisher crashes between the send and marking the row published</th>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <th scope="row">Consumer crashes after processing and before committing its offset</th>
+          <td>Yes</td>
+          <td>Yes</td>
+          <td>Yes, the same message is read again</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      The first row is documented for the Debezium PostgreSQL connector: when a Kafka Connect process crashes, its tasks
+      stop without recording their latest offsets, replacement tasks resume from the last recorded offset, and they
+      &ldquo;might generate some of the same change events&rdquo;. The page tells consumers to anticipate duplicates, and to track the
+      position, especially the LSN, to recognise one. The second row is PostgreSQL&rsquo;s own: a logical slot emits each change
+      once in normal operation, but its position is persisted only at checkpoint, so after a crash recent changes can be sent
+      again, and decoding clients are responsible for avoiding ill effects. The Debezium blog on the outbox pattern calls its
+      pipeline &ldquo;at least once&rdquo; and passes the event id as a header for the same reason.
+    </p>
+    <p>
+      The column to read is the last one. Only the consumer&rsquo;s own redelivery repeats an offset. A repeat from the
+      relay or the connector arrives at a <em>new, higher offset</em> with the same id and the same <code>seq</code>. That is
+      why an offset is useless as a version here (see
+      <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>), and why it matters for pruning, below. A
+      replay after an offset reset is the same thing at a larger scale; the mechanics are on
+      <a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a>.
+    </p>
+    <p>
+      Kafka&rsquo;s producer settings help only inside one producer session: with <code>enable.idempotence</code> the producer
+      writes one copy of each message despite its own retries, and ordering is preserved with up to five in-flight
+      requests. A connector that re-reads an event after a restart sends it as a new message, which idempotence does not
+      stop.
+    </p>
+  </section>
+
+  <section id="consumer" aria-labelledby="consumer-title">
+    <h2 id="consumer-title">The consumer: dedupe by id, order by version</h2>
+    <p>
+      Two jobs are easy to merge and are not the same job. <strong>Deduplication</strong> answers &ldquo;have I seen this
+      event?&rdquo;. <strong>Ordering</strong> answers &ldquo;is this event newer than what I hold?&rdquo;. An event id does
+      the first. It does nothing for the second, and a random UUID has no order at all.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Candidate ordering keys" tabindex="0" data-table-scroll>
+    <table>
+      <caption>What each candidate can tell a consumer about an outbox event</caption>
+      <thead>
+        <tr>
+          <th scope="col">Candidate</th>
+          <th scope="col">Detects a repeat</th>
+          <th scope="col">Says which is newer</th>
+          <th scope="col">Comment</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Event id (UUID)</th>
+          <td>Yes, if you remember it</td>
+          <td>No</td>
+          <td>A random id has no order. Needs a store of seen ids and a retention rule.</td>
+        </tr>
+        <tr>
+          <th scope="row">Global auto-increment id</th>
+          <td>Yes</td>
+          <td>Not reliably</td>
+          <td>Assigned at insert, visible at commit. It also leaves gaps: on PGlite a rolled-back <code>nextval</code> consumed a value, so a gap is not a missing event.</td>
+        </tr>
+        <tr>
+          <th scope="row">Message timestamp or <code>table.field.event.timestamp</code></th>
+          <td>No</td>
+          <td>No</td>
+          <td>Can tie, can be skewed, and on a replay may describe when the connector read the row.</td>
+        </tr>
+        <tr>
+          <th scope="row">Kafka offset</th>
+          <td>Only the consumer&rsquo;s own redelivery</td>
+          <td>No</td>
+          <td>A relay or connector repeat gets a new, higher offset.</td>
+        </tr>
+        <tr>
+          <th scope="row">Source log position of the outbox insert</th>
+          <td>Yes</td>
+          <td>Across transactions, in commit order; within one aggregate only if the lock is taken first</td>
+          <td>Not forwarded by the router. See below.</td>
+        </tr>
+        <tr>
+          <th scope="row"><strong>Aggregate id plus <code>seq</code></strong> written in the same transaction</th>
+          <td>Yes</td>
+          <td>Yes, per aggregate</td>
+          <td>Survives the router (as a column you place), a replay, a different relay and a failover.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <h3 id="what-to-carry">What to carry</h3>
+    <p>
+      Carry the <strong>aggregate id</strong> (as the message key) and a <strong>version</strong> that the producing
+      transaction assigns under the aggregate&rsquo;s row lock, as in the SQL above. Keep the event <strong>id</strong> as
+      well, for tracing, for a dead-letter record and for a second consumer that prefers it. The version is the outbox
+      equivalent of the source log position that the rest of this site orders by: a number the source assigns in commit order
+      that a replay carries unchanged.
+    </p>
+    <p>
+      Why not just use the log position of the outbox insert, as for any other table? Two reasons, one documented and
+      one reasoned. Documented: the router does not forward the <code>source</code> block (above), so it is simply not on the
+      message. Reasoned, from the PostgreSQL rule that concurrent transactions are decoded in commit order: the outbox row is
+      only ever inserted, so no row lock orders two inserts for one aggregate. If transaction B inserts its outbox row, then
+      transaction A updates the aggregate and inserts its row and commits, and only then B updates the aggregate and commits,
+      the log shows A before B, and B&rsquo;s outbox insert has the <em>lower</em> position. A guard that says &ldquo;higher
+      position wins&rdquo; would discard B&rsquo;s event. The version has no such problem because it is taken <em>after</em>
+      the lock. This interleaving needs two connections and I did not run it. If you take the aggregate&rsquo;s lock first
+      in every transaction, the positions agree with commit order too, and you may read <code>source.lsn</code> from the raw
+      change event instead of using the router (verify the position field for your connector, as described on
+      <a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>).
+    </p>
+    <h3 id="guard">The guard</h3>
+    <p>
+      One statement does both jobs. Apply an event only if its version is higher than the last one applied for that
+      aggregate; a duplicate has an equal version and a stale event a lower one, so both are skipped. The delete is an event
+      like any other and sets a marker, so a late older update cannot bring the row back (the
+      <a href="{{ '/deletes-stay-deleted/' | url }}#resurrection">resurrection problem</a>).
+    </p>
+    <details open>
+      <summary>Consumer: the guarded upsert (run on PGlite and SQLite)</summary>
+      <pre><code class="language-sql" id="sql-consumer">CREATE TABLE shipments (
+  order_id text    PRIMARY KEY,
+  status   text,
+  deleted  boolean NOT NULL DEFAULT false,
+  last_seq bigint  NOT NULL
+);
+
+-- Apply one event: (order_id, status, deleted, seq). Zero rows changed means
+-- a duplicate or a stale event.
+INSERT INTO shipments (order_id, status, deleted, last_seq)
+VALUES ('ORD-221', 'shipped', false, 2)
+ON CONFLICT (order_id) DO UPDATE
+   SET status   = excluded.status,
+       deleted  = excluded.deleted,
+       last_seq = excluded.last_seq
+ WHERE shipments.last_seq &lt; excluded.last_seq;</code></pre>
+    </details>
+    <div style="overflow-x: auto" role="region" aria-label="Id-only dedupe against the version guard" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Four arrival sequences for one order, applied by an id-only dedupe and by the version guard (run on PGlite and SQLite)</caption>
+      <thead>
+        <tr>
+          <th scope="col">Arrival (event seq)</th>
+          <th scope="col">Id-only dedupe ends at</th>
+          <th scope="col">Version guard ends at</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">1, 2, 3 then 2 again (duplicate)</th>
+          <td>seq 3</td>
+          <td>seq 3</td>
+        </tr>
+        <tr>
+          <th scope="row">1, 3, 2 (swapped)</th>
+          <td>seq 2 (stale)</td>
+          <td>seq 3</td>
+        </tr>
+        <tr>
+          <th scope="row">1, 2, 3, then ids pruned, then 2 replayed</th>
+          <td>seq 2 (stale)</td>
+          <td>seq 3</td>
+        </tr>
+        <tr>
+          <th scope="row">1, 2, 3, delete at 4, then 3 replayed</th>
+          <td>seq 3 if the id was pruned (row back); otherwise deleted</td>
+          <td>deleted</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      Id-only dedupe passes the first row and fails the next two. That is the gap the public pages leave open: the router
+      reference says the id can be used to remove duplicates, and the Debezium blog dedupes by id, and both are right
+      about duplicates. Neither claims it orders events.
+    </p>
+    <h3 id="prune">Pruning the seen-ids table</h3>
+    <p>
+      The Debezium blog suggests housekeeping on the consumer&rsquo;s message log: periodically delete the events older than
+      the consumer&rsquo;s committed offset, because such messages will not be delivered to it again. That holds for the broker
+      redelivering to the same consumer group. It does not hold for a repeat from the relay or connector, which, as the
+      table above shows, arrives at a new, higher offset. Pruning by offset therefore does not bound how old a duplicate can
+      be. Two safer rules:
+    </p>
+    <ul>
+      <li><strong>Keep the last applied version per aggregate.</strong> It is one row per aggregate, it needs no pruning, and an event of any age is compared against it. This is the guard above.</li>
+      <li><strong>If you must keep ids, prune by time, not offset,</strong> and keep them longer than the longest rewind you can perform: the topic retention, the slot&rsquo;s WAL retention or the longest offset reset you would run, whichever is greatest.</li>
+    </ul>
+    <p>
+      One more use for dense versions: because the version rolls back with the transaction, there are no gaps in an
+      aggregate&rsquo;s versions. A consumer that sees 4 after 2 knows event 3 is missing or late, and can park the event
+      and alert rather than apply it. That check is the application&rsquo;s to write; it is stricter than the SQL above,
+      which accepts any higher version.
+    </p>
+  </section>
+
+  <section id="cleanup" aria-labelledby="cleanup-title">
+    <h2 id="cleanup-title">Outbox table growth and cleanup</h2>
+    <p>
+      An outbox table only gets inserts, so without a plan it grows forever. Which plan is safe depends on the relay.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Outbox cleanup by relay" tabindex="0" data-table-scroll>
+    <table>
+      <caption>When a physical <code>DELETE</code> of outbox rows is safe</caption>
+      <thead>
+        <tr>
+          <th scope="col">Relay</th>
+          <th scope="col">Safe to delete</th>
+          <th scope="col">Why, and what it costs</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Log tailing, delete in the same transaction</th>
+          <td>Immediately</td>
+          <td>The connector reads the insert and the delete from the log, not the table. The router discards the delete. The table stays empty and needs no housekeeping. Cost: nothing in the table to inspect, audit or re-send from (see below).</td>
+        </tr>
+        <tr>
+          <th scope="row">Log tailing, delete later by a job</th>
+          <td>Any time after commit</td>
+          <td>The same reason. Keep rows for as long as you want a record to look at. Delete with <code>DELETE</code> or by dropping a time partition; never flag rows with an <code>UPDATE</code>, which the router rejects.</td>
+        </tr>
+        <tr>
+          <th scope="row">Polling publisher</th>
+          <td>After the row is marked published, plus a safety window</td>
+          <td>The poller finds rows by reading the table, so a row it has not yet marked must stay. Delete rows published more than N days ago, with N longer than the time you need to investigate or re-send.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      <strong>Insert and delete in one transaction.</strong> The Debezium blog does exactly this: persist the event row and
+      remove it right away. It explains why that works: log-based CDC does not look at the table&rsquo;s contents but tails the
+      append-only transaction log, where the committed transaction contains both the insert and the delete. Debezium sends a
+      message for the insert and ignores the delete, so the table is always empty, and &ldquo;no separate house-keeping
+      process is required&rdquo;. The blog sets <code>tombstones.on.delete=false</code> so no deletion marker follows. The
+      current reference confirms that the router filters out <code>DELETE</code> operations. The log still records both
+      changes, and the log is trimmed on its own schedule.
+    </p>
+    <details>
+      <summary>PostgreSQL: write the event and delete it in the same transaction (run on PGlite)</summary>
+      <pre><code class="language-sql" id="sql-cleanup">BEGIN;
+UPDATE orders SET status = 'delivered', version = version + 1 WHERE id = 'ORD-221';
+INSERT INTO outbox (id, aggregatetype, aggregateid, seq, type, payload)
+SELECT '6f1d0c1e-3b1f-4a52-9d0e-5b7f1a2c3d4e', 'order', id, version,
+       'OrderDelivered', jsonb_build_object('status', status)
+  FROM orders WHERE id = 'ORD-221';
+DELETE FROM outbox WHERE id = '6f1d0c1e-3b1f-4a52-9d0e-5b7f1a2c3d4e';
+COMMIT;</code></pre>
+    </details>
+    <p>
+      <strong>What you give up (my reasoning, not from the sources).</strong> If the outbox table holds nothing, the log is
+      the only copy of the events. If the connector&rsquo;s slot is dropped, or invalidated because it fell too far behind,
+      the events committed in the gap cannot be rebuilt from the outbox: a snapshot of an empty table recovers nothing, and you
+      must reconstruct from the business tables. Keeping rows for a few days, or in a partition you drop later, buys a record to
+      compare against the topic. PostgreSQL&rsquo;s documentation notes that dropping or detaching a partition is much faster than a bulk
+      <code>DELETE</code> and avoids its <code>VACUUM</code> overhead. The slot risk is covered on
+      <a href="{{ '/postgres-replication-slots/' | url }}">Postgres replication slots and WAL growth</a>.
+    </p>
+    <p>
+      <strong>This is not the delete-marker problem.</strong> Deleting <em>outbox</em> rows is housekeeping on a queue.
+      The rule on <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes that stay deleted</a> (keep a marker with a
+      position) is about the consumer&rsquo;s <em>state</em>, the <code>shipments</code> row above. And a topic&rsquo;s retention,
+      not the outbox table, decides how long a new consumer can replay; the blog makes the same point.
+    </p>
+  </section>
+
+  <section id="partitions" aria-labelledby="partitions-title">
+    <h2 id="partitions-title">Ordering per aggregate in Kafka</h2>
+    <p>
+      The router uses the <code>aggregateid</code> column as the message key. Kafka writes events with the same key to the
+      same partition and guarantees that a consumer reads a partition&rsquo;s events in the order they were written. That is
+      the whole ordering guarantee: <strong>per key, in one partition</strong>. Across aggregates there is no order.
+    </p>
+    <ul>
+      <li><strong>Put events that must be ordered under one aggregate id and one aggregate type.</strong> The type picks the topic by default, and two topics have no order between them. The Debezium blog says the events of a child entity (an order line) should carry the root&rsquo;s type and id for this reason.</li>
+      <li><strong>Adding partitions to a topic changes the key-to-partition mapping</strong> for new messages. The Kafka operations documentation warns that this can disturb consumers who rely on it and that Kafka does not redistribute existing data. During that change the version guard is what keeps a consumer correct.</li>
+      <li><strong>Producer retries need idempotence or one in-flight request</strong> to keep order. Kafka documents that with <code>enable.idempotence</code> true ordering is preserved for up to five in-flight requests per connection. Your Kafka Connect worker&rsquo;s producer settings and defaults depend on your version: check.</li>
+      <li><strong>A polling publisher has to preserve the order itself</strong> (section above), because it chooses the send order.</li>
+    </ul>
+    <p>
+      For how keys, skew and partition counts interact outside the outbox, see
+      <a href="{{ '/partitioning/' | url }}">Partitioning</a> and the
+      <a href="{{ '/glossary/' | url }}#partition-key">partition key</a> entry.
+    </p>
+  </section>
+
+  <section id="testing" aria-labelledby="testing-title">
+    <h2 id="testing-title">Testing the outbox path</h2>
+    <p>
+      Assert on the consumer&rsquo;s <em>state</em> after a fault, not on how many messages were sent: a pipeline that
+      sends one message twice and ends correct is behaving as designed. The method and a reusable fixture are on
+      <a href="{{ '/test-your-pipeline/' | url }}">Testing a CDC pipeline</a>; these are the outbox-shaped cases to add to it.
+    </p>
+    <div style="overflow-x: auto" role="region" aria-label="Outbox fault tests" tabindex="0" data-table-scroll>
+    <table>
+      <caption>Faults to inject and what the consumer state must be afterwards</caption>
+      <thead>
+        <tr>
+          <th scope="col">Fault</th>
+          <th scope="col">How to inject it</th>
+          <th scope="col">Expected end state</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Relay crash between send and record</th>
+          <td>Publish a batch, kill the relay or connector before the position or the <code>published_at</code> flag is saved, restart.</td>
+          <td>Same rows as a clean run; the duplicate was skipped. See <a href="{{ '/test-your-pipeline/' | url }}#crash-title">crash and restart</a>.</td>
+        </tr>
+        <tr>
+          <th scope="row">Same batch twice</th>
+          <td>Feed the consumer the same events two times.</td>
+          <td>Unchanged after the second pass. See <a href="{{ '/test-your-pipeline/' | url }}#duplicates-title">duplicates</a>.</td>
+        </tr>
+        <tr>
+          <th scope="row">Swapped events for one aggregate</th>
+          <td>Deliver seq 3 before seq 2.</td>
+          <td>The state of seq 3, and seq 2 skipped. See <a href="{{ '/test-your-pipeline/' | url }}#reorder-title">out of order</a>.</td>
+        </tr>
+        <tr>
+          <th scope="row">Replay after the seen-ids table was pruned</th>
+          <td>Prune by your retention rule, then re-publish old events at new offsets.</td>
+          <td>Unchanged. This is the case an id-only design fails.</td>
+        </tr>
+        <tr>
+          <th scope="row">Late update after a delete</th>
+          <td>Deliver the aggregate&rsquo;s delete, then an older update.</td>
+          <td>Still deleted. See <a href="{{ '/test-your-pipeline/' | url }}#resurrection-title">delete, then a late older update</a>.</td>
+        </tr>
+        <tr>
+          <th scope="row">Update to an outbox row</th>
+          <td>Run an <code>UPDATE</code> on one outbox row in a test database.</td>
+          <td>The router&rsquo;s <code>table.op.invalid.behavior</code> outcome (warn, error or stop) is the one you chose.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="eos" aria-labelledby="eos-title">
+    <h2 id="eos-title">Where exactly-once stops</h2>
+    <p>
+      Say it per hop. <strong>Application to database:</strong> one transaction, so the state change and the event row
+      commit together or not at all. That is the outbox&rsquo;s real guarantee. <strong>Database to Kafka:</strong> the
+      relay is at-least-once, as above. Debezium&rsquo;s documentation (from 3.3) describes an opt-in exactly-once mode for
+      source connectors on Kafka Connect; it covers that one hop, and the same page says it is unclear whether the underlying
+      transaction implementation is fully correct. See <a href="{{ '/is-cdc-exactly-once/' | url }}#connect-eos">Is CDC
+      Exactly-Once?</a>. <strong>Kafka to the consumer&rsquo;s own store:</strong> a separate system with no shared
+      transaction. What you can claim is exactly-once <em>processing</em>: duplicates and reordering happen, and the
+      version-guarded write makes them harmless. See <a href="{{ '/exactly-once/' | url }}#idempotency">Exactly-Once Semantics</a>.
+    </p>
+  </section>
+
+  <section id="try-it" aria-labelledby="try-it-title">
+    <h2 id="try-it-title">Try it</h2>
+    <p>
+      Open the <a href="{{ '/playground/' | url }}">Change Feed Playground</a> and pick the <strong>Outbox Relay</strong>
+      scenario (its id is <code>outbox-relay</code>). It runs eight changes: an <code>orders</code> insert, three
+      <code>orders</code> updates, three inserts into an <code>outbox_events</code> table with ids
+      <code>EVT-221-1</code> to <code>EVT-221-3</code>, and a delete of <code>EVT-221-1</code>. Look at two things. The ids
+      end in a counter per order, which is the kind of embedded version this page recommends; a UUID would carry none. And
+      the delete of <code>EVT-221-1</code> appears in the log as an ordinary delete event, which is exactly the event
+      Debezium&rsquo;s router would drop. The scenario does not run a relay, repeat an event or dedupe, and each outbox
+      insert is a separate change from its order update rather than one transaction. So the useful exercise is on paper:
+      write down the event sequence a consumer would see if the connector restarted after <code>EVT-221-2</code>, and what
+      your guard does with each.
+    </p>
+  </section>
+
+  {{ quizMacro.quiz(quizConfig) | safe }}
+
+  <section id="monday" aria-labelledby="monday-title">
+    <h2 id="monday-title">What to do Monday</h2>
+    <ol>
+      <li>Find every place a service changes its database and then sends a message. Each is a dual write until the message is an outbox row in the same transaction.</li>
+      <li>Add a per-aggregate version and increment it with <code>UPDATE ... RETURNING</code> in the same transaction that writes the outbox row. Do not read it first and add one in the application.</li>
+      <li>Decide the relay. If it is Debezium, capture the outbox table only, apply the router only to it, and write down which version of the reference you read.</li>
+      <li>Put the aggregate id in the key and the version where the consumer can read it (a header or the envelope), and check what a plain consumer actually receives.</li>
+      <li>Make every consumer apply an event only if its version is higher than the last one applied for that aggregate, and keep deletes as markers.</li>
+      <li>If a consumer keeps seen event ids, prune them by time, longer than your longest rewind, never by offset.</li>
+      <li>Choose the cleanup: delete in the same transaction (log tailing only), a partition you drop, or delete after publish plus a safety window. Never <code>UPDATE</code> outbox rows when the router is in use.</li>
+      <li>Run the six faults in the testing table against staging, and keep the failing case you find as a regression test.</li>
+      <li>Mark each &ldquo;check your version&rdquo; item above with an owner and a test.</li>
+    </ol>
+  </section>
+
+  <section id="verified" aria-labelledby="verified-title">
+    <h2 id="verified-title">What was run, and what was not</h2>
+    <ul>
+      <li><strong>Read on 2026-10-09:</strong> the Debezium Outbox Event Router reference (stable pages, which are 3.7, and the 1.9, 2.7, 3.0 and 3.3 versions for option names), the Debezium blog post on the outbox pattern, the Debezium PostgreSQL connector page (&ldquo;Behavior when things go wrong&rdquo;), the Debezium exactly-once page, microservices.io (the transactional outbox, polling publisher and transaction log tailing pages), the PostgreSQL pages on logical decoding, output plugins, transaction isolation and partitioning, and the Kafka introduction, producer configuration and operations pages. The router&rsquo;s <code>apply()</code> method was read in the 3.0.0.Final source.</li>
+      <li><strong>Run:</strong> the producer SQL (the two transactions, a rolled-back transaction, a global sequence consumed by a rollback, the polling cycle with a repeated <code>SELECT</code>, and the insert-then-delete transaction) on PGlite, which embeds PostgreSQL. The consumer guard and the four arrival sequences in the table ran on PGlite and on SQLite; the SQLite run is part of this repository&rsquo;s tests.</li>
+      <li><strong>Not run:</strong> Debezium, Kafka Connect and Kafka, so the connector configuration, the routed message layout (including a header arriving as bytes) and the router&rsquo;s behaviour on an update or on a tombstone are from the documentation and the 3.0.0.Final source only. Two concurrent database sessions: PGlite has one, so the lock-wait behaviour and the interleaving in the consumer section are from the PostgreSQL documentation and my reasoning. The effect of an immediately-deleted outbox on slot loss is my reasoning. No managed database service was used.</li>
+      <li><strong>Check your version:</strong> router option names and defaults, the <code>partition</code> placement, whether tombstones are dropped, producer defaults in your Kafka Connect worker, and the isolation level your application uses.</li>
+    </ul>
+  </section>
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Further resources</h2>
+    <h3>On this site</h3>
+    <ul>
+      <li><a href="{{ '/exactly-once/' | url }}#outbox">Exactly-Once Semantics: the outbox</a>: the pattern and its diagram.</li>
+      <li><a href="{{ '/is-cdc-exactly-once/' | url }}">Is CDC Exactly-Once?</a>: the claim, hop by hop.</li>
+      <li><a href="{{ '/partitioning/' | url }}#recon">Making sinks bulletproof</a>: version guards, the position to compare, and lineage.</li>
+      <li><a href="{{ '/which-row-wins/' | url }}">Which row wins in your target</a> and <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes that stay deleted</a>: the ordering and delete-marker rules the consumer uses.</li>
+      <li><a href="{{ '/test-your-pipeline/' | url }}">Testing a CDC pipeline</a> and <a href="{{ '/ops-offsets/' | url }}">Offsets &amp; replays</a>.</li>
+      <li><a href="{{ '/postgres-replication-slots/' | url }}">Postgres replication slots and WAL growth</a>.</li>
+      <li>Glossary: <a href="{{ '/glossary/' | url }}#outbox">outbox</a>, <a href="{{ '/glossary/' | url }}#smt">SMT</a>, <a href="{{ '/glossary/' | url }}#deduplication">deduplication</a>, <a href="{{ '/glossary/' | url }}#idempotent-write">idempotent write</a>, <a href="{{ '/glossary/' | url }}#tombstone">tombstone</a>, <a href="{{ '/glossary/' | url }}#lsn-scn">LSN</a>.</li>
+    </ul>
+    <h3>Primary documentation (read 2026-10-09)</h3>
+    <ul>
+      <li><a href="https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html" rel="noopener">Debezium: Outbox Event Router</a> and, for earlier versions, the same page under <a href="https://debezium.io/documentation/reference/3.0/transformations/outbox-event-router.html" rel="noopener">3.0</a>, <a href="https://debezium.io/documentation/reference/2.7/transformations/outbox-event-router.html" rel="noopener">2.7</a> and <a href="https://debezium.io/documentation/reference/1.9/transformations/outbox-event-router.html" rel="noopener">1.9</a>.</li>
+      <li><a href="https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/" rel="noopener">Debezium blog: Reliable Microservices Data Exchange With the Outbox Pattern</a> (2019; its custom router was replaced by the built-in SMT).</li>
+      <li><a href="https://debezium.io/documentation/reference/stable/connectors/postgresql.html" rel="noopener">Debezium PostgreSQL connector</a> (&ldquo;Behavior when things go wrong&rdquo;) and <a href="https://debezium.io/documentation/reference/stable/configuration/eos.html" rel="noopener">Debezium: exactly-once delivery</a>.</li>
+      <li><a href="https://github.com/debezium/debezium/blob/v3.0.0.Final/debezium-core/src/main/java/io/debezium/transforms/outbox/EventRouterDelegate.java" rel="noopener">EventRouterDelegate.java at v3.0.0.Final</a>.</li>
+      <li><a href="https://microservices.io/patterns/data/transactional-outbox.html" rel="noopener">microservices.io: Transactional outbox</a>, <a href="https://microservices.io/patterns/data/polling-publisher.html" rel="noopener">Polling publisher</a> and <a href="https://microservices.io/patterns/data/transaction-log-tailing.html" rel="noopener">Transaction log tailing</a>.</li>
+      <li><a href="https://www.postgresql.org/docs/current/logicaldecoding-explanation.html" rel="noopener">PostgreSQL: logical decoding concepts</a>, <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html" rel="noopener">output plugins</a> (commit order), <a href="https://www.postgresql.org/docs/current/transaction-iso.html" rel="noopener">transaction isolation</a> and <a href="https://www.postgresql.org/docs/current/ddl-partitioning.html" rel="noopener">table partitioning</a>.</li>
+      <li><a href="https://kafka.apache.org/42/getting-started/introduction/" rel="noopener">Kafka: introduction</a> (keys and partition order), <a href="https://kafka.apache.org/42/configuration/producer-configs/" rel="noopener">producer configuration</a> (idempotence, in-flight requests) and <a href="https://kafka.apache.org/42/operations/basic-kafka-operations/" rel="noopener">basic operations</a> (adding partitions).</li>
+    </ul>
+  </section>
+</div>

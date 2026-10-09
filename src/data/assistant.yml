@@ -138,6 +138,117 @@ intents:
         anchor: "#compatibility"
         preview: Compatibility levels and migration strategies.
 
+  - id: outbox_router_relay
+    triggers:
+      [
+        "outbox event router",
+        "outbox router",
+        "outbox relay",
+        "outbox smt",
+        "eventrouter",
+        "message relay",
+        "polling publisher",
+        "route.by.field",
+        "route.topic.replacement",
+        "table.field.event.id",
+        "table.expand.json.payload",
+        "table.fields.additional.placement",
+        "table.op.invalid.behavior",
+      ]
+    modules: []
+    answer: >
+      The relay moves committed outbox rows to the broker. A polling publisher
+      queries the table; a log-tailing relay such as a Debezium connector reads
+      the transaction log and applies the Outbox Event Router SMT
+      (io.debezium.transforms.outbox.EventRouter). The router uses the
+      aggregateid column as the message key, puts the event id in a header,
+      routes by aggregatetype, discards delete operations, and does not accept
+      updates to the outbox table. Both relays are at-least-once: a restart or a
+      crash between publish and record repeats events, so the consumer must be
+      idempotent. The router does not forward the source log position, so carry
+      a per-aggregate version in a column. Option names change between
+      releases, so check your version.
+    links:
+      - label: Debezium's Outbox Event Router
+        url: /transactional-outbox/
+        anchor: "#router-title"
+        preview: Options, defaults and what the router keeps and drops.
+      - label: The relay, polling or log tailing
+        url: /transactional-outbox/
+        anchor: "#relay-title"
+        preview: Where the duplicates come from in each design.
+
+  - id: outbox_consumer_order
+    triggers:
+      [
+        "outbox duplicate",
+        "outbox duplicates",
+        "outbox dedupe",
+        "outbox deduplication",
+        "outbox idempotent consumer",
+        "outbox ordering",
+        "outbox out of order",
+        "outbox event id",
+        "outbox sequence number",
+        "outbox version column",
+        "order outbox events",
+        "uuid event id order",
+      ]
+    modules: []
+    answer: >
+      An outbox event id identifies an event, so it removes repeats, but a random
+      UUID gives no order. Carry the aggregate id as the Kafka key plus a
+      per-aggregate version written in the same transaction, using UPDATE with
+      RETURNING under the aggregate's row lock. The consumer applies an event
+      only if its version is higher than the last one applied for that
+      aggregate, which handles duplicates and stale events in one comparison,
+      and keeps deletes as markers. If it also keeps seen ids, prune them by
+      time rather than by Kafka offset, because a connector replay arrives at a
+      new offset. The router does not forward the source log position.
+    links:
+      - label: Dedupe by id, order by version
+        url: /transactional-outbox/
+        anchor: "#consumer-title"
+        preview: What to carry, the guarded upsert and the pruning trap.
+      - label: Making Sinks Bulletproof
+        url: /partitioning/
+        anchor: "#recon"
+        preview: Version guards and why the position is not a timestamp.
+
+  - id: outbox_cleanup
+    triggers:
+      [
+        "outbox cleanup",
+        "outbox clean up",
+        "clean up the outbox",
+        "outbox table growth",
+        "outbox table size",
+        "outbox housekeeping",
+        "delete outbox rows",
+        "delete outbox row",
+        "outbox row after publish",
+        "outbox grows forever",
+      ]
+    modules: []
+    answer: >
+      With a log-tailing relay the outbox row can be deleted in the same
+      transaction as the insert: the connector reads the insert from the log and
+      the router discards the delete, so the table stays empty. The cost is that
+      nothing in the table remains to inspect or re-send if the slot is lost.
+      With a polling publisher, delete rows only after they are marked published
+      plus a safety window. Never mark rows with an UPDATE while the router is
+      in use, because it does not accept updates. This is housekeeping on a
+      queue, not the delete-marker rule, which applies to the consumer state.
+    links:
+      - label: Outbox table growth and cleanup
+        url: /transactional-outbox/
+        anchor: "#cleanup-title"
+        preview: When a physical delete of outbox rows is safe.
+      - label: The Transactional Outbox Pattern
+        url: /exactly-once/
+        anchor: "#outbox"
+        preview: The pattern and its diagram.
+
   - id: outbox
     triggers:
       [
@@ -165,6 +276,10 @@ intents:
         url: /intro/
         anchor: "#core-components"
         preview: Write, publish and consume idempotently, with sample SQL.
+      - label: Outbox, router and relay
+        url: /transactional-outbox/
+        anchor: "#table-title"
+        preview: The table, the transaction, the relay and the consumer guard.
 
   - id: idempotent_sink
     triggers:
