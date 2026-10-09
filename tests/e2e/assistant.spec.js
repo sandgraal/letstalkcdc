@@ -17,18 +17,9 @@ import { test, expect } from "@playwright/test";
  * Phase 11 "assistant-send visible-state e2e" item closed by this.
  */
 
-// P13-7 triage (2026-10-08): the old blanket "flaky pointer-intercept"
-// mobile-chrome skip was not flaky and not a test artefact. The three
-// tests that never click Send pass 30/30 on mobile-chrome and are no
-// longer skipped. The thumbs-up test must click Send and fails 10/10:
-// at <=640px the open panel is `left/right/bottom: 0.5rem` (z-index
-// 1000) while the FAB stays `fixed; bottom/right: 1.5rem` (z-index
-// 1001), so on a Pixel 5 (393x727) the FAB covers ~40x40 of the 44x44
-// Send button and a real tap on Send hits the FAB instead. That is a
-// real layout bug; the CSS fix is tracked under P13-7 in
-// docs/IMPLEMENTATION-PLAN.md (selectors: `#askBtn`/`#askPanel` in
-// `src/css/assistant.css` and the `max-width: 640px` block in
-// `src/assets/css/09-mobile-responsive.css`).
+// History: P13-7 (2026-10-08) found that at <=640px the FAB covered the
+// Send button (a real layout bug, not flake). Fixed in `src/css/assistant.css`
+// by lifting the panel clear of the FAB; the hit-test below guards it.
 test.describe("assistant panel", () => {
   test("FAB opens the panel and assistant-send is 44×44", async ({ page }) => {
     // Home page (not /intro/) — /intro/'s .sticky-subnav overlaps the
@@ -105,16 +96,47 @@ test.describe("assistant panel", () => {
     await expect(panel).toBeHidden();
   });
 
+  test("with the panel open, a tap on Send and on close reaches those buttons", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const fab = page.locator("#askBtn");
+    const panel = page.locator("#askPanel");
+    await expect(panel.locator(".assistant-input")).toHaveCount(1);
+    await fab.click();
+    await expect(panel).toBeVisible();
+
+    // Hit-test the centre of each control. `toBeVisible()` cannot see a
+    // fixed element painted over the top (the FAB, z-index 1001, covered
+    // Send at <=640px), but `elementFromPoint` can.
+    const hits = await panel.evaluate((el) => {
+      const result = {};
+      for (const sel of [".assistant-send", ".assistant-close"]) {
+        const target = el.querySelector(sel);
+        const r = target.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          r.left + r.width / 2,
+          r.top + r.height / 2,
+        );
+        result[sel] = {
+          ok: !!hit && (hit === target || target.contains(hit)),
+          hit: hit ? hit.id || hit.className || hit.tagName : null,
+        };
+      }
+      return result;
+    });
+    expect(hits[".assistant-send"], "Send is covered").toMatchObject({
+      ok: true,
+    });
+    expect(hits[".assistant-close"], "close is covered").toMatchObject({
+      ok: true,
+    });
+  });
+
   test("a thumbs-up sends one request to the Supabase endpoint", async ({
     page,
-  }, testInfo) => {
-    // Real bug, not flake: the FAB covers the Send button at <=640px
-    // (see the P13-7 note above). Remove this skip when the CSS fix lands.
-    test.skip(
-      testInfo.project.name === "mobile-chrome",
-      "P13-7: FAB (z-index 1001) covers the 44x44 Send button on a 393px viewport; CSS fix pending",
-    );
-
+  }) => {
     // Configure the client BEFORE any page script runs (base.njk only emits
     // these when the build has SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY).
     await page.addInitScript(() => {
