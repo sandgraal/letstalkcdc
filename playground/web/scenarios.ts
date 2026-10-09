@@ -17,6 +17,7 @@ export interface ShellScenario extends Scenario {
   rows?: ScenarioTemplate["rows"];
   events?: ScenarioTemplate["events"];
   schemaVersion?: number;
+  sink?: ScenarioTemplate["sink"];
   comparator?: ScenarioTemplate["comparator"] | null;
 }
 
@@ -74,6 +75,7 @@ function toShellScenario(template: ScenarioTemplate): ShellScenario {
     schemaVersion: template.schemaVersion,
     seed: template.seed,
     ops: template.ops.map(cloneOp),
+    ...(template.sink ? { sink: { ...template.sink } } : {}),
     comparator: template.comparator ? cloneJson(template.comparator) : null,
   };
 }

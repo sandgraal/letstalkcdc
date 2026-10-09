@@ -21,9 +21,14 @@ import {
   EventBus,
   InMemoryTableStorage,
   MetricsStore,
+  SINK_GUARD_MODES,
   PRESETS,
   Scheduler,
   type MetricsSnapshot,
+  type SinkGuardMode,
+  type SinkOptions,
+  type SinkStats,
+  type SinkTombstone,
 } from "../src";
 import {
   EventLog,
@@ -303,7 +308,30 @@ type LaneDestinationSnapshot = {
   rows: Array<{ id: string; displayId: string; table: string; values: Record<string, unknown> }>;
   schemaVersion: number;
   hasSchemaColumn: boolean;
+  sink?: {
+    options: Required<SinkOptions>;
+    stats: SinkStats;
+    tombstones: Array<SinkTombstone & { table: string }>;
+  };
 };
+
+const SINK_GUARD_LABELS: Record<SinkGuardMode, string> = {
+  none: "No guard (apply every delivery)",
+  timestamp: "Timestamp guard (ts_ms)",
+  position: "Position guard (log position)",
+};
+
+// The guard acts on the log lane only. Polling and trigger lanes have no source
+// log position to compare, so they keep the plain upsert.
+const SINK_GUARD_LANE: MethodOption = "log";
+
+const resolveSinkOptions = (raw: SinkOptions | undefined): Required<SinkOptions> => ({
+  guard: SINK_GUARD_MODES.find(mode => mode === raw?.guard) ?? "none",
+  deleteMarkers: raw?.deleteMarkers === true,
+});
+
+const createLaneStorage = (method: MethodOption, options: SinkOptions): InMemoryTableStorage =>
+  new InMemoryTableStorage([], method === SINK_GUARD_LANE ? options : undefined);
 
 const cloneLaneSnapshot = (snapshot?: LaneDestinationSnapshot | null): LaneDestinationSnapshot | null => {
   if (!snapshot) return null;
@@ -317,6 +345,15 @@ const cloneLaneSnapshot = (snapshot?: LaneDestinationSnapshot | null): LaneDesti
     })),
     schemaVersion: snapshot.schemaVersion,
     hasSchemaColumn: snapshot.hasSchemaColumn,
+    ...(snapshot.sink
+      ? {
+          sink: {
+            options: { ...snapshot.sink.options },
+            stats: { ...snapshot.sink.stats },
+            tombstones: snapshot.sink.tombstones.map(item => ({ ...item })),
+          },
+        }
+      : {}),
   };
 };
 
@@ -1315,6 +1352,9 @@ export function App() {
   const laneRuntimeRef = useRef<Partial<Record<MethodOption, LaneRuntime>>>({});
   const pendingTxnRef = useRef<Partial<Record<MethodOption, EngineEvent[]>>>({});
   const laneStorageRef = useRef<Partial<Record<MethodOption, InMemoryTableStorage>>>({});
+  // Destination apply mode for the log lane. Read when a lane's storage is created.
+  const sinkOptionsRef = useRef<Required<SinkOptions>>(resolveSinkOptions(undefined));
+  const [sinkChoice, setSinkChoice] = useState<{ scenarioName: string; options: Required<SinkOptions> } | null>(null);
   const consumerThrottleRef = useRef<number | null>(
     (storedPrefs?.consumerRateEnabled ?? false)
       ? sanitizeConsumerRate(storedPrefs?.consumerRateLimit, DEFAULT_CONSUMER_RATE_LIMIT)
@@ -1493,7 +1533,7 @@ export function App() {
   const ensureLaneStorage = useCallback((method: MethodOption) => {
     let storage = laneStorageRef.current[method];
     if (!storage) {
-      storage = new InMemoryTableStorage();
+      storage = createLaneStorage(method, sinkOptionsRef.current);
       laneStorageRef.current[method] = storage;
     }
     return storage;
@@ -1849,6 +1889,15 @@ export function App() {
         rows,
         schemaVersion,
         hasSchemaColumn,
+        ...(method === SINK_GUARD_LANE
+          ? {
+              sink: {
+                options: storage.getSinkOptions(),
+                stats: storage.getSinkStats(),
+                tombstones: storage.getTombstones(),
+              },
+            }
+          : {}),
       });
     });
     return snapshots;
@@ -1967,6 +2016,29 @@ export function App() {
     if (!scenarioOptions.length) return SCENARIOS[0];
     return scenarioOptions.find(s => s.name === scenarioId) ?? scenarioOptions[0];
   }, [scenarioId, scenarioOptions]);
+
+  // The scenario's own sink mode, unless the reader has changed it for this scenario.
+  const sinkOptions = useMemo(
+    () =>
+      sinkChoice && sinkChoice.scenarioName === scenario.name
+        ? sinkChoice.options
+        : resolveSinkOptions(scenario.sink),
+    [sinkChoice, scenario.name, scenario.sink],
+  );
+  sinkOptionsRef.current = sinkOptions;
+  const handleSinkChange = useCallback(
+    (next: Partial<SinkOptions>) => {
+      setSinkChoice({ scenarioName: scenario.name, options: { ...sinkOptions, ...next } as Required<SinkOptions> });
+      track("comparator.sink.change", { scenario: scenario.name, ...next });
+    },
+    [scenario.name, sinkOptions],
+  );
+
+  // The guard controls only matter for scenarios built around redelivery or ordering.
+  const showSinkControls = useMemo(
+    () => Boolean(scenario.sink) || scenario.ops.some(op => op.op === "redeliver"),
+    [scenario.sink, scenario.ops],
+  );
 
   const scenarioGuidance = useMemo(
     () => getScenarioGuidance(scenario.name),
@@ -2483,7 +2555,7 @@ export function App() {
     pendingTxnRef.current = {};
     laneStorageRef.current = {};
     activeMethods.forEach(method => {
-      laneStorageRef.current[method] = new InMemoryTableStorage();
+      laneStorageRef.current[method] = createLaneStorage(method, sinkOptions);
     });
     laneSnapshotHistoryRef.current = new Map();
     activeMethods.forEach(method => {
@@ -2549,7 +2621,7 @@ export function App() {
       stopLoop();
       enginesRef.current = {};
     };
-  }, [activeMethods, scenario, stopLoop, methodConfig, updateLaneSnapshot, handleProduced, initializeGeneratorState]);
+  }, [activeMethods, scenario, sinkOptions, stopLoop, methodConfig, updateLaneSnapshot, handleProduced, initializeGeneratorState]);
 
   const toggleMethod = useCallback(
     (method: MethodOption) => {
@@ -3466,7 +3538,7 @@ export function App() {
       pendingTxnRef.current = {};
       laneSnapshotHistoryRef.current.forEach(series => series.splice(0));
       for (const method of activeMethods) {
-        laneStorageRef.current[method] = new InMemoryTableStorage();
+        laneStorageRef.current[method] = createLaneStorage(method, sinkOptions);
         const runtime = laneRuntimeRef.current[method];
         if (!runtime) continue;
         runtime.bus.reset(runtime.topic);
@@ -3483,7 +3555,7 @@ export function App() {
         stopLoop();
       }
     },
-    [activeMethods, initializeGeneratorState, scenario, scenario.seed, stopLoop, updateLaneSnapshot],
+    [activeMethods, initializeGeneratorState, scenario, scenario.seed, sinkOptions, stopLoop, updateLaneSnapshot],
   );
 
   const handleStart = useCallback(() => {
@@ -4112,6 +4184,36 @@ export function App() {
             />
             <span>Apply on commit</span>
           </label>
+        )}
+        {showSinkControls && (
+          <fieldset className="sim-shell__sink-guard" data-testid="sink-guard-controls">
+            <legend>Destination guard (log lane)</legend>
+            <label>
+              <span>Guard</span>
+              <select
+                value={sinkOptions.guard}
+                onChange={event => handleSinkChange({ guard: event.target.value as SinkGuardMode })}
+              >
+                {SINK_GUARD_MODES.map(mode => (
+                  <option key={mode} value={mode}>
+                    {SINK_GUARD_LABELS[mode]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="sim-shell__apply-toggle">
+              <input
+                type="checkbox"
+                checked={sinkOptions.deleteMarkers}
+                onChange={event => handleSinkChange({ deleteMarkers: event.target.checked })}
+              />
+              <span>Keep delete markers</span>
+            </label>
+            <p className="sim-shell__sink-note">
+              Changing either setting resets the run; press Start again. Polling and trigger lanes
+              have no source log position, so they always apply every delivery.
+            </p>
+          </fieldset>
         )}
         <div
           className="sim-shell__consumer-rate"
@@ -4810,7 +4912,35 @@ export function App() {
                       </table>
                     </div>
                   ) : (
-                    <p className="sim-shell__destination-empty">No rows applied yet.</p>
+                    <p className="sim-shell__destination-empty">
+                      {destinationSnapshot.sink && destinationSnapshot.sink.tombstones.length > 0
+                        ? "No visible rows."
+                        : "No rows applied yet."}
+                    </p>
+                  )}
+                  {showSinkControls && destinationSnapshot.sink && (
+                    <div className="sim-shell__sink-status" data-testid="sink-status">
+                      <p>
+                        <strong>{SINK_GUARD_LABELS[destinationSnapshot.sink.options.guard]}</strong>
+                        {destinationSnapshot.sink.options.deleteMarkers ? " · delete markers kept" : " · deletes remove the row"}
+                      </p>
+                      <p data-testid="sink-counters">
+                        Applied {destinationSnapshot.sink.stats.applied} · Skipped{" "}
+                        {destinationSnapshot.sink.stats.skipped} · Stale applies{" "}
+                        {destinationSnapshot.sink.stats.staleApplied}
+                      </p>
+                      {destinationSnapshot.sink.tombstones.length > 0 && (
+                        <p data-testid="sink-markers">
+                          Delete markers:{" "}
+                          {destinationSnapshot.sink.tombstones
+                            .map(
+                              item =>
+                                `${item.id} (log position ${item.position ?? "?"}, ts_ms ${item.ts})`,
+                            )
+                            .join("; ")}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {destinationTruncated && (
                     <p className="sim-shell__destination-note">

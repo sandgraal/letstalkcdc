@@ -79,6 +79,57 @@
   height: 1rem;
 }
 
+.sim-shell__sink-guard {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  max-width: 100%;
+}
+
+.sim-shell__sink-guard legend {
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-strong);
+}
+
+.sim-shell__sink-guard label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted-strong);
+}
+
+.sim-shell__sink-guard select {
+  max-width: 18rem;
+}
+
+.sim-shell__sink-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-strong);
+}
+
+.sim-shell__sink-status {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+}
+
+.sim-shell__sink-status p {
+  margin: 0;
+}
+
 .sim-shell__consumer-rate,
 .sim-shell__generator {
   display: inline-flex;

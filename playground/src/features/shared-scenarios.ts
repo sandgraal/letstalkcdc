@@ -1,4 +1,7 @@
 import type { SourceOp } from "../domain/types";
+import type { SinkOptions } from "../domain/storage";
+
+export type SharedScenarioSink = SinkOptions;
 import sharedScenarios from "../../assets/shared-scenarios.js";
 
 export type SharedScenarioComparatorLane = {
@@ -44,6 +47,8 @@ export type SharedScenario = {
   rows?: SharedScenarioRow[];
   events?: SharedScenarioEvent[];
   ops?: SourceOp[];
+  /** How the log lane's destination applies events when the scenario loads. Defaults to no guard. */
+  sink?: SharedScenarioSink;
   comparator?: SharedScenarioComparator;
 };
 

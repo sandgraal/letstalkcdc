@@ -132,7 +132,7 @@ describe("Scenario templates", () => {
       template.ops.forEach(op => {
         expect(op.table).toBeTruthy();
         expect(op.pk?.id).toBeTruthy();
-        if (op.op !== "delete") {
+        if (op.op === "insert" || op.op === "update") {
           expect(op.after).toBeTruthy();
         }
       });

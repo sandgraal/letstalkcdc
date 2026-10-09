@@ -1,1 +1,1 @@
-import"./ui-rolldown-runtime.js";import{g as e,m as t}from"./ui-src.js";e(),t();
+import"./ui-rolldown-runtime.js";import{m as e,v as t}from"./ui-src.js";t(),e();

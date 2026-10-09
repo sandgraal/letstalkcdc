@@ -1,4 +1,5 @@
 import type { SourceOp } from "../domain/types";
+import { SINK_GUARD_MODES, type SinkOptions } from "../domain/storage";
 import type {
   SharedScenario,
   SharedScenarioColumn,
@@ -22,6 +23,8 @@ export type ScenarioTemplate = {
   rows: SharedScenarioRow[];
   events: SharedScenarioEvent[];
   ops: SourceOp[];
+  /** Destination apply mode the scenario starts with (log lane). Absent means no guard. */
+  sink?: SinkOptions;
   comparator: ScenarioComparatorSnapshot | null;
 };
 
@@ -359,6 +362,14 @@ function deriveOpsFromEvents(
     .filter((op): op is SourceOp => Boolean(op));
 }
 
+function normaliseSink(raw: SharedScenario["sink"]): SinkOptions | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const guard = SINK_GUARD_MODES.find(mode => mode === raw.guard);
+  const deleteMarkers = raw.deleteMarkers === true;
+  if (!guard && !deleteMarkers) return undefined;
+  return { guard: guard ?? "none", deleteMarkers };
+}
+
 export function normaliseSharedScenario(
   raw: SharedScenario,
   options: ScenarioNormaliseOptions,
@@ -395,6 +406,7 @@ export function normaliseSharedScenario(
     rows,
     events,
     ops,
+    ...(normaliseSink(raw.sink) ? { sink: normaliseSink(raw.sink) } : {}),
     comparator: cloneComparatorSnapshot(raw.comparator),
   };
 }
