@@ -3,6 +3,20 @@
  * Provides mocks for browser APIs not available in jsdom.
  */
 
+// --- Build-time variables ---
+// Several tests spawn real Eleventy builds with `...process.env`. A variable
+// exported in the developer's shell (BUTTONDOWN_USERNAME, SUPABASE_*, ...)
+// would silently change what those builds render, so the suite starts from
+// an unset state. Tests that need a value pass it explicitly in the spawn env.
+for (const key of [
+  "BUTTONDOWN_USERNAME",
+  "GOATCOUNTER_CODE",
+  "SUPABASE_URL",
+  "SUPABASE_PUBLISHABLE_KEY",
+]) {
+  delete process.env[key];
+}
+
 // --- localStorage / sessionStorage polyfill ---
 // vitest 4's jsdom 28 environment ships without a working `Storage` impl, and
 // Node 26's experimental `--localstorage-file` flag is gated behind a CLI arg

@@ -42,6 +42,7 @@ jobs:
           SITE_HOST: ${{ vars.SITE_HOST }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          BUTTONDOWN_USERNAME: ${{ vars.BUTTONDOWN_USERNAME }}
           GOATCOUNTER_CODE: ${{ vars.GOATCOUNTER_CODE }}
         run: npm run build
 
