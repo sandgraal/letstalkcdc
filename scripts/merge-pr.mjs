@@ -7,16 +7,39 @@
 //
 //   node scripts/merge-pr.mjs <pr-number>             dry run (default)
 //   node scripts/merge-pr.mjs <pr-number> --execute   merge if every gate passes
+//   node scripts/merge-pr.mjs --help
 //
 // Gates (all are evaluated and reported, not just the first failure):
-//   1 state    PR is OPEN, not a draft, and targets main
-//   2 checks   every check on the head commit finished SUCCESS/NEUTRAL/SKIPPED
-//   3 review   reviewDecision is not CHANGES_REQUESTED
-//   4 record   body has a "## Review record" with an approving verdict and
-//              "Findings resolved: yes"
-//   5 files    no changed file is on the maintainer-only list
-//   6 merge    head merges cleanly onto current origin/main in a temporary
-//              worktree; if head is behind main, `npm test` must also pass there
+//   1  state    PR is OPEN, not a draft, and targets main
+//   2  checks   every check on the head commit finished SUCCESS/NEUTRAL/SKIPPED
+//   3  review   reviewDecision is not CHANGES_REQUESTED
+//   4  record   body has exactly one "## Review record" with an approving
+//               verdict and "Findings resolved: yes". Every Verdict line counts;
+//               a Verdict line inside an indented code block, <details> or an
+//               unclosed code fence fails the gate rather than being skipped.
+//   4b audit    at least one PR comment of 200+ characters containing a
+//               "Verdict:" line: the reviewer's report pasted verbatim, so the
+//               review text survives on GitHub
+//   5  files    no changed file is on the maintainer-only list. The list is
+//               checked against the `gh` file list AND against git itself (the
+//               three-dot diff and the actual merge result, NUL-delimited so
+//               non-ASCII paths cannot be hidden by git's quoting).
+//   6  merge    head merges cleanly onto current origin/main in a temporary
+//               worktree; if head is behind main, `npm test` must also pass there
+//
+// WHAT THIS DOES NOT PROVE. Gates 4 and 4b are a CONVENTION check, not
+// authentication. Anyone who can edit the PR body or post a comment can write a
+// passing review record; the script cannot tell a real reviewer's report from an
+// invented one. The audit-trail comment exists so a human can read the review
+// text afterwards, not to prove who wrote it. The maintainer remains the
+// control for anything that matters.
+//
+// TOCTOU. The PR body, comments, reviews, checks, file list and the base tip are
+// read ONCE, at the start. `--match-head-commit` binds only the head commit.
+// Just before merging, the head oid, state, draft flag, base, reviewDecision and
+// checks are re-read and gates 1-3 re-run; any change refuses the merge. The
+// body, comments, file list and base tip are NOT re-read, so an edit to them in
+// the window between the read and the merge is not seen.
 //
 // There is deliberately no override flag, and never --admin, --auto or --rebase.
 //
@@ -24,7 +47,7 @@
 // process, git and filesystem access goes through injected dependencies so the
 // tests need no network.
 
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -42,7 +65,19 @@ export const PR_FIELDS = [
   "statusCheckRollup",
   "files",
   "body",
+  "comments",
   "mergeStateStatus",
+].join(",");
+
+// Re-read immediately before merging; enough to re-run gates 1-3.
+export const RECHECK_FIELDS = [
+  "number",
+  "state",
+  "isDraft",
+  "baseRefName",
+  "headRefOid",
+  "reviewDecision",
+  "statusCheckRollup",
 ].join(",");
 
 export const BASE_BRANCH = "main";
@@ -50,13 +85,26 @@ export const BASE_BRANCH = "main";
 const PASSING_CONCLUSIONS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
 const APPROVING_VERDICTS = new Set(["APPROVE", "APPROVE WITH NITS"]);
 
+export const AUDIT_MIN_LENGTH = 200;
+
+export const SELF_ATTESTATION_NOTE =
+  "Gates 4 and 4b are a convention check, not authentication: anyone who can edit the PR body or comment can write a passing review record. The audit-trail comment exists so a human can read the review afterwards.";
+
 // Maintainer-only paths. Globs: `**` matches across directories, `*` within a
 // path segment. Matching is case-insensitive so a case-folding filesystem
 // cannot be used to slip past a rule.
 export const RESTRICTED_PATTERNS = [
-  ".github/workflows/**",
-  ".claude/settings.json",
+  ".github/**",
+  ".claude/settings*.json",
   ".claude/hooks/**",
+  ".claude/scripts/**",
+  ".claude/agents/**",
+  ".npmrc",
+  "playground/.npmrc",
+  ".husky/**",
+  "vitest.config.*",
+  "tests/setup.js",
+  "lighthouse-ci.config.json",
   "scripts/merge-pr.mjs",
   "tests/unit/merge-pr*.test.js",
   "supabase/**",
@@ -66,8 +114,6 @@ export const RESTRICTED_PATTERNS = [
   "package-lock.json",
   "playground/package.json",
   "playground/package-lock.json",
-  ".github/CODEOWNERS",
-  ".github/dependabot.yml",
 ];
 
 function globToRegExp(glob) {
@@ -93,6 +139,7 @@ const RESTRICTED_MATCHERS = RESTRICTED_PATTERNS.map((pattern) => ({
 
 function normalizePath(file) {
   return String(file)
+    .normalize("NFKC")
     .replace(/\\/g, "/")
     .replace(/^(\.\/)+/, "")
     .replace(/\/{2,}/g, "/");
@@ -163,45 +210,163 @@ export function checkReviewDecision(pr) {
     : [];
 }
 
-function stripNonContent(body) {
-  return String(body ?? "")
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+
+/**
+ * Splits a PR body into lines classified the way GitHub renders them.
+ * Text inside HTML comments and inside closed code fences is blanked. Text
+ * after a fence that is never closed is kept but flagged `unclosedFence`
+ * (everything after an unclosed fence is inside the fence). Lines inside a
+ * <details> element are flagged `inDetails`.
+ */
+function scanBody(body) {
+  const raw = String(body ?? "")
     .replace(/\r\n?/g, "\n")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, "");
+    .split("\n");
+  const lines = [];
+  let fence = null;
+  let inComment = false;
+  let detailsDepth = 0;
+
+  for (const original of raw) {
+    if (fence) {
+      const close = original.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+      if (
+        close &&
+        close[1][0] === fence.char &&
+        close[1].length >= fence.length
+      ) {
+        fence = null;
+        lines.push({ text: "", unclosedFence: false, inDetails: false });
+      } else {
+        // Provisional: becomes "unclosed" if no closing fence ever arrives.
+        lines.push({
+          text: original,
+          unclosedFence: true,
+          inDetails: false,
+          fenceBody: true,
+        });
+      }
+      continue;
+    }
+
+    let rest = original;
+    let visible = "";
+    const startedInComment = inComment;
+    for (;;) {
+      if (inComment) {
+        const end = rest.indexOf("-->");
+        if (end === -1) break;
+        rest = rest.slice(end + 3);
+        inComment = false;
+      }
+      const open = rest.indexOf("<!--");
+      if (open === -1) {
+        visible += rest;
+        break;
+      }
+      visible += rest.slice(0, open);
+      rest = rest.slice(open + 4);
+      inComment = true;
+    }
+
+    const opens = (visible.match(/<details[\s>]/gi) ?? []).length;
+    const closes = (visible.match(/<\/details\s*>/gi) ?? []).length;
+    const inDetails = detailsDepth > 0 || opens > 0;
+    detailsDepth = Math.max(0, detailsDepth + opens - closes);
+
+    const open = startedInComment ? null : visible.match(FENCE_OPEN);
+    if (open && !(open[1][0] === "`" && open[2].includes("`"))) {
+      fence = { char: open[1][0], length: open[1].length };
+      lines.push({ text: "", unclosedFence: false, inDetails });
+      continue;
+    }
+    lines.push({ text: visible, unclosedFence: false, inDetails });
+  }
+
+  // Lines recorded inside a fence that did get closed are plain code: blank
+  // them. Only the trailing run belonging to a still-open fence stays flagged.
+  let lastFenceBody = lines.length;
+  if (fence) {
+    while (lastFenceBody > 0 && lines[lastFenceBody - 1].fenceBody) {
+      lastFenceBody -= 1;
+    }
+  }
+  lines.forEach((line, index) => {
+    if (line.fenceBody && (!fence || index < lastFenceBody)) {
+      line.text = "";
+      line.unclosedFence = false;
+    }
+  });
+  return lines;
 }
 
-/** Extracts the "## Review record" section text, or null when absent. */
+const REVIEW_HEADING = /^ {0,3}##[ \t]+review record[ \t]*#*[ \t]*$/i;
+const ANY_HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
+
+/**
+ * Extracts the "## Review record" section as scanned lines, or null when
+ * absent. Only the first heading counts; a second one is reported through
+ * `ambiguous` so the gate can fail closed.
+ */
 export function extractReviewRecord(body) {
-  const lines = stripNonContent(body).split("\n");
-  const start = lines.findIndex((line) =>
-    /^##[ \t]+review record[ \t]*$/i.test(line),
-  );
+  const lines = scanBody(body);
+  const isHeading = (line) =>
+    !line.unclosedFence && REVIEW_HEADING.test(line.text);
+  const start = lines.findIndex(isHeading);
   if (start === -1) return null;
+  const ambiguous = lines.slice(start + 1).some(isHeading);
   const section = [];
   for (let i = start + 1; i < lines.length; i += 1) {
-    if (/^#{1,6}[ \t]/.test(lines[i])) break;
+    if (!lines[i].unclosedFence && ANY_HEADING.test(lines[i].text)) break;
     section.push(lines[i]);
   }
-  return section;
+  return { lines: section, ambiguous };
+}
+
+function describeHiding(line) {
+  if (line.unclosedFence) return "an unclosed code fence";
+  if (line.inDetails) return "a <details> block";
+  if (/^(?: {4,}|\t)/.test(line.text)) return "an indented code block";
+  return null;
 }
 
 /** Gate 4. */
 export function checkReviewRecord(pr) {
-  const section = extractReviewRecord(pr.body);
-  if (section === null) return ['PR body has no "## Review record" section'];
+  const record = extractReviewRecord(pr.body);
+  if (record === null) return ['PR body has no "## Review record" section'];
+  if (record.ambiguous) {
+    return [
+      'PR body has more than one "## Review record" heading (ambiguous); keep exactly one',
+    ];
+  }
 
   const failures = [];
-  const keyed = (key) =>
-    section
-      .map((line) =>
-        line.match(new RegExp(`^[ \\t]*${key}:[ \\t]*(.*?)[ \\t]*$`, "i")),
-      )
-      .filter(Boolean)
-      .map((match) => match[1]);
+  const keyed = (key, label) => {
+    const values = [];
+    for (const line of record.lines) {
+      const match = line.text.match(
+        new RegExp(`^[ \\t]*${key}:[ \\t]*(.*?)[ \\t]*$`, "i"),
+      );
+      if (!match) continue;
+      const hiding = describeHiding(line);
+      if (hiding) {
+        failures.push(
+          `${label} line is inside ${hiding}; write it as plain text in the Review record`,
+        );
+      } else {
+        values.push(match[1]);
+      }
+    }
+    return values;
+  };
 
-  const verdicts = keyed("verdict");
+  const verdicts = keyed("verdict", "Verdict");
+  const resolved = keyed("findings resolved", "Findings resolved");
+
   if (verdicts.length === 0) {
-    failures.push("Review record has no Verdict line");
+    if (failures.length === 0)
+      failures.push("Review record has no Verdict line");
   } else {
     for (const verdict of verdicts) {
       if (!APPROVING_VERDICTS.has(verdict)) {
@@ -212,15 +377,35 @@ export function checkReviewRecord(pr) {
     }
   }
 
-  const resolved = keyed("findings resolved");
   if (resolved.length === 0) {
-    failures.push("Review record has no Findings resolved line");
+    if (!failures.some((f) => f.startsWith("Findings resolved line"))) {
+      failures.push("Review record has no Findings resolved line");
+    }
   } else if (!resolved.every((value) => value === "yes")) {
     failures.push(
       `Review record says "Findings resolved: ${resolved.find((v) => v !== "yes")}", need yes`,
     );
   }
   return failures;
+}
+
+/**
+ * Gate 4b. The reviewer's report must be pasted as a PR comment so the review
+ * text outlives the PR description. Still a convention check (see header).
+ */
+export function checkAuditTrail(pr) {
+  const comments = Array.isArray(pr.comments) ? pr.comments : [];
+  const qualifies = comments.some((comment) => {
+    const body = String(comment?.body ?? "").replace(/\r\n?/g, "\n");
+    return (
+      body.length >= AUDIT_MIN_LENGTH && /^[ \t]*verdict:[ \t]*\S/im.test(body)
+    );
+  });
+  return qualifies
+    ? []
+    : [
+        `no audit-trail comment (${comments.length} comment(s), none of ${AUDIT_MIN_LENGTH}+ characters with a "Verdict:" line): paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)`,
+      ];
 }
 
 /** Returns the maintainer-only pattern a path matches, or null. */
@@ -243,27 +428,42 @@ export function checkFiles(files) {
   return [...new Set(failures)];
 }
 
-/** Gates 1-5, the ones that need only the parsed `gh pr view` JSON. */
+/** Gates 1-5 (including 4b), the ones that need only the parsed `gh pr view` JSON. */
 export function evaluateStaticGates(pr) {
   return [
     {
       id: "state",
+      num: "1",
       label: "open, non-draft, base main",
       failures: checkState(pr),
     },
-    { id: "checks", label: "all checks green", failures: checkChecks(pr) },
+    {
+      id: "checks",
+      num: "2",
+      label: "all checks green",
+      failures: checkChecks(pr),
+    },
     {
       id: "review",
+      num: "3",
       label: "no changes requested",
       failures: checkReviewDecision(pr),
     },
     {
       id: "record",
+      num: "4",
       label: "review record approves",
       failures: checkReviewRecord(pr),
     },
     {
+      id: "audit",
+      num: "4b",
+      label: "reviewer report pasted as a comment",
+      failures: checkAuditTrail(pr),
+    },
+    {
       id: "files",
+      num: "5",
       label: "no maintainer-only files",
       failures: checkFiles(pr.files),
     },
@@ -274,7 +474,10 @@ export function formatGateTable(gates) {
   const lines = [];
   gates.forEach((gate, index) => {
     const status = gate.failures.length === 0 ? "PASS" : "FAIL";
-    lines.push(`  ${status}  ${index + 1}. ${gate.id.padEnd(7)} ${gate.label}`);
+    const num = `${gate.num ?? index + 1}.`;
+    lines.push(
+      `  ${status}  ${num.padEnd(3)} ${gate.id.padEnd(7)} ${gate.label}`,
+    );
     for (const failure of gate.failures) lines.push(`          - ${failure}`);
     for (const note of gate.notes ?? []) lines.push(`          . ${note}`);
   });
@@ -285,32 +488,119 @@ export function formatGateTable(gates) {
 // I/O layer
 // ---------------------------------------------------------------------------
 
-/** Default runner: execFile with an args array, never a shell string. */
+const activeChildren = new Set();
+const pendingCleanups = new Set();
+
+function killTree(entry, signal) {
+  try {
+    if (entry.group && entry.child.pid) process.kill(-entry.child.pid, signal);
+    else entry.child.kill(signal);
+  } catch {
+    // already gone
+  }
+}
+
+/** Kills every child this process started (process groups where requested). */
+export function killActiveChildren() {
+  for (const entry of activeChildren) killTree(entry, "SIGKILL");
+}
+
+/** Registers an async cleanup for signal handlers; returns an unregister fn. */
+export function registerCleanup(fn) {
+  pendingCleanups.add(fn);
+  return () => pendingCleanups.delete(fn);
+}
+
+export async function runPendingCleanups() {
+  killActiveChildren();
+  for (const fn of [...pendingCleanups]) {
+    pendingCleanups.delete(fn);
+    await Promise.resolve(fn()).catch(() => {});
+  }
+}
+
+/** On SIGINT/SIGTERM remove the temp worktree and dir, then exit. */
+export function installSignalHandlers(proc = process) {
+  for (const [signal, code] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ]) {
+    proc.once(signal, async () => {
+      await runPendingCleanups();
+      proc.exit(code);
+    });
+  }
+}
+
+/**
+ * Default runner: spawn with an args array, never a shell string. With
+ * `killGroup` the child leads its own process group and a timeout (or a
+ * signal to this process) kills the whole group, so `npm test` cannot leave
+ * vitest workers running.
+ */
 export function defaultRunner(file, args, options = {}) {
   return new Promise((resolve) => {
-    execFile(
-      file,
-      args,
-      {
+    const limit = 64 * 1024 * 1024;
+    const timeout = options.timeout ?? 120_000;
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timedOut = false;
+    let entry = null;
+    let timer = null;
+    let grace = null;
+
+    const finish = (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      clearTimeout(grace);
+      if (entry) activeChildren.delete(entry);
+      if (timedOut) {
+        stderr += `\ntimed out after ${Math.round(timeout / 1000)}s and was killed`;
+      }
+      resolve({ code, stdout, stderr });
+    };
+
+    let child;
+    try {
+      child = spawn(file, args, {
         cwd: options.cwd,
-        timeout: options.timeout ?? 120_000,
-        maxBuffer: 64 * 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        let code = 0;
-        if (error) {
-          code = typeof error.code === "number" ? error.code : 1;
-          if (typeof error.code !== "number" && !stderr) {
-            stderr = String(error.message ?? error);
-          }
-        }
-        resolve({ code, stdout: stdout ?? "", stderr: stderr ?? "" });
-      },
-    );
+        detached: Boolean(options.killGroup),
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      stderr = String(error?.message ?? error);
+      finish(1);
+      return;
+    }
+    entry = { child, group: Boolean(options.killGroup) };
+    activeChildren.add(entry);
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      if (stdout.length < limit) stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      if (stderr.length < limit) stderr += chunk;
+    });
+    child.on("error", (error) => {
+      if (!stderr) stderr = String(error?.message ?? error);
+      finish(1);
+    });
+    child.on("close", (code) => finish(timedOut ? 124 : (code ?? 1)));
+
+    timer = setTimeout(() => {
+      timedOut = true;
+      killTree(entry, "SIGKILL");
+      // If a grandchild outside the group still holds the pipes, do not hang.
+      grace = setTimeout(() => finish(124), 2000);
+    }, timeout);
   });
 }
 
-const defaultFs = {
+export const defaultFs = {
   mkdtemp: (prefix) => mkdtemp(path.join(tmpdir(), prefix)),
   symlink: (target, link) => symlink(target, link, "dir"),
   rm: (target) => rm(target, { recursive: true, force: true }),
@@ -327,11 +617,25 @@ function tail(text, lines = 12) {
     .join("\n");
 }
 
+// `-z` makes git emit raw NUL-terminated paths. Without it a non-ASCII name
+// comes back quoted and octal-escaped (".github/workflows/d\303\251ploy.yml"),
+// which no `^`-anchored matcher would recognise. `--no-renames` reports both
+// sides of a rename, so moving a restricted file out of place is still seen.
+const GIT_NAMES = ["-c", "core.quotepath=false"];
+const NAME_FLAGS = ["--name-only", "--no-renames", "-z"];
+
+function splitNul(stdout) {
+  return String(stdout ?? "")
+    .split("\0")
+    .filter(Boolean);
+}
+
 /**
  * Gate 6. Merges the PR head onto current origin/main in a temporary
  * worktree. Never touches the caller's checkout. The worktree is always
- * removed. `runTests` is false when earlier gates already failed, to avoid a
- * slow test run for a PR that will be refused anyway.
+ * removed, including on SIGINT/SIGTERM. `runTests` is false when earlier
+ * gates already failed, to avoid a slow test run for a PR that will be
+ * refused anyway.
  */
 export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
   const result = { failures: [], notes: [], changedFiles: [] };
@@ -362,16 +666,16 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
 
   // Cross-check gate 5 against git itself: the `gh` file list can be truncated.
   const diff = await git([
+    ...GIT_NAMES,
     "diff",
-    "--name-only",
-    "--no-renames",
+    ...NAME_FLAGS,
     `origin/${BASE_BRANCH}...${head}`,
   ]);
   if (diff.code !== 0) {
     result.failures.push(`git diff failed: ${tail(diff.stderr, 3)}`);
     return result;
   }
-  result.changedFiles = diff.stdout.split("\n").filter(Boolean);
+  const changed = new Set(splitNul(diff.stdout));
 
   const ancestor = await git([
     "merge-base",
@@ -380,6 +684,7 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
     head,
   ]);
   if (ancestor.code !== 0 && ancestor.code !== 1) {
+    result.changedFiles = [...changed];
     result.failures.push(`git merge-base failed: ${tail(ancestor.stderr, 3)}`);
     return result;
   }
@@ -391,6 +696,15 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
   );
 
   let worktree = null;
+  let cleaned = false;
+  let unregister = () => {};
+  const cleanup = async () => {
+    if (cleaned || !worktree) return;
+    cleaned = true;
+    await git(["worktree", "remove", "--force", worktree]).catch(() => {});
+    await fs.rm(worktree).catch(() => {});
+    await git(["worktree", "prune"]).catch(() => {});
+  };
   try {
     const top = await git(["rev-parse", "--show-toplevel"]);
     if (top.code !== 0) {
@@ -400,6 +714,7 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
     const root = top.stdout.trim();
 
     worktree = await fs.mkdtemp("merge-pr-");
+    unregister = registerCleanup(cleanup);
     const added = await git([
       "worktree",
       "add",
@@ -424,6 +739,27 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
       return result;
     }
 
+    // The files the merge result actually changes relative to main, unioned
+    // with the three-dot diff above.
+    const mergeDiff = await run(
+      "git",
+      [
+        ...GIT_NAMES,
+        "diff",
+        "--cached",
+        ...NAME_FLAGS,
+        `origin/${BASE_BRANCH}`,
+      ],
+      { cwd: worktree },
+    );
+    if (mergeDiff.code !== 0) {
+      result.failures.push(
+        `git diff of the merge result failed: ${tail(mergeDiff.stderr, 3)}`,
+      );
+      return result;
+    }
+    for (const file of splitNul(mergeDiff.stdout)) changed.add(file);
+
     if (behind) {
       if (!runTests) {
         result.notes.push("npm test skipped: other gates already failed");
@@ -435,6 +771,7 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
         const tests = await run("npm", ["test"], {
           cwd: worktree,
           timeout: 600_000,
+          killGroup: true,
         });
         if (tests.code !== 0) {
           result.failures.push(
@@ -446,20 +783,20 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
       }
     }
   } finally {
-    if (worktree) {
-      await git(["worktree", "remove", "--force", worktree]).catch(() => {});
-      await fs.rm(worktree).catch(() => {});
-      await git(["worktree", "prune"]).catch(() => {});
-    }
+    result.changedFiles = [...changed];
+    await cleanup();
+    unregister();
   }
   return result;
 }
 
-async function fetchPr(number, run, cwd) {
+async function fetchPr(number, run, cwd, fields = PR_FIELDS) {
   const res = await run(
     "gh",
-    ["pr", "view", String(number), "--json", PR_FIELDS],
-    { cwd },
+    ["pr", "view", String(number), "--json", fields],
+    {
+      cwd,
+    },
   );
   if (res.code !== 0) {
     throw new Error(`gh pr view failed: ${tail(res.stderr || res.stdout, 3)}`);
@@ -471,6 +808,27 @@ async function fetchPr(number, run, cwd) {
   }
 }
 
+export const USAGE = [
+  "usage: node scripts/merge-pr.mjs <pr-number> [--execute]",
+  "       node scripts/merge-pr.mjs --help",
+  "",
+  "Dry run by default: evaluates every gate and prints a table. --execute",
+  "squash-merges (and deletes the branch) only when every gate passes.",
+  "",
+  "  1  state    open, not a draft, base main",
+  "  2  checks   every check on the head commit green",
+  "  3  review   no CHANGES_REQUESTED review decision",
+  "  4  record   exactly one '## Review record': Verdict APPROVE or APPROVE WITH",
+  "              NITS (every Verdict line), 'Findings resolved: yes'",
+  "  4b audit    a PR comment of 200+ characters with a 'Verdict:' line (the",
+  "              reviewer's report pasted verbatim)",
+  "  5  files    no maintainer-only file (checked against gh and against git)",
+  "  6  merge    clean test-merge onto origin/main; npm test if head is behind",
+  "",
+  `NOTE: ${SELF_ATTESTATION_NOTE}`,
+  "There is no override flag; --admin, --auto and --rebase are never used.",
+].join("\n");
+
 /**
  * Runs the whole flow. Returns the process exit code (0 merged or all gates
  * passed in dry run, 1 refused, 2 usage error).
@@ -481,6 +839,11 @@ export async function main(argv, deps = {}) {
   const cwd = deps.cwd ?? process.cwd();
   const out = deps.out ?? ((text) => process.stdout.write(`${text}\n`));
   const err = deps.err ?? ((text) => process.stderr.write(`${text}\n`));
+
+  if (argv.includes("--help") || argv.includes("-h")) {
+    out(USAGE);
+    return 0;
+  }
 
   const flags = argv.filter((arg) => arg.startsWith("-"));
   const positional = argv.filter((arg) => !arg.startsWith("-"));
@@ -511,6 +874,7 @@ export async function main(argv, deps = {}) {
   // Gate 6 needs a real, open PR to fetch; otherwise it is reported as skipped.
   const mergeGate = {
     id: "merge",
+    num: "6",
     label: "clean test-merge onto main",
     failures: [],
     notes: [],
@@ -540,12 +904,49 @@ export async function main(argv, deps = {}) {
         .map((gate) => gate.id)
         .join(", ")}).`,
     );
+    out(`Note: ${SELF_ATTESTATION_NOTE}`);
     return 1;
   }
 
   if (!execute) {
     out("All gates pass. Dry run: nothing merged. Re-run with --execute.");
     return 0;
+  }
+
+  // The body, comments, file list and base tip are read once (see header).
+  // Re-read what can still change cheaply and re-run gates 1-3 before merging.
+  let fresh;
+  try {
+    fresh = await fetchPr(number, run, cwd, RECHECK_FIELDS);
+  } catch (error) {
+    err(`merge-pr: could not re-read the PR before merging: ${error.message}`);
+    return 1;
+  }
+  const changes = [
+    ...(fresh.headRefOid === pr.headRefOid
+      ? []
+      : [
+          `head moved from ${String(pr.headRefOid).slice(0, 7)} to ${String(fresh.headRefOid).slice(0, 7)}`,
+        ]),
+    ...checkState(fresh),
+    ...checkChecks(fresh),
+    ...checkReviewDecision(fresh),
+  ];
+  if (changes.length > 0) {
+    out("REFUSED: the PR changed between the first read and the merge:");
+    for (const change of changes) out(`          - ${change}`);
+    return 1;
+  }
+
+  // Run gh from the repository root (not a subdirectory, never the temporary
+  // worktree, which is already gone) and warn when gh would move the checkout.
+  const top = await run("git", ["rev-parse", "--show-toplevel"], { cwd });
+  const root = top.code === 0 && top.stdout.trim() ? top.stdout.trim() : cwd;
+  const current = await run("git", ["branch", "--show-current"], { cwd: root });
+  if (current.code === 0 && current.stdout.trim() === pr.headRefName) {
+    err(
+      `merge-pr: warning: this checkout is on ${pr.headRefName}. gh pr merge --delete-branch will switch it to ${BASE_BRANCH} and delete the local branch.`,
+    );
   }
 
   const merge = await run(
@@ -559,7 +960,7 @@ export async function main(argv, deps = {}) {
       "--match-head-commit",
       pr.headRefOid,
     ],
-    { cwd },
+    { cwd: root },
   );
   if (merge.code !== 0) {
     err(
@@ -573,7 +974,7 @@ export async function main(argv, deps = {}) {
     const view = await run(
       "gh",
       ["pr", "view", String(number), "--json", "mergeCommit"],
-      { cwd },
+      { cwd: root },
     );
     const oid = JSON.parse(view.stdout)?.mergeCommit?.oid;
     out(`Merge commit: ${oid ?? "(not reported yet)"}`);
@@ -588,6 +989,7 @@ const invokedDirectly =
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (invokedDirectly) {
+  installSignalHandlers();
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;
