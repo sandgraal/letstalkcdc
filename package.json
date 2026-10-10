@@ -15,6 +15,7 @@
     "build:lhci": "ELEVENTY_PATH_PREFIX=/ npm run build",
     "lint:content": "node scripts/lint-content.js",
     "audit:seo": "node scripts/seo-audit.mjs",
+    "check:css-baseline": "node scripts/check-css-baseline.mjs",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
     "smoke:a11y": "node scripts/run-pa11y.mjs",
     "smoke:perf": "node scripts/perf-budget.mjs",

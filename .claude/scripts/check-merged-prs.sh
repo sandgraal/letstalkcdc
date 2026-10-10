@@ -1,35 +1,42 @@
 #!/usr/bin/env bash
 #
 # Poll GitHub for newly-merged `claude/*` PRs authored by the current user
-# and, on a fresh merge, emit a SessionStart-shaped JSON envelope that
-# instructs Claude to continue work from docs/IMPLEMENTATION-PLAN.md.
+# and, on a FRESH merge, emit a hook-shaped JSON envelope that tells Claude to
+# continue work from docs/IMPLEMENTATION-PLAN.md.
 #
 # Wired into .claude/settings.json:
-#   - SessionStart: runs once per session; injects context if a merge
-#     landed since the last session.
+#   - SessionStart: runs once per session.
 #   - Stop (asyncRewake: true): runs after every assistant turn in the
-#     background. On a fresh merge it exits with code 2, which the
-#     harness interprets as "rewake the model with this stdout as
-#     system-reminder context" — that's how we get auto-continue
-#     without a real GitHub webhook.
+#     background. On a fresh merge it exits with code 2, which the harness
+#     interprets as "rewake the model with this stdout as system-reminder".
 #
-# State lives in .claude/.merge-watcher-state.json (gitignored). The
-# file stores the highest PR number we've already acknowledged so we
-# never double-trigger on the same merge.
+# When it fires (all three must hold):
+#   1. a state file exists and is readable. With no state file, or one that
+#      cannot be read, the script only INITIALISES it to the current newest
+#      merged claude/* PR number and stays silent. This is what stops a new
+#      machine or a fresh clone from replaying an old merge as news.
+#   2. the PR number is greater than the stored one. A number <= stored never
+#      fires, so one merge produces one directive.
+#   3. the PR merged within the last MAX_AGE_HOURS (6). An older merge is
+#      recorded as seen, silently.
 #
-# Silent-fail policy: if `gh` isn't installed, isn't authed, the repo
-# isn't a GitHub remote, or `jq` is missing — emit nothing and exit 0.
+# State lives in .claude/.merge-watcher-state.json (gitignored) and stores the
+# highest PR number already acknowledged.
+#
+# Silent-fail policy: if `gh` isn't installed, isn't authed, the call fails,
+# the repo isn't a GitHub remote, or `jq` is missing, emit nothing and exit 0.
 # A noisy hook is worse than a missing hook.
 
 set -u
 
-# Resolve repo root via `git rev-parse` so this works in both the main
-# checkout and any git-worktree (where `.git` is a file pointer, not a
-# directory).
+MAX_AGE_HOURS=6
+
 command -v gh >/dev/null 2>&1 || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 command -v git >/dev/null 2>&1 || exit 0
 
+# Resolve repo root via `git rev-parse` so this works in both the main
+# checkout and any git-worktree (where `.git` is a file pointer).
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -n "$repo_root" ] || exit 0
 state_file="$repo_root/.claude/.merge-watcher-state.json"
@@ -37,94 +44,110 @@ plan_file="$repo_root/docs/IMPLEMENTATION-PLAN.md"
 
 gh auth status >/dev/null 2>&1 || exit 0
 
-# Query merged PRs by the authenticated user. Filter to claude/* branches.
+# Query merged PRs by the authenticated user; a failed call is silent.
 prs_json="$(gh pr list --state merged --author @me --limit 10 \
   --json number,title,mergedAt,headRefName 2>/dev/null)" || exit 0
 [ -n "$prs_json" ] || exit 0
 
-# Pick the most recently merged claude/* PR.
+# Newest merged claude/* PR (by mergedAt). Empty when there is none.
 latest="$(printf '%s' "$prs_json" | jq -c '
   [ .[] | select(.headRefName | startswith("claude/")) ]
   | sort_by(.mergedAt) | reverse | .[0] // empty
-')"
-[ -n "$latest" ] && [ "$latest" != "null" ] || exit 0
+' 2>/dev/null)" || exit 0
+
+# Write the state file atomically (same-dir temp file + rename). Returns
+# non-zero on any failure, so callers can stay silent rather than loop.
+write_state() { # num title branch mergedAt previous_acked_json
+  mkdir -p "$(dirname "$state_file")" 2>/dev/null || return 1
+  local tmp_state="${state_file}.tmp.$$"
+  if ! ( jq -n \
+    --argjson n "$1" \
+    --arg t "$2" \
+    --arg b "$3" \
+    --arg m "$4" \
+    --argjson acked "$5" \
+    '{
+      lastSeenPR: $n,
+      lastSeenTitle: $t,
+      lastSeenBranch: $b,
+      lastSeenMergedAt: $m,
+      ackedPRs: ($acked + [$n] | unique | reverse | .[:50]),
+      acknowledgedAt: (now | todate)
+    }' > "$tmp_state" ) 2>/dev/null; then
+    rm -f "$tmp_state" 2>/dev/null
+    return 1
+  fi
+  mv "$tmp_state" "$state_file" 2>/dev/null || { rm -f "$tmp_state" 2>/dev/null; return 1; }
+}
+
+# Highest acknowledged PR number from the state file, or empty when the file
+# is missing, unparseable, or has no number in it.
+stored_num=""
+acked_prs_json="[]"
+if [ -f "$state_file" ]; then
+  stored_num="$(jq -r '
+    [ (.lastSeenPR | numbers),
+      ((.ackedPRs // []) | if type == "array" then .[] | numbers else empty end) ]
+    | if length == 0 then empty else max end
+  ' "$state_file" 2>/dev/null || true)"
+  case "$stored_num" in
+    ''|*[!0-9]*) stored_num="" ;;
+  esac
+  acked_prs_json="$(jq -c '
+    (.ackedPRs // []) | if type == "array" then [ .[] | numbers ] else [] end
+  ' "$state_file" 2>/dev/null || echo '[]')"
+  [ -n "$acked_prs_json" ] || acked_prs_json="[]"
+fi
+
+# No merged claude/* PR at all.
+if [ -z "$latest" ] || [ "$latest" = "null" ]; then
+  # First run on this machine: remember "nothing seen yet" (0) so the first
+  # real merge afterwards fires. Silent either way.
+  [ -z "$stored_num" ] && write_state 0 "" "" "" "[]"
+  exit 0
+fi
 
 latest_num="$(printf '%s' "$latest" | jq -r '.number' 2>/dev/null)"
 latest_title="$(printf '%s' "$latest" | jq -r '.title' 2>/dev/null)"
 latest_branch="$(printf '%s' "$latest" | jq -r '.headRefName' 2>/dev/null)"
 latest_merged_at="$(printf '%s' "$latest" | jq -r '.mergedAt' 2>/dev/null)"
+case "$latest_num" in
+  ''|*[!0-9]*) exit 0 ;;
+esac
 [ -n "$latest_merged_at" ] && [ "$latest_merged_at" != "null" ] || exit 0
 
-# Freshness is by `mergedAt` (ISO 8601, lexicographically comparable), NOT by
-# PR number. A long-lived branch can merge after a higher-numbered PR has
-# already landed; PR-number ordering would silently skip that case. We also
-# carry an ackedPRs list so two PRs sharing a mergedAt second don't collide.
-last_merged_at=""
-acked_prs_json="[]"
-if [ -f "$state_file" ]; then
-  last_merged_at="$(jq -r '.lastSeenMergedAt // ""' "$state_file" 2>/dev/null || true)"
-  # Coerce non-array `ackedPRs` (corrupt or hand-edited state) to `[]` so
-  # the merge below doesn't error and a single bad write doesn't
-  # permanently block future triggers.
-  acked_prs_json="$(jq -c '(if (.ackedPRs | type) == "array" then .ackedPRs else [] end)' \
-    "$state_file" 2>/dev/null || echo '[]')"
-  [ -n "$acked_prs_json" ] || acked_prs_json="[]"
-fi
-
-# Already-acknowledged check: if this exact PR number is in ackedPRs, skip.
-already_acked="$(printf '%s' "$acked_prs_json" | jq --argjson n "$latest_num" \
-  'any(. == $n)' 2>/dev/null || echo false)"
-if [ "$already_acked" = "true" ]; then
+# Rule 1: no usable state means initialise and say nothing.
+if [ -z "$stored_num" ]; then
+  write_state "$latest_num" "$latest_title" "$latest_branch" "$latest_merged_at" "[]"
   exit 0
 fi
 
-# Timestamp freshness check: skip if the latest merge is not strictly newer
-# than the last one we've seen. Empty `last_merged_at` (first run) sorts
-# before any real timestamp, so the first valid merge always fires.
-if [ -n "$last_merged_at" ] && [ ! "$latest_merged_at" \> "$last_merged_at" ]; then
+# Rule 2: never fire for a PR at or below the stored number.
+if [ "$latest_num" -le "$stored_num" ]; then
   exit 0
 fi
 
-# Record the acknowledgement *atomically and before* emitting context. If
-# either the directory-create or the rename fails, exit 0 with no output —
-# emitting an envelope without advancing state would loop on the same PR
-# every turn. tmp file is in the same dir so `mv` is a real atomic rename.
-if ! mkdir -p "$(dirname "$state_file")" 2>/dev/null; then
-  exit 0
-fi
-tmp_state="${state_file}.tmp.$$"
-# Subshell + outer 2>/dev/null catches redirection errors (e.g.
-# read-only directory) that happen *before* jq runs and would
-# otherwise leak to the terminal.
-if ! ( jq -n \
-  --argjson n "$latest_num" \
-  --arg t "$latest_title" \
-  --arg b "$latest_branch" \
-  --arg m "$latest_merged_at" \
-  --argjson acked "$acked_prs_json" \
-  '{
-    lastSeenPR: $n,
-    lastSeenTitle: $t,
-    lastSeenBranch: $b,
-    lastSeenMergedAt: $m,
-    ackedPRs: ($acked + [$n] | unique | sort_by(. | tonumber? // 0) | reverse | .[:50]),
-    acknowledgedAt: (now | todate)
-  }' > "$tmp_state" ) 2>/dev/null; then
-  rm -f "$tmp_state" 2>/dev/null
-  exit 0
-fi
-if ! mv "$tmp_state" "$state_file" 2>/dev/null; then
-  rm -f "$tmp_state" 2>/dev/null
-  exit 0
+# Rule 3: age of the merge, in seconds. If it cannot be computed, stay silent.
+age_seconds="$(printf '%s' "$latest_merged_at" | jq -R '
+  sub("\\.[0-9]+Z$"; "Z") | now - fromdateiso8601 | floor
+' 2>/dev/null)" || exit 0
+case "$age_seconds" in
+  ''|*[!0-9-]*) exit 0 ;;
+esac
+
+# Record the acknowledgement before emitting anything. If the write fails,
+# exit silently: emitting without advancing state would loop on this PR.
+write_state "$latest_num" "$latest_title" "$latest_branch" "$latest_merged_at" \
+  "$acked_prs_json" || exit 0
+
+if [ "$age_seconds" -gt $((MAX_AGE_HOURS * 3600)) ]; then
+  exit 0  # too old to be news; recorded as seen above
 fi
 
 # Determine the hook event from the JSON the harness piped in on stdin.
-# SessionStart and Stop are the two registered call sites; default to
-# SessionStart so the envelope is valid even if stdin is empty.
+# Default to SessionStart so the envelope is valid even if stdin is empty.
 event="SessionStart"
-if [ -t 0 ]; then
-  :  # no stdin
-else
+if [ ! -t 0 ]; then
   stdin_json="$(cat 2>/dev/null || true)"
   if [ -n "$stdin_json" ]; then
     parsed_event="$(printf '%s' "$stdin_json" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
@@ -132,15 +155,12 @@ else
   fi
 fi
 
-# Pull a short preview of the lowest open `- [ ]` in the plan (best effort —
-# Claude will still read the whole file).
+# Best-effort preview of the first open `- [ ]` item in the plan.
 next_open=""
 if [ -f "$plan_file" ]; then
   next_open="$(grep -n '^- \[ \]' "$plan_file" 2>/dev/null | head -1 || true)"
 fi
 
-# Build the system-reminder text. Keep it terse — Claude has the repo
-# context already; just point at the trigger and the plan.
 context=$(
   printf 'PR #%s merged on `main`: %s (branch: %s).\n\n' \
     "$latest_num" "$latest_title" "$latest_branch"
@@ -156,14 +176,12 @@ context=$(
   fi
 )
 
-# Emit the harness-shaped envelope. For Stop hooks with asyncRewake, we
-# also exit 2 so the model is rewoken with this output as the system-
-# reminder.
 jq -n \
   --arg event "$event" \
   --arg ctx "$context" \
   '{ hookSpecificOutput: { hookEventName: $event, additionalContext: $ctx } }'
 
+# For Stop hooks with asyncRewake, exit 2 rewakes the model with the output.
 if [ "$event" = "Stop" ]; then
   exit 2
 fi
