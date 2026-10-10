@@ -10,9 +10,10 @@ import path from "node:path";
  * repo with a stub `gh` first on PATH, so nothing touches the network or the
  * real state file.
  *
- * Rules under test: no state file -> initialise silently; never fire for a
- * PR number <= the stored one; never fire for a merge older than 6 hours;
- * a fresh merge fires once; gh failure is silent.
+ * Rules under test: no state file -> initialise silently; the newest merge
+ * (by mergedAt, not PR number) fires once if it is not already acknowledged;
+ * never fire for a merge older than 6 hours or dated in the future; an
+ * unwritable state file or a gh failure is silent.
  */
 
 const script = path.resolve(
@@ -144,7 +145,7 @@ describe.skipIf(!haveTools)("check-merged-prs.sh", () => {
     expect(readState().lastSeenPR).toBe(41);
   });
 
-  it("never fires for a PR number at or below the stored one", () => {
+  it("never fires again for a PR that is already acknowledged", () => {
     writeState({ lastSeenPR: 50, ackedPRs: [50] });
     stubPrs([pr(50, 0.1), pr(49, 0.2)]);
     const res = run("Stop");
@@ -152,6 +153,70 @@ describe.skipIf(!haveTools)("check-merged-prs.sh", () => {
     expect(res.stdout).toBe("");
     expect(readState().lastSeenPR).toBe(50);
   });
+
+  it("fires for a lower-numbered PR that merges after a higher-numbered one, once", () => {
+    // #431 landed earlier and is acknowledged; the long-lived #430 merges later.
+    writeState({ lastSeenPR: 431, ackedPRs: [431] });
+    stubPrs([pr(431, 3), pr(430, 1)]);
+    const first = run("Stop");
+    expect(first.status).toBe(2);
+    expect(
+      JSON.parse(first.stdout).hookSpecificOutput.additionalContext,
+    ).toContain("PR #430");
+    expect(readState().ackedPRs).toEqual(expect.arrayContaining([430, 431]));
+
+    const second = run("Stop");
+    expect(second.status).toBe(0);
+    expect(second.stdout).toBe("");
+  });
+
+  it("stays silent when the same PR is seen twice", () => {
+    writeState({ lastSeenPR: 40, ackedPRs: [40] });
+    stubPrs([pr(41, 1)]);
+    expect(run("Stop").status).toBe(2);
+    const again = run("SessionStart");
+    expect(again.status).toBe(0);
+    expect(again.stdout).toBe("");
+  });
+
+  it("stays silent for a merge dated in the future (clock skew) but records it", () => {
+    writeState({ lastSeenPR: 40, ackedPRs: [40] });
+    stubPrs([pr(41, -2)]);
+    const res = run("Stop");
+    expect(res.status).toBe(0);
+    expect(res.stdout).toBe("");
+    expect(readState().ackedPRs).toContain(41);
+  });
+
+  it("keeps ackedPRs bounded to the newest 200", () => {
+    writeState({
+      lastSeenPR: 300,
+      ackedPRs: Array.from({ length: 250 }, (_, i) => i + 1),
+    });
+    stubPrs([pr(301, 1)]);
+    expect(run("Stop").status).toBe(2);
+    const { ackedPRs } = readState();
+    expect(ackedPRs).toHaveLength(200);
+    expect(ackedPRs[0]).toBe(301);
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "is silent and emits no directive when the state file cannot be written",
+    () => {
+      writeState({ lastSeenPR: 40, ackedPRs: [40] });
+      stubPrs([pr(41, 1)]);
+      const dir = path.dirname(stateFile);
+      fs.chmodSync(dir, 0o555);
+      try {
+        const res = run("Stop");
+        expect(res.status).toBe(0);
+        expect(res.stdout).toBe("");
+      } finally {
+        fs.chmodSync(dir, 0o755);
+      }
+      expect(readState().lastSeenPR).toBe(40);
+    },
+  );
 
   it("only considers claude/* branches", () => {
     writeState({ lastSeenPR: 40, ackedPRs: [40] });

@@ -13,17 +13,19 @@ pre-rendered HTML; JavaScript is progressive enhancement. There is **no
 backend**: the only server-side service is an optional Supabase table that
 receives assistant thumbs-up/down feedback (browser to PostgREST with `fetch`,
 publishable key only). The Change Feed Playground under `playground/` is a
-separate app with its own `package.json`, copied into the site at deploy time.
+separate app with its own `package.json`, copied into the site at deploy.
 
 ## Orientation: read in this order
 
 1. [`docs/AUTOPSY-BRIEF.md`](docs/AUTOPSY-BRIEF.md) — measurements, risks, open work.
 2. [`docs/STATE-OF-PROJECT.md`](docs/STATE-OF-PROJECT.md) — dated dashboard.
-3. [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) — roles, routing, merge and push policy.
+3. [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) — roles, routing, merge and push policy. Model policy: see docs/CONDUCTOR.md.
 
 Then `docs/IMPLEMENTATION-PLAN.md`, the authoritative checklist: find your
 item, do the work, flip `- [ ]` to `- [x]` in the same commit. Phase 13 is the
-agent queue; Phase 14 is the maintainer's decisions: do not start those.
+agent queue; Phase 14 is the maintainer's decisions: do not start those. New
+work that fits no phase: add it to the lowest phase it belongs to or append a
+new Phase heading.
 
 ## Commands
 
@@ -33,7 +35,9 @@ npm run dev               # eleventy --serve on http://localhost:8080
 npm run build             # production build to _site/
 npm test                  # vitest unit suite
 npm run lint              # eslint
-npm run format            # prettier --write (CI runs format:check)
+npm run format            # prettier --write
+npm run format:check      # prettier --check (what CI runs)
+npm run clean             # rimraf dist _site styles.min.css
 npm run smoke:core        # HTML/links smoke; run after routing/template changes
 npm run smoke             # smoke:core + smoke:a11y + smoke:perf (slow)
 npm run check:css-baseline  # compare built CSS with the recorded hash
@@ -86,7 +90,7 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
 
 - **Commits:** Conventional Commits, lowercase scope, imperative, body wrapped
   near 72 columns, e.g. `fix(ci): pin SITE_HOST in linkcheck.yml`. Prefer new
-  commits over `--amend`; never `--no-verify`. End Claude-authored commits with
+  commits over `--amend`; never `--no-verify` or `--no-gpg-sign`. End Claude-authored commits with
   the `Co-Authored-By` trailer the harness gives you; add a
   `https://claude.ai/code/session_<id>` footer only with a real session id.
 - **Branches:** `claude/<short-name>-<id>`; PRs go into `main`. Who may push,
@@ -112,9 +116,15 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
 - Force-pushing `main`. `main` is **not** protected by required checks: the
   `default` ruleset has `pull_request`, `deletion`, `non_fast_forward`,
   `code_scanning` and `code_quality` but no `required_status_checks`, so a red
-  CI run does not block a merge. Merging only after green CI is enforced by
-  `scripts/merge-pr.mjs` once it lands (see `docs/CONDUCTOR.md`).
+  CI run does not block a merge. Merge policy: see docs/CONDUCTOR.md.
 - `npm install` in CI (use `npm ci`); pushing without `npm run format` and lint.
+
+## Auto-rewake
+
+A Stop hook (`.claude/scripts/check-merged-prs.sh`) may rewake a session when a
+`claude/*` PR merges (within 6 hours, not yet acknowledged). State: gitignored
+`.claude/.merge-watcher-state.json`. Disable: remove the Stop entry in
+`.claude/settings.json` (maintainer-owned) or delete the state file.
 
 ## Where to read more
 
@@ -122,20 +132,19 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
   (deploy and CI runbook), `docs/DEVELOPMENT.md`, `docs/adding-modules.md`,
   `docs/javascript-architecture.md`.
 - `docs/TRACING.md` is retired; `docs/archive/` is history, not spec.
-- `CHANGELOG.md` `[Unreleased]` is the running scratchpad for the dev cycle.
-- Roles: `.claude/agents/`; slash commands: `.claude/commands/` (`/verify-all`,
-  `/css-byte-check`).
+  `CHANGELOG.md` `[Unreleased]` is the dev-cycle scratchpad.
+- Roles: `.claude/agents/`; slash commands: `.claude/commands/`.
 
 ## First-run mines
 
 1. If `npm test` explodes at `tests/setup.js`, the environment changed again
-   (`localStorage` once vanished under vitest/jsdom/Node bumps): fix the setup
-   rather than shipping around it.
-2. There is no agent handoff system (the old nightly handoff workflow was retired).
-   Cross-session context lives in the plan, `CHANGELOG.md` and `git log`.
+   (`localStorage` once vanished): fix the setup, do not ship around it.
+2. There is no agent handoff system. Context lives in the plan, `CHANGELOG.md`
+   and `git log`.
 3. Only the lighthouse job rebuilds CSS in CI. Prove CSS changes with
    `npm run check:css-baseline`; the Lighthouse floors are in
    `lighthouse-ci.config.json` (honest since May 2026, `/intro/` about 0.86 to 0.9).
-4. Run `npm run smoke:core` for routing, passthrough or page-template changes.
-5. Ask the maintainer, do not guess, about anything shared: dependencies,
-   CI behaviour, repository settings, secrets.
+4. Run `npm run smoke:core` for routing, passthrough or page-template changes;
+   for visual changes, screenshot the affected pages.
+5. Search the codebase before asking. Ask the maintainer, do not guess, about
+   anything shared: dependencies, CI behaviour, repository settings, secrets.

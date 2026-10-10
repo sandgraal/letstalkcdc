@@ -12,16 +12,18 @@
 #
 # When it fires (all three must hold):
 #   1. a state file exists and is readable. With no state file, or one that
-#      cannot be read, the script only INITIALISES it to the current newest
-#      merged claude/* PR number and stays silent. This is what stops a new
-#      machine or a fresh clone from replaying an old merge as news.
-#   2. the PR number is greater than the stored one. A number <= stored never
-#      fires, so one merge produces one directive.
-#   3. the PR merged within the last MAX_AGE_HOURS (6). An older merge is
-#      recorded as seen, silently.
+#      cannot be read, the script only INITIALISES it with the current newest
+#      merged claude/* PR and stays silent. This is what stops a new machine
+#      or a fresh clone from replaying an old merge as news.
+#   2. the newest merged PR (by mergedAt, NOT by number) is not already in the
+#      stored ackedPRs set. Selection is by merge time because a long-lived
+#      branch can merge after a higher-numbered PR; ordering by number would
+#      silently skip it. One merge produces one directive.
+#   3. it merged within the last MAX_AGE_HOURS (6) and not in the future. An
+#      older (or clock-skewed) merge is recorded as seen, silently.
 #
 # State lives in .claude/.merge-watcher-state.json (gitignored) and stores the
-# highest PR number already acknowledged.
+# acknowledged PR numbers (ackedPRs, newest 200).
 #
 # Silent-fail policy: if `gh` isn't installed, isn't authed, the call fails,
 # the repo isn't a GitHub remote, or `jq` is missing, emit nothing and exit 0.
@@ -71,7 +73,7 @@ write_state() { # num title branch mergedAt previous_acked_json
       lastSeenTitle: $t,
       lastSeenBranch: $b,
       lastSeenMergedAt: $m,
-      ackedPRs: ($acked + [$n] | unique | reverse | .[:50]),
+      ackedPRs: ($acked + [$n] | unique | reverse | .[:200]),
       acknowledgedAt: (now | todate)
     }' > "$tmp_state" ) 2>/dev/null; then
     rm -f "$tmp_state" 2>/dev/null
@@ -80,30 +82,27 @@ write_state() { # num title branch mergedAt previous_acked_json
   mv "$tmp_state" "$state_file" 2>/dev/null || { rm -f "$tmp_state" 2>/dev/null; return 1; }
 }
 
-# Highest acknowledged PR number from the state file, or empty when the file
-# is missing, unparseable, or has no number in it.
-stored_num=""
+# Acknowledged PR numbers from the state file. `have_state` stays false when
+# the file is missing, unparseable, or holds no PR number at all.
+have_state=""
 acked_prs_json="[]"
 if [ -f "$state_file" ]; then
-  stored_num="$(jq -r '
+  acked_prs_json="$(jq -c '
     [ (.lastSeenPR | numbers),
       ((.ackedPRs // []) | if type == "array" then .[] | numbers else empty end) ]
-    | if length == 0 then empty else max end
+    | unique
   ' "$state_file" 2>/dev/null || true)"
-  case "$stored_num" in
-    ''|*[!0-9]*) stored_num="" ;;
+  case "$acked_prs_json" in
+    ''|'[]') acked_prs_json="[]" ;;
+    *) have_state=1 ;;
   esac
-  acked_prs_json="$(jq -c '
-    (.ackedPRs // []) | if type == "array" then [ .[] | numbers ] else [] end
-  ' "$state_file" 2>/dev/null || echo '[]')"
-  [ -n "$acked_prs_json" ] || acked_prs_json="[]"
 fi
 
 # No merged claude/* PR at all.
 if [ -z "$latest" ] || [ "$latest" = "null" ]; then
   # First run on this machine: remember "nothing seen yet" (0) so the first
   # real merge afterwards fires. Silent either way.
-  [ -z "$stored_num" ] && write_state 0 "" "" "" "[]"
+  [ -z "$have_state" ] && write_state 0 "" "" "" "[]"
   exit 0
 fi
 
@@ -117,15 +116,15 @@ esac
 [ -n "$latest_merged_at" ] && [ "$latest_merged_at" != "null" ] || exit 0
 
 # Rule 1: no usable state means initialise and say nothing.
-if [ -z "$stored_num" ]; then
+if [ -z "$have_state" ]; then
   write_state "$latest_num" "$latest_title" "$latest_branch" "$latest_merged_at" "[]"
   exit 0
 fi
 
-# Rule 2: never fire for a PR at or below the stored number.
-if [ "$latest_num" -le "$stored_num" ]; then
-  exit 0
-fi
+# Rule 2: a PR already in the acknowledged set never fires again.
+already_acked="$(printf '%s' "$acked_prs_json" | jq --argjson n "$latest_num" \
+  'any(. == $n)' 2>/dev/null || echo true)"
+[ "$already_acked" = "false" ] || exit 0
 
 # Rule 3: age of the merge, in seconds. If it cannot be computed, stay silent.
 age_seconds="$(printf '%s' "$latest_merged_at" | jq -R '
@@ -140,8 +139,8 @@ esac
 write_state "$latest_num" "$latest_title" "$latest_branch" "$latest_merged_at" \
   "$acked_prs_json" || exit 0
 
-if [ "$age_seconds" -gt $((MAX_AGE_HOURS * 3600)) ]; then
-  exit 0  # too old to be news; recorded as seen above
+if [ "$age_seconds" -lt 0 ] || [ "$age_seconds" -gt $((MAX_AGE_HOURS * 3600)) ]; then
+  exit 0  # too old (or clock skew) to be news; recorded as seen above
 fi
 
 # Determine the hook event from the JSON the harness piped in on stdin.

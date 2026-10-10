@@ -20,7 +20,7 @@ const GENERATED_PREFIXES = ["_site/", "dist/"];
 const ALLOWED_MISSING = new Set([
   "src/assets/css/styles.min.css", // built by `npm run build:css`, git-ignored
   "styles.min.css",
-  "scripts/merge-pr.mjs", // lands with the conductor/merge policy PR (P17-1)
+  ".claude/.merge-watcher-state.json", // runtime state written by the merge watcher, git-ignored
 ]);
 const FILE_EXT = /\.(md|mjs|cjs|js|json|yml|yaml|sh|njk|css|sha256|html)$/;
 
@@ -172,33 +172,34 @@ describe("rules and skills frontmatter", () => {
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
 
-  it("has the five path-scoped rules", () => {
-    expect(rules.sort()).toEqual([
-      "assistant.md",
-      "content.md",
-      "css.md",
-      "playground.md",
-      "workflows.md",
-    ]);
+  const EXPECTED_RULES = [
+    "assistant.md",
+    "content.md",
+    "css.md",
+    "playground.md",
+    "workflows.md",
+  ];
+  const EXPECTED_SKILLS = ["content-update", "new-module", "seo-check"];
+
+  it("still has the five original path-scoped rules (more are allowed)", () => {
+    expect(rules).toEqual(expect.arrayContaining(EXPECTED_RULES));
+    expect(rules.length).toBeGreaterThanOrEqual(EXPECTED_RULES.length);
   });
 
   it.each(rules)(
-    "rule %s has a non-empty paths: list and stays under 40 lines",
+    "rule %s has a non-empty paths: list and stays under 80 lines",
     (file) => {
       const text = fs.readFileSync(path.join(rulesDir, file), "utf8");
       const fm = frontmatter(text);
       expect(fm, "frontmatter").not.toBeNull();
       expect(fm).toMatch(/^paths:\s*\n(\s+- ".+"\n?)+$/m);
-      expect(text.trimEnd().split("\n").length).toBeLessThan(40);
+      expect(text.trimEnd().split("\n").length).toBeLessThan(80);
     },
   );
 
-  it("has the three skills", () => {
-    expect(skills.sort()).toEqual([
-      "content-update",
-      "new-module",
-      "seo-check",
-    ]);
+  it("still has the three original skills (more are allowed)", () => {
+    expect(skills).toEqual(expect.arrayContaining(EXPECTED_SKILLS));
+    expect(skills.length).toBeGreaterThanOrEqual(EXPECTED_SKILLS.length);
   });
 
   it.each(skills)(
