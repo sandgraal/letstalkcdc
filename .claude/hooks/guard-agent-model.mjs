@@ -9,10 +9,14 @@
 //
 // Exit 0 = allow, exit 2 = deny (stderr is shown to the model).
 //
-// Limits: this guards only the per-call `model` argument. Claude Code treats
-// any exit code other than 2 (a crash, a missing `node`) as non-blocking, so
-// this is a guardrail, not a lock. The enforcement that cannot be skipped
-// locally is tests/unit/agent-roster.test.js in CI.
+// FAIL CLOSED: Claude Code treats any exit code other than 2 as non-blocking,
+// so this file turns every crash into exit 2, and settings.json registers it
+// as `node ... || exit 2` so that even a failure to load it (missing node, a
+// syntax error) is a deny.
+//
+// Limits: this guards only the per-call `model` argument. It is a guardrail,
+// not a lock. The enforcement that cannot be skipped locally is
+// tests/unit/agent-roster.test.js in CI.
 
 import { fileURLToPath } from "node:url";
 
@@ -40,25 +44,38 @@ export function checkAgentCall(input) {
   };
 }
 
-async function main() {
-  let raw = "";
-  for await (const chunk of process.stdin) raw += chunk;
-  let input;
+/** Exit 2 with a message. Never throws, never returns. */
+function failClosed(message) {
   try {
-    input = JSON.parse(raw);
-  } catch {
-    // Fail closed: an unparseable payload is not something to wave through.
-    process.stderr.write("guard-agent-model: could not parse hook input\n");
+    process.stderr.write(`${message}\n`);
+  } finally {
     process.exit(2);
   }
-  if (input === null || typeof input !== "object") {
-    process.stderr.write("guard-agent-model: hook input was not an object\n");
-    process.exit(2);
-  }
-  const result = checkAgentCall(input);
-  if (!result.ok) {
-    process.stderr.write(`${result.reason}\n`);
-    process.exit(2);
+}
+
+async function main() {
+  // Fail closed: any crash is a deny. Node exits 1 on an uncaught exception,
+  // and Claude Code treats every exit code other than 2 as "allow".
+  const crash = (e) =>
+    failClosed(`guard-agent-model: internal error: ${e?.message ?? e}`);
+  process.on("uncaughtException", crash);
+  process.on("unhandledRejection", crash);
+  try {
+    let raw = "";
+    for await (const chunk of process.stdin) raw += chunk;
+    let input;
+    try {
+      input = JSON.parse(raw);
+    } catch {
+      return failClosed("guard-agent-model: could not parse hook input");
+    }
+    if (input === null || typeof input !== "object") {
+      return failClosed("guard-agent-model: hook input was not an object");
+    }
+    const result = checkAgentCall(input);
+    if (!result.ok) failClosed(result.reason);
+  } catch (e) {
+    crash(e);
   }
 }
 

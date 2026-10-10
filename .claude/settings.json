@@ -23,6 +23,8 @@
       "Bash(git branch:*)",
       "Bash(git fetch:*)",
       "Bash(git ls-files:*)",
+      "Bash(git worktree:*)",
+      "Bash(git push:*)",
 
       "Bash(npm ci:*)",
       "Bash(npm test:*)",
@@ -51,6 +53,11 @@
       "Bash(node scripts/perf-budget.mjs:*)",
       "Bash(node scripts/lint-content.js:*)",
       "Bash(node scripts/deployment-verify.mjs:*)",
+      "Bash(node scripts/thesis-lint.mjs:*)",
+      "Bash(node scripts/merge-pr.mjs:*)",
+      "Bash(npm run lint:thesis:*)",
+      "Bash(npm run merge-pr:*)",
+      "Bash(bash scripts/worktree-prune.sh:*)",
 
       "Bash(ls:*)",
       "Bash(cat:*)",
@@ -68,9 +75,7 @@
       "Bash(shasum:*)",
       "Bash(diff:*)",
       "Bash(jq:*)",
-      "Bash(awk:*)",
       "Bash(node --version:*)",
-      "Bash(node -e:*)",
       "Bash(echo:*)",
       "Bash(pwd:*)",
       "Bash(true)",
@@ -84,7 +89,12 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(gh issue view:*)",
-      "Bash(gh issue list:*)"
+      "Bash(gh issue list:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh pr update-branch:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue comment:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
@@ -99,7 +109,8 @@
       "Bash(gh api * -X PATCH:*)",
       "Bash(gh api * -X POST:*)",
       "Bash(gh api * -X PUT:*)",
-      "Bash(gh api * -X DELETE:*)"
+      "Bash(gh api * -X DELETE:*)",
+      "Bash(gh pr merge:*)"
     ]
   },
   "hooks": {
@@ -109,7 +120,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-agent-model.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-agent-model.mjs\" || exit 2",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.mjs\" || exit 2",
             "timeout": 10
           }
         ]
