@@ -1,0 +1,8 @@
+[
+  {
+    "file": "src/cloud-labs/matillion-cdc/index.njk",
+    "textIncludes": "QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1",
+    "reason": "Troubleshooting list advises deduplicating with QUALIFY ROW_NUMBER() ... ORDER BY updated_at DESC and carries no caveat. Matillion CDC here is a polling source with no log position (the same page's order note at line 241 says ORDER BY updated_at is not a reliable event order), so a position-ordered rewrite may not be available; an editor must either add the polling caveat or replace the advice. Flagged in docs/AUTOPSY-BRIEF.md section 4.",
+    "owner": "needs-editor-review"
+  }
+]
