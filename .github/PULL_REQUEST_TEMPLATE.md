@@ -21,16 +21,17 @@
 <!-- Agent roles used (scout, implementer, reviewer, ...) and rough wall time. -->
 
 <!--
-Authors: replace the Verdict line below with the single real verdict
-(APPROVE or APPROVE WITH NITS, not both), fill in the other lines, and
-paste the reviewer's findings summary under the block.
-scripts/merge-pr.mjs parses this block; keep the heading and the four
-labels exactly as written.
+Authors: replace every <placeholder> below with the real value. Use
+exactly APPROVE or APPROVE WITH NITS (not both) for the verdict, and
+exactly yes once every finding is resolved. Paste the reviewer's summary
+under the block. The merge script parses this block and rejects a
+placeholder left in place; keep the heading and the four labels exactly
+as written.
 -->
 
 ## Review record
 
 Reviewer: <role and model>
-Verdict: APPROVE | APPROVE WITH NITS
-Findings resolved: yes
+Verdict: <APPROVE or APPROVE WITH NITS>
+Findings resolved: <yes or no>
 Verified: <commands run and their results>

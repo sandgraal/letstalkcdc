@@ -4,6 +4,10 @@ Maintainer decisions for Let's Talk CDC, recorded 2026-10-09. One short
 entry each: what was decided, why in one line, and where it stands. This
 file is public; it records decisions, not motives beyond what is stated.
 
+Basis values: **Decided** means the maintainer stated it. **Default** means
+the assistant proposed it and the maintainer accepted the proposals
+wholesale on 2026-10-09 ("go"); it was not separately stated.
+
 Status values: **Decided** (in force), **In progress**, **Not started**,
 **Pending** (waiting on an input listed at the end).
 
@@ -12,8 +16,8 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 ## Purpose
 
 - **Decision:** The site aims to be the best free learning resource on CDC.
-  It also builds the author's professional credibility.
 - **Why:** A free, accurate resource earns trust; trust is the point.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Audience
@@ -22,6 +26,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   architects.
 - **Why:** CDC knowledge gaps exist at every stage, and one path per role
   serves them without splitting the site.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Success floor (6-12 months)
@@ -32,6 +37,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   assistant feedback rows.
 - **Why:** A modest floor that is measurable and honest; leading indicators
   show movement before visitor counts do.
+- **Basis:** Decided (the floor numbers). Default (the leading indicators and the baseline date).
 - **Status:** Decided; baseline snapshot due 2026-11-06.
 
 ## Spend
@@ -39,6 +45,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 - **Decision:** No recurring cost. Free tiers only. No paid APIs.
 - **Why:** The project must be able to run indefinitely at no recurring
   cost.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Brand
@@ -47,6 +54,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   Manual" is retained until a rename PR. "Missing Manual" is the name of an
   existing book series, so verify trademark before any book, PDF or new use.
 - **Why:** Avoid building on a name that may belong to someone else.
+- **Basis:** Decided (the primary name). Default (keeping the old name until a rename PR, and the trademark check).
 - **Status:** Rename not started.
 
 ## Voice
@@ -56,6 +64,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   scenarios are labelled illustrative.
 - **Why:** Readers should be able to tell experience from example, and no
   third party should be identifiable.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Provenance
@@ -64,6 +73,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   say "reviewed by <maintainer>" only after the maintainer confirms; until
   then it is labelled AI-assisted only.
 - **Why:** A review claim must be true when it is made.
+- **Basis:** Default.
 - **Status:** Decided.
 
 ## Content direction
@@ -75,6 +85,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   Vendor-comparison content waits for the disclosure policy.
 - **Why:** Cover the remaining gaps in order of reader value; comparisons
   need disclosure rules first.
+- **Basis:** Default.
 - **Status:** Decided; vendor comparisons Pending (disclosure policy).
 
 ## Format
@@ -84,6 +95,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   before scaling.
 - **Why:** Structure helps readers now; the pilot tests whether answer
   pages earn their upkeep before more are written.
+- **Basis:** Default.
 - **Status:** Decided; not started.
 
 ## AI crawlers and licensing
@@ -91,6 +103,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 - **Decision:** AI crawlers are allowed. Publish llms.txt and a Markdown
   copy per page. CC BY 4.0 attribution is required.
 - **Why:** The goal is reach; attribution keeps the source visible.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Assistant
@@ -100,6 +113,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   is read by the maintainer.
 - **Why:** Generated answers need paid APIs; feedback rows show where
   content is missing.
+- **Basis:** Decided (retrieval-only). Default (the weekly gap report).
 - **Status:** Decided.
 
 ## Backend
@@ -107,6 +121,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 - **Decision:** Allowed where it earns its keep, free tier only.
 - **Why:** Static-first stays the default; a service must justify itself
   and fit the spend rule.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Hosting
@@ -116,6 +131,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   before cut-over.
 - **Why:** No recurring cost, and terms change, so check at the moment of
   the move.
+- **Basis:** Default (the 2026-10-23 date; the maintainer said to revisit in a couple of weeks).
 - **Status:** Pending (domain name; decision due 2026-10-23).
 
 ## Spanish
@@ -124,6 +140,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   stabilises, with a drift check against the English.
 - **Why:** Translating moving content creates stale copies; the drift check
   catches them.
+- **Basis:** Decided (Spanish is wanted if it is not too much work). Default (the pilot scope and the drift check).
 - **Status:** Decided; not started.
 
 ## PDF/EPUB and offline/PWA
@@ -131,6 +148,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 - **Decision:** Later. Not named "Missing Manual".
 - **Why:** Lower priority than content, and the name needs trademark
   verification first.
+- **Basis:** Decided (yes to both). Default (the timing and the naming).
 - **Status:** Deferred.
 
 ## Quality
@@ -140,6 +158,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   Mermaid and Chart.js with SRI and a CSP.
 - **Why:** Accessibility is a stated commitment; third-party CDNs add risk
   and weight.
+- **Basis:** Decided.
 - **Status:** Decided.
 
 ## Engineering
@@ -149,6 +168,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   PR.
 - **Why:** One repo keeps content and labs in step; small major-version PRs
   are easy to review and revert.
+- **Basis:** Decided (the playground stays in this repo; Dependabot runs weekly). Default (grouping and one major per PR).
 - **Status:** Decided; Dependabot configured in `.github/dependabot.yml`.
 
 ## AI development
@@ -160,6 +180,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   quality gates.
 - **Why:** A small, enforced roster keeps cost and behaviour predictable;
   automated gates catch drift.
+- **Basis:** Decided (a stronger model only when absolutely needed; Claude-only). Default (the rest).
 - **Status:** Decided; escalation model Pending.
 
 ## Legal
@@ -167,6 +188,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 - **Decision:** Cover art is AI-generated and released by the maintainer.
   Add trademark disclaimers and a security contact (address pending).
 - **Why:** State rights and ownership plainly; give reporters a way in.
+- **Basis:** Decided (a security contact and trademark disclaimers). Default (the cover-art wording).
 - **Status:** Pending (public contact email).
 
 ## Maintainer time
@@ -174,6 +196,7 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 - **Decision:** About one hour a week outward-facing, plus reading content.
   No deadline.
 - **Why:** The pace must be sustainable.
+- **Basis:** Default.
 - **Status:** Decided.
 
 ---
