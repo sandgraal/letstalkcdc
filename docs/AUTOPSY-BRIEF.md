@@ -501,11 +501,11 @@ and P13-9 (the dashboard refresh).
    and audits the playground in both themes (P16-30, done).
 2. **Fixed:** the plan named `.lighthouserc.json`; the config is
    `lighthouse-ci.config.json` (P16-29 corrected the plan).
-3. **Fixed in PR #432 (2026-10-11):** `CLAUDE.md` said `main` is
+3. **Fixed in #432, merged 2026-10-11:** `CLAUDE.md` said `main` is
    "branch-protected"; the API shows a ruleset with no required status checks
    (section 7; the checks themselves are P17-3).
 4. **Fixed:** README said "No analytics" while GoatCounter is live (#419).
-5. **Fixed in PR #432 (2026-10-11):** `CLAUDE.md` called the stack "Vite 7";
+5. **Fixed in #432, merged 2026-10-11:** `CLAUDE.md` called the stack "Vite 7";
    `package.json` pins `^8.1.3`.
 6. **Still true:** `scripts/smoke.mjs` checks for a CSP in `.htaccess`, but no
    `.htaccess` exists, so that check never runs and no CSP is served (section 8).

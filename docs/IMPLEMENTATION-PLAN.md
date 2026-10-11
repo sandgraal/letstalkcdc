@@ -2325,7 +2325,7 @@ role from `CONDUCTOR.md` and names its **Needs**. Two roles are added by
 P17-6 (`technical-editor`, `growth-writer`); until that PR merges, use
 `reviewer` for the technical-editor work and `implementer` for the writing.
 Boxes are ticked by the conductor when the work merges, not before.
-Decisions already taken are recorded in `DECISIONS.md` (open as #430). The
+Decisions already taken are recorded in `DECISIONS.md` (merged in #430). The
 ones that shape this phase: $0 recurring spend; the brand "Let's Talk CDC";
 a guided path first and then a 5-page answer-page pilot measured over 8
 weeks; `llms.txt` and Markdown copies of pages; a retrieval-only assistant;
@@ -2347,16 +2347,44 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       the charter is missing. Verify: `npx vitest run`, `npm run verify-all`,
       and a recorded attempt of each blocked action showing the block. Size:
       M. Role: `implementer`, then `reviewer`. Needs: none.
-      _Status: on branch `claude/p17-1-autonomy-charter`, not yet a PR._
+      _Status 2026-10-11: on branch `claude/p17-1-autonomy-charter`, in final
+      fixes after red-team reviews; no PR yet. On the branch the charter is an
+      "Autonomy charter" section of `docs/CONDUCTOR.md`, enforced by
+      `.claude/hooks/guard-bash.mjs` and `guard-edit.mjs`, an updated
+      `guard-agent-model.mjs` and `.claude/settings.json`. The reviews showed
+      the hooks are a net, not a boundary; the open residuals are P17-55._
 - [ ] **P17-2 · Gated merge script.** Outcome: a PR merges only through one
-      script that refuses unless the gate holds. Accept:
-      `scripts/merge-pr.mjs` refuses a PR that is a draft, has a failing or
-      pending check, has no `reviewer` verdict recorded, or touches a path the
-      charter reserves to the maintainer; it prints why it refused; unit tests
-      cover each refusal with an injected `gh`. Verify: `npx vitest run`, and a
-      dry run against an open PR. Size: M. Role: `implementer`, then
-      `reviewer`. Needs: P17-1 for the list of reserved paths.
-      _Status: on branch `claude/p17-2-merge-gate`, not yet a PR._
+      script that refuses unless the gate holds. Accept: `scripts/merge-pr.mjs`
+      (`npm run merge-pr`) is a dry run by default and, with `--execute`, runs
+      `gh pr merge <n> --squash --delete-branch --match-head-commit <oid>` only
+      when every gate passes: (1) the PR is open, not a draft and based on
+      `main`; (2) every check on the head has finished green (an empty or
+      pending rollup is refused); (3) no review decision of CHANGES_REQUESTED;
+      (4) the PR body has a `## Review record` with an approving `Verdict:` and
+      `Findings resolved: yes`; (4b) the reviewer's report is pasted as a PR
+      comment, the LATEST `Verdict:` comment approves and is 200+ characters;
+      (5) no maintainer-only file is touched (`.github/**`, `.claude/**` except
+      the CSS baseline hash file, `CLAUDE.md` / `AGENTS.md` / `CONDUCTOR.md` /
+      `TEAM-CHARTER.md` / `DECISIONS.md` including nested copies, `.mcp.json`,
+      manifests and lockfiles, `supabase/**`, licence and `CNAME` files, the
+      script and its tests), checked on the PR file list and on the merge
+      result; (6) a clean test-merge onto a freshly fetched `origin/main` in a
+      temp worktree, running `npm test` there when the head is behind main,
+      with a scrubbed environment (no tokens, empty `HOME`). It prints why it
+      refused, and re-reads the PR and head oid before merging. Unit tests
+      (326) cover each refusal with an injected `gh`, plus real-git cases.
+      Known limits, stated in the script header: it is a convention check, not
+      authentication (whoever can edit the PR body or post a comment can write
+      a passing record), PR test code still runs on the maintainer's machine
+      (the scrub is a mitigation, not a sandbox), and body, comments and file
+      list are read once. It does not replace required checks on the ruleset
+      (P17-3). Verify: `npx vitest run tests/unit/merge-pr.test.js`, and
+      `node scripts/merge-pr.mjs <n>` (dry run) against an open PR. Size: M.
+      Role: `implementer`, then `reviewer`. Needs: none (the maintainer-only
+      list is embedded in the script; P17-1 should keep it and the charter in
+      agreement, see P17-57).
+      _Status 2026-10-11: open as #445, reviewed through three rounds; the
+      last fix commit has not had a fourth independent review._
 - [ ] **P17-3 · Required status checks on the `default` ruleset.** Outcome:
       GitHub itself refuses a merge when the checks fail (today the ruleset
       has none, so the claim in `CLAUDE.md` that `main` is branch-protected
@@ -2366,28 +2394,40 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       failing check shows as unmergeable. Verify: a `gh api` read of the
       ruleset, and a throwaway PR that fails a check. Size: S. Role: the
       maintainer, in a live session (it changes repo settings, so no agent
-      does it). Needs: P17-2 merged, so the gate and the ruleset agree.
-      _Status: not started._
-- [ ] **P17-4 · Lean `CLAUDE.md`, rules, skills and the merge-watcher fix.**
+      does it). Needs: P17-2 merged, so the gate and the ruleset agree. Steps
+      are in [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md), task 2.
+      _Status 2026-10-11: not started._
+- [x] **P17-4 · Lean `CLAUDE.md`, rules, skills and the merge-watcher fix.**
       Outcome: an agent loads a short `CLAUDE.md` and pulls detail on demand
       instead of carrying one long file. Accept: `CLAUDE.md` holds the
-      commands, the anti-patterns and pointers only; the long CSS hash history
-      and per-topic detail move to rules and skills; the two stale claims
-      (`main` is "branch-protected", "Vite 7") are corrected; the merge
-      watcher no longer rewakes on PRs it already acknowledged. Verify:
-      `npx vitest run`, `npm run verify-all`, and a run of the watcher script
-      against recorded PR lists. Size: M. Role: `implementer`, then
-      `reviewer`. Needs: none.
-      _Status: open as #432._
-- [ ] **P17-5 · Decisions log, templates, Dependabot and worktree prune.**
+      commands, the anti-patterns and pointers (372 to 150 lines); the long CSS
+      hash history moves verbatim to `docs/css-baseline-history.md` and the
+      current hash to `.claude/css-baseline.sha256`, checked by
+      `npm run check:css-baseline`; per-topic detail moves to `.claude/rules/`
+      (css, content, assistant, playground, workflows) and `.claude/skills/`
+      (new-module, content-update, seo-check); the two stale claims (`main` is
+      "branch-protected", "Vite 7") are corrected; four retired AI instruction
+      files are deleted; the merge watcher initialises silently, ignores merges
+      older than 6 hours and keeps out-of-order merges (14 tests); a
+      `doc-facts` test fails when documented facts go stale. Verify:
+      `npx vitest run`, `npm run verify-all`, `npm run check:css-baseline`.
+      Size: M. Role: `implementer`, then `reviewer`. Needs: none.
+      _2026-10-11: shipped in #432. Follow-up #443 (open) fixes a
+      `doc-facts` test left red on `main` by the merge order of #431 and #432._
+- [x] **P17-5 · Decisions log, templates, Dependabot and worktree prune.**
       Outcome: decisions survive the session that made them, and routine
       hygiene is automatic. Accept: `docs/DECISIONS.md` records each
-      maintainer decision with date and reason; PR and issue templates exist;
-      Dependabot is configured with majors in separate PRs; stale agent
-      worktrees are pruned by a script or hook. Verify:
-      `npx prettier --check docs`, `npx vitest run`, `npm run verify-all`.
-      Size: M. Role: `implementer`, then `reviewer`. Needs: none.
-      _Status: open as #430._
+      maintainer decision with date, reason and basis (Decided or Default);
+      `.github/PULL_REQUEST_TEMPLATE.md` with a `## Review record` block and
+      `.github/ISSUE_TEMPLATE/` (content error, bug, config) exist;
+      `.github/dependabot.yml` runs weekly with minor and patch grouped and
+      majors one PR each; `scripts/worktree-prune.sh` is a dry run by default
+      and never removes worktrees younger than 24 h, locked, dirty or detached
+      (13 tests). Verify: `npx prettier --check docs`,
+      `npx vitest run tests/unit/worktree-prune.test.js`,
+      `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
+      Needs: none.
+      _2026-10-11: shipped in #430._
 - [ ] **P17-6 · Team charter, two new roles and a weekly-digest skill.**
       Outcome: the team has a written way of working and covers editing and
       growth writing, not only code. Accept: `docs/TEAM-CHARTER.md`;
@@ -2398,33 +2438,46 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       model-lock test still passes. Verify: `npx vitest run`,
       `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
-      _Status: on branch `claude/p17-6-team-charter`, not yet a PR._
-- [ ] **P17-7 · Thesis lint.** Outcome: a page cannot ship a claim that
-      contradicts the site's thesis (at-least-once delivery, idempotent sinks,
-      ordering by log position, no cross-system exactly-once) without a test
-      failing. Accept: a lint script and unit tests over the built pages that
-      flag unqualified "exactly-once" and "guaranteed delivery" phrasing unless
-      the page carries a documented qualification; the current site passes,
-      with any allowlist entry explained in place. Verify: `npx vitest run`,
-      `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
-      Needs: none.
-      _Status: on branch `claude/p17-7-thesis-lint`, not yet a PR._
-- [ ] **P17-8 · Maintainer guide.** Outcome: the maintainer has one page of
+      _Status 2026-10-11: on branch `claude/p17-6-team-charter`, stacked on
+      P17-1; no PR yet._
+- [ ] **P17-7 · Thesis lint.** Outcome: copy cannot re-introduce the two
+      claims the site once taught backwards without a test failing. Accept:
+      `lib/thesis-lint.mjs`, `scripts/thesis-lint.mjs` (`npm run lint:thesis`)
+      and `lib/thesis-lint.allow.json` lint 303 files (lesson pages, data,
+      JSON, assistant answers, `src/js` strings, playground copy, README) for
+      rule R1 (a timestamp as the ordering key) and rule R2 (an end-to-end
+      exactly-once claim), understand negation and teaching contrast, ignore
+      quiz wrong answers, and fail on stale allowlist entries; 276 tests in
+      `tests/unit/thesis-lint.test.js` run inside `npm test`; 4 findings are
+      allowlisted, all marked needs-editor-review (see P17-53). Not done: rule
+      R3 (a physical DELETE winning over a late update) and a narrower
+      exactly-once scope (P17-52). It is a regression net, not proof of
+      correctness. Verify: `npm run lint:thesis`,
+      `npx vitest run tests/unit/thesis-lint.test.js`, `npm run verify-all`.
+      Size: M. Role: `implementer`, then `reviewer`. Needs: none.
+      _Status 2026-10-11: open as #444; two review rounds, the last fix commit
+      has not had a third independent review._
+- [x] **P17-8 · Maintainer guide.** Outcome: the maintainer has one page of
       what only they can do, with the command or the click path. Accept:
       `docs/MAINTAINER-TASKS.md` lists each maintainer-only step (settings,
       secrets, accounts, decisions) with why it is theirs and what it
-      unblocks; no secret value appears. Verify: `npx prettier --check docs`.
-      Size: S. Role: `scribe`, then `reviewer`. Needs: none.
-      _Status: open as #431._
+      unblocks, in 12 numbered tasks for a live session; no secret value
+      appears; `docs/README.md` links it. Verify:
+      `npx prettier --check docs`. Size: S. Role: `scribe`, then `reviewer`.
+      Needs: none.
+      _2026-10-11: shipped in #431 with author-side verification only; no
+      independent review ran._
 - [ ] **P17-9 · Phase 17 in the plan, and the autopsy brief's naming.**
       Outcome: the next team can pick work from this plan with the Definition
       of Ready. Accept: this phase exists with the sections below; every item
       is Size S or M with a role and a Needs; `AUTOPSY-BRIEF.md` calls the
       autopsy's next-phase draft Phase 18 and marks the two `CLAUDE.md` claims
-      it listed as still true as fixed in #432; a `CHANGELOG.md` entry exists.
+      it listed as still true as fixed in #432 (merged 2026-10-11); a
+      `CHANGELOG.md` entry exists; the item statuses below match the PRs.
       Verify: `npx prettier --check docs CHANGELOG.md`, `npx vitest run`,
       `npm run verify-all`. Size: S. Role: `implementer`. Needs: none.
-      _Status: this item, in review._
+      _Status 2026-10-11: this item, in review; its text was brought up to
+      date after #430, #431 and #432 merged._
 - [ ] **P17-10 · Cold-start drill.** Outcome: proof that the kit works for
       someone with no history. Accept: a fresh agent session, given only the
       repo and the brief template, picks one Ready item from this phase and
@@ -2432,7 +2485,102 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       drill's notes list every point where it had to ask or guess, and each
       such point becomes a fix to the kit. Verify: the drill's PR, plus its
       notes file. Size: M. Role: `conductor` runs it; `reviewer` reads the
-      notes. Needs: P17-1, P17-2, P17-4, P17-5, P17-6 and P17-8 merged.
+      notes. Needs: P17-1, P17-2, P17-4, P17-5, P17-6 and P17-8 merged, and
+      P17-55 and P17-56 decided.
+      _Status 2026-10-11: not started._
+
+### Handoff kit follow-ups
+
+Added 2026-10-11 from the review rounds of the kit's pull requests. None of
+these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
+
+- [ ] **P17-52 · Narrow the thesis lint's exactly-once scope words, and
+      decide R3.** Outcome: an exactly-once claim is no longer excused by a
+      word that merely appears nearby. Evidence: in #444 the words
+      `transactions`, `processing` and `hop` anywhere in a sentence excuse an
+      exactly-once claim, and R3 (a physical DELETE beating a late update) is
+      not implemented. Accept: the scope words excuse a claim only when they
+      qualify the claim itself (within the same clause, or in a documented
+      qualification), with tests for the old false negatives; R3 is
+      implemented with tests, or a short note in the lint header records why
+      it is not; the real-tree test still passes with no new allowlist
+      entries. Verify: `npx vitest run tests/unit/thesis-lint.test.js`,
+      `npm run lint:thesis`, `npm run verify-all`, plus mutation checks
+      shown for each narrowed word. Size: M. Role: `implementer`, then
+      `reviewer`. Needs: #444 merged.
+      _Status: not started._
+- [ ] **P17-53 · Technical-editor review of the four allowlisted copy
+      findings.** Outcome: the four lines the thesis lint could not clear are
+      either corrected or defended, and the allowlist is empty. Evidence: the
+      entries in `lib/thesis-lint.allow.json`: the Matillion lab
+      `QUALIFY ... ORDER BY updated_at DESC` tip, a Cassandra "last write
+      wins" sentence in `/non-relational/`, and two lines in
+      `/test-your-pipeline/`. Accept: each finding has a verdict (fix the
+      page, or keep with a stated qualification); the Matillion line is fixed
+      under P17-27 (do not duplicate); each fixed page bumps `dateModified`;
+      the matching allowlist entry is removed in the same PR (the lint fails
+      on a stale entry, which proves the removal). Verify:
+      `npm run lint:thesis`, `npx vitest run`, `npm run smoke:core`. Size: S.
+      Role: `technical-editor` (until P17-6 merges: `reviewer`), then a
+      second `reviewer`. Needs: #444 merged; a maintainer read of the new
+      wording.
+      _Status: not started._
+- [ ] **P17-54 · Maintainer: restrict workflow triggers.** Outcome: a pushed
+      `claude/*` branch cannot run an edited workflow with a token.
+      Evidence: `.github/workflows/linkcheck.yml` has `on: push` with no
+      branch filter and no `permissions:` block, so it runs with the default
+      `GITHUB_TOKEN` on any pushed branch, including a branch whose copy of
+      the workflow was edited. The other workflows filter `push` to `main`.
+      Accept: `linkcheck.yml` limits `push` to `main` (the pull-request
+      trigger already covers branches) and declares least-privilege
+      `permissions:`; the repository's Actions settings are reviewed for the
+      default token permission and fork-PR approval. Verify: read the file
+      and `gh api repos/{owner}/{repo}/actions/permissions`. Size: S. Role:
+      the maintainer, in a live session (`.github/**` is on the merge
+      script's maintainer-only list); steps belong in
+      [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md). Needs: none.
+      _Status: not started._
+- [ ] **P17-55 · Guard hardening backlog: verify and decide.** Outcome: each
+      open residual of the guard hooks is either closed, accepted in
+      `DECISIONS.md`, or turned into a plan item. Evidence: the red-team
+      reviews of P17-1 showed the hooks are a net, not a boundary. Open
+      residuals: code can run through `npm test` or other package scripts;
+      secrets can be copied with `cat` and then passed by `--body-file`; what
+      Claude Code does on a hook timeout is unverified (P17-56); whether an
+      env-prefixed command matches an allow rule is unverified (P17-56); and
+      whether `CLAUDE_PROJECT_DIR` is set for isolated subagents is
+      unverified. Accept: a table of the five residuals with the check run
+      and the result for each, and a decision (fix, accept, or backlog) with
+      a reason; any fix is a separate item. Verify: the recorded commands in
+      the table; `npx vitest run`. Size: M. Role: `reviewer` gathers the
+      evidence, `implementer` writes any fix, the maintainer decides what to
+      accept. Needs: P17-1 merged, P17-56 for the two unverified behaviours.
+      _Status: not started._
+- [ ] **P17-56 · Confirm hook-timeout and env-prefixed behaviour in a live
+      session.** Outcome: two guard assumptions are facts. Accept: a note
+      under `docs/` (dated) records, from a real session, what Claude Code
+      does when a hook exceeds its timeout (allow, deny or error) and whether
+      a command with an environment prefix, such as `FOO=1 git push`, matches
+      a permission rule written for the bare command, with the version of
+      Claude Code used; the charter's "Honest limits" section is corrected if
+      either result is unfavourable. Verify: the transcript excerpts pasted
+      into the note. Size: S. Role: the maintainer runs the session; the
+      `conductor` writes the note. Needs: P17-1 merged (or its branch checked
+      out).
+      _Status: not started._
+- [ ] **P17-57 · Merge-gate follow-ups.** Outcome: the merge gate's two
+      weakest points have a decision. Evidence: #445 reads a self-attested
+      review record from the PR body, and reads body and comments once. (a)
+      Design only: a signed or label-based review record, applied by an
+      identity other than the PR author, in place of text in the PR body.
+      (b) Re-read the body and comments immediately before the merge call, not
+      only at the start. Also keep the script's maintainer-only list and the
+      charter's reserved paths in agreement. Accept: a design note listing
+      the options, what each can and cannot prove, and a recommendation for
+      the maintainer; part (b) either implemented with a test or recorded as
+      declined with a reason. Verify: `npx vitest run tests/unit/merge-pr.test.js`
+      for part (b). Size: M. Role: `reviewer` writes the design, `implementer`
+      does part (b). Needs: #445 merged; P17-1 merged for the path list.
       _Status: not started._
 
 ### Autopsy, in two parts
@@ -2800,7 +2948,7 @@ nothing is written twice.
 ### Parked for the maintainer
 
 None of these is an agent task. Each is listed with its steps in
-[`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md) (open as #431).
+[`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md) (merged in #431).
 
 - Required status checks on the ruleset (P17-3), and any other repo setting.
 - Four open answers: the ID of a stronger model (the allowed set is two models

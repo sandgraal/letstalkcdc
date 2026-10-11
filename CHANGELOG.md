@@ -11,16 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Handoff kit for the next agent team (Phase 17).** The plan gains Phase 17:
   the kit, an autopsy split into a part that starts now and a part that waits
   for the 2026-11-06 data snapshot, a no-regret track that needs no audience
-  data, and a data-gated menu (41 items beyond the kit, all Size S or M). In
-  review, not yet merged: a decisions log (`docs/DECISIONS.md`), PR and issue
-  templates, Dependabot with majors in separate PRs and a worktree prune
-  (#430); a maintainer guide (`docs/MAINTAINER-TASKS.md`, #431); a shorter
-  `CLAUDE.md` with rules and skills, correcting its "branch-protected" and
-  "Vite 7" claims, and a fix to the merge watcher (#432). Planned, on
-  branches and not yet in review: a gated merge script, an autonomy charter
-  with guard hooks, a thesis lint over the built pages, and a team charter
-  with two new roles and a weekly-digest skill. `docs/AUTOPSY-BRIEF.md` now
-  names the autopsy's next-phase draft Phase 18. No site or CSS change.
+  data, a data-gated menu (41 items beyond the kit, all Size S or M) and six
+  follow-ups from the kit's reviews. Shipped: a decisions log
+  (`docs/DECISIONS.md`), PR and issue templates, Dependabot with majors in
+  separate PRs and a worktree prune (#430); a maintainer guide
+  (`docs/MAINTAINER-TASKS.md`, #431); a shorter `CLAUDE.md` with path-scoped
+  rules and skills, correcting its "branch-protected" and "Vite 7" claims,
+  and a fix to the merge watcher (#432). In review: a thesis lint over the
+  site's copy (#444) and a gated merge script (#445). Pending, on branches
+  with no PR yet: an autonomy charter with guard hooks and permissions, and a
+  team charter with two new roles and a weekly-digest skill.
+  `docs/AUTOPSY-BRIEF.md` now names the autopsy's next-phase draft Phase 18.
+  No site or CSS change.
 - **Playground labs linked from the lessons (P16-26).** The playground
   gains a `redeliver` operation that re-sends a delivered change with its
   original log position, guard modes for the log lane's destination (none,
