@@ -22,6 +22,8 @@ The running checklist for in-flight work is
 - **[DECISIONS.md](DECISIONS.md)** — Dated log of maintainer decisions
   (purpose, spend, brand, content direction, AI development) and what is
   still pending
+- **[MAINTAINER-TASKS.md](MAINTAINER-TASKS.md)** — What only the maintainer can
+  do, in order, with dates and a sentence to start a live session
 
 ---
 
