@@ -532,6 +532,613 @@ describe("review hardening: no catastrophic backtracking", () => {
   );
 });
 
+describe("round 3: neighbouring sentences are excused rule by rule", () => {
+  const R2_CLAIM = "Debezium gives you exactly-once end to end.";
+  const R1_CLAIM = "Whichever change has the latest updated_at wins.";
+  const offTopic = [
+    "We do not deliver on weekends.",
+    "Don't forget the created_at column.",
+    "Do not skip the offsets table.",
+    "Do not panic about ordering.",
+    "Never order by ts_ms.",
+    "Never order the pizza.",
+    "Don't forget the updated_at column.",
+    "Debezium has no deduplication layer.",
+  ];
+  it.each(offTopic)(
+    "%s does not excuse an end-to-end exactly-once claim next to it",
+    (neighbour) => {
+      expect(rules(page(`<p>${neighbour} ${R2_CLAIM}</p>`))).toEqual(["R2"]);
+      expect(rules(page(`<p>${R2_CLAIM} ${neighbour}</p>`))).toEqual(["R2"]);
+    },
+  );
+
+  const r1Neighbours = [
+    "We do not deliver on weekends.",
+    "Don't forget the created_at column.",
+    "Do not skip the offsets table.",
+    "Do not panic about ordering.",
+    "Never order the pizza.",
+    "Don't forget the updated_at column.",
+    "There is no end-to-end exactly-once across systems.",
+  ];
+  it.each(r1Neighbours)(
+    "%s does not excuse a timestamp-ordering claim next to it",
+    (neighbour) => {
+      expect(rules(page(`<p>${neighbour} ${R1_CLAIM}</p>`))).toEqual(["R1"]);
+      expect(rules(page(`<p>${R1_CLAIM} ${neighbour}</p>`))).toEqual(["R1"]);
+    },
+  );
+
+  it("flags the exactly-once claim beside an ordering warning, in both orders", () => {
+    for (const html of [
+      "<p>Never order by ts_ms. Debezium gives you exactly-once end to end.</p>",
+      "<p>Debezium gives you exactly-once end to end. Never order by ts_ms.</p>",
+      "<p>Do not panic about ordering. Our pipeline is exactly-once, so you can skip dedup.</p>",
+    ])
+      expect(rules(page(html))).toEqual(["R2"]);
+  });
+
+  it("flags the timestamp claim beside an exactly-once warning", () => {
+    for (const html of [
+      "<p>There is no end-to-end exactly-once across systems. The newest timestamp wins.</p>",
+      "<p>The newest timestamp wins. There is no end-to-end exactly-once across systems.</p>",
+    ])
+      expect(rules(page(html))).toEqual(["R1"]);
+  });
+
+  it("still lets a warning about the same rule excuse its neighbour", () => {
+    expect(
+      rules(
+        page(
+          "<p>Pipelines give you exactly-once end to end. There is no end-to-end exactly-once across systems.</p>",
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      rules(
+        page(
+          "<p>The latest timestamp wins here. Never order by ts_ms; use the LSN.</p>",
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      rules(
+        page(
+          "<p>Never order by ts_ms; use the LSN. The latest timestamp wins on a polling source.</p>",
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("reads 'That is wrong.' only as a comment on the sentence before it", () => {
+    expect(
+      rules(
+        page("<p>The latest timestamp wins. That is wrong: clocks skew.</p>"),
+      ),
+    ).toEqual([]);
+    expect(
+      rules(
+        page("<p>That is wrong. The latest timestamp wins, say the docs.</p>"),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("does not let the sentence before a 'But ...' excuse the claim after it", () => {
+    expect(
+      rules(
+        page(
+          "<p>Order by timestamp is not safe on its own. But the newest timestamp wins here.</p>",
+        ),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("does not let a sibling table cell of the other rule excuse a claim", () => {
+    const table = (a, b) =>
+      page(
+        `<table><tr><td>${a}</td><td>${b}</td></tr></table>`.replace(
+          /<td>/g,
+          "<td><p>",
+        ),
+      );
+    expect(
+      rules(
+        table(
+          "Debezium gives you exactly-once end to end.",
+          "Never order by ts_ms.",
+        ),
+      ),
+    ).toEqual(["R2"]);
+  });
+});
+
+describe("round 3: quiz `correct` must be a valid index to hide a distractor", () => {
+  const quiz = (correct) =>
+    `module.exports = { quiz: [ { question: "What does the page say about delivery?", options: ["Exactly-once delivery is on by default for every connector", "It is at-least-once, so the sink must be idempotent"], ${correct} explanation: "Delivery is at-least-once." } ] };`;
+  const q = (correct) => rules(quiz(correct), "src/x/index.11tydata.cjs");
+
+  it.each([
+    ['correct: "2",', []],
+    ["correct: 2,", []],
+    ["correct: '2',", []],
+    ['correct: "1",', ["R2"]],
+    ["correct: 1,", ["R2"]],
+  ])("in range: %s", (c, want) => {
+    expect(q(c)).toEqual(want);
+  });
+
+  it.each([
+    'correct: "0",',
+    'correct: "9",',
+    'correct: "99",',
+    'correct: "02",',
+  ])("an invalid index (%s) hides no option", (c) => {
+    expect(q(c)).toEqual(["R2"]);
+  });
+
+  it.each(["correct: 0,", "correct: 3,", "correct: 99,", "correct: two,"])(
+    "an invalid unquoted index (%s) hides no option",
+    (c) => {
+      expect(q(c)).toEqual(["R2"]);
+    },
+  );
+
+  it("lints every option when `correct` is missing", () => {
+    expect(q("")).toEqual(["R2"]);
+  });
+
+  it("does not let the explanation excuse an option of a quiz with a bad index", () => {
+    const bad = `module.exports = { quiz: [ { question: "Which is right about delivery here?", options: ["Exactly-once delivery is on by default for every connector", "At-least-once"], correct: "9", explanation: "The default is at-least-once, so the first option is not true." } ] };`;
+    expect(rules(bad, "src/x/index.11tydata.cjs")).toEqual(["R2"]);
+  });
+
+  it("reads quoted keys in JSON data too", () => {
+    const json = (c) =>
+      JSON.stringify({
+        options: [
+          "Exactly-once delivery is on by default for every connector",
+          "It is at-least-once",
+        ],
+        correct: c,
+      });
+    expect(rules(json("2"), "src/data/q.json")).toEqual([]);
+    expect(rules(json("0"), "src/data/q.json")).toEqual(["R2"]);
+  });
+});
+
+describe("round 3: hyphen, entity and escape evasions", () => {
+  const claim = (word) => `<p>Debezium gives you ${word} end to end.</p>`;
+  const spellings = {
+    "non-breaking hyphen U+2011": "exactly‑once",
+    "hyphen U+2010": "exactly‐once",
+    "figure dash U+2012": "exactly‒once",
+    "en dash U+2013": "exactly–once",
+    "minus sign U+2212": "exactly−once",
+    "soft hyphen after the hyphen": "exactly-­once",
+    "soft hyphen alone": "exactly­once",
+    "zero-width space": "exactly-​once",
+    "&#8209;": "exactly&#8209;once",
+    "&#x2011;": "exactly&#x2011;once",
+    "&shy;": "exactly&shy;once",
+    "&shy; after the hyphen": "exactly-&shy;once",
+    "&hyphen;": "exactly&hyphen;once",
+    "hard hyphenation across a newline": "exactly-\nonce",
+    "a space before the hyphen": "exactly -once",
+    "a space after the hyphen": "exactly- once",
+    "two hyphens": "exactly--once",
+  };
+  it.each(Object.entries(spellings))("catches %s", (_n, word) => {
+    expect(rules(page(claim(word)))).toEqual(["R2"]);
+  });
+
+  it("catches a hyphenated end-to-end too", () => {
+    expect(
+      rules(page("<p>It gives you exactly-once end&#8209;to&#8209;end.</p>")),
+    ).toEqual(["R2"]);
+  });
+
+  it("catches an evaded timestamp claim", () => {
+    expect(
+      rules(page("<p>The last&#8209;write&#8209;wins timestamp is used.</p>")),
+    ).toEqual(["R1"]);
+  });
+
+  it("still passes the negated sentence when it uses a Unicode hyphen", () => {
+    expect(
+      rules(page("<p>There is no end‑to‑end exactly‑once across systems.</p>")),
+    ).toEqual([]);
+  });
+
+  it("decodes entities and JS escapes in markdown, YAML and JS strings", () => {
+    expect(
+      rules(
+        "# G\n\nDebezium gives you exactly&#8209;once end to end.\n",
+        "src/r/G.md",
+      ),
+    ).toEqual(["R2"]);
+    expect(
+      rules(
+        "- id: x\n  answer: Debezium gives you exactly&shy;once end to end.\n",
+        "src/data/assistant.yml",
+      ),
+    ).toEqual(["R2"]);
+    expect(
+      rules(
+        'export default { tip: "Debezium gives you exactly\\u2011once end to end." };',
+        "src/_data/x.mjs",
+      ),
+    ).toEqual(["R2"]);
+    expect(
+      rules(
+        'export default { tip: "Debezium gives you exactly\\u{2011}once end to end." };',
+        "src/_data/x.mjs",
+      ),
+    ).toEqual(["R2"]);
+  });
+
+  it("does not throw on an out-of-range numeric entity", () => {
+    expect(() =>
+      rules(page("<p>Odd &#99999999; and &#xFFFFFF; entities here.</p>")),
+    ).not.toThrow();
+  });
+});
+
+describe("round 3: prose in attributes, JSON-LD and code fences", () => {
+  const R2 = "Debezium gives you exactly-once end to end.";
+  it.each([
+    ["title", `<a href="#x" title="${R2}">more</a>`],
+    ["alt", `<img src="a.png" alt="${R2}">`],
+    ["aria-label", `<button aria-label="${R2}">x</button>`],
+    ["meta content", `<meta name="description" content="${R2}">`],
+    ["single quotes", `<a href='#x' title='${R2}'>more</a>`],
+    [
+      "an entity-encoded value",
+      `<a title="Debezium gives you exactly&#8209;once end to end.">x</a>`,
+    ],
+  ])("reads %s", (_n, html) => {
+    expect(rules(page(html))).toEqual(["R2"]);
+  });
+
+  it("reads a timestamp claim in an attribute and reports its line", () => {
+    const content = page(
+      '<p>Fine.</p>\n<img src="a.png" alt="The newest timestamp wins when two changes collide.">',
+    );
+    const [f] = lintContent("src/fixture/index.njk", content);
+    expect(f.rule).toBe("R1");
+    expect(content.split("\n")[f.line - 1]).toContain("<img");
+  });
+
+  it("does not read content= on tags other than <meta>, or short attributes", () => {
+    expect(rules(page(`<div content="${R2}">x</div>`))).toEqual([]);
+    expect(rules(page('<a title="Exactly-once">x</a>'))).toEqual([]);
+  });
+
+  it("passes a teaching attribute", () => {
+    expect(
+      rules(
+        page(
+          '<aside aria-label="There is no end-to-end exactly-once"><p>x</p></aside>',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("reads JSON-LD bodies, and only those scripts", () => {
+    const ld = (json) =>
+      page(`<script type="application/ld+json">${json}</script>`);
+    expect(
+      rules(ld(JSON.stringify({ "@type": "FAQPage", description: R2 }))),
+    ).toEqual(["R2"]);
+    expect(
+      rules(
+        ld(
+          JSON.stringify({
+            description: "There is no end-to-end exactly-once across systems.",
+          }),
+        ),
+      ),
+    ).toEqual([]);
+    expect(rules(page(`<script>const a = "${R2}";</script>`))).toEqual([]);
+  });
+
+  it("reads a plain-words line inside a markdown fence as prose", () => {
+    expect(
+      rules(`# G\n\nIntro text.\n\n\`\`\`\n${R2}\n\`\`\`\n`, "src/r/G.md"),
+    ).toEqual(["R2"]);
+    expect(
+      rules(
+        "# G\n\nIntro text.\n\n```text\nThe latest timestamp wins when two changes collide.\n```\n",
+        "src/r/G.md",
+      ),
+    ).toEqual(["R1"]);
+    expect(rules(page(`<pre>${R2}</pre>`))).toEqual(["R2"]);
+  });
+
+  it("reports the fenced line, not the fence", () => {
+    const md = `# G\n\nIntro text.\n\n\`\`\`\n$ run the thing\n${R2}\n\`\`\`\n`;
+    const [f] = lintContent("src/r/G.md", md);
+    expect(md.split("\n")[f.line - 1]).toBe(R2);
+  });
+
+  it("leaves SQL, config and shell lines in a fence alone", () => {
+    for (const body of [
+      "SELECT id, email, updated_at FROM customers ORDER BY updated_at DESC\nLIMIT 100;",
+      "exactly.once.support=requested",
+      "npm run start with exactly once flag set today",
+      "kafka-topics --describe the topic that gives you exactly-once",
+    ])
+      expect(
+        rules(`# G\n\nIntro text.\n\n\`\`\`\n${body}\n\`\`\`\n`, "src/r/G.md"),
+      ).toEqual([]);
+  });
+
+  it("lets a teaching sentence inside a fence pass", () => {
+    expect(
+      rules(
+        "# G\n\nIntro text.\n\n```\nThere is no end-to-end exactly-once across systems.\n```\n",
+        "src/r/G.md",
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("round 3: more R1 code forms", () => {
+  const code = (lang, body) =>
+    page(
+      `<p>Deduplicate the batch.</p><pre><code class="language-${lang}">${body
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")}</code></pre>`,
+    );
+  const violations = {
+    'sequence_by="ts_ms"':
+      'dlt.apply_changes(target="t", source="s", keys=["id"], sequence_by="ts_ms")',
+    'sequence_by=col("ts_ms")': 'dlt.apply_changes(sequence_by=col("ts_ms"))',
+    "sequence_by: ts_ms (yaml)": "sequence_by: ts_ms",
+    "order_by: updated_at (yaml)": "order_by: updated_at",
+    "version.field=ts_ms": "version.field=ts_ms",
+    "sort then forEach(apply)":
+      "events.sort((a, b) => a.updated_at - b.updated_at).forEach(apply);",
+    "sort then forEach with an arrow that upserts":
+      "events.sort((a, b) => a.ts_ms - b.ts_ms).forEach((e) => upsert(e));",
+    "for-of over a sorted array":
+      "for (const e of events.sort((a, b) => a.ts_ms - b.ts_ms)) apply(e);",
+    "python for over sorted":
+      'for e in sorted(events, key=lambda e: e["ts_ms"]):\n    apply(e)',
+    "new Date comparison":
+      "if (new Date(a.updated_at) > new Date(b.updated_at)) keep(a);",
+    "ON DUPLICATE KEY UPDATE with IF(VALUES(ts_ms) > ts_ms)":
+      "INSERT INTO t (id, v, ts_ms) VALUES (1, 2, 3) ON DUPLICATE KEY UPDATE v = IF(VALUES(ts_ms) > ts_ms, VALUES(v), v);",
+    "GREATEST(t.ts_ms, s.ts_ms)":
+      "UPDATE t SET ts_ms = GREATEST(t.ts_ms, s.ts_ms);",
+    "Math.max of two updated_at":
+      "const w = Math.max(a.updated_at, b.updated_at);",
+    "ORDER BY ts_ms DESC, lsn DESC LIMIT 1":
+      "SELECT * FROM e WHERE id = 1 ORDER BY ts_ms DESC, lsn DESC LIMIT 1;",
+    "TOP (1) ordered by ts_ms first":
+      "SELECT TOP (1) * FROM e WHERE id = 1 ORDER BY ts_ms DESC, lsn DESC;",
+    "ROW_NUMBER ordered by ts_ms DESC, lsn DESC":
+      "SELECT * FROM e QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY ts_ms DESC, lsn DESC) = 1;",
+    "a named window":
+      "SELECT * FROM e WINDOW w AS (PARTITION BY id ORDER BY ts_ms DESC, lsn DESC) QUALIFY ROW_NUMBER() OVER w = 1;",
+  };
+  it.each(Object.entries(violations))("fails: %s", (_n, body) => {
+    expect(rules(code("js", body))).toEqual(["R1"]);
+  });
+
+  const exempt = {
+    "a log-position sequence_by": "sequence_by: lsn",
+    "an ordering setting on the LSN": "version.field=source_lsn",
+    "a display sort that renders":
+      "rows.sort((a, b) => a.updated_at - b.updated_at).forEach(render);",
+    "a bare ORDER BY": "SELECT * FROM e ORDER BY ts_ms;",
+    "a bare ORDER BY ts_ms DESC, lsn DESC":
+      "SELECT * FROM e ORDER BY ts_ms DESC, lsn DESC;",
+    "a watermark via Math.max over one list":
+      "const hi = Math.max(...rows.map((r) => r.updated_at));",
+    "one timestamp in GREATEST": "SELECT GREATEST(a.lsn, b.lsn, 0) FROM a, b;",
+    "ts_ms only as the tie-break after the LSN":
+      "SELECT * FROM e QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY lsn DESC, ts_ms DESC) = 1;",
+    "LIMIT 1 ordered by lsn then ts_ms":
+      "SELECT * FROM e WHERE id = 1 ORDER BY lsn DESC, ts_ms DESC LIMIT 1;",
+    "a comparison with a literal date":
+      "if (new Date(row.updated_at) > new Date(lastSeen)) queue.push(row);",
+  };
+  it.each(Object.entries(exempt))("passes: %s", (_n, body) => {
+    expect(rules(code("js", body))).toEqual([]);
+  });
+});
+
+describe("round 3: more R1 phrasings (prose)", () => {
+  const violations = [
+    "Changes are applied in timestamp order.",
+    "The most recent change by clock time is kept.",
+    "Dedupe by timestamp and keep one row per key.",
+    "Events are ordered by when they happened.",
+    "Replay events in wall-clock order.",
+    "Replay the events in commit time order.",
+    "Use created_at to break ties.",
+    "A change is dropped if its timestamp is older than the stored row.",
+    "If its timestamp is older than the stored row, the change is dropped.",
+    "Take the record whose updated_at is largest.",
+    "Use updated_at as the version column.",
+    "Use the timestamp as the ordering key.",
+    "Set the ordering column to ts_ms.",
+    "The version column is updated_at.",
+    "Keep the newest change by timestamp.",
+  ];
+  it.each(violations)("fails on %s", (text) => {
+    expect(rules(page(`<p>${text}</p>`))).toEqual(["R1"]);
+  });
+
+  const legitimate = [
+    "Never apply changes in timestamp order.",
+    "Do not use updated_at as the version column.",
+    "Never set the ordering column to ts_ms.",
+    "Use created_at to break ties, after the LSN decides first.",
+    "The log position is primary; use created_at to break ties.",
+    "Changes are applied in log position order.",
+    "Events are ordered by their log position.",
+    "A change is dropped if its LSN is older than the stored row.",
+    "Use updated_at as the version column is a common mistake.",
+  ];
+  it.each(legitimate)("passes %s", (text) => {
+    expect(rules(page(`<p>${text}</p>`))).toEqual([]);
+  });
+
+  it("does not let 'tie-break' excuse a timestamp tie-break claim", () => {
+    expect(
+      rules(page("<p>Use created_at as the tie-break for change events.</p>")),
+    ).toEqual(["R1"]);
+  });
+});
+
+describe("round 3: more R2 phrasings (prose)", () => {
+  const violations = [
+    "Exactly once, end-to-end, no duplicates.",
+    "Exactly-once, end to end.",
+    "We guarantee no duplicates and no loss.",
+    "We promise zero duplicates and zero data loss.",
+    "CDC delivers every change exactly once.",
+    "Each change is applied exactly once.",
+    "Debezium is an exactly-once system.",
+    "You will never see a duplicate downstream.",
+    "You do not need an idempotent sink because the connector deduplicates for you.",
+    "There is no need for an idempotent sink here.",
+    "The platform removes the duplicates for you.",
+  ];
+  it.each(violations)("fails on %s", (text) => {
+    expect(rules(page(`<p>${text}</p>`))).toEqual(["R2"]);
+  });
+
+  const legitimate = [
+    "There is no end-to-end exactly-once across independent systems.",
+    "Kafka transactions give exactly-once processing inside Kafka.",
+    "Exactly-once end to end is a myth.",
+    "Debezium 3.3+ offers opt-in exactly-once delivery via exactly.once.support.",
+    "Do not assume you will never see a duplicate downstream.",
+    "No tool can guarantee no duplicates and no loss; it is a myth.",
+    "An idempotent upsert leaves no duplicate rows in the target.",
+    "A vendor page says its CDC service delivers 'with exactly-once semantics'.",
+    "Delivery is at-least-once, so you will see duplicates.",
+  ];
+  it.each(legitimate)("passes %s", (text) => {
+    expect(rules(page(`<p>${text}</p>`))).toEqual([]);
+  });
+});
+
+describe("round 3: same-sentence excuses are scoped to the claim", () => {
+  it("does not let a label before a 'but' excuse a claim made after it", () => {
+    for (const html of [
+      "<p>Some people say it is wrong, but the newest timestamp wins.</p>",
+      "<p>That is a myth, however the latest timestamp wins.</p>",
+    ])
+      expect(rules(page(html))).toEqual(["R1"]);
+    expect(
+      rules(
+        page(
+          "<p>Some people say it is wrong, but Debezium gives you exactly-once end to end.</p>",
+        ),
+      ),
+    ).toEqual(["R2"]);
+  });
+
+  it("still lets a label in the claim's own clause, or after it, excuse it", () => {
+    for (const html of [
+      "<p>The newest timestamp wins, but that is wrong.</p>",
+      "<p>It is common, but the newest timestamp wins is a myth.</p>",
+      "<p>Some people say the newest timestamp wins, but that is wrong.</p>",
+    ])
+      expect(rules(page(html))).toEqual([]);
+  });
+
+  it("does not let a negator after the claim excuse it", () => {
+    expect(
+      rules(
+        page("<p>The newest timestamp wins and you do not need to worry.</p>"),
+      ),
+    ).toEqual(["R1"]);
+    expect(
+      rules(
+        page(
+          "<p>Debezium gives you exactly-once end to end and you do not need to worry.</p>",
+        ),
+      ),
+    ).toEqual(["R2"]);
+  });
+
+  it("does not read 'do not forget / never worry that ...' as a negation of what follows", () => {
+    expect(
+      rules(page("<p>Do not forget that the newest timestamp wins.</p>")),
+    ).toEqual(["R1"]);
+    expect(
+      rules(
+        page(
+          "<p>Never forget that Debezium gives you exactly-once end to end.</p>",
+        ),
+      ),
+    ).toEqual(["R2"]);
+    expect(
+      rules(page("<p>Don't worry: the latest timestamp wins here.</p>")),
+    ).toEqual(["R1"]);
+  });
+
+  it("does not let a negator in an earlier clause excuse it", () => {
+    expect(
+      rules(
+        page(
+          "<p>You do not need to worry because the newest timestamp wins.</p>",
+        ),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("still reads a negator that scopes the claim", () => {
+    for (const html of [
+      "<p>Never order by ts_ms; use the LSN.</p>",
+      "<p>Do not assert that rows come out sorted by a timestamp.</p>",
+      "<p>Exactly-once delivery across systems is not achievable.</p>",
+      "<p>End-to-end exactly-once across independent systems is not possible.</p>",
+      "<p>Exactly-once end to end does not exist.</p>",
+      "<p>There is no end-to-end exactly-once across independent systems.</p>",
+    ])
+      expect(rules(page(html))).toEqual([]);
+  });
+});
+
+describe("round 3: no catastrophic backtracking in the new patterns", () => {
+  const units = [
+    "dropped if updated_at is older ",
+    "the most recent change by ",
+    "exactly once end to end ",
+    "delivers a b c d e f ",
+    "use the timestamp as the ",
+    "never see a ",
+    "dedupe on the commit ",
+    "exactly - - - - once ",
+    "sequence_by = ",
+    "GREATEST(ts_ms, ",
+    "sorted(",
+    "WINDOW w AS (",
+    "ORDER BY ts_ms, ",
+    "whose updated_at is ",
+    "­",
+  ];
+  it.each(units)("lints 200 KB of %j in under 2 seconds", (unit) => {
+    const body = unit.repeat(Math.ceil(200000 / unit.length));
+    for (const [file, content] of [
+      ["src/x/index.njk", `<p>${body}</p>`],
+      ["src/x/index.njk", `<pre><code>${body}</code></pre>`],
+      ["src/x/a.md", `${body}\n`],
+      ["src/x/a.md", `\`\`\`\n${body}\n\`\`\`\n`],
+    ]) {
+      const t = performance.now();
+      lintContent(file, content);
+      expect(performance.now() - t).toBeLessThan(2000);
+    }
+  });
+});
+
 describe("extraction", () => {
   it("keeps Nunjucks tags and comments out of the prose, and line numbers stable", () => {
     const content = page(
