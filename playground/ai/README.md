@@ -1,21 +1,17 @@
 # AI Template Kit
 
-This directory contains metadata and helper scripts that power the repository's conversational AI workflows.
+This directory contains metadata and helper scripts for conversational AI tooling around the playground.
 
 ## Contents
-- `AGENTS.md` – quick-start usage guidance for maintainers and agents.
-- `.chatgpt-context.yml` – mirrored project context used by interactive agents.
+- `.chatgpt-context.yml` – project context used by interactive agents. The copy that used to sit at the repository root has been retired, so this one is now the only one; `scripts/bootstrap.mjs` falls back to it.
 - `site-config.json` – structured metadata about commands, docs, and CI workflows.
 - `scripts/bootstrap.mjs` – sanity-checks configuration and snapshots a summary under `_state/`.
-- `scripts/log-agent-run.mjs` – logs workflow or local agent runs into `logs/`.
+- `scripts/log-agent-run.mjs` – logs local agent runs into `logs/`.
+
+Agent instructions for the repository live in the root `CLAUDE.md` (`AGENTS.md` is a symlink to it) and in `.claude/rules/`.
 
 ## GitHub Actions
-Three opt-in workflows are available under **GitHub → Actions**:
-1. **AI Agents** – installs dependencies, bootstraps the kit, and records which agent bundle you executed.
-2. **AI Changelog Sync** – prepares the kit context and logs a changelog-specific run.
-3. **AI README Sync** – prepares the kit context and logs a README sync run.
-
-Each workflow uploads `ai/logs/` and `ai/_state/` as artifacts so you can inspect the summaries produced by the helper scripts.
+There are no workflows for this kit. The "AI Agents", "AI Changelog Sync" and "AI README Sync" workflows this README used to describe do not exist under `.github/workflows/`.
 
 ## Local usage
 ```bash

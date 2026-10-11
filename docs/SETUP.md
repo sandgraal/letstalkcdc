@@ -395,7 +395,7 @@ Cloud Progress Sync" above.
 - **Tracing (removed)** — [docs/TRACING.md](TRACING.md)
 - **Adding modules** — [docs/adding-modules.md](adding-modules.md)
 - **Contributing** — [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Architecture** — [.github/copilot-instructions.md](../.github/copilot-instructions.md)
+- **Architecture** — [CLAUDE.md](../CLAUDE.md)
 - **Archived docs** — [docs/archive/](archive/) (historical reference)
 
 ### Common Issues
