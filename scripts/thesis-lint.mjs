@@ -12,14 +12,17 @@ import { lintTree, loadAllowlist, formatReport } from "../lib/thesis-lint.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const result = lintTree(ROOT, loadAllowlist(ROOT));
 const report = formatReport(result);
+const scope = Object.entries(result.scope)
+  .map(([k, n]) => `${k} ${n}`)
+  .join(", ");
 
 if (report) {
   process.stderr.write(`${report}\n\n`);
   process.stderr.write(
-    `thesis-lint: ${result.findings.length} finding(s), ${result.stale.length} stale and ${result.invalid.length} invalid allowlist entr${result.stale.length + result.invalid.length === 1 ? "y" : "ies"} in ${result.fileCount} files.\n`,
+    `thesis-lint: ${result.findings.length} finding(s), ${result.stale.length} stale and ${result.invalid.length} invalid allowlist entr${result.stale.length + result.invalid.length === 1 ? "y" : "ies"} (read ${result.fileCount} files: ${scope}).\n`,
   );
   process.exit(1);
 }
 process.stdout.write(
-  `thesis-lint: ok - ${result.fileCount} files, ${result.allowed.length} allowlisted finding(s).\n`,
+  `thesis-lint: ok - read ${result.fileCount} files (${scope}), ${result.allowed.length} allowlisted finding(s).\n`,
 );

@@ -16,6 +16,7 @@ import {
   loadAllowlist,
   formatReport,
   extractSegments,
+  collectFiles,
 } from "../../lib/thesis-lint.mjs";
 
 const ROOT = path.resolve(
@@ -55,7 +56,7 @@ describe("R1 timestamp-as-order: prose", () => {
     expect(
       rules(
         page(
-          "<p>Some tools say the latest timestamp wins. That is the bug this page exists to fix.</p>",
+          "<p>Some tools say the latest timestamp wins. That is wrong, because clocks skew.</p>",
         ),
       ),
     ).toEqual([]);
@@ -214,6 +215,323 @@ describe("R2 end-to-end exactly-once", () => {
   });
 });
 
+describe("review hardening: weak words and SQL keywords never excuse code", () => {
+  const sql = (body, before = "<p>Deduplicate the batch.</p>", after = "") =>
+    page(
+      `${before}\n<pre><code class="language-sql">${body}</code></pre>${after}`,
+    );
+  const MERGE =
+    "MERGE INTO t USING s ON t.id = s.id\nWHEN MATCHED AND s.ts_ms &gt; t.ts_ms THEN UPDATE SET v = s.v\nWHEN NOT MATCHED THEN INSERT (id, v) VALUES (s.id, s.v);";
+
+  it("flags a standard MERGE that guards on ts_ms, despite WHEN NOT MATCHED", () => {
+    expect(rules(sql(MERGE))).toEqual(["R1"]);
+  });
+
+  it("is not excused by IS NOT NULL in the same block", () => {
+    expect(
+      rules(
+        sql(
+          "SELECT * FROM e WHERE id IS NOT NULL\nQUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY ts_ms DESC) = 1;",
+        ),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("is not excused by a weak word in the block's own comment", () => {
+    for (const comment of [
+      "-- not a problem",
+      "/* only for the demo, no fail */",
+      "-- this fails over to the replica",
+    ]) {
+      expect(rules(sql(`${comment}\n${MERGE}`))).toEqual(["R1"]);
+    }
+  });
+
+  it("is not excused by a string literal that contains a strong word", () => {
+    expect(
+      rules(
+        sql(
+          "SELECT 'never wrong' AS note FROM e\nQUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY ts_ms DESC) = 1;",
+        ),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("is not excused by a neighbouring paragraph such as 'No further steps.'", () => {
+    expect(
+      rules(
+        sql(MERGE, "<p>Deduplicate the batch.</p>", "<p>No further steps.</p>"),
+      ),
+    ).toEqual(["R1"]);
+    expect(rules(sql(MERGE, "<p>Only three settings matter.</p>"))).toEqual([
+      "R1",
+    ]);
+  });
+
+  it("is excused by its own comment when that comment carries a strong marker", () => {
+    expect(rules(sql(`-- WRONG: orders by timestamp\n${MERGE}`))).toEqual([]);
+    expect(rules(sql(`/* anti-pattern: do not copy */\n${MERGE}`))).toEqual([]);
+  });
+
+  it("is excused by the paragraph that labels it wrong, before or after", () => {
+    expect(rules(sql(MERGE, "<p>Never do this.</p>"))).toEqual([]);
+    expect(
+      rules(
+        sql(
+          MERGE,
+          "<p>Deduplicate the batch.</p>",
+          "<p>This is unsafe: timestamps tie and clocks skew.</p>",
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not let a strong marker off the topic excuse code", () => {
+    expect(
+      rules(sql(MERGE, "<p>Never touch the network settings.</p>")),
+    ).toEqual(["R1"]);
+  });
+});
+
+describe("review hardening: neighbouring sentences", () => {
+  it("is not excused by an unrelated negation next door", () => {
+    expect(
+      rules(
+        page(
+          "<p>We do not cover Oracle. Whichever change has the latest updated_at wins.</p>",
+        ),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("is not excused by 'Only ...' before or after an exactly-once claim", () => {
+    expect(
+      rules(
+        page(
+          "<p>Debezium guarantees exactly-once for every sink. Only three settings matter.</p>",
+        ),
+      ),
+    ).toEqual(["R2"]);
+    expect(
+      rules(
+        page(
+          "<p>Only three settings matter. Debezium guarantees exactly-once for every sink.</p>",
+        ),
+      ),
+    ).toEqual(["R2"]);
+  });
+
+  it("is not excused by a strong marker that is off the topic", () => {
+    expect(
+      rules(
+        page(
+          "<p>Never touch the network settings. The latest timestamp wins.</p>",
+        ),
+      ),
+    ).toEqual(["R1"]);
+  });
+
+  it("is excused by a strong neighbour that is on the topic", () => {
+    expect(
+      rules(
+        page(
+          "<p>Some tools say the newest timestamp wins. That is an anti-pattern: timestamps tie.</p>",
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps the one-line teaching sentences clean", () => {
+    for (const html of [
+      "<p>Never order by ts_ms; use the LSN.</p>",
+      "<p>There is no end-to-end exactly-once across independent systems.</p>",
+      "<p>None of these tools gives you exactly-once across systems.</p>",
+      "<p>Which version of a row wins is decided by log position, never by that timestamp.</p>",
+    ]) {
+      expect(rules(page(html))).toEqual([]);
+    }
+  });
+});
+
+describe("review hardening: bare exactly-once claims (R2)", () => {
+  const violations = [
+    "<p>Our pipeline is exactly-once, so you can skip dedup.</p>",
+    "<p>The connector is exactly-once from MySQL to Snowflake.</p>",
+    "<p>Delivery is exactly-once, so no dedupe is needed.</p>",
+    "<p>The sink is fully exactly-once.</p>",
+  ];
+  it.each(violations)("fails on %s", (html) => {
+    expect(rules(page(html))).toEqual(["R2"]);
+  });
+
+  const legitimate = [
+    "<p>The pipeline is not exactly-once.</p>",
+    "<p>Delivery is exactly-once per hop, not across hops.</p>",
+    "<p>Kafka Streams is exactly-once processing within Kafka.</p>",
+    "<p>With Kafka transactions the producer hop is exactly-once.</p>",
+    "<p>Debezium 3.3+ offers opt-in exactly-once delivery for Kafka Connect source connectors via exactly.once.support.</p>",
+    "<p>Can it be exactly-once?</p>",
+    "<p>The pragmatic alternative to exactly-once: an idempotent sink whose end state matches an exactly-once delivery.</p>",
+  ];
+  it.each(legitimate)("passes the per-hop or negated statement %s", (html) => {
+    expect(rules(page(html))).toEqual([]);
+  });
+});
+
+describe("review hardening: more timestamp-as-order patterns (R1)", () => {
+  const prose = [
+    "<p>Sort the events by their commit timestamp and keep the newest.</p>",
+    "<p>Sort the changes by the update timestamp, then keep the last one.</p>",
+    "<p>The event with the higher ts_ms is applied.</p>",
+    "<p>The event with the larger ts_ms wins.</p>",
+    "<p>The newest timestamp wins.</p>",
+  ];
+  it.each(prose)("fails on %s", (html) => {
+    expect(rules(page(html))).toEqual(["R1"]);
+  });
+
+  const code = (lang, body) =>
+    page(
+      `<p>Deduplicate the batch.</p><pre><code class="language-${lang}">${body}</code></pre>`,
+    );
+  const violations = {
+    "JS guard on ts_ms":
+      "if (incoming.ts_ms &gt; current.ts_ms) {\n  apply(incoming);\n}",
+    "JS guard on camelCase updatedAt":
+      "const win = incoming.updatedAt &gt;= current.updatedAt;",
+    "Python guard on ts_ms":
+      "if event['ts_ms'] &gt;= row['ts_ms']:\n    apply(event)",
+    "JS sort then take the first":
+      "const latest = events.sort((a, b) =&gt; b.ts_ms - a.ts_ms)[0];",
+    "Python max with a ts key":
+      "latest = max(events, key=lambda e: e['ts_ms'])",
+    "WHERE ts_ms = (SELECT MAX(ts_ms) ...)":
+      "SELECT * FROM e WHERE ts_ms = (SELECT MAX(ts_ms) FROM e WHERE id = 1);",
+    "MAX(updated_at) GROUP BY id joined back":
+      "SELECT e.* FROM e JOIN (SELECT id, MAX(updated_at) AS m FROM e GROUP BY id) x ON x.id = e.id AND x.m = e.updated_at;",
+    "ON CONFLICT DO UPDATE WHERE t.updated_at < EXCLUDED.updated_at":
+      "INSERT INTO t SELECT * FROM s ON CONFLICT (id) DO UPDATE SET v = EXCLUDED.v\nWHERE t.updated_at &lt; EXCLUDED.updated_at;",
+  };
+  it.each(Object.entries(violations))("fails: %s", (_n, body) => {
+    expect(rules(code("js", body))).toEqual(["R1"]);
+  });
+
+  const exempt = {
+    "a display sort that takes a page":
+      "const rows = users.sort((a, b) =&gt; b.updated_at - a.updated_at).slice(0, 20);",
+    "a polling watermark against a variable":
+      "if (row.updated_at &gt; lastSeen) { queue.push(row); }",
+    "the watermark query itself": "SELECT MAX(updated_at) FROM customers;",
+    "a log-position guard in JS":
+      "if (incoming.lsn &gt; current.lsn) apply(incoming);",
+  };
+  it.each(Object.entries(exempt))("passes: %s", (_n, body) => {
+    expect(rules(code("js", body))).toEqual([]);
+  });
+
+  it("flags the JS and Python guards in a fenced markdown block too", () => {
+    const md =
+      "# Guide\n\nApply it:\n\n```python\nif event['ts_ms'] >= row['ts_ms']:\n    apply(event)\n```\n";
+    expect(rules(md, "src/resources/GUIDE.md")).toEqual(["R1"]);
+  });
+});
+
+describe("review hardening: wider scope", () => {
+  it("reads JSON data under src", () => {
+    const json = JSON.stringify({ tip: "The latest timestamp wins." });
+    expect(rules(json, "src/data/x.json")).toEqual(["R1"]);
+  });
+
+  it("reads user-visible strings in src/js, but not its comments", () => {
+    const js =
+      '// The latest timestamp wins (a note, not copy)\nconst a = { text: "Debezium guarantees exactly-once for every sink." };';
+    expect(rules(js, "src/js/assistant-ui.js")).toEqual(["R2"]);
+    expect(
+      rules("// The latest timestamp wins\nconst x = 1;", "src/js/a.js"),
+    ).toEqual([]);
+  });
+
+  it("reads JSX text and string literals in playground tsx", () => {
+    const tsx =
+      'export const A = () => <p>Delivery is exactly-once, so no dedupe is needed.</p>;\nexport const b = "The newest timestamp wins here.";';
+    expect(rules(tsx, "playground/web/A.tsx")).toEqual(["R2", "R1"]);
+  });
+
+  it("reads playground markdown and scenario descriptions", () => {
+    expect(
+      rules("# Lab\n\nThe latest timestamp wins.\n", "playground/docs/x.md"),
+    ).toEqual(["R1"]);
+    expect(
+      rules(
+        JSON.stringify({
+          description: "This scenario gives you end-to-end exactly-once.",
+        }),
+        "playground/scenarios/01/scenario.json",
+      ),
+    ).toEqual(["R2"]);
+  });
+
+  it("reads strings inside Nunjucks tags and macro calls", () => {
+    expect(
+      rules(page('{% set note = "The latest timestamp wins." %}\n<p>x</p>')),
+    ).toEqual(["R1"]);
+    expect(
+      rules(
+        page(
+          '{{ callout("Debezium guarantees exactly-once for every sink.") }}',
+        ),
+      ),
+    ).toEqual(["R2"]);
+    expect(
+      rules(page('{% set ok = "Never order by ts_ms; use the LSN." %}')),
+    ).toEqual([]);
+  });
+
+  it("skips wrong answers in a quiz but lints the correct one", () => {
+    const quiz = (correct) =>
+      `module.exports = { quiz: [ { question: "What does the page say about delivery?", options: ["Exactly-once delivery is on by default for every connector", "It is at-least-once, so the sink must be idempotent"], correct: "${correct}", explanation: "Delivery is at-least-once." } ] };`;
+    expect(rules(quiz(2), "src/x/index.11tydata.cjs")).toEqual([]);
+    expect(rules(quiz(1), "src/x/index.11tydata.cjs")).toEqual(["R2"]);
+  });
+
+  it("lists the exact files read and excludes top-level docs and generated bundles", () => {
+    const files = collectFiles(ROOT);
+    expect(files.some((f) => f.startsWith("playground/web/"))).toBe(true);
+    expect(files.some((f) => f.startsWith("playground/docs/"))).toBe(true);
+    expect(files.some((f) => /^src\/.*\.json$/.test(f))).toBe(true);
+    expect(files.some((f) => f.startsWith("src/js/"))).toBe(true);
+    expect(files.some((f) => f.startsWith("docs/"))).toBe(false);
+    expect(files.some((f) => f.includes("/generated/"))).toBe(false);
+    expect(files.some((f) => /^(?:dist|_site)\//.test(f))).toBe(false);
+    expect(files.some((f) => f.includes("node_modules"))).toBe(false);
+  });
+});
+
+describe("review hardening: no catastrophic backtracking", () => {
+  const big = (unit, n) => unit.repeat(n);
+  const timeOf = (file, content) => {
+    const t = performance.now();
+    lintContent(file, content);
+    return performance.now() - t;
+  };
+  const inputs = {
+    "dotted tokens": big("a.b.c.d.", 25000),
+    "underscored tokens": big("a_b_", 50000),
+    "dotted timestamp tokens": big("updated_at.", 18000),
+    "ts_ms chain": big("x.ts_ms.", 25000),
+  };
+  it.each(Object.entries(inputs))(
+    "lints 200 KB of %s in under 2 seconds",
+    (_n, token) => {
+      expect(timeOf("src/x/index.njk", `<p>${token}</p>`)).toBeLessThan(2000);
+      expect(
+        timeOf("src/x/index.njk", `<pre><code>${token}</code></pre>`),
+      ).toBeLessThan(2000);
+      expect(timeOf("src/x/a.md", `${token}\n`)).toBeLessThan(2000);
+    },
+  );
+});
+
 describe("extraction", () => {
   it("keeps Nunjucks tags and comments out of the prose, and line numbers stable", () => {
     const content = page(
@@ -320,6 +638,6 @@ describe("the real tree", () => {
       cwd: ROOT,
       encoding: "utf8",
     });
-    expect(out).toMatch(/^thesis-lint: ok - \d+ files/);
+    expect(out).toMatch(/^thesis-lint: ok - read \d+ files \(/);
   });
 });

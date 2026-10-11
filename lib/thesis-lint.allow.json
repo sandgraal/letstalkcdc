@@ -4,5 +4,23 @@
     "textIncludes": "QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1",
     "reason": "Troubleshooting list advises deduplicating with QUALIFY ROW_NUMBER() ... ORDER BY updated_at DESC and carries no caveat. Matillion CDC here is a polling source with no log position (the same page's order note at line 241 says ORDER BY updated_at is not a reliable event order), so a position-ordered rewrite may not be available; an editor must either add the polling caveat or replace the advice. Flagged in docs/AUTOPSY-BRIEF.md section 4.",
     "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/non-relational/index.njk",
+    "textIncludes": "last write wins by cell timestamp",
+    "reason": "States that the recipe 'upsert on the primary key, order by log position' does not port to Cassandra and that what ports instead is Cassandra's own last-write-wins by cell timestamp. That is a statement about a source with no per-key log position, but it still tells the reader to merge on timestamps, which the thesis says never to do for a source that has a log position. An editor must confirm the wording is scoped to sources with no total order per key (the which-row-wins page says the same) or add the polling-source caveat explicitly.",
+    "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/test-your-pipeline/index.njk",
+    "textIncludes": "Keep the newest ts_ms (<=, so a tie takes the later delivery)",
+    "reason": "Row label B of the 'Results per sink variant' table in the broken-sinks comparison: it names the timestamp-ordered sink variant whose Reorder column reads FAIL (141 differ), so it is a deliberately broken example. The table has no sentence that labels it broken, so the lint cannot see that. An editor should add 'broken' to the row label or the caption, after which this entry goes stale and is deleted.",
+    "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/test-your-pipeline/index.njk",
+    "textIncludes": "Exactly-once delivery across systems.",
+    "reason": "Bold lead-in of a list item under the h2 '8. What not to test for'. The item goes on to say this is one hop and that the sink still needs the guard, so it is a teaching statement, but the lead-in is a bare noun phrase and the contrast is in the following sentence, which the neighbour rule does not accept (it needs an explicit strong marker such as 'never' or 'wrong'). An editor should reword the lead-in to 'Exactly-once delivery across systems is not achievable.', after which this entry goes stale and is deleted.",
+    "owner": "needs-editor-review"
   }
 ]
