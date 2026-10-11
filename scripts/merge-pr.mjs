@@ -17,15 +17,32 @@
 //               verdict and "Findings resolved: yes". Every Verdict line counts;
 //               a Verdict line inside an indented code block, <details> or an
 //               unclosed code fence fails the gate rather than being skipped.
-//   4b audit    at least one PR comment of 200+ characters containing a
-//               "Verdict:" line: the reviewer's report pasted verbatim, so the
-//               review text survives on GitHub
-//   5  files    no changed file is on the maintainer-only list. The list is
-//               checked against the `gh` file list AND against git itself (the
-//               three-dot diff and the actual merge result, NUL-delimited so
-//               non-ASCII paths cannot be hidden by git's quoting).
+//   4b audit    the reviewer's report pasted verbatim as a PR comment so the
+//               review text survives on GitHub. Among the comments that contain
+//               a "Verdict:" line, the LATEST (by createdAt) must have the value
+//               exactly APPROVE or APPROVE WITH NITS (keyword case-insensitive,
+//               value exact), and at least one such approving comment must be
+//               200+ characters. A later REQUEST CHANGES comment refuses. The
+//               PR author's own comments are NOT excluded: every agent acts as
+//               the same GitHub account, so excluding them would block honest
+//               use. A long filler comment with an approving Verdict line passes;
+//               that is a documented limitation of a convention check.
+//   5  files    no changed file is on the maintainer-only list, and no changed
+//               path contains a control character (code < 0x20 or 0x7f), which
+//               is refused outright. The list is checked against the `gh` file
+//               list AND against git itself (the three-dot diff and the actual
+//               merge result, NUL-delimited so non-ASCII paths cannot be hidden
+//               by git's quoting). Maintainer-only: .github/**, .claude/**
+//               (except .claude/css-baseline.sha256, which CSS PRs legitimately
+//               change), CLAUDE.md, AGENTS.md, docs/CONDUCTOR.md,
+//               docs/TEAM-CHARTER.md, docs/DECISIONS.md, .gitattributes,
+//               .gitmodules, .npmrc files, .husky/**, the test/lint/lighthouse
+//               configs, this script and its tests, supabase/**, CNAME,
+//               LICENSE*, and the npm manifests and lockfiles. Anything that
+//               steers agents or the pipeline is merged by a human.
 //   6  merge    head merges cleanly onto current origin/main in a temporary
 //               worktree; if head is behind main, `npm test` must also pass there
+//               in a scrubbed environment (see Limits)
 //
 // WHAT THIS DOES NOT PROVE. Gates 4 and 4b are a CONVENTION check, not
 // authentication. Anyone who can edit the PR body or post a comment can write a
@@ -40,6 +57,18 @@
 // checks are re-read and gates 1-3 re-run; any change refuses the merge. The
 // body, comments, file list and base tip are NOT re-read, so an edit to them in
 // the window between the read and the merge is not seen.
+//
+// Side effect on the caller's checkout. Gate 6 runs `git fetch origin main
+// <branch>`, which updates the caller's `origin/main` and `origin/<branch>`
+// remote-tracking refs. Nothing else in the caller's checkout is touched.
+//
+// Limits. `npm test` on the merged tree executes the PR's own test code on this
+// machine. The worktree's node_modules is a symlink to the caller's, so that
+// code can write to it. The environment handed to `npm test` is scrubbed to
+// PATH, LANG, TERM, CI=1, NODE_ENV=test and a fresh, empty HOME and
+// XDG_CONFIG_HOME (so GH_TOKEN, GITHUB_TOKEN, SSH_AUTH_SOCK, npm tokens and
+// ~/.config/gh are not visible), but that is a mitigation, not a sandbox: it is
+// still ordinary code running as this user.
 //
 // There is deliberately no override flag, and never --admin, --auto or --rebase.
 //
@@ -90,15 +119,20 @@ export const AUDIT_MIN_LENGTH = 200;
 export const SELF_ATTESTATION_NOTE =
   "Gates 4 and 4b are a convention check, not authentication: anyone who can edit the PR body or comment can write a passing review record. The audit-trail comment exists so a human can read the review afterwards.";
 
-// Maintainer-only paths. Globs: `**` matches across directories, `*` within a
-// path segment. Matching is case-insensitive so a case-folding filesystem
-// cannot be used to slip past a rule.
+// Maintainer-only paths. Globs: `**` matches anything including `/`, `*` any
+// run of characters within a path segment, and both match every character
+// (newlines included). Matching is case-insensitive so a case-folding
+// filesystem cannot be used to slip past a rule.
 export const RESTRICTED_PATTERNS = [
   ".github/**",
-  ".claude/settings*.json",
-  ".claude/hooks/**",
-  ".claude/scripts/**",
-  ".claude/agents/**",
+  ".claude/**",
+  "CLAUDE.md",
+  "AGENTS.md",
+  "docs/CONDUCTOR.md",
+  "docs/TEAM-CHARTER.md",
+  "docs/DECISIONS.md",
+  ".gitattributes",
+  ".gitmodules",
   ".npmrc",
   "playground/.npmrc",
   ".husky/**",
@@ -116,12 +150,17 @@ export const RESTRICTED_PATTERNS = [
   "playground/package-lock.json",
 ];
 
+// Exact, case-sensitive carve-outs from the list above. CSS PRs legitimately
+// change the baseline hash. Matched against the raw path, so a case variant or
+// a Unicode look-alike is not excused.
+export const RESTRICTED_EXCEPTIONS = [".claude/css-baseline.sha256"];
+
 function globToRegExp(glob) {
   let source = "";
   for (let i = 0; i < glob.length; i += 1) {
     const ch = glob[i];
     if (ch === "*" && glob[i + 1] === "*") {
-      source += ".*";
+      source += "[\\s\\S]*";
       i += 1;
     } else if (ch === "*") {
       source += "[^/]*";
@@ -129,7 +168,7 @@ function globToRegExp(glob) {
       source += ch.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
     }
   }
-  return new RegExp(`^${source}$`, "i");
+  return new RegExp(`^${source}$`, "is");
 }
 
 const RESTRICTED_MATCHERS = RESTRICTED_PATTERNS.map((pattern) => ({
@@ -389,31 +428,73 @@ export function checkReviewRecord(pr) {
   return failures;
 }
 
+const VERDICT_LINE = /^[ \t]*verdict:[ \t]*(\S.*?)[ \t]*$/gim;
+
+/**
+ * The comments that contain a Verdict line, oldest first. Each carries whether
+ * every one of its Verdict lines is an approving value (a comment that lists a
+ * second, non-approving verdict is not approving).
+ */
+function verdictComments(comments) {
+  const found = [];
+  comments.forEach((comment, index) => {
+    const body = String(comment?.body ?? "").replace(/\r\n?/g, "\n");
+    const values = [...body.matchAll(VERDICT_LINE)].map((m) => m[1]);
+    if (values.length === 0) return;
+    found.push({
+      index,
+      time: Date.parse(comment?.createdAt ?? ""),
+      length: body.length,
+      values,
+      approving: values.every((value) => APPROVING_VERDICTS.has(value)),
+    });
+  });
+  // gh lists comments oldest first. Sort by createdAt only when every verdict
+  // comment has a usable timestamp; otherwise trust the list order.
+  if (found.every((entry) => Number.isFinite(entry.time))) {
+    found.sort((a, b) => a.time - b.time || a.index - b.index);
+  }
+  return found;
+}
+
 /**
  * Gate 4b. The reviewer's report must be pasted as a PR comment so the review
- * text outlives the PR description. Still a convention check (see header).
+ * text outlives the PR description. Among comments with a Verdict line the
+ * latest must approve, so a later REQUEST CHANGES comment refuses; and one
+ * approving comment must be long enough to be a real report. Still a
+ * convention check (see header).
  */
 export function checkAuditTrail(pr) {
   const comments = Array.isArray(pr.comments) ? pr.comments : [];
-  const qualifies = comments.some((comment) => {
-    const body = String(comment?.body ?? "").replace(/\r\n?/g, "\n");
-    return (
-      body.length >= AUDIT_MIN_LENGTH && /^[ \t]*verdict:[ \t]*\S/im.test(body)
-    );
-  });
+  const verdicts = verdictComments(comments);
+
+  const latest = verdicts.at(-1);
+  if (latest && !latest.approving) {
+    const bad = latest.values.find((value) => !APPROVING_VERDICTS.has(value));
+    return [
+      `the latest comment with a Verdict line says "${bad}", need APPROVE or APPROVE WITH NITS`,
+    ];
+  }
+  const qualifies = verdicts.some(
+    (entry) => entry.approving && entry.length >= AUDIT_MIN_LENGTH,
+  );
   return qualifies
     ? []
     : [
-        `no audit-trail comment (${comments.length} comment(s), none of ${AUDIT_MIN_LENGTH}+ characters with a "Verdict:" line): paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)`,
+        `no audit-trail comment (${comments.length} comment(s), none of ${AUDIT_MIN_LENGTH}+ characters with an approving "Verdict:" line): paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)`,
       ];
 }
 
 /** Returns the maintainer-only pattern a path matches, or null. */
 export function restrictedPatternFor(file) {
+  if (RESTRICTED_EXCEPTIONS.includes(file)) return null;
   const normalized = normalizePath(file);
   const hit = RESTRICTED_MATCHERS.find(({ regex }) => regex.test(normalized));
   return hit ? hit.pattern : null;
 }
+
+// eslint-disable-next-line no-control-regex -- the point is to find them
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/;
 
 /** Gate 5. Accepts the PR `files` array or a plain list of paths. */
 export function checkFiles(files) {
@@ -421,7 +502,11 @@ export function checkFiles(files) {
   for (const entry of files ?? []) {
     const file = typeof entry === "string" ? entry : entry?.path;
     if (!file) continue;
-    if (restrictedPatternFor(file)) {
+    if (CONTROL_CHARACTER.test(file)) {
+      failures.push(
+        `path contains a control character: maintainer merges this one (${JSON.stringify(file)})`,
+      );
+    } else if (restrictedPatternFor(file)) {
       failures.push(`touches ${file}: maintainer merges this one`);
     }
   }
@@ -519,10 +604,15 @@ export async function runPendingCleanups() {
   }
 }
 
-/** On SIGINT/SIGTERM remove the temp worktree and dir, then exit. */
+/**
+ * On SIGHUP/SIGINT/SIGQUIT/SIGTERM kill the npm-test process group, remove the
+ * temp worktree and dirs, then exit 128+n.
+ */
 export function installSignalHandlers(proc = process) {
   for (const [signal, code] of [
+    ["SIGHUP", 129],
     ["SIGINT", 130],
+    ["SIGQUIT", 131],
     ["SIGTERM", 143],
   ]) {
     proc.once(signal, async () => {
@@ -567,6 +657,7 @@ export function defaultRunner(file, args, options = {}) {
       child = spawn(file, args, {
         cwd: options.cwd,
         detached: Boolean(options.killGroup),
+        env: options.env,
         stdio: ["ignore", "pipe", "pipe"],
       });
     } catch (error) {
@@ -605,6 +696,19 @@ export const defaultFs = {
   symlink: (target, link) => symlink(target, link, "dir"),
   rm: (target) => rm(target, { recursive: true, force: true }),
 };
+
+/**
+ * The only environment `npm test` on the merged tree gets: no tokens, no ssh
+ * agent, no npm credentials, and a HOME with nothing in it. A mitigation, not
+ * a sandbox (see Limits in the header).
+ */
+export function scrubbedEnv(home, base = process.env) {
+  const env = { CI: "1", NODE_ENV: "test", HOME: home, XDG_CONFIG_HOME: home };
+  for (const key of ["PATH", "LANG", "TERM"]) {
+    if (base[key] !== undefined) env[key] = base[key];
+  }
+  return env;
+}
 
 const SAFE_REF = /^[A-Za-z0-9_][A-Za-z0-9._/-]*$/;
 const SAFE_OID = /^[0-9a-f]{40,64}$/i;
@@ -768,11 +872,20 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
           path.join(root, "node_modules"),
           path.join(worktree, "node_modules"),
         );
-        const tests = await run("npm", ["test"], {
-          cwd: worktree,
-          timeout: 600_000,
-          killGroup: true,
-        });
+        const home = await fs.mkdtemp("merge-pr-home-");
+        const dropHome = registerCleanup(() => fs.rm(home));
+        let tests;
+        try {
+          tests = await run("npm", ["test"], {
+            cwd: worktree,
+            timeout: 600_000,
+            killGroup: true,
+            env: scrubbedEnv(home),
+          });
+        } finally {
+          await fs.rm(home).catch(() => {});
+          dropHome();
+        }
         if (tests.code !== 0) {
           result.failures.push(
             `npm test fails on the merged result:\n${tail(tests.stdout + tests.stderr, 15)}`,
@@ -820,10 +933,17 @@ export const USAGE = [
   "  3  review   no CHANGES_REQUESTED review decision",
   "  4  record   exactly one '## Review record': Verdict APPROVE or APPROVE WITH",
   "              NITS (every Verdict line), 'Findings resolved: yes'",
-  "  4b audit    a PR comment of 200+ characters with a 'Verdict:' line (the",
-  "              reviewer's report pasted verbatim)",
-  "  5  files    no maintainer-only file (checked against gh and against git)",
-  "  6  merge    clean test-merge onto origin/main; npm test if head is behind",
+  "  4b audit    the latest PR comment with a 'Verdict:' line must be exactly",
+  "              APPROVE or APPROVE WITH NITS (a later REQUEST CHANGES refuses),",
+  "              and one approving comment must be 200+ characters (the",
+  "              reviewer's report pasted verbatim); author comments count",
+  "  5  files    no maintainer-only file (agent instructions, .claude/** except",
+  "              css-baseline.sha256, CI, manifests...) and no path with a",
+  "              control character; checked against gh and against git",
+  "  6  merge    clean test-merge onto origin/main (updates origin/main and",
+  "              origin/<branch> remote-tracking refs); npm test, with a",
+  "              scrubbed environment, if head is behind. Limits: PR test code",
+  "              still runs here; the scrub is a mitigation, not a sandbox",
   "",
   `NOTE: ${SELF_ATTESTATION_NOTE}`,
   "There is no override flag; --admin, --auto and --rebase are never used.",

@@ -1,15 +1,26 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { pathToFileURL } from "node:url";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   PR_FIELDS,
   RECHECK_FIELDS,
@@ -26,10 +37,12 @@ import {
   registerCleanup,
   restrictedPatternFor,
   runPendingCleanups,
+  scrubbedEnv,
 } from "../../scripts/merge-pr.mjs";
 
 const OID = "a".repeat(40);
 const TMP = "/tmp/merge-pr-test-worktree";
+const HOME_TMP = "/tmp/merge-pr-test-home";
 
 const GOOD_BODY = [
   "## Summary",
@@ -165,9 +178,9 @@ function makeEnv({
     throw new Error(`unexpected command: ${key}`);
   };
   const fs = {
-    mkdtemp: async () => {
+    mkdtemp: async (prefix) => {
       fsCalls.push("mkdtemp");
-      return TMP;
+      return prefix.includes("home") ? HOME_TMP : TMP;
     },
     symlink: async (target, link) => {
       fsCalls.push(`symlink ${target} ${link}`);
@@ -546,6 +559,106 @@ describe("gate 4b: audit-trail comment", () => {
     expect(withComments([comment(inline)]).length).toBe(1);
   });
 
+  describe("the latest Verdict must approve", () => {
+    const at = (iso, verdict, extra = "") => ({
+      author: { login: "same-account" },
+      createdAt: iso,
+      body: `## Review\nVerdict: ${verdict}\n${extra.padEnd(220, "x")}`,
+    });
+    const approve = at("2026-10-10T10:00:00Z", "APPROVE", "read the diff. ");
+    const nits = at("2026-10-10T10:00:00Z", "APPROVE WITH NITS", "nits. ");
+    const changes = (iso) => at(iso, "REQUEST CHANGES", "blocking. ");
+
+    it("refuses when the only Verdict comment is REQUEST CHANGES", () => {
+      const failures = withComments([changes("2026-10-10T10:00:00Z")]);
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).toMatch(/latest comment.*"REQUEST CHANGES"/);
+    });
+
+    it("refuses an approval followed by a later REQUEST CHANGES", () => {
+      expect(
+        withComments([approve, changes("2026-10-10T11:00:00Z")]),
+      ).toHaveLength(1);
+    });
+
+    it("passes REQUEST CHANGES followed by a later approval", () => {
+      expect(withComments([changes("2026-10-10T09:00:00Z"), approve])).toEqual(
+        [],
+      );
+      expect(withComments([changes("2026-10-10T09:00:00Z"), nits])).toEqual([]);
+    });
+
+    it("orders by createdAt, not by the position in the list", () => {
+      expect(withComments([approve, changes("2026-10-10T09:00:00Z")])).toEqual(
+        [],
+      );
+      expect(
+        withComments([changes("2026-10-10T11:00:00Z"), approve]),
+      ).toHaveLength(1);
+    });
+
+    it("a short REQUEST CHANGES still counts as the latest verdict", () => {
+      const short = {
+        createdAt: "2026-10-10T12:00:00Z",
+        body: "Verdict: REQUEST CHANGES",
+      };
+      expect(withComments([approve, short])).toHaveLength(1);
+    });
+
+    it("needs an exact value: APPROVED, approve and extra words refuse", () => {
+      for (const value of [
+        "APPROVED",
+        "approve",
+        "APPROVE, but see below",
+        "NOT APPROVE",
+      ]) {
+        expect(
+          withComments([at("2026-10-10T10:00:00Z", value, "text. ")]),
+        ).toHaveLength(1);
+      }
+    });
+
+    it("takes the keyword case-insensitively", () => {
+      const lower = {
+        createdAt: "2026-10-10T10:00:00Z",
+        body: `verdict: APPROVE\n${"x".repeat(220)}`,
+      };
+      expect(withComments([lower])).toEqual([]);
+    });
+
+    it("a comment that also lists a non-approving verdict does not approve", () => {
+      const mixed = {
+        createdAt: "2026-10-10T10:00:00Z",
+        body: `Verdict: APPROVE\nVerdict: REQUEST CHANGES\n${"x".repeat(220)}`,
+      };
+      expect(withComments([mixed])).toHaveLength(1);
+    });
+
+    it("does not exclude the PR author's own comments", () => {
+      const own = { ...approve, author: { login: "pr-author" } };
+      expect(withComments([own])).toEqual([]);
+    });
+
+    it("documented limitation: filler plus an approving line passes", () => {
+      const filler = {
+        createdAt: "2026-10-10T10:00:00Z",
+        body: `${"lorem ipsum ".repeat(30)}\nVerdict: APPROVE`,
+      };
+      expect(withComments([filler])).toEqual([]);
+    });
+
+    it("blocks --execute end to end", async () => {
+      const env = makeEnv({
+        pr: greenPr({
+          comments: [approve, changes("2026-10-10T11:00:00Z")],
+        }),
+      });
+      expect(await env.exec(["7", "--execute"])).toBe(1);
+      expect(env.text()).toMatch(/FAIL {2}4b\. audit/);
+      expect(env.merged()).toBe(false);
+    });
+  });
+
   it("tells the agent how to fix it", () => {
     expect(withComments([]).join()).toContain(
       "paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)",
@@ -573,10 +686,19 @@ describe("gate 5: maintainer-only files", () => {
     [".github/dependabot.yml", "dependabot"],
     [".github/pull_request_template.md", "anything under .github"],
     [".claude/settings.json", "claude settings"],
-    [".claude/settings.local.json", "claude local settings"],
     [".claude/hooks/guard.mjs", "claude hooks"],
     [".claude/scripts/check-merged-prs.sh", "claude scripts"],
     [".claude/agents/reviewer.md", "claude agents"],
+    [".claude/rules/testing.md", "claude rules"],
+    [".claude/skills/review/SKILL.md", "claude skills"],
+    [".claude/commands/verify-all.md", "claude commands"],
+    ["CLAUDE.md", "agent instructions"],
+    ["AGENTS.md", "agent instructions, other file"],
+    ["docs/CONDUCTOR.md", "orchestration rules"],
+    ["docs/TEAM-CHARTER.md", "team charter"],
+    ["docs/DECISIONS.md", "decision register"],
+    [".gitattributes", "gitattributes"],
+    [".gitmodules", "gitmodules"],
     [".npmrc", "root npmrc"],
     ["playground/.npmrc", "playground npmrc"],
     [".husky/pre-commit", "husky hooks"],
@@ -642,15 +764,82 @@ describe("gate 5: maintainer-only files", () => {
       "src/package.json",
       "tests/unit/merge-cookbook-page.test.js",
       "scripts/merge-pr-notes.md",
-      "CLAUDE.md",
-      "AGENTS.md",
-      ".claude/rules/testing.md",
-      ".claude/skills/review/SKILL.md",
-      ".claude/commands/verify-all.md",
+      ".claude/css-baseline.sha256",
+      "docs/seo-checklist.md",
       "docs/.github/notes.md",
+      "docs/CLAUDE.md.bak",
+      "src/assets/js/app.js",
+      "src/pages/cdc/claude.md",
     ];
     expect(checkFiles(files)).toEqual([]);
     for (const file of files) expect(restrictedPatternFor(file)).toBeNull();
+  });
+
+  it("excuses only the exact css-baseline path, not variants of it", () => {
+    for (const file of [
+      ".claude/CSS-baseline.sha256",
+      ".claude/css-baseline.sha256.bak",
+      ".claude/sub/css-baseline.sha256",
+      "./.claude/css-baseline.sha256",
+      ".claude/css-baseline.sha256\n",
+    ]) {
+      expect(checkFiles([file])).toHaveLength(1);
+    }
+  });
+
+  describe("control characters and the glob compiler", () => {
+    const dirs = [".github/workflows", "supabase", ".claude/agents"];
+    const names = [
+      ["LF", "a\nb"],
+      ["CR", "a\rb"],
+      ["TAB", "a\tb"],
+      ["DEL", "a\x7fb"],
+      ["leading space", " ab"],
+      ["trailing LF", "ab\n"],
+    ];
+
+    it("matches restricted trees whatever characters the name holds", () => {
+      for (const dir of dirs) {
+        for (const [label, name] of names) {
+          const file = `${dir}/${name}.yml`;
+          expect(restrictedPatternFor(file), `${dir} ${label}`).not.toBeNull();
+        }
+      }
+      expect(restrictedPatternFor("supabase/a\nb/c\nd.sql")).toBe(
+        "supabase/**",
+      );
+      expect(restrictedPatternFor("LICENSE\nx")).toBe("LICENSE*");
+      expect(restrictedPatternFor("vitest.config.m\njs")).toBe(
+        "vitest.config.*",
+      );
+      expect(restrictedPatternFor("tests/unit/merge-pr\n.test.js")).toBe(
+        "tests/unit/merge-pr*.test.js",
+      );
+    });
+
+    it("refuses any control character, anywhere, with a fixed message", () => {
+      for (const file of [
+        "src/pages/a\nb.md",
+        "docs/a\rb.md",
+        "docs/a\tb.md",
+        "docs/a\x00b.md",
+        "docs/a\x1fb.md",
+        "docs/a\x7fb.md",
+        ".github/workflows/a\nb.yml",
+        "supabase/a\nb.sql",
+      ]) {
+        const failures = checkFiles([file]);
+        expect(failures, JSON.stringify(file)).toHaveLength(1);
+        expect(failures[0]).toContain(
+          "path contains a control character: maintainer merges this one",
+        );
+        expect(failures[0]).not.toContain("\n");
+      }
+    });
+
+    it("does not call a space or a non-ASCII letter a control character", () => {
+      expect(checkFiles(["docs/a b.md", "docs/é.md"])).toEqual([]);
+    });
   });
 
   it("is not fooled by case or ./ prefixes", () => {
@@ -721,6 +910,18 @@ describe("gate 5 against real git (no stubs)", () => {
   let root;
   let caller;
   const heads = {};
+  const oddBranches = [];
+  const ODD_DIRS = [
+    [".github/workflows", "gh"],
+    ["supabase", "sb"],
+    [".claude/agents", "cl"],
+  ];
+  const ODD_NAMES = [
+    ["lf", "a\nb"],
+    ["cr", "a\rb"],
+    ["tab", "a\tb"],
+    ["space", " ab"],
+  ];
   const gitIn = (dir, ...args) =>
     execFileSync(
       "git",
@@ -777,6 +978,34 @@ describe("gate 5 against real git (no stubs)", () => {
       gitIn(seed, "rm", "-q", ".github/workflows/ci.yml");
     });
     branch("docs-only", () => put(seed, "docs/ok.md"));
+
+    // Names with control characters or a leading space, one branch each. The
+    // entries go straight into the index, so no filesystem has to hold them.
+    const odd = (name, file) => {
+      gitIn(seed, "checkout", "-q", "-b", name, "main");
+      const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], {
+        cwd: seed,
+        input: "x\n",
+        encoding: "utf8",
+      }).trim();
+      gitIn(
+        seed,
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        `100644,${blob},${file}`,
+      );
+      gitIn(seed, "commit", "-q", "-m", name);
+      gitIn(seed, "push", "-q", "origin", name);
+      heads[name] = gitIn(seed, "rev-parse", "HEAD").trim();
+      gitIn(seed, "checkout", "-q", "-f", "main");
+    };
+    for (const [dir, tag] of ODD_DIRS) {
+      for (const [label, name] of ODD_NAMES) {
+        oddBranches.push([`odd-${tag}-${label}`, `${dir}/${name}.yml`]);
+        odd(`odd-${tag}-${label}`, `${dir}/${name}.yml`);
+      }
+    }
     gitIn(root, "clone", "-q", origin, caller);
   }, 60_000);
 
@@ -820,6 +1049,24 @@ describe("gate 5 against real git (no stubs)", () => {
     },
     30_000,
   );
+
+  it("refuses control-character and leading-space names in restricted trees", async () => {
+    expect(oddBranches).toHaveLength(12);
+    for (const [name, file] of oddBranches) {
+      const { code, text } = await runAgainstRealGit(name);
+      expect(code, name).toBe(1);
+      expect(text, name).toMatch(/FAIL {2}5\. +files/);
+      if ([...file].some((ch) => ch.charCodeAt(0) < 0x20)) {
+        expect(text, name).toContain(
+          "path contains a control character: maintainer merges this one",
+        );
+      } else {
+        expect(text, name).toContain(
+          `touches ${file}: maintainer merges this one`,
+        );
+      }
+    }
+  }, 120_000);
 
   it("catches the rename's destination too", async () => {
     const { text } = await runAgainstRealGit("rename-workflow");
@@ -1061,9 +1308,11 @@ describe("lifecycle", () => {
     expect(env.fsCalls.filter((c) => c === `rm ${TMP}`)).toHaveLength(1);
   });
 
-  it("installs SIGINT and SIGTERM handlers that clean up, then exit", async () => {
+  it("installs SIGHUP, SIGINT, SIGQUIT and SIGTERM handlers that clean up, then exit", async () => {
     for (const [signal, code] of [
+      ["SIGHUP", 129],
       ["SIGINT", 130],
+      ["SIGQUIT", 131],
       ["SIGTERM", 143],
     ]) {
       const proc = new EventEmitter();
@@ -1079,12 +1328,233 @@ describe("lifecycle", () => {
     }
   });
 
+  describe("a real signal mid-npm-test leaves nothing behind", () => {
+    let base;
+    let caller;
+    let head;
+    let driver;
+    let scratch;
+    const git = (dir, ...args) =>
+      execFileSync(
+        "git",
+        [
+          "-c",
+          "user.name=merge-pr-test",
+          "-c",
+          "user.email=test@example.com",
+          "-c",
+          "commit.gpgsign=false",
+          ...args,
+        ],
+        { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+
+    beforeAll(() => {
+      base = mkdtempSync(path.join(tmpdir(), "merge-pr-sig-"));
+      scratch = path.join(base, "scratch");
+      mkdirSync(scratch);
+      const origin = path.join(base, "origin.git");
+      const seed = path.join(base, "seed");
+      caller = path.join(base, "caller");
+      mkdirSync(seed);
+      git(base, "init", "-q", "--bare", "--initial-branch=main", origin);
+      git(seed, "init", "-q", "--initial-branch=main");
+      git(seed, "remote", "add", "origin", origin);
+      // `npm test` starts a background sleep, records its pid, and waits. The
+      // pid file is named by the test through the file next to it.
+      writeFileSync(
+        path.join(seed, "package.json"),
+        JSON.stringify({ scripts: { test: "sh ./slow.sh" } }),
+      );
+      writeFileSync(
+        path.join(seed, "slow.sh"),
+        `sleep 300 &\necho $! > "${scratch}/sleep.pid"\nwait\n`,
+      );
+      git(seed, "add", "-A");
+      git(seed, "commit", "-q", "-m", "base");
+      git(seed, "push", "-q", "origin", "main");
+      git(seed, "checkout", "-q", "-b", "feature");
+      writeFileSync(path.join(seed, "f.md"), "f\n");
+      git(seed, "add", "-A");
+      git(seed, "commit", "-q", "-m", "feature");
+      git(seed, "push", "-q", "origin", "feature");
+      head = git(seed, "rev-parse", "HEAD").trim();
+      // main moves on, so the head is behind it and gate 6 runs npm test.
+      git(seed, "checkout", "-q", "main");
+      writeFileSync(path.join(seed, "m.md"), "m\n");
+      git(seed, "add", "-A");
+      git(seed, "commit", "-q", "-m", "main moves");
+      git(seed, "push", "-q", "origin", "main");
+      git(base, "clone", "-q", origin, caller);
+
+      driver = path.join(base, "driver.mjs");
+      writeFileSync(
+        driver,
+        [
+          `import { defaultFs, defaultRunner, installSignalHandlers, testMerge } from ${JSON.stringify(
+            pathToFileURL(path.join(process.cwd(), "scripts/merge-pr.mjs"))
+              .href,
+          )};`,
+          "installSignalHandlers();",
+          `const pr = { headRefName: "feature", headRefOid: ${JSON.stringify(head)} };`,
+          `testMerge(pr, { run: defaultRunner, fs: defaultFs, cwd: ${JSON.stringify(caller)} }).then((r) => {`,
+          "  process.stdout.write(JSON.stringify(r));",
+          "});",
+          "",
+        ].join("\n"),
+      );
+    }, 60_000);
+
+    afterAll(() => {
+      if (base) rmSync(base, { recursive: true, force: true });
+    });
+
+    const alive = (pid) => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    it.each([
+      ["SIGHUP", 129],
+      ["SIGINT", 130],
+      ["SIGQUIT", 131],
+      ["SIGTERM", 143],
+    ])(
+      "%s kills the test group, removes the worktree and temp dirs, exits %i",
+      async (signal, code) => {
+        const pidFile = path.join(scratch, "sleep.pid");
+        rmSync(pidFile, { force: true });
+        const tmp = mkdtempSync(path.join(base, "tmp-"));
+        const child = spawn(process.execPath, [driver], {
+          cwd: caller,
+          env: { ...process.env, TMPDIR: tmp },
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        const exited = new Promise((resolve) => {
+          child.on("close", (exitCode, sig) => resolve({ exitCode, sig }));
+        });
+        let pid = 0;
+        try {
+          for (let i = 0; i < 300 && !existsSync(pidFile); i += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+          expect(existsSync(pidFile), "npm test never started").toBe(true);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          pid = Number(readFileSync(pidFile, "utf8").trim());
+          expect(alive(pid)).toBe(true);
+          // While running, the worktree and the scrubbed HOME exist.
+          const present = readdirSync(tmp);
+          expect(present).toHaveLength(2);
+          expect(
+            present.filter((n) => n.startsWith("merge-pr-home-")),
+          ).toHaveLength(1);
+
+          child.kill(signal);
+          const result = await exited;
+          expect(result.exitCode).toBe(code);
+
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          expect(alive(pid), "the sleep grandchild survived").toBe(false);
+          expect(readdirSync(tmp)).toEqual([]);
+          expect(
+            git(caller, "worktree", "list").trim().split("\n"),
+          ).toHaveLength(1);
+        } finally {
+          child.kill("SIGKILL");
+          if (pid && alive(pid)) process.kill(pid, "SIGKILL");
+        }
+      },
+      60_000,
+    );
+  });
+
   it("runs npm test in its own process group with a long timeout", async () => {
     const env = makeEnv({ ancestorCode: 1 });
     await env.exec(["7"]);
     const test = env.calls.find((c) => c.file === "npm");
     expect(test.options.killGroup).toBe(true);
     expect(test.options.timeout).toBe(600_000);
+  });
+
+  describe("the test run gets a scrubbed environment", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    const secrets = {
+      GH_TOKEN: "gh-secret",
+      GITHUB_TOKEN: "github-secret",
+      SSH_AUTH_SOCK: "/tmp/agent.sock",
+      NPM_TOKEN: "npm-secret",
+      NODE_AUTH_TOKEN: "node-secret",
+      AWS_SECRET_ACCESS_KEY: "aws-secret",
+      HOME: "/Users/real-person",
+      XDG_CONFIG_HOME: "/Users/real-person/.config",
+    };
+
+    it("hands npm test only PATH, LANG, TERM, CI, NODE_ENV and a fresh HOME", async () => {
+      for (const [key, value] of Object.entries(secrets)) {
+        vi.stubEnv(key, value);
+      }
+      vi.stubEnv("PATH", "/usr/bin:/bin");
+      vi.stubEnv("LANG", "en_US.UTF-8");
+      vi.stubEnv("TERM", "xterm");
+      const env = makeEnv({ ancestorCode: 1 });
+      await env.exec(["7"]);
+      const test = env.calls.find((c) => c.file === "npm");
+      const given = test.options.env;
+      expect(given).toEqual({
+        PATH: "/usr/bin:/bin",
+        LANG: "en_US.UTF-8",
+        TERM: "xterm",
+        CI: "1",
+        NODE_ENV: "test",
+        HOME: HOME_TMP,
+        XDG_CONFIG_HOME: HOME_TMP,
+      });
+      for (const key of Object.keys(secrets)) {
+        if (key !== "HOME" && key !== "XDG_CONFIG_HOME") {
+          expect(given).not.toHaveProperty(key);
+        }
+      }
+      expect(JSON.stringify(given)).not.toContain("real-person");
+    });
+
+    it("removes the fresh HOME afterwards, and never reuses the worktree dir", async () => {
+      const env = makeEnv({ ancestorCode: 1 });
+      await env.exec(["7"]);
+      expect(env.fsCalls.filter((c) => c === `rm ${HOME_TMP}`)).toHaveLength(1);
+      expect(HOME_TMP).not.toBe(TMP);
+    });
+
+    it("does not make a HOME when tests are not run", async () => {
+      const env = makeEnv({ ancestorCode: 0 });
+      await env.exec(["7"]);
+      expect(env.fsCalls).not.toContain(`rm ${HOME_TMP}`);
+    });
+
+    it("scrubbedEnv omits unset optional variables", () => {
+      expect(scrubbedEnv("/h", { PATH: "/p", GH_TOKEN: "t" })).toEqual({
+        PATH: "/p",
+        CI: "1",
+        NODE_ENV: "test",
+        HOME: "/h",
+        XDG_CONFIG_HOME: "/h",
+      });
+    });
+
+    it("defaultRunner passes exactly the env it is given to the child", async () => {
+      vi.stubEnv("GH_TOKEN", "leak-me");
+      const result = await defaultRunner(
+        process.execPath,
+        ["-e", "process.stdout.write(JSON.stringify(process.env))"],
+        { env: { ONLY: "this" } },
+      );
+      expect(JSON.parse(result.stdout)).toMatchObject({ ONLY: "this" });
+      expect(result.stdout).not.toContain("leak-me");
+    });
   });
 
   it("kills the whole process group when a command times out", async () => {
@@ -1258,5 +1728,28 @@ describe("self-attestation is stated, not hidden", () => {
     const header = source.split("\nimport ")[0];
     expect(header).toMatch(/CONVENTION check, not\s+\/\/ authentication/);
     expect(header).toMatch(/TOCTOU/);
+  });
+
+  it("the header states the limits, the fetch side effect and the 4b rule", () => {
+    const source = readFileSync(
+      path.join(process.cwd(), "scripts/merge-pr.mjs"),
+      "utf8",
+    );
+    const header = source.split("\nimport ")[0].replace(/\n\/\/ ?/g, " ");
+    expect(header).toMatch(/Limits\./);
+    expect(header).toMatch(/mitigation, not a sandbox/);
+    expect(header).toMatch(/symlink to the caller's/);
+    expect(header).toMatch(/updates the caller's `origin\/main` and/);
+    expect(header).toMatch(/remote-tracking refs/);
+    expect(header).toMatch(/LATEST \(by createdAt\)/);
+    expect(header).toMatch(/control character/);
+  });
+
+  it("--help describes the 4b rule, the control-character rule and the limits", async () => {
+    const env = makeEnv();
+    await env.exec(["--help"]);
+    expect(env.text()).toMatch(/latest PR comment with a 'Verdict:'/);
+    expect(env.text()).toMatch(/control character/);
+    expect(env.text()).toMatch(/not a sandbox/);
   });
 });
