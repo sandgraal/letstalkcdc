@@ -1,372 +1,150 @@
 # CLAUDE.md
 
-Project context for AI agents working in this repo. Read this before touching
-anything; it is shorter than the docs and more current than memory.
+Project context for AI agents (`AGENTS.md` is a symlink to this file). Read it
+before touching anything. Path-scoped rules live in `.claude/rules/`, task
+checklists in `.claude/skills/`.
 
 ## What this repo is
 
 **Let's Talk CDC** — an educational static site about Change Data Capture.
-Built with **Eleventy 3.1.x** + **Vite 7** + **PostCSS**, deployed to GitHub
-Pages at `https://sandgraal.github.io/letstalkcdc/`.
+Built with **Eleventy 3.1.x** + **Vite 8** + **PostCSS**, deployed to GitHub
+Pages at `https://sandgraal.github.io/letstalkcdc/`. Every page is
+pre-rendered HTML; JavaScript is progressive enhancement. There is **no
+backend**: the only server-side service is an optional Supabase table that
+receives assistant thumbs-up/down feedback (browser to PostgREST with `fetch`,
+publishable key only). The Change Feed Playground under `playground/` is a
+separate app with its own `package.json`, copied into the site at deploy.
 
-Static-first: every page is pre-rendered HTML. JavaScript is progressive
-enhancement only. There is **no backend** in production — the only
-server-side service is an optional Supabase table that receives
-assistant 👍/👎 feedback (browser → PostgREST with `fetch`, publishable
-key only).
+## Orientation: read in this order
+
+1. [`docs/AUTOPSY-BRIEF.md`](docs/AUTOPSY-BRIEF.md) — measurements, risks, open work.
+2. [`docs/STATE-OF-PROJECT.md`](docs/STATE-OF-PROJECT.md) — dated dashboard.
+3. [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) — roles, routing, merge and push policy. Model policy: see docs/CONDUCTOR.md.
+
+Then `docs/IMPLEMENTATION-PLAN.md`, the authoritative checklist: find your
+item, do the work, flip `- [ ]` to `- [x]` in the same commit. Phase 13 is the
+agent queue; Phase 14 is the maintainer's decisions: do not start those. New
+work that fits no phase: add it to the lowest phase it belongs to or append a
+new Phase heading.
 
 ## Commands
 
 ```bash
-npm ci                 # install (use this, not `npm install`, in fresh checkouts)
-npm run dev            # eleventy --serve on http://localhost:8080
-npm run build          # full production build → _site/
-npm test               # vitest (unit suite — run npm test for the current count)
-npm run lint           # eslint
-npm run format         # prettier --write
-npm run format:check   # prettier --check (CI uses this)
-npm run smoke          # smoke:core + smoke:a11y + smoke:perf (slow)
-npm run smoke:core     # HTML/links smoke; fastest of the three
-npm run clean          # rimraf dist _site styles.min.css
-npm run verify-all     # format:check + lint + test + build — minimum bar before pushing
+npm ci                    # install (not `npm install`) in fresh checkouts
+npm run dev               # eleventy --serve on http://localhost:8080
+npm run build             # production build to _site/
+npm test                  # vitest unit suite
+npm run lint              # eslint
+npm run format            # prettier --write
+npm run format:check      # prettier --check (what CI runs)
+npm run clean             # rimraf dist _site styles.min.css
+npm run smoke:core        # HTML/links smoke; run after routing/template changes
+npm run smoke             # smoke:core + smoke:a11y + smoke:perf (slow)
+npm run check:css-baseline  # compare built CSS with the recorded hash
+npm run verify-all        # format:check + lint + test + build: minimum bar
 ```
 
-`npm run build` runs four stages in order:
+`npm run build` = `build:css` (postcss, `main.css` to `styles.min.css`), then
+`build:js` (`vite build` to `dist/`), then `build:11ty` (to `_site/`), then a
+final cssnano pass over `_site/assets/css/styles.css`. The script sets
+`NODE_ENV=production`; set it yourself when running `build:css` alone.
 
-1. `build:css` — `postcss src/assets/css/main.css -o src/assets/css/styles.min.css`
-2. `build:js` — `vite build` → `dist/`
-3. `build:11ty` — `eleventy --config=eleventy.config.mjs` → `_site/`
-4. final `postcss _site/assets/css/styles.css -o _site/assets/css/styles.css`
-   (cssnano minify; only runs when `NODE_ENV=production`)
-
-## Architecture
-
-### Content tree
+## Architecture essentials
 
 ```
 src/
-├── _data/            # Global data exposed to all templates (ESM .mjs and CJS .cjs)
-├── _includes/
-│   ├── layouts/      # base.njk is the root layout
-│   └── components/   # njk macros / partials
-├── assets/
-│   ├── css/          # see "CSS pipeline" below
-│   └── js/           # ESM modules; Vite bundles them
-├── pages/<topic>/    # per-topic content (e.g. snapshotting/, partitioning/)
+├── <topic>/          # one directory per page: index.njk + index.11tydata.cjs
+├── _data/            # global data (series.mjs, errata.mjs, toolVersions.mjs, ...)
+├── _includes/        # layouts/base.njk (root layout) and components/
+├── assets/css, js    # CSS (see below) and ESM modules bundled by Vite
+├── js/, css/, data/  # CDC assistant: matcher, feedback client, assistant.yml
 └── static/           # passthrough-copied verbatim to /
 ```
 
-### CSS pipeline (read this before touching CSS)
+- New pages are registered in `src/_data/series.mjs`; see `docs/adding-modules.md`.
+- `lib/path-prefix.mjs` derives the Pages prefix from `ELEVENTY_PATH_PREFIX`
+  or `GITHUB_REPOSITORY`. For canonical/OG/link-check work locally set
+  `ELEVENTY_PATH_PREFIX=/letstalkcdc` and `SITE_HOST=https://sandgraal.github.io`.
+- **Never hardcode `/` in templates**; use the `| url` filter:
+  `href="{{ '/assets/css/styles.css' | url }}"`.
+- Vite writes hashed bundles to `dist/` and `dist/.vite/manifest.json`; the
+  `viteAsset` filter resolves them: `{{ 'src/assets/js/app.js' | viteAsset | url }}`.
+  In dev there is no manifest and the filter falls back to the source path
+  (404s for hashed JS in dev are not a bug; run `npm run build:js` once).
 
-The **production stylesheet** at `/assets/css/styles.css` is built from
-`src/assets/css/main.css` only. The pipeline:
+### CSS pipeline (read before touching CSS)
 
-```
-src/assets/css/main.css
-  → [postcss + cssnano in prod]
-  → src/assets/css/styles.min.css
-  → [eleventy passthroughCopy]
-  → _site/assets/css/styles.css        (this is what ships)
-```
+The shipped stylesheet is built from `src/assets/css/main.css` only:
+`main.css` to `styles.min.css` to passthrough to `_site/assets/css/styles.css`.
+`main.css` imports the numbered layers `00`..`09`, `dashboard-page.css`, and
+`04-components.css`, which imports `components/*.css`. Page-specific CSS lives
+in `src/assets/css/pages/` and is linked from its own page template.
 
-Top-level files under `src/assets/css/` after the Month-0 purge:
-
-```
-00-reset.css            05-utilities.css        08-video-embed.css
-01-variables.css        06-search.css           09-mobile-responsive.css
-02-base.css             07-version-status.css   dashboard-page.css
-03-layout.css                                   main.css       (entry, not a passthrough)
-04-components.css ──> imports components/*.css
-```
-
-Page-specific CSS lives in `src/assets/css/pages/` and is loaded only on its
-own page via a `<link>` in that page's template.
-
-**Byte-identity check.** When refactoring CSS, prove production output didn't
-change:
-
-```bash
-NODE_ENV=production npm run build:css
-sha256sum src/assets/css/styles.min.css
-# baseline at HEAD of main is: c5806349294d3bc295a07c93054684a70545d291216916e45cef1c154017f944
-# (re-baselined 2026-10-09 (P16-8, P15-50): `.series-related` list rules
-#  added to components/progress.css (the Related lessons list under the
-#  progress card), the only addition; plus the `.copy-btn` / `button.copy`
-#  page-CSS rules removed with their static buttons (those are page CSS,
-#  not in the bundle). Previously fceb82df… from the same day (P15-50): the dead `.copy-snippet` selectors and
-#  rule removed from components/code-block.css, the only CSS difference
-#  (deletions only). Previously f59f964f… from the same day (P16-9): `.h-as-3` / `.h-as-4` presentational
-#  heading-level helpers appended to 05-utilities.css, the only CSS
-#  difference; headings promoted to the right outline level keep their
-#  computed style. Previously 83943ab3… from the same day (P13-6): deterministic font loading, the only
-#  CSS difference is in 01-variables.css: six metric-matched local()
-#  fallback `@font-face` rules (IBM Plex Sans/Mono Fallback, with
-#  size-adjust/ascent/descent/line-gap overrides) and the three
-#  `--font-sans/-display/-mono` tokens listing them right after the Plex
-#  family. Previously 7ba70b50… from the same day (P13-8): cssnano 7 -> 9 tool upgrade, no source
-#  CSS change; output proven computed-style/pixel equivalent (declaration
-#  order is no longer alphabetised, `transition ... ease` and similar
-#  default tokens dropped, calc() rewritten). Previously c32d01ac… from
-#  earlier the same day (P15-21, contrast debt): new
-#  `components/code-block.css` (the code-block header / copy-button
-#  classes were essentially unstyled), light-theme
-#  `--color-success/-warning/-error` (+ hovers) darkened to 4.5:1, the
-#  `.status-badge` variants in 07-version-status.css moved onto those
-#  tokens, and `.badge.recommended` given dark ink. Previously 163231e6… from earlier the same day: visible-UI fixes - new `.discussion-callout`
-#  rules (community box), the orphaned dead `.stats-*` / `.session-modal`
-#  rules removed along with the chip markup, the `.button-primary` text
-#  and hover colours, and the `a.button:where(:hover, :active,
-#  :focus-visible)` text-colour rule in 04-components.css so plain
-#  `.button` anchors keep a passing label on hover/active, and the last
-#  undefined `--accent-dark` / `--hover-bg` tokens in dashboard-page.css
-#  replaced. Previously 1d52a8f2… and e70f54c7… (same PR, earlier states) and 424e77a0… from 2026-10-08:
-#  light-theme accent darkened for WCAG AA,
-#  `--color-accent-primary/-hover/-active` and `--color-info/-info-hover`
-#  in the `:root[data-theme="light"]` block of 01-variables.css, the only
-#  CSS difference. Previously e54f4182… from the same day: author headshot
-#  rule `.page-meta__author > .author-photo` added to 04-components.css.
-#  Before that b1478af0… from the same day: in-range dependency update,
-#  cssnano 7.1.9 keeps rgba(248,113,113,.22) in scorecard.css instead of a
-#  lossy hsla(), +4 bytes. Before that eebaa34a… from 2026-08-26: nav/drawer
-#  fixes, then the undefined-token sweep + panels.css bundling)
-```
-
-If the hash matches, your change is a pure source refactor and visually safe.
-If it differs, run `npm run build` and diff `_site/assets/css/styles.css`
-before claiming the change is byte-equivalent.
-
-There is also a `/css-byte-check` slash command that codifies this.
-
-### Path prefix (GitHub Pages)
-
-The site lives at `/letstalkcdc/` in production. `lib/path-prefix.mjs` derives
-the prefix from `ELEVENTY_PATH_PREFIX` (explicit) or `GITHUB_REPOSITORY`
-(implicit). **Never hardcode `/` in templates** — use the `| url` Nunjucks
-filter. Example:
-
-```njk
-<link rel="stylesheet" href="{{ '/assets/css/styles.css' | url }}">
-```
-
-When testing canonical URLs / OG tags / lychee link-check locally, set both
-`ELEVENTY_PATH_PREFIX=/letstalkcdc` and `SITE_HOST=https://sandgraal.github.io`.
-
-### Vite + Eleventy interop
-
-Vite bundles `src/assets/js/` into `dist/assets/`. Eleventy reads
-`dist/.vite/manifest.json` to resolve hashed filenames in templates via the
-`viteAsset` filter:
-
-```njk
-<script type="module" src="{{ 'src/assets/js/app.js' | viteAsset | url }}"></script>
-```
-
-In dev (`npm run dev`) there is no Vite manifest; the filter falls back to the
-unhashed source path.
+**Byte-identity.** Prove a refactor changed nothing shipped: run
+`/css-byte-check` (`NODE_ENV=production npm run build:css`, then
+`npm run check:css-baseline`). The baseline is one line in
+`.claude/css-baseline.sha256`; its history is `docs/css-baseline-history.md`.
+Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.md`.
 
 ## Conventions
 
-### Commit messages
+- **Commits:** Conventional Commits, lowercase scope, imperative, body wrapped
+  near 72 columns, e.g. `fix(ci): pin SITE_HOST in linkcheck.yml`. Prefer new
+  commits over `--amend`; never `--no-verify` or `--no-gpg-sign`. End Claude-authored commits with
+  the `Co-Authored-By` trailer the harness gives you; add a
+  `https://claude.ai/code/session_<id>` footer only with a real session id.
+- **Branches:** `claude/<short-name>-<id>`; PRs go into `main`. Who may push,
+  merge and open PRs is in `docs/CONDUCTOR.md`, not here.
+- **Files:** kebab-case directories and `.njk` files; ESM `.mjs` for new Node
+  scripts; `.cjs` only for Eleventy data files (`index.11tydata.cjs`).
+- **Front matter** on content pages: `title`, `description` (160 characters
+  max), and `datePublished` / `dateModified` as `YYYY-MM-DD`. In this repo the
+  dates sit in `index.11tydata.cjs`; see `.claude/rules/content.md`.
+- **Style:** run `npm run format` before committing; no `console.log` in
+  shipped code (eslint `no-console`).
 
-Conventional Commits, lowercase scope, imperative mood:
+## Anti-patterns (learned the hard way)
 
-```
-fix(ci): pin SITE_HOST in linkcheck.yml
-chore(css): purge orphan stylesheets; main.css is the sole entry
-docs: update changelog
-feat(search): add fuzzy-match for module titles
-```
+- Hardcoding `/...` in templates instead of `| url` (breaks the Pages prefix).
+- Editing `_site/`, `dist/`, `src/assets/css/styles.min.css` or
+  `_site/assets/css/styles.css`: all generated. Edit `main.css` or an import.
+- Adding a new top-level `XX-*.css`. Fold into a layer, add
+  `components/<name>.css` imported from `04-components.css`, or use `src/assets/css/pages/`.
+- Linking a CSS file from a template that Eleventy does not pass through
+  (404 in production). Add a passthrough in `eleventy.config.mjs`.
+- Bumping a version claim in docs without the version-specific examples.
+- Force-pushing `main`. `main` is **not** protected by required checks: the
+  `default` ruleset has `pull_request`, `deletion`, `non_fast_forward`,
+  `code_scanning` and `code_quality` but no `required_status_checks`, so a red
+  CI run does not block a merge. Merge policy: see docs/CONDUCTOR.md.
+- `npm install` in CI (use `npm ci`); pushing without `npm run format` and lint.
 
-Wrap the body at ~72 cols. End every Claude-authored commit with a blank line
-and:
+## Auto-rewake
 
-```
-https://claude.ai/code/session_<id>
-```
-
-Prefer creating **new commits** over `--amend`. Never `--no-verify` or
-`--no-gpg-sign` unless the user explicitly asks.
-
-The `https://claude.ai/code/session_<id>` footer is **only** for
-sessions where the harness gave you a real session id. If you don't
-have one, omit the footer rather than inventing one — recent commits
-in this repo follow that rule.
-
-### Branch naming
-
-Feature branches for Claude sessions land on `claude/<short-name>-<id>`. The
-session ID is whatever the harness supplies; do not invent one. Open PRs into
-`main`.
-
-### File naming
-
-- Kebab-case for content directories and `.njk` files.
-- ESM (`.mjs`) for new Node scripts and Eleventy config; CommonJS (`.cjs`) is
-  only kept where Eleventy data files still need it.
-- `.11tydata.cjs` per-section data files live next to their content.
-
-### Front-matter required on content pages
-
-```yaml
----
-title: "..." # used in <title> and nav
-description: "..." # ≤160 chars, SEO
-datePublished: 2026-02-06 # YYYY-MM-DD, set on first ship
-dateModified: 2026-05-12 # YYYY-MM-DD, bump on substantive edits
----
-```
-
-### Code style
-
-Prettier + ESLint are wired up; run `npm run format` before committing. CI
-runs `npm run format:check` and will fail on diffs. No `console.log` in
-production code (eslint `no-console` warns, allows `warn|error|debug|log`
-under explicit opt-in).
-
-## Anti-patterns (real, learned the hard way)
-
-- ❌ Hardcoding `/...` in templates instead of using `| url`. Breaks the
-  GitHub Pages prefix.
-- ❌ Editing `_site/` — it's a build artifact, rebuilt from scratch each run.
-- ❌ Editing `src/assets/css/styles.min.css` or
-  `_site/assets/css/styles.css` — both are generated. Edit `main.css` or
-  one of its imports.
-- ❌ Adding a new top-level `XX-*.css` file. Either fold into an existing
-  layer, add it as `components/<name>.css` imported from
-  `04-components.css`, or put it under `pages/` and link from the page
-  template.
-- ❌ Adding a CSS `<link>` in a template that points at a file Eleventy
-  doesn't pass through. Production will 404. Either add a passthrough in
-  `eleventy.config.mjs` or use the existing pipeline.
-- ❌ Bumping the Eleventy version line in copilot-instructions.md / docs
-  without updating the version-specific examples (e.g. config file is
-  `.mjs`, not `.cjs`; passthrough takes an object literal).
-- ❌ Force-push to `main` (it's branch-protected in CI; will fail anyway).
-- ❌ `npm install` in CI — use `npm ci` to honor the lockfile.
-- ❌ Skipping `npm run format` / `eslint` before pushing; CI will reject.
-
-## The running task list
-
-**[`docs/IMPLEMENTATION-PLAN.md`](docs/IMPLEMENTATION-PLAN.md)** is the
-authoritative checklist for the revitalization work. When you pick up a
-task:
-
-1. Find it in the plan.
-2. Do the work.
-3. Flip `- [ ]` to `- [x]` **in the same commit that closes it**.
-
-New work that doesn't fit any existing phase: add it to the lowest
-phase it logically belongs to, or append a new `## Phase N` heading.
-
-## Slash commands and subagents
-
-- [`/verify-all`](.claude/commands/verify-all.md) — run
-  `format:check + lint + test + build`. The minimum bar before pushing.
-- [`/css-byte-check`](.claude/commands/css-byte-check.md) — verify the
-  production CSS bundle is byte-identical to the `main`-branch
-  baseline. Use any time you touch `src/assets/css/`.
-- **`css-refactor` subagent** (`.claude/agents/css-refactor.md`) —
-  spawn it via the Agent tool for any CSS change. It enforces the
-  byte-identity workflow and the anti-pattern list automatically.
-
-## Orchestration (conductor + roles)
-
-This repo's main session runs as the **`conductor`** agent
-(`"agent": "conductor"` in `.claude/settings.json`): it plans, delegates,
-integrates and verifies, and is given no edit tools (all file changes go
-through a role). Work is done by
-single-purpose roles in `.claude/agents/` — `scout`, `verifier`, `scribe`
-(Haiku 5.5) and `implementer`, `reviewer`, `css-refactor` (Sonnet 5.5).
-**Only those two models are permitted**; nothing above Sonnet is
-configured, and a hook plus a unit test enforce it.
-
-Read [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) before starting: it has the
-routing table, the brief template, the Definition of Ready / Done, and the
-honest limits of the model lock. Phase 13 of the plan is the
-agent-executable queue; Phase 14 is the maintainer's decision register —
-do not start Phase 14 items.
-
-## Auto-continue on merge
-
-When a `claude/*` PR you authored merges on GitHub, the next session
-(or even the current one, between turns) will automatically re-wake
-with a directive to continue work from
-`docs/IMPLEMENTATION-PLAN.md`. Mechanism:
-
-- [`.claude/scripts/check-merged-prs.sh`](.claude/scripts/check-merged-prs.sh)
-  polls `gh pr list --state merged --author @me` for `claude/*`
-  branches, tracks the highest-acknowledged PR in
-  `.claude/.merge-watcher-state.json` (gitignored), and emits a
-  `hookSpecificOutput.additionalContext` envelope on a fresh merge.
-- Wired via two hooks in [`.claude/settings.json`](.claude/settings.json):
-  `SessionStart` (catches merges between sessions) and `Stop` with
-  `asyncRewake: true` (catches merges that land during a session — the
-  script exits 2 and the harness rewakes the model with the script's
-  stdout as a system-reminder).
-- If you genuinely want to _not_ auto-continue, delete the state file
-  and either disable the hook via the `/hooks` UI or remove the
-  `Stop` entry from settings.json for that session.
-
-There is no GitHub webhook event in the harness. The hook is a poll
-that fires on session boundaries / between turns — not a true push.
-A merge that lands while a session is idle won't trigger until the
-next turn finishes, but in practice that's seconds, not minutes.
+A Stop hook (`.claude/scripts/check-merged-prs.sh`) may rewake a session when a
+`claude/*` PR merges (within 6 hours, not yet acknowledged). State: gitignored
+`.claude/.merge-watcher-state.json`. Disable: remove the Stop entry in
+`.claude/settings.json` (maintainer-owned) or delete the state file.
 
 ## Where to read more
 
-- `docs/CONTRIBUTING.md` — human-contributor workflow
-- `docs/AUTOPSY-BRIEF.md` — briefing pack for a site autopsy (measurements, risks, open work)
-- `docs/SETUP.md` — full setup incl. Supabase feedback, tracing, env vars
-- `docs/HOSTING.md` — deploy pipeline + CI runbook
-- `docs/adding-modules.md` — how to add a new content section
-- `docs/javascript-architecture.md` — JS module layout + Vite split
-- `docs/TRACING.md` — _retired_; explains why and how to re-introduce
-  tracing properly if it's ever wanted
-- `docs/archive/PRD-SITE-REVAMP.md` — historical PRD for the 2.0 revamp
-- `docs/archive/` — historical records; read for context, do not act on as
-  current spec
-- `CHANGELOG.md` — `[Unreleased]` block is the running scratchpad for the
-  current dev cycle
+- `docs/CONTRIBUTING.md`, `docs/SETUP.md` (env vars, Supabase), `docs/HOSTING.md`
+  (deploy and CI runbook), `docs/DEVELOPMENT.md`, `docs/adding-modules.md`,
+  `docs/javascript-architecture.md`.
+- `docs/TRACING.md` is retired; `docs/archive/` is history, not spec.
+  `CHANGELOG.md` `[Unreleased]` is the dev-cycle scratchpad.
+- Roles: `.claude/agents/`; slash commands: `.claude/commands/`.
 
-## First-run for agents — don't trip on these
+## First-run mines
 
-A fresh Claude session in this repo should be able to ship a PR
-without asking. The mines that catch new agents:
-
-1. **`npm test` was historically broken on `main` after the vitest 4 /
-   jsdom 28 / Node 26 bumps** (`localStorage` was undefined). Fixed in
-   May 2026 by polyfilling `Storage` in `tests/setup.js`. If `npm test`
-   ever explodes pre-emptively at `tests/setup.js`, the environment
-   changed again — fix the setup, don't ship around it.
-2. **There is no agent handoff system.** A previous nightly-sync
-   workflow under `handoff/` was retired (it logged empty entries to
-   `main` for days). Don't recreate it. Cross-session context lives
-   in `docs/IMPLEMENTATION-PLAN.md`, `CHANGELOG.md` `[Unreleased]`,
-   and `git log` — that's the durable record.
-3. **`/css-byte-check` baseline is in this file**: see the "Byte-identity
-   check" section above for the current hash.
-   If you touch any CSS, prove the production bundle is unchanged or
-   walk the diff. Don't assume CI catches it — only the lighthouse
-   job re-builds CSS.
-4. **The Lighthouse baseline is honest as of May 2026** (perf 0.86 on
-   `/intro/`). Earlier `1.0` scores measured an unstyled DOM; ignore
-   any pre-May docs claiming higher numbers and trust the threshold
-   in `lighthouse-ci.config.json`.
-5. **The `viteAsset` filter falls back to source paths in dev.** If
-   you're seeing 404s for hashed JS in dev, that's a `.vite/manifest.json`
-   absence, not a real bug. Run `npm run build:js` once or use `npm run dev`.
-6. **Don't add a `console.log` to ship.** ESLint's `no-console` is on
-   warn with the usual allowlist — the lint job is non-zero-exit clean
-   currently. Keep it that way.
-
-## When in doubt
-
-1. Search the codebase before asking — patterns usually exist already.
-2. Run `npm run verify-all` before pushing. If any step fails, fix
-   it before opening a PR.
-3. Run `npm run smoke:core` if you touched routing / passthroughs /
-   page templates.
-4. For CSS or visual changes: verify the byte-identity hash above, or
-   build the site and screenshot the affected pages.
-5. Ask the user, don't guess, on anything that affects shared state
-   (force-push, dropping a dependency, changing CI behavior).
+1. If `npm test` explodes at `tests/setup.js`, the environment changed again
+   (`localStorage` once vanished): fix the setup, do not ship around it.
+2. There is no agent handoff system. Context lives in the plan, `CHANGELOG.md`
+   and `git log`.
+3. Only the lighthouse job rebuilds CSS in CI. Prove CSS changes with
+   `npm run check:css-baseline`; the Lighthouse floors are in
+   `lighthouse-ci.config.json` (honest since May 2026, `/intro/` about 0.86 to 0.9).
+4. Run `npm run smoke:core` for routing, passthrough or page-template changes;
+   for visual changes, screenshot the affected pages.
+5. Search the codebase before asking. Ask the maintainer, do not guess, about
+   anything shared: dependencies, CI behaviour, repository settings, secrets.
