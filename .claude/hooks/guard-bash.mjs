@@ -23,6 +23,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 class ParseError extends Error {}
@@ -57,6 +58,7 @@ class Parser {
     this.ctx = ctx;
     this.heredocs = [];
     this.lastWordEnd = -1;
+    this.sawSub = false;
   }
 
   newPipe() {
@@ -70,10 +72,16 @@ class Parser {
   parseSeq(closer) {
     const { s } = this;
     let cur = [];
+    let redirs = [];
     let pipe = this.newPipe();
+    // A command may be only redirections (`> file`, `: > file`): keep it,
+    // because it still truncates the file.
     const flush = () => {
-      if (cur.length) this.ctx.cmds.push({ argv: cur, pipe });
+      if (cur.length || redirs.length) {
+        this.ctx.cmds.push({ argv: cur, pipe, redirs });
+      }
       cur = [];
+      redirs = [];
     };
     for (;;) {
       while (this.i < s.length && SPACE.has(s[this.i])) this.i++;
@@ -145,6 +153,7 @@ class Parser {
             glob: false,
             quoted: false,
             assign: false,
+            sub: true,
           });
           continue;
         }
@@ -167,6 +176,7 @@ class Parser {
           throw new ParseError("redirection without a target");
         }
         const target = this.readWord();
+        redirs.push({ op: m[0], target });
         if (m[0] === "<<" || m[0] === "<<-") {
           this.heredocs.push({
             delim: target.text,
@@ -213,6 +223,7 @@ class Parser {
     );
     // An unquoted leading ~ expands to a home directory we cannot see.
     if (s[this.i] === "~") exp = true;
+    this.sawSub = false;
     while (this.i < s.length) {
       const c = s[this.i];
       if (WORD_BREAK.has(c)) break;
@@ -277,7 +288,7 @@ class Parser {
     }
     if (brace && text !== "{") glob = true;
     this.lastWordEnd = this.i;
-    return { text, exp, glob, quoted, assign };
+    return { text, exp, glob, quoted, assign, sub: this.sawSub };
   }
 
   /** Body of a "..." string (or ${...}, or a heredoc when term is null). */
@@ -343,6 +354,7 @@ class Parser {
       }
       this.i += 2;
       this.parseSeq(")");
+      this.sawSub = true; // after the nested words, which reset the flag
       return "\0";
     }
     if (n === "{") {
@@ -396,6 +408,7 @@ class Parser {
       j++;
     }
     this.i = j + 1;
+    this.sawSub = true;
     new Parser(inner, this.ctx).parseTop();
   }
 
@@ -565,6 +578,341 @@ function rmTargetIsSafe(w, ctx) {
   return true;
 }
 
+/* --- self-protection: the guards, the live config, git hooks -------- */
+
+// A command that can write to any of these is denied, whatever it is:
+//   .claude/ (settings, hooks, scripts, agents: anything outside a worktree)
+//   .git/hooks, .git/config (what runs on every commit and push)
+// Reading is fine, and so is anything under .claude/worktrees/<name>/ (a
+// branch being written in its own worktree is how a maintainer-merged PR
+// changes these files).
+
+const WRITE_REDIRS = new Set([">", ">>", ">|", "&>", "&>>", "<>", ">&"]);
+const BENIGN_SINKS = new Set([
+  "/dev/null",
+  "/dev/stdout",
+  "/dev/stderr",
+  "/dev/tty",
+]);
+
+const isBenignSink = (w) => !w.exp && !w.glob && BENIGN_SINKS.has(w.text);
+
+function isWriteRedirect(r) {
+  if (!WRITE_REDIRS.has(r.op)) return false;
+  // `2>&1` and `>&-` duplicate or close a descriptor; `>&file` writes a file.
+  if (r.op === ">&" && !r.target.exp && /^(\d+|-)$/.test(r.target.text)) {
+    return false;
+  }
+  return true;
+}
+
+/** `p` is absolute and normalised. Is it a place only the maintainer writes? */
+function classifyAbs(p) {
+  const comps = p.toLowerCase().split("/").filter(Boolean);
+  for (let i = 0; i < comps.length; i++) {
+    const c = comps[i];
+    if (c === ".git") {
+      const n = comps[i + 1];
+      if (
+        [
+          "hooks",
+          "config",
+          "config.worktree",
+          "info",
+          "refs",
+          "packed-refs",
+        ].includes(n)
+      ) {
+        return true;
+      }
+      if (n === "worktrees" && (comps[i + 3] ?? "").startsWith("config")) {
+        return true;
+      }
+    }
+    if (c === ".claude") {
+      const name = comps[i + 2];
+      if (comps[i + 1] === "worktrees" && name && !/[*?[{]/.test(name)) {
+        return false; // a worktree: the branch being written
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Resolve symlinks (also dangling ones) without requiring the path to exist. */
+function realish(input) {
+  let pending = path.resolve(input).split("/").filter(Boolean);
+  let acc = "/";
+  let hops = 0;
+  while (pending.length > 0) {
+    const part = pending.shift();
+    const next = path.join(acc, part);
+    let st;
+    try {
+      st = fs.lstatSync(next);
+    } catch {
+      acc = next; // does not exist (yet): keep the rest as written
+      continue;
+    }
+    if (st.isSymbolicLink()) {
+      hops += 1;
+      if (hops > 40) return path.resolve(input);
+      const abs = path.resolve(acc, fs.readlinkSync(next));
+      pending = abs.split("/").filter(Boolean).concat(pending);
+      acc = "/";
+    } else {
+      acc = next;
+    }
+  }
+  return acc;
+}
+
+const isProtectedAbs = (p) => classifyAbs(p) || classifyAbs(realish(p));
+
+const CANDIDATE_BREAK = /[\s'"=:,;()<>|&`$\0{}]+/;
+
+/** Path-like pieces of a word: `--output=.claude/x` yields `.claude/x`. */
+function pathCandidates(t) {
+  const out = [];
+  for (const piece of t.split(CANDIDATE_BREAK)) {
+    if (!piece) continue;
+    out.push(piece);
+    // `-o.claude/x`: a flag glued to a path
+    for (const re of [/\.claude(?=\/|$)/, /\.git(?=\/(hooks|config|info))/]) {
+      const m = re.exec(piece);
+      if (m && m.index > 0) out.push(piece.slice(m.index));
+    }
+  }
+  return out;
+}
+
+/** Does this word name (or glob into) a protected path from any of `cwds`? */
+function touchesProtected(t, cwds) {
+  for (const c of pathCandidates(t)) {
+    if (path.isAbsolute(c)) {
+      if (isProtectedAbs(path.normalize(c))) return true;
+      continue;
+    }
+    for (const cwd of cwds) {
+      if (cwd === null) {
+        // unknown directory: judge the path on its own, and refuse `..`
+        if (c.split("/").includes("..")) return true;
+        if (classifyAbs(path.posix.normalize(`/${c}`))) return true;
+      } else if (isProtectedAbs(path.resolve(cwd, c))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+const RO_HEADS = new Set([
+  "cat",
+  "rg",
+  "grep",
+  "egrep",
+  "fgrep",
+  "ls",
+  "head",
+  "tail",
+  "wc",
+  "stat",
+  "file",
+  "diff",
+  "jq",
+  "echo",
+  "printf",
+  "pwd",
+  "true",
+  "test",
+  "[",
+  "[[",
+  "shasum",
+  "sha256sum",
+  "basename",
+  "dirname",
+  "realpath",
+  "readlink",
+]);
+// Output-producing git subcommands (checked for --output / -o below).
+const GIT_READ = new Set([
+  "diff",
+  "log",
+  "show",
+  "status",
+  "ls-files",
+  "ls-tree",
+  "cat-file",
+  "rev-parse",
+  "blame",
+  "grep",
+  "check-ignore",
+  "shortlog",
+  "describe",
+  "rev-list",
+  "show-ref",
+  "for-each-ref",
+]);
+// These stage or record paths without writing the files themselves.
+const GIT_INDEX_ONLY = new Set(["add", "commit"]);
+const FIND_WRITES = new Set([
+  "-delete",
+  "-exec",
+  "-execdir",
+  "-ok",
+  "-okdir",
+  "-fprint",
+  "-fprint0",
+  "-fprintf",
+  "-fls",
+]);
+
+/** Subcommand and the `-C` directories of a git command line. */
+function gitGlobals(argv) {
+  let k = 1;
+  const dirs = [];
+  while (k < argv.length) {
+    const t = argv[k].text;
+    if (!t.startsWith("-")) break;
+    const [name] = t.split("=");
+    if (GIT_VALUE_OPTS.has(name)) {
+      if (t.includes("=") && name.startsWith("--")) {
+        k++;
+        continue;
+      }
+      if (name === "-C" && argv[k + 1]) dirs.push(argv[k + 1]);
+      k += 2;
+      continue;
+    }
+    k++;
+  }
+  return { sub: argv[k]?.text ?? null, rest: argv.slice(k + 1), dirs };
+}
+
+const writesOutputFlag = (a) =>
+  a === "-o" ||
+  (a.startsWith("-o") && !a.startsWith("--")) ||
+  prefixOf(a, "--output", 4) ||
+  prefixOf(a, "--output-file", 4);
+
+function isReadOnlyForm(argv, base, g) {
+  const args = argv.slice(1).map((w) => w.text);
+  if (base === "find") return !args.some((a) => FIND_WRITES.has(a));
+  if (base === "sort") {
+    return !args.some(
+      (a) =>
+        /^-[^-]*o/.test(a) ||
+        prefixOf(a, "--output", 4) ||
+        prefixOf(a, "--compress-program", 4),
+    );
+  }
+  if (RO_HEADS.has(base)) return true;
+  if (base === "git" && g.sub) {
+    if (GIT_INDEX_ONLY.has(g.sub)) return true;
+    if (GIT_READ.has(g.sub))
+      return !g.rest.some((w) => writesOutputFlag(w.text));
+    return false;
+  }
+  if (base === "npx" || base === "prettier") {
+    // `prettier --check` reads; `--write` does not.
+    const isPrettier = base === "prettier" || args[0] === "prettier";
+    return (
+      isPrettier &&
+      args.some((a) =>
+        ["--check", "-c", "--list-different", "-l"].includes(a),
+      ) &&
+      !args.some((a) => ["--write", "-w"].includes(a))
+    );
+  }
+  return false;
+}
+
+const PROTECT_HELP =
+  "The guard hooks, .claude/ config and git hooks/config are the maintainer's: " +
+  "a command that can write them is denied (reading is fine). Change them on a " +
+  "branch in a worktree (.claude/worktrees/<name>) and let the maintainer merge " +
+  "(docs/CONDUCTOR.md, Honest limits).";
+
+const show = (s) => s.replace(/\0/g, "$…");
+
+function checkProtection(rawArgv, argv, redirs, ctx) {
+  const base = argv.length ? baseName(argv[0]) : "";
+  let cwds = ctx.cwds;
+  let g = { sub: null, rest: [], dirs: [] };
+  if (base === "git") {
+    g = gitGlobals(argv);
+    for (const d of g.dirs) {
+      cwds = cwds.map((c) =>
+        c === null || d.exp ? null : path.resolve(c, d.text),
+      );
+    }
+  }
+
+  let fileRedirect = false;
+  for (const r of redirs) {
+    if (!isWriteRedirect(r) || isBenignSink(r.target)) continue;
+    fileRedirect = true;
+    const t = r.target;
+    if (t.exp || t.glob) {
+      return deny(
+        `Blocked: output redirection (${r.op}) to "${show(t.text)}", a path built from a variable, glob or substitution, so it cannot be checked against the protected files. Redirect to a literal path. ${PROTECT_HELP}`,
+      );
+    }
+    if (touchesProtected(t.text, ctx.cwds)) {
+      return deny(
+        `Blocked: output redirection (${r.op}) to ${t.text}. ${PROTECT_HELP}`,
+      );
+    }
+  }
+
+  const readOnly = isReadOnlyForm(argv, base, g);
+  const prose = ["git", "gh", "echo", "printf"].includes(base);
+  const reparsed = SHELLS.has(base) || ["eval", "env", "watch"].includes(base);
+  let hit = null;
+  for (const w of rawArgv) {
+    const t = w.text;
+    // Prose (a commit message, a PR body) and strings that are parsed again
+    // as commands are judged elsewhere; real path operands have no spaces.
+    if ((prose || reparsed) && /\s/.test(t)) continue;
+    if (
+      (base === "bash" || base === "sh") &&
+      t === ".claude/scripts/check-merged-prs.sh"
+    ) {
+      continue;
+    }
+    if (touchesProtected(t, cwds)) {
+      hit = t;
+      break;
+    }
+    if (!readOnly && !prose && /core\.hookspath/i.test(t)) {
+      hit = t;
+      break;
+    }
+  }
+  if (hit !== null && !readOnly) {
+    return deny(
+      `Blocked: \`${show(base || "(redirection)")}\` names ${show(hit)}, and it is not a read-only command. ${PROTECT_HELP}`,
+    );
+  }
+  if (hit !== null && fileRedirect) {
+    return deny(
+      `Blocked: a command reading ${show(hit)} with an output redirection. ${PROTECT_HELP}`,
+    );
+  }
+
+  if (
+    !readOnly &&
+    !["cd", "pushd", "popd"].includes(base) &&
+    ctx.cwds.some((c) => c !== null && isProtectedAbs(c))
+  ) {
+    return deny(
+      `Blocked: the working directory is inside a protected area, and \`${show(base)}\` is not a read-only command. ${PROTECT_HELP}`,
+    );
+  }
+  return null;
+}
+
 /* --- git ---------------------------------------------------------- */
 
 const GIT_VALUE_OPTS = new Set([
@@ -598,7 +946,10 @@ const PUSH_BOOL_LONG = new Set([
   "--ipv6",
 ]);
 const PUSH_BOOL_SHORT = new Set(["u", "q", "v", "n", "4", "6"]);
-const BRANCH_RE = /^claude\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
+// Every segment starts with a letter, digit or underscore (git refuses a
+// leading dot, and a leading dash would read as an option) and does not end
+// in a dot. Nothing outside [A-Za-z0-9._-] is a branch an agent may push.
+const BRANCH_RE = /^claude(\/[A-Za-z0-9_]([A-Za-z0-9._-]*[A-Za-z0-9_-])?)+$/;
 
 const PUSH_HELP =
   "Agents may push only `claude/*` branches by explicit name: " +
@@ -666,7 +1017,9 @@ function checkGitPush(args) {
     }
     const parts = spec.split(":");
     const valid = (b) =>
-      BRANCH_RE.test(b) && !b.includes("..") && !b.endsWith(".lock");
+      BRANCH_RE.test(b) &&
+      !b.includes("..") &&
+      !b.split("/").some((seg) => seg.endsWith(".lock"));
     if (parts.length === 1 && valid(parts[0])) continue;
     if (parts.length === 2 && parts[0] === parts[1] && valid(parts[0]))
       continue;
@@ -693,6 +1046,86 @@ const prefixOf = (arg, full, min) => {
   return arg.startsWith("--") && name.length >= min && full.startsWith(name);
 };
 
+/** `git config`: reads are fine; any write, and `-f/--file`, are not. */
+function checkGitConfig(args) {
+  const WRITE_FLAGS = new Set([
+    "--add",
+    "--unset",
+    "--unset-all",
+    "--replace-all",
+    "--rename-section",
+    "--remove-section",
+    "--edit",
+    "--set",
+  ]);
+  const readFlags = [
+    "--get",
+    "--get-all",
+    "--get-regexp",
+    "--get-urlmatch",
+    "--list",
+    "--show-origin",
+    "--show-scope",
+    "--name-only",
+  ];
+  const deniedConfig = (what) =>
+    deny(
+      `Blocked: \`git config ${what}\` writes git configuration (hooks, aliases, remotes, signing, identity). That is a maintainer change; reading with \`git config --get <key>\` is fine.`,
+    );
+  let positional = 0;
+  let read = false;
+  let write = false;
+  for (let k = 0; k < args.length; k++) {
+    const t = args[k].text;
+    if (t === "--") continue;
+    if (t.startsWith("--")) {
+      const name = t.split("=")[0];
+      if (prefixOf(t, "--file", 6)) return deniedConfig(t);
+      if (WRITE_FLAGS.has(name)) write = true;
+      else if (readFlags.some((f) => f === name || prefixOf(t, f, 6))) {
+        read = true;
+      } else if (["--type", "--default", "--blob"].includes(name)) {
+        if (!t.includes("=")) k++;
+      }
+      continue;
+    }
+    if (t.startsWith("-") && t.length > 1) {
+      if (/f/.test(t)) return deniedConfig(t);
+      if (/e/.test(t)) write = true;
+      if (/l/.test(t)) read = true;
+      if (/t/.test(t) && t.endsWith("t")) k++;
+      continue;
+    }
+    positional++;
+  }
+  if (write || (!read && positional >= 2)) return deniedConfig("(write form)");
+  return null;
+}
+
+/** fetch / pull / ls-remote / clone / archive: no helper programs. */
+function checkGitTransport(name, args) {
+  for (const a of args) {
+    const t = a.text;
+    if (t === "--") break;
+    const flag = t.startsWith("--")
+      ? ["--upload-pack", "--receive-pack", "--exec", "--upload-archive"].some(
+          (f) => prefixOf(t, f, 5),
+        )
+      : t.startsWith("-") && /^-[A-Za-z0-9]*u/.test(t);
+    if (/:\+?(refs\/)?remotes\//.test(t)) {
+      return deny(
+        `Blocked: \`git ${name} ${t}\` writes a remote-tracking ref by hand. origin/main is what the merge-script gate compares against; \`git fetch origin\` updates it honestly.`,
+      );
+    }
+    if (flag || /^(ext|fd)::/.test(t)) {
+      return deny(
+        `Blocked: \`git ${name} ${t}\` names a program git would run (--upload-pack, -u, --receive-pack, --exec) or an \`ext::\` transport. That is arbitrary command execution.`,
+      );
+    }
+  }
+  return null;
+}
+
 function checkGit(argv, ctx) {
   let k = 1;
   let dir = null;
@@ -701,6 +1134,11 @@ function checkGit(argv, ctx) {
     const t = w.text;
     if (!t.startsWith("-")) break;
     const [name] = t.split("=");
+    if (["--git-dir", "--work-tree", "--exec-path"].includes(name)) {
+      return deny(
+        `Blocked: \`git ${name}\` points git at a different repository, work tree or helper directory, so the checks on the command cannot be trusted.`,
+      );
+    }
     if (GIT_VALUE_OPTS.has(name)) {
       let val;
       if (t.includes("=") && name.startsWith("--"))
@@ -734,6 +1172,12 @@ function checkGit(argv, ctx) {
   const name = sub.text;
 
   if (name === "push") return checkGitPush(args);
+
+  if (name === "update-ref" || name === "symbolic-ref") {
+    return deny(
+      `Blocked: \`git ${name}\` moves refs by hand (it could make origin/main say whatever the merge-script gate should compare against). \`git fetch\` updates remote-tracking refs honestly.`,
+    );
+  }
 
   if (name === "send-pack") {
     return deny(
@@ -813,15 +1257,33 @@ function checkGit(argv, ctx) {
     return null;
   }
 
-  if (name === "config") {
-    for (const a of args) {
-      if (RISKY_GIT_CONFIG.test(a.text)) {
-        return deny(
-          `Blocked: \`git config ${a.text}\` can swap hooks, aliases, remotes or signing. That is a maintainer change.`,
-        );
-      }
+  if (name === "config") return checkGitConfig(args);
+
+  if (name === "remote") {
+    const sub0 = args.find((a) => !a.text.startsWith("-"));
+    if (
+      sub0 &&
+      (!lit(sub0) ||
+        [
+          "add",
+          "set-url",
+          "rename",
+          "remove",
+          "rm",
+          "set-head",
+          "set-branches",
+        ].includes(sub0.text))
+    ) {
+      return deny(
+        `Blocked: \`git remote ${show(sub0.text)}\` rewires where pushes and fetches go (and so what the push checks mean). That is the maintainer's.`,
+      );
     }
     return null;
+  }
+
+  if (["fetch", "pull", "ls-remote", "clone", "archive"].includes(name)) {
+    const r = checkGitTransport(name, args);
+    if (r) return r;
   }
 
   if (name === "clean") {
@@ -920,7 +1382,113 @@ function checkGhApi(args) {
   return null;
 }
 
-function checkGh(argv) {
+const GH_REPO_OK = "sandgraal/letstalkcdc";
+const SECRET_NAME =
+  /^(id_(rsa|dsa|ecdsa|ed25519)|credentials?|\.env.*|\.npmrc|\.netrc)|\.(pem|key|p12|pfx|jks|keystore|env)$/i;
+
+/** Is `p` (absolute) somewhere a PR body may be read from? */
+function bodyFilePathOk(p, cwd) {
+  const roots = safeRoots();
+  const wt = WORKTREE_RE.exec(`${cwd}/`);
+  if (wt) roots.push(cwd.slice(0, wt.index + wt[0].length - 1));
+  else if (cwd !== "/" && cwd !== os.homedir()) roots.push(cwd);
+  for (const cand of [p, realish(p)]) {
+    const root = roots
+      .flatMap((r) => [r, realish(r)])
+      .find((r) => cand.startsWith(`${r}/`));
+    if (!root) return false;
+    for (const comp of cand.slice(root.length + 1).split("/")) {
+      if (comp.startsWith(".") || SECRET_NAME.test(comp)) return false;
+    }
+  }
+  return true;
+}
+
+function checkGhFileArg(w, flag, ctx) {
+  const why =
+    "A PR or issue body may be read only from a file inside the current worktree or the OS temp directory that is not a dotfile, key, credential or env file.";
+  if (!w || w.exp || w.glob) {
+    return deny(
+      `Blocked: \`gh ... ${flag}\` with a path built from a variable, glob or substitution, so it cannot be checked. ${why}`,
+    );
+  }
+  if (w.text === "-") {
+    return deny(
+      `Blocked: \`gh ... ${flag} -\` reads the body from stdin, so its source cannot be checked. Write the body to a file first. ${why}`,
+    );
+  }
+  for (const cwd of ctx.cwds) {
+    if (cwd === null || !bodyFilePathOk(path.resolve(cwd, w.text), cwd)) {
+      return deny(
+        `Blocked: \`gh ... ${flag} ${w.text}\` would send that file's contents to GitHub. ${why}`,
+      );
+    }
+  }
+  return null;
+}
+
+/** gh pr|issue create|comment|edit|update-branch: where, from what, how. */
+function checkGhWrite(group, sub, args, ctx) {
+  for (let k = 0; k < args.length; k++) {
+    const w = args[k];
+    const t = w.text;
+    if (t === "--") break;
+    if (w.sub && sub !== "update-branch") {
+      return deny(
+        `Blocked: \`gh ${group} ${sub}\` with a command or process substitution in its arguments (\`$(...)\`, backticks, \`<(...)\`) can read any file into the body. Write the text to a file in the temp directory and pass \`--body-file\`.`,
+      );
+    }
+    let repo;
+    if (t === "-R" || t === "--repo") {
+      repo = args[k + 1];
+      k++;
+    } else if (t.startsWith("--repo=")) {
+      repo = { ...w, text: t.slice(7) };
+    } else if (/^-R./.test(t) && !t.startsWith("--")) {
+      repo = { ...w, text: t.slice(2).replace(/^=/, "") };
+    }
+    if (repo !== undefined && (repo.exp || repo.text !== GH_REPO_OK)) {
+      return deny(
+        `Blocked: \`gh ${group} ${sub}\` aimed at "${show(text(repo))}". Agents may act only on ${GH_REPO_OK}.`,
+      );
+    }
+    if (sub === "update-branch" && t === "--rebase") {
+      return deny(
+        "Blocked: `gh pr update-branch --rebase` rewrites the PR branch's history. Use the default merge update.",
+      );
+    }
+    if (sub === "update-branch") continue;
+    for (const flag of ["--body-file", "--template"]) {
+      if (t === flag) {
+        const r = checkGhFileArg(args[k + 1], flag, ctx);
+        if (r) return r;
+        k++;
+      } else if (t.startsWith(`${flag}=`)) {
+        const r = checkGhFileArg(
+          { ...w, text: t.slice(flag.length + 1) },
+          flag,
+          ctx,
+        );
+        if (r) return r;
+      }
+    }
+    if (t === "-F" || t === "-T") {
+      const r = checkGhFileArg(args[k + 1], t, ctx);
+      if (r) return r;
+      k++;
+    } else if (/^-[FT]./.test(t)) {
+      const r = checkGhFileArg(
+        { ...w, text: t.slice(2).replace(/^=/, "") },
+        t.slice(0, 2),
+        ctx,
+      );
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+function checkGh(argv, ctx) {
   const args = argv.slice(1);
   const pos = [];
   const rest = [];
@@ -943,6 +1511,14 @@ function checkGh(argv) {
     );
   }
   if (g === "api") return checkGhApi(args.slice(rest[0] + 1));
+  if (
+    (g === "pr" &&
+      ["create", "comment", "edit", "update-branch"].includes(s)) ||
+    (g === "issue" && ["create", "comment", "edit"].includes(s))
+  ) {
+    const r = checkGhWrite(g, s, args, ctx);
+    if (r) return r;
+  }
   if (
     g === "repo" &&
     ["edit", "delete", "archive", "unarchive", "rename"].includes(s)
@@ -996,13 +1572,109 @@ const NODE_VALUE_OPTS = new Set([
   "--inspect-port",
 ]);
 
-function checkNode(argv) {
+/* --- the merge script runs only from an unmodified origin/main ------ */
+
+const MERGE_SCRIPT = "scripts/merge-pr.mjs";
+// The full ref name: a local branch or tag called `origin/main` would win
+// over the short name.
+const MAIN_REF = "refs/remotes/origin/main";
+const MERGE_HELP =
+  "merge-pr.mjs or package.json differs from origin/main: run it from an up-to-date main checkout";
+
+/** Run git with a clean environment. Fails closed: `ok` only on exit 0. */
+function git(cwd, args) {
+  const env = { ...process.env };
+  for (const k of Object.keys(env)) if (k.startsWith("GIT_")) delete env[k];
+  const r = spawnSync("git", ["-c", "core.fsmonitor=false", ...args], {
+    cwd,
+    env,
+    encoding: "utf8",
+    timeout: 5000,
+  });
+  return {
+    ok: !r.error && r.status === 0,
+    out: typeof r.stdout === "string" ? r.stdout.trim() : "",
+  };
+}
+
+/**
+ * `script` is the path given to node (or null for `npm run merge-pr`).
+ * Allowed only if scripts/merge-pr.mjs and package.json in the working tree
+ * are byte-identical to origin/main. Skipped only when there is nothing to
+ * run (the script is not in the tree at all).
+ */
+function mergeGate(script, ctx) {
+  for (const cwd of ctx.cwds) {
+    if (cwd === null) {
+      return deny(
+        `Blocked: the merge script was started from a directory that cannot be determined. ${MERGE_HELP}.`,
+      );
+    }
+    let dir;
+    let file = null;
+    if (script !== null) {
+      file = path.resolve(cwd, script);
+      if (!fs.existsSync(file)) continue;
+      dir = path.dirname(file);
+    } else {
+      let d = cwd;
+      while (!fs.existsSync(path.join(d, "package.json"))) {
+        const up = path.dirname(d);
+        if (up === d) break;
+        d = up;
+      }
+      if (!fs.existsSync(path.join(d, "package.json"))) continue;
+      let pkg;
+      try {
+        pkg = JSON.parse(fs.readFileSync(path.join(d, "package.json"), "utf8"));
+      } catch {
+        pkg = { scripts: { "merge-pr": "unreadable package.json" } };
+      }
+      const defined = pkg?.scripts?.["merge-pr"] !== undefined;
+      if (!defined && !fs.existsSync(path.join(d, MERGE_SCRIPT))) continue;
+      dir = d;
+    }
+    const top = git(dir, ["rev-parse", "--show-toplevel"]);
+    const expected = top.ok ? path.join(top.out, MERGE_SCRIPT) : null;
+    const same = (a, b) => {
+      try {
+        return fs.realpathSync(a) === fs.realpathSync(b);
+      } catch {
+        return false;
+      }
+    };
+    if (
+      !top.ok ||
+      (file !== null && !same(file, expected)) ||
+      (file === null && !same(dir, top.out))
+    ) {
+      return deny(
+        `Blocked: ${MERGE_HELP} (could not tie the script to a git checkout).`,
+      );
+    }
+    const files = [MERGE_SCRIPT, "package.json"];
+    let clean = git(top.out, ["diff", "--quiet", MAIN_REF, "--", ...files]).ok;
+    for (const f of files) {
+      // Index flags (assume-unchanged) and untracked files hide from
+      // `git diff`; comparing the blob hashes does not.
+      const want = git(top.out, ["rev-parse", "--verify", `${MAIN_REF}:${f}`]);
+      const have = git(top.out, ["hash-object", "--no-filters", "--", f]);
+      if (!want.ok || !have.ok || want.out !== have.out) clean = false;
+    }
+    if (!clean) return deny(`Blocked: ${MERGE_HELP}.`);
+  }
+  return null;
+}
+
+function checkNode(argv, ctx) {
   const args = argv.slice(1);
   let script = false;
+  let scriptWord = null;
   for (let k = 0; k < args.length; k++) {
     const t = args[k].text;
     if (t === "--") {
       script = args.length > k + 1;
+      scriptWord = args[k + 1] ?? null;
       break;
     }
     if (t === "-") {
@@ -1012,6 +1684,7 @@ function checkNode(argv) {
     }
     if (!t.startsWith("-")) {
       script = true;
+      scriptWord = args[k];
       break;
     }
     const [name] = t.split("=");
@@ -1028,6 +1701,14 @@ function checkNode(argv) {
   }
   if (!script && args.length === 0) {
     return deny("Blocked: bare `node` starts a REPL or reads stdin.");
+  }
+  if (scriptWord && path.basename(scriptWord.text) === "merge-pr.mjs") {
+    if (scriptWord.exp || scriptWord.glob) {
+      return deny(
+        `Blocked: the merge script path is built from a variable. ${MERGE_HELP}.`,
+      );
+    }
+    return mergeGate(scriptWord.text, ctx);
   }
   return null;
 }
@@ -1129,23 +1810,37 @@ function checkFind(argv, ctx, depth) {
 /* --- dispatch ----------------------------------------------------- */
 
 const RISKY_ENV =
-  /^(GIT_CONFIG|GIT_SSH|GIT_EXEC_PATH|GIT_ASKPASS|GIT_EXTERNAL_DIFF|GIT_PROXY|GIT_TEMPLATE_DIR|PATH=|BASH_ENV|ENV=|LD_|DYLD_|NODE_OPTIONS|GH_TOKEN|GITHUB_TOKEN|GH_ENTERPRISE_TOKEN|GH_CONFIG_DIR)/;
+  /^(GIT_CONFIG|GIT_SSH|GIT_EXEC_PATH|GIT_ASKPASS|GIT_EXTERNAL_DIFF|GIT_PROXY|GIT_TEMPLATE_DIR|GIT_DIR|GIT_WORK_TREE|GIT_COMMON_DIR|GIT_INDEX_FILE|PATH=|BASH_ENV|ENV=|LD_|DYLD_|NODE_OPTIONS|GH_TOKEN|GITHUB_TOKEN|GH_ENTERPRISE_TOKEN|GH_CONFIG_DIR)/;
+// Denied wherever git or gh is also on the command line: they move the
+// config, hooks or target repository that git and gh read.
+const RISKY_ENV_GITGH =
+  /^(HUSKY(_[A-Z_]*)?|SKIP|HOME|XDG_CONFIG_HOME|GH_HOST)=/;
+const GITGH_WORD = /(^|[\s/;&|(`'"=])(git|gh)(?=[\s;&|)`'"]|$)/;
 
-function checkEnvAssignment(assignment) {
-  if (!RISKY_ENV.test(assignment)) return null;
-  return deny(
-    `Blocked: setting ${assignment.split("=")[0]} can redirect git or gh, swap hooks or change the logged-in account. That is the maintainer's.`,
-  );
+function checkEnvAssignment(assignment, ctx) {
+  const deniedEnv = () =>
+    deny(
+      `Blocked: setting ${assignment.split("=")[0]} can redirect git or gh, skip or swap hooks, or change the logged-in account or target repository. That is the maintainer's.`,
+    );
+  if (RISKY_ENV.test(assignment)) return deniedEnv();
+  if (ctx.gitish) {
+    if (RISKY_ENV_GITGH.test(assignment)) return deniedEnv();
+    const repo = /^GH_REPO=([\s\S]*)$/.exec(assignment);
+    if (repo && repo[1] !== GH_REPO_OK) return deniedEnv();
+  }
+  return null;
 }
 
-function checkSimple(rawArgv, ctx, depth) {
+function checkSimple(rawArgv, ctx, depth, redirs = []) {
   for (const w of rawArgv) {
     if (!w.quoted && RESERVED.has(w.text)) continue;
     if (!w.assign) break;
-    const r = checkEnvAssignment(w.text);
+    const r = checkEnvAssignment(w.text, ctx);
     if (r) return r;
   }
   const argv = stripPrefix(rawArgv);
+  const protectedHit = checkProtection(rawArgv, argv, redirs, ctx);
+  if (protectedHit) return protectedHit;
   if (argv.length === 0) return null;
   const head = argv[0];
   // `[` and `[[` are the test builtin, not a glob.
@@ -1156,10 +1851,24 @@ function checkSimple(rawArgv, ctx, depth) {
     );
   }
   const base = baseName(head);
-  if (base === "cd" || base === "pushd" || base === "popd") ctx.cdSeen = true;
+  if (base === "cd" || base === "pushd" || base === "popd") {
+    ctx.cdSeen = true;
+    // Track every directory later commands might run in (a `cd` can sit in a
+    // subshell or after `||`, so the old ones stay candidates).
+    const operand = argv.slice(1).find((w) => !w.text.startsWith("-"));
+    const next = new Set(ctx.cwds);
+    if (!operand || operand.exp || operand.glob || operand.text === "-") {
+      next.add(null);
+    } else {
+      for (const c of ctx.cwds) {
+        next.add(c === null ? null : path.resolve(c, operand.text));
+      }
+    }
+    ctx.cwds = [...next];
+  }
   if (["export", "declare", "typeset", "readonly", "local"].includes(base)) {
     for (const w of argv.slice(1)) {
-      const r = checkEnvAssignment(w.text);
+      const r = checkEnvAssignment(w.text, ctx);
       if (r) return r;
     }
   }
@@ -1180,9 +1889,18 @@ function checkSimple(rawArgv, ctx, depth) {
           );
         }
       }
-      // `env -S "git push …"` and `watch "…"` carry a whole command string.
+      if (base === "env" && w.assign) {
+        const r = checkEnvAssignment(w.text, ctx);
+        if (r) return r;
+      }
+      // `env -S "git push …"`, `env --split-string=…` and `watch "…"` carry
+      // a whole command string (-S and --split-string may glue it on).
       if ((base === "env" || base === "watch") && /\s/.test(w.text) && !w.exp) {
-        const r = checkString(w.text, ctx, depth + 1);
+        const body =
+          base === "env"
+            ? w.text.replace(/^(--split-string=|-[A-Za-z]*S)/, "")
+            : w.text;
+        const r = checkString(body, ctx, depth + 1);
         if (r) return r;
       }
       const r = checkLeaf(argv.slice(k), ctx, depth);
@@ -1200,8 +1918,32 @@ function checkLeaf(rawArgv, ctx, depth) {
   if (!lit(head)) return null; // an operand of a wrapper, not a command name
   const base = baseName(head);
   if (base === "git") return checkGit(argv, ctx);
-  if (base === "gh") return checkGh(argv);
-  if (base === "node" || base === "nodejs") return checkNode(argv);
+  if (base === "gh") return checkGh(argv, ctx);
+  if (base === "node" || base === "nodejs") return checkNode(argv, ctx);
+  if (["npm", "pnpm", "yarn", "bun"].includes(base)) {
+    if (argv.slice(1).some((w) => w.text === "merge-pr")) {
+      return mergeGate(null, ctx);
+    }
+    return null;
+  }
+  if (base === "rg" || base === "ripgrep") {
+    for (const w of argv.slice(1)) {
+      if (w.text === "--") break;
+      const name = w.text.split("=")[0];
+      if (name.startsWith("--pre") || name === "--hostname-bin") {
+        return deny(
+          `Blocked: \`rg ${name}\` runs a program on every file it searches. Search with plain \`rg\` and filter the output.`,
+        );
+      }
+    }
+    return null;
+  }
+  if (base === "sort") {
+    if (argv.slice(1).some((w) => prefixOf(w.text, "--compress-program", 4))) {
+      return deny("Blocked: `sort --compress-program` runs a program.");
+    }
+    return null;
+  }
   if (["awk", "gawk", "mawk", "nawk"].includes(base)) {
     return deny(
       "Blocked: `awk` is an inline scripting language and is not allowed. Use `rg`, `jq`, `cut` or a script file.",
@@ -1247,9 +1989,15 @@ function checkString(command, ctx, depth) {
     throw e;
   }
 
-  for (const { argv } of cmds) {
-    const r = checkSimple(argv, ctx, depth);
-    if (r) return r;
+  const prevGitish = ctx.gitish;
+  ctx.gitish = cmds.some((c) => c.argv.some((w) => GITGH_WORD.test(w.text)));
+  try {
+    for (const { argv, redirs } of cmds) {
+      const r = checkSimple(argv, ctx, depth, redirs);
+      if (r) return r;
+    }
+  } finally {
+    ctx.gitish = prevGitish;
   }
 
   // Downloads piped into an interpreter.
@@ -1301,7 +2049,10 @@ export function checkBashCall(input) {
       typeof input.cwd === "string" && input.cwd ? input.cwd : process.cwd(),
     ),
     cdSeen: false,
+    cwds: [],
+    gitish: false,
   };
+  ctx.cwds = [ctx.cwd];
   const r = checkString(command, ctx, 0);
   return r ?? { ok: true };
 }

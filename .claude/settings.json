@@ -134,6 +134,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.mjs\" || exit 2",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionStart": [
