@@ -23,8 +23,9 @@ test-results/
 .lighthouseci/
 
 # Per-user state for the merged-PR auto-continue hook (see
-# .claude/scripts/check-merged-prs.sh). Stores the last-acknowledged
-# PR number; resetting it just means the next merge re-triggers.
+# .claude/scripts/check-merged-prs.sh). Stores the highest acknowledged
+# PR number. Deleting it is safe: the next run re-initialises it to the
+# newest merged claude/* PR and stays silent; it does not replay old merges.
 .claude/.merge-watcher-state.json
 
 # Git worktrees created by isolated subagents (see docs/CONDUCTOR.md).

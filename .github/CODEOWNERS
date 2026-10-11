@@ -8,8 +8,6 @@
 /CLAUDE.md                      @sandgraal
 /AGENTS.md                      @sandgraal
 /.claude/                       @sandgraal
-/.chatgpt-context.yml           @sandgraal
-/.github/copilot-instructions.md @sandgraal
 
 # CI / deploy
 /.github/workflows/             @sandgraal

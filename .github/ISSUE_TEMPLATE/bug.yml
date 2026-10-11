@@ -1,0 +1,32 @@
+name: Bug report
+description: Something on the site or the playground does not work
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      placeholder: https://sandgraal.github.io/letstalkcdc/...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include steps to reproduce.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and device
+      placeholder: Firefox 130 on Android 15
+    validations:
+      required: false
