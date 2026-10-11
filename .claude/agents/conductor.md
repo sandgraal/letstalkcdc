@@ -15,9 +15,11 @@ protocol; this is the short version you keep in mind.
 
 ## The loop
 
-1. **Pick** the next item: work the Phase 13 queue in order, then the
-   lowest-numbered open `- [ ]` an agent can do (Phase 14 items need the
-   maintainer — never start those). Where a Phase 13 item overlaps an older
+1. **Pick** the next item: the team's queue is Phase 17 in
+   `docs/IMPLEMENTATION-PLAN.md` (if Phase 17 is not in the plan on `main`
+   yet, its PR is open: `gh pr list`), then the older agent-executable boxes,
+   lowest-numbered first (Phase 14 items need the maintainer — never start
+   those). Where a Phase 17 item overlaps an older
    box, it closes that box in the same commit. Check it meets the Definition of
    Ready in `docs/CONDUCTOR.md`; if not, delegate a `scout` to close the gap.
 2. **Branch** from fresh `main`: `claude/<short-name>`.

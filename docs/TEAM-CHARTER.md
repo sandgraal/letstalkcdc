@@ -4,7 +4,12 @@ How the agent team for Let's Talk CDC starts cold and runs for weeks while
 the maintainer reads one weekly digest. This is the operating manual. The
 protocol it sits on is [`CONDUCTOR.md`](CONDUCTOR.md) (roster, tiers, merge
 gate); the repo's mechanics are in [`../CLAUDE.md`](../CLAUDE.md); what the
-maintainer decided is in `docs/DECISIONS.md` (P17-5).
+maintainer decided is in [`DECISIONS.md`](DECISIONS.md).
+
+This charter was added in a PR that touches `.claude/agents/**` and
+`.claude/skills/**`, which are Tier 3 paths, so that PR is merged by the
+maintainer by hand, not through the merge script. The same holds for any later
+change to those paths.
 
 ## Mission
 
@@ -18,6 +23,28 @@ not claimed. The project spends nothing recurring (free tiers only, no paid
 APIs), and the maintainer gives it about an hour a week outward-facing, so
 the pace is set by what that hour can read, not by what the team can write.
 Accuracy beats volume.
+
+## Where each file lives until merged
+
+Several pieces this charter refers to were still in open PRs when it was
+written. Do not assume a file exists: check with `ls`, and if it is missing,
+read it from its branch (`git show <branch>:<path>`) or find its PR with
+`gh pr list`. Anything marked "once present" below is conditional on the file
+existing in your checkout, and so are the commands that depend on it.
+
+| Piece                                                                                         | State when written | Where to read it if absent             |
+| --------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------- |
+| `docs/DECISIONS.md`, `docs/MAINTAINER-TASKS.md`, `scripts/worktree-prune.sh`                  | on `main`          | n/a                                    |
+| Lean `CLAUDE.md`, `.claude/rules/`, `.claude/skills/` (new-module, content-update, seo-check) | on `main`          | n/a                                    |
+| `scripts/merge-pr.mjs` (the merge gate)                                                       | not on `main` yet  | branch `claude/p17-2-merge-gate`       |
+| `scripts/thesis-lint.mjs` and `npm run lint:thesis`                                           | not on `main` yet  | branch `claude/p17-7-thesis-lint`      |
+| Autonomy charter in `CONDUCTOR.md` and the guard hooks in `.claude/hooks/`                    | not on `main` yet  | branch `claude/p17-1-autonomy-charter` |
+| Phase 17 in `docs/IMPLEMENTATION-PLAN.md`                                                     | not on `main` yet  | branch `claude/p17-9-phase-17`         |
+
+This charter is stacked on the autonomy-charter branch. Branches are
+published as their PRs open, so a branch may exist only locally for the person
+who made it; `gh pr list` is the shared index. The `weekly-digest` skill and
+the `technical-editor` and `growth-writer` roles arrive with this PR.
 
 ## Day-1 checklist (cold start)
 
@@ -36,20 +63,22 @@ the three tiers and the merge command from memory):
 
 1. [`../CLAUDE.md`](../CLAUDE.md): commands, pipeline, anti-patterns.
 2. [`CONDUCTOR.md`](CONDUCTOR.md): roster, loop, Definition of Done,
-   Autonomy charter (tiers 0 to 3, the merge script).
+   Autonomy charter (tiers 0 to 3, the merge script), once present.
 3. This file.
 4. [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md): a dated snapshot. The
    `main` commit it was measured at is named near the top.
 5. [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md): sections 4 (content accuracy and
    the one-page checklist), 6 (open work), 9 and 10 (questions, repo map).
-6. `docs/DECISIONS.md` (P17-5): what is decided, what is default, what is
+6. [`DECISIONS.md`](DECISIONS.md): what is decided, what is default, what is
    pending.
-7. `docs/MAINTAINER-TASKS.md` (P17-8): what only the maintainer can do, and
-   what is waiting on them.
-8. [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md): the checklist.
+7. [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md): what only the maintainer can
+   do, and what is waiting on them.
+8. [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md): the checklist. Phase 17
+   is the team's queue; until its PR merges it is on branch
+   `claude/p17-9-phase-17` (`git show claude/p17-9-phase-17:docs/IMPLEMENTATION-PLAN.md`).
 
-If a file above is not on `main` yet, its PR is open (`gh pr list`); read it
-from the branch with `git show <branch>:<path>` and say so in your notes.
+If a file above is not in your checkout, see the table above and say in your
+notes that you read it from a branch.
 
 The state doc is a snapshot, so find out what moved since it was written:
 
@@ -62,8 +91,8 @@ writing, `bd5a2a4`). Read every subject line; open any PR that changes
 `docs/`, `.claude/` or a content page. Believe the repo over the snapshot
 when they disagree.
 
-Then pick work: the lowest-numbered open agent-executable box (see
-[Backlog map](#backlog-map)), check it against the Definition of Ready in
+Then pick work: the next Phase 17 item, then older agent-executable boxes
+(see [Backlog map](#backlog-map)), check it against the Definition of Ready in
 `CONDUCTOR.md`, and brief a role.
 
 ## Roles and when to use each
@@ -88,8 +117,8 @@ Use-when notes:
 
 - `technical-editor` runs on every PR that adds or rewrites a page that
   teaches CDC, in addition to `reviewer`. It runs the page re-verification
-  checklist (AUTOPSY-BRIEF section 4), the page's test and the thesis lint,
-  and checks version claims against `src/_data/toolVersions.mjs`. It cannot
+  checklist (AUTOPSY-BRIEF section 4), the page's test and the thesis lint
+  (once `npm run lint:thesis` exists), and checks version claims against `src/_data/toolVersions.mjs`. It cannot
   browse the web: whatever it lists under "needs maintainer or sme" goes in
   the PR body and the digest, not into the page as verified.
 - `growth-writer` drafts from merged changes and real numbers only. The
@@ -101,11 +130,19 @@ Use-when notes:
 
 ## Operating rhythm
 
+- **Instructions, not a sandbox.** The WIP limit below, "read-only" roles,
+  "no web access" and "never publishes" are conventions held by instruction
+  plus a missing edit tool. `growth-writer`, `technical-editor`, `scout`,
+  `verifier` and `reviewer` all hold Bash, so they behave that way because
+  they were told to. See "an instruction plus a missing tool, not a sandbox"
+  in [`CONDUCTOR.md`](CONDUCTOR.md). Reviews and the Definition of Done are
+  what catch a violation.
 - **Small PRs, one plan item each.** Short-lived `claude/<short-name>`
   branches. The checkbox flips in the PR that closes the item.
 - **WIP limit: the conductor keeps at most 3 of its own PRs open.** At 3,
   stop opening new ones: wait for CI, run the review, merge through
-  `node scripts/merge-pr.mjs <n> --execute`, then continue. A fourth open PR
+  `node scripts/merge-pr.mjs <n> --execute` (once that script is present;
+  until then the maintainer merges), then continue. A fourth open PR
   means review queue is the bottleneck, so the next action is to review,
   not to write.
 - **Never idle-wait.** While CI runs or a reviewer works, run roles in the
@@ -140,15 +177,19 @@ On top of the Definition of Done in `CONDUCTOR.md`:
 
 ## Weekly digest
 
-Once a week the conductor runs the `weekly-digest` skill
-([`../.claude/skills/weekly-digest/SKILL.md`](../.claude/skills/weekly-digest/SKILL.md)).
-It builds a one-screen digest and posts it as a GitHub issue titled
+Once a week the conductor reads
+[`../.claude/skills/weekly-digest/SKILL.md`](../.claude/skills/weekly-digest/SKILL.md)
+and follows it step by step (do not assume the Skill tool is available to a
+restricted-tools agent). It builds a one-screen digest and posts it as a GitHub issue titled
 `Weekly digest YYYY-MM-DD`: merged PRs and their plan items, open PRs, CI
 health, open plan boxes, content that needs the maintainer's human read
 (with page links and what to check), assistant feedback and analytics if
 readable, decisions needed with dates, and one `growth-writer` LinkedIn
 draft. Unknowns are written as unknown. The digest links evidence for every
-number and never invents one.
+number and never invents one. Because it is a public issue, assistant
+feedback appears as aggregates only and visitor-typed text is never quoted.
+The body is written to a file in the OS temp directory by a `scribe` and
+posted with `--body-file`, never inside quotes on a command line.
 
 ## Stop-and-ask triggers
 
@@ -182,16 +223,20 @@ Tier 3 change; the maintainer merges it by hand):
 
 1. Add `.claude/agents/sme-reviewer.md`: same frontmatter shape as
    `technical-editor`, tools `Read, Grep, Glob, Bash` only, `model:` set to
-   the full pinned ID the maintainer gave, a short body saying it fact-checks
-   thesis-bearing pages and never edits.
-2. Extend `tests/unit/agent-roster.test.js`: add `sme-reviewer` to the
-   expected role list and the read-only list, and add one assertion that
-   `agents["sme-reviewer"].model` equals that ID. The allowed-model check for
-   every other role stays exactly as it is, and the test must still fail if
-   any other role is pinned to the new ID.
-3. In `.claude/hooks/guard-agent-model.mjs`, add that ID (and only that ID)
-   to `ALLOWED_MODELS`, and add a test beside the existing deny cases showing
-   other stronger models are still refused.
+   the full pinned ID the maintainer gave (the role's frontmatter pins the
+   model), a short body saying it fact-checks thesis-bearing pages and never
+   edits.
+2. Extend `.claude/hooks/guard-agent-model.mjs` so the new ID is allowed
+   **only when the spawned `subagent_type` is `sme-reviewer`**. Do not add the
+   ID to the global `ALLOWED_MODELS` list: that would let any role be spawned
+   on it. Add tests beside the existing deny cases: `sme-reviewer` plus that
+   ID is allowed; `implementer` plus that ID is still denied; other stronger
+   models are still denied for every role.
+3. Extend `tests/unit/agent-roster.test.js`. Its `PINNED` list is global, so
+   add a per-role exception: `sme-reviewer` may be pinned to the new ID, every
+   other role may not. Add `sme-reviewer` to the expected role list and the
+   read-only list, and assert `agents["sme-reviewer"].model` equals the ID.
+   The test must still fail if any other role is pinned to the new ID.
 4. Add `sme-reviewer` to the conductor's `Agent(...)` list in
    `.claude/agents/conductor.md`, and to the roster table in `CONDUCTOR.md`.
 5. Check `.claude/settings.json` `availableModels` and the model aliases:
@@ -222,8 +267,9 @@ Clean up your worktrees before you stop.
 ## Backlog map
 
 - **Candidate work**: Phase 17 in `docs/IMPLEMENTATION-PLAN.md` is the team's
-  queue. Older agent-executable boxes in the plan (Phase 13 first) come
-  next. Phase 14 is the maintainer's register; do not start it.
+  queue (until its PR merges it lives on branch `claude/p17-9-phase-17`; see
+  the table above). Older agent-executable boxes in the plan come next,
+  lowest-numbered first. Phase 14 is the maintainer's register; do not start it.
 - **Content candidates** (`docs/DECISIONS.md`, "Content direction"):
   lakehouse table formats, CDC for AI (keeping vector stores and RAG
   indexes fresh), schema contracts, cost modelling, Flink CDC. Vendor

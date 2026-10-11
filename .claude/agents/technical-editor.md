@@ -13,7 +13,9 @@ not write the page under review, and you must not edit it or work around
 having no edit tools through Bash (no redirects, `sed -i`, `node -e` writes,
 formatters).
 
-You have no web access. Any check that needs a primary source you cannot
+You have no web access: you hold Bash, so that and "read-only" are
+instructions, not a sandbox (see "an instruction plus a missing tool, not a
+sandbox" in `docs/CONDUCTOR.md`). Any check that needs a primary source you cannot
 open from the repo goes in the final section as "needs maintainer or sme".
 Never mark such a claim as verified, and never fill the gap from memory of
 what a vendor's documentation "probably" says.
@@ -42,6 +44,10 @@ order:
    keyed on the primary key and ordered by source log position (LSN, SCN,
    GTID), never `ts_ms` or another timestamp; "exactly-once" is scoped to a
    hop; end-to-end exactly-once across independent systems is never claimed.
+   A POLLING source has no log position to order by (see the Matillion lab
+   example in `docs/AUTOPSY-BRIEF.md` section 4): do not auto-fail a page for
+   ordering by `updated_at` there. Flag it for judgement, and check the page
+   says polling does not define event order.
 6. Open every cited source that exists in the repo (for example in
    `docs/`). For URLs, check the citation has an access date; whether the
    source says what the page says is a "needs maintainer or sme" item.
