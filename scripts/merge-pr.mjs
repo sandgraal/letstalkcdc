@@ -19,12 +19,34 @@
 //               unclosed code fence fails the gate rather than being skipped.
 //   4b audit    the reviewer's report pasted verbatim as a PR comment so the
 //               review text survives on GitHub. Among the comments that contain
-//               a "Verdict:" line, the LATEST (by createdAt) must have the value
-//               exactly APPROVE or APPROVE WITH NITS (keyword case-insensitive,
-//               value exact), and at least one such approving comment must be
-//               200+ characters. A later REQUEST CHANGES comment refuses. The
-//               PR author's own comments are NOT excluded: every agent acts as
-//               the same GitHub account, so excluding them would block honest
+//               a Verdict, the LATEST (by createdAt) must itself be an approval
+//               (exactly APPROVE or APPROVE WITH NITS, keyword case-insensitive,
+//               value exact) AND be at least 200 characters, so a re-approval
+//               after a block has to carry a report; a short "Verdict: APPROVE"
+//               after a block does not pass on the strength of an older long
+//               one. A later REQUEST CHANGES comment refuses. Lines are
+//               normalised first (NFKC, so NBSP and the full-width colon fold
+//               to ASCII; invisible format characters dropped; leading `>`, `#`,
+//               `*`, `-`, `+`, backticks, `_`, `~`, `|` and "1." list markers
+//               stripped) and the gate FAILS CLOSED: any line that contains the
+//               word "verdict" (case-insensitive) and does not parse to an exact
+//               approving value counts as a non-approving verdict for its
+//               comment. That covers `**Verdict: REQUEST CHANGES**`,
+//               `## Verdict: ...`, list items, backtick spans, `Verdict - ...`,
+//               a value on the next line, and prose such as "my verdict is".
+//               Decoration around the VALUE (`**Verdict: APPROVE**`, backticks)
+//               still approves; anything before the word Verdict other than
+//               decoration (an emoji, "Final", HTML tags) does not. A quoted
+//               line (`> Verdict: ...`) is ignored for APPROVAL (quoting an old
+//               approval into a new comment approves nothing) but a quoted
+//               non-approving verdict still blocks. Corollaries: an approving
+//               report must not use the word "verdict" anywhere else, and a
+//               comment that quotes an old block and then approves is refused;
+//               post a fresh comment. A PR with 100 or more comments is refused
+//               ("too many comments to audit"): `gh pr view --json comments`
+//               may return only the first 100, so the newest could be unseen.
+//               The PR author's own comments are NOT excluded: every agent acts
+//               as the same GitHub account, so excluding them would block honest
 //               use. A long filler comment with an approving Verdict line passes;
 //               that is a documented limitation of a convention check.
 //   5  files    no changed file is on the maintainer-only list, and no changed
@@ -34,15 +56,22 @@
 //               merge result, NUL-delimited so non-ASCII paths cannot be hidden
 //               by git's quoting). Maintainer-only: .github/**, .claude/**
 //               (except .claude/css-baseline.sha256, which CSS PRs legitimately
-//               change), CLAUDE.md, AGENTS.md, docs/CONDUCTOR.md,
-//               docs/TEAM-CHARTER.md, docs/DECISIONS.md, .gitattributes,
-//               .gitmodules, .npmrc files, .husky/**, the test/lint/lighthouse
-//               configs, this script and its tests, supabase/**, CNAME,
-//               LICENSE*, and the npm manifests and lockfiles. Anything that
-//               steers agents or the pipeline is merged by a human.
+//               change, and only as a regular file: git must show mode 100644
+//               on both sides of the merge-result diff, or 000000 before for a
+//               new file, so a symlink or executable bit is refused),
+//               CLAUDE.md / AGENTS.md / CLAUDE.local.md / .mcp.json /
+//               .gitattributes / .gitmodules / .npmrc at ANY depth,
+//               docs/CONDUCTOR.md, docs/TEAM-CHARTER.md, docs/DECISIONS.md,
+//               .husky/**, .vscode/**, .devcontainer/**, the test/lint/
+//               lighthouse configs, this script and its tests, supabase/**,
+//               CNAME, LICENSE*, and the npm manifests and lockfiles. Anything
+//               that steers agents or the pipeline is merged by a human.
 //   6  merge    head merges cleanly onto current origin/main in a temporary
 //               worktree; if head is behind main, `npm test` must also pass there
-//               in a scrubbed environment (see Limits)
+//               in a scrubbed environment (see Limits). At the start, stale
+//               merge-pr-* and merge-pr-home-* temp dirs older than 24 h (left
+//               by a SIGKILL) are removed and `git worktree prune` is run;
+//               anything younger is never touched (another run may own it)
 //
 // WHAT THIS DOES NOT PROVE. Gates 4 and 4b are a CONVENTION check, not
 // authentication. Anyone who can edit the PR body or post a comment can write a
@@ -56,7 +85,8 @@
 // Just before merging, the head oid, state, draft flag, base, reviewDecision and
 // checks are re-read and gates 1-3 re-run; any change refuses the merge. The
 // body, comments, file list and base tip are NOT re-read, so an edit to them in
-// the window between the read and the merge is not seen.
+// the window between the read and the merge is not seen: a blocking comment
+// posted after the first read does not stop this run.
 //
 // Side effect on the caller's checkout. Gate 6 runs `git fetch origin main
 // <branch>`, which updates the caller's `origin/main` and `origin/<branch>`
@@ -70,6 +100,15 @@
 // ~/.config/gh are not visible), but that is a mitigation, not a sandbox: it is
 // still ordinary code running as this user.
 //
+// Also not seen: formatted prose that never uses the word "verdict" (a later
+// comment saying only "blocking issues, do not merge" is missed), and a
+// homoglyph spelling of the word (Cyrillic i in "verdict"). A directory name
+// holding Unicode-invisible characters is a DIFFERENT directory, not an alias,
+// on Linux where GitHub merges; paths are matched after NFKC and are not
+// stripped of invisible characters, so such a name does not hit a restricted
+// rule (it also does not take effect as that directory). Comments are assumed
+// to be capped at 100 by `gh pr view --json comments`; 100 or more is refused.
+//
 // There is deliberately no override flag, and never --admin, --auto or --rebase.
 //
 // The gate functions below are pure (parsed JSON in, failure list out). All
@@ -77,7 +116,7 @@
 // tests need no network.
 
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { lstat, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,14 +166,24 @@ export const RESTRICTED_PATTERNS = [
   ".github/**",
   ".claude/**",
   "CLAUDE.md",
+  "**/CLAUDE.md",
+  "CLAUDE.local.md",
+  "**/CLAUDE.local.md",
   "AGENTS.md",
+  "**/AGENTS.md",
+  ".mcp.json",
+  "**/.mcp.json",
+  ".vscode/**",
+  ".devcontainer/**",
   "docs/CONDUCTOR.md",
   "docs/TEAM-CHARTER.md",
   "docs/DECISIONS.md",
   ".gitattributes",
+  "**/.gitattributes",
   ".gitmodules",
+  "**/.gitmodules",
   ".npmrc",
-  "playground/.npmrc",
+  "**/.npmrc",
   ".husky/**",
   "vitest.config.*",
   "tests/setup.js",
@@ -428,25 +477,60 @@ export function checkReviewRecord(pr) {
   return failures;
 }
 
-const VERDICT_LINE = /^[ \t]*verdict:[ \t]*(\S.*?)[ \t]*$/gim;
+const LINE_BREAKS = /\r\n?|[\n\v\f\u0085\u2028\u2029]/;
+// Markdown decoration that may precede the word Verdict: indentation, quote
+// markers, heading hashes, emphasis, list bullets, code ticks, "1." markers.
+const LEADING_DECORATION = /^(?:[ \t]+|[>#*+\-_`~|]+|\d+[.)](?=[ \t]))/;
+const VERDICT_VALUE = /^verdict[*_`~ \t]*:[ \t*_`~]*(.*?)[ \t*_`~]*$/i;
 
 /**
- * The comments that contain a Verdict line, oldest first. Each carries whether
- * every one of its Verdict lines is an approving value (a comment that lists a
- * second, non-approving verdict is not approving).
+ * Reads one comment line. Returns null when the line never mentions the word
+ * "verdict". Otherwise {quoted, approving, value}: `approving` only for an exact
+ * "Verdict: APPROVE" / "Verdict: APPROVE WITH NITS" (decoration around the line
+ * and the value allowed); every other line that mentions the word, including
+ * ones this parser cannot make sense of, is non-approving (fail closed).
+ */
+export function readVerdictLine(line) {
+  let rest = String(line)
+    .normalize("NFKC")
+    .replace(/\p{Cf}/gu, "")
+    .replace(/[\p{Zs}\t]/gu, " ");
+  if (!/verdict/i.test(rest)) return null;
+  let quoted = false;
+  for (let m = rest.match(LEADING_DECORATION); m;) {
+    if (m[0].includes(">")) quoted = true;
+    rest = rest.slice(m[0].length);
+    m = rest.match(LEADING_DECORATION);
+  }
+  const parsed = rest.match(VERDICT_VALUE);
+  const value = parsed ? parsed[1] : null;
+  return {
+    quoted,
+    approving: value !== null && APPROVING_VERDICTS.has(value),
+    value: (value ?? rest).trim().replace(/\s+/g, " ").slice(0, 80),
+  };
+}
+
+/**
+ * The comments that mention a verdict, oldest first. A comment is approving only
+ * when it has at least one unquoted approving line and no non-approving line
+ * (quoted or not). A comment whose only verdict lines are quoted approvals
+ * mentions no verdict of its own and is skipped.
  */
 function verdictComments(comments) {
   const found = [];
   comments.forEach((comment, index) => {
-    const body = String(comment?.body ?? "").replace(/\r\n?/g, "\n");
-    const values = [...body.matchAll(VERDICT_LINE)].map((m) => m[1]);
-    if (values.length === 0) return;
+    const body = String(comment?.body ?? "");
+    const lines = body.split(LINE_BREAKS).map(readVerdictLine).filter(Boolean);
+    const blocking = lines.filter((entry) => !entry.approving);
+    const approvals = lines.filter((entry) => entry.approving && !entry.quoted);
+    if (blocking.length === 0 && approvals.length === 0) return;
     found.push({
       index,
       time: Date.parse(comment?.createdAt ?? ""),
-      length: body.length,
-      values,
-      approving: values.every((value) => APPROVING_VERDICTS.has(value)),
+      length: body.replace(/\r\n?/g, "\n").length,
+      bad: blocking[0]?.value,
+      approving: blocking.length === 0,
     });
   });
   // gh lists comments oldest first. Sort by createdAt only when every verdict
@@ -457,32 +541,36 @@ function verdictComments(comments) {
   return found;
 }
 
+// `gh pr view --json comments` may return only the first 100 comments.
+export const COMMENT_CAP = 100;
+
 /**
  * Gate 4b. The reviewer's report must be pasted as a PR comment so the review
- * text outlives the PR description. Among comments with a Verdict line the
- * latest must approve, so a later REQUEST CHANGES comment refuses; and one
- * approving comment must be long enough to be a real report. Still a
- * convention check (see header).
+ * text outlives the PR description. Among comments that mention a verdict the
+ * latest must itself approve and be long enough to be a real report, so a later
+ * REQUEST CHANGES refuses and a short re-approval after a block does not ride on
+ * an older long approval. Still a convention check (see header).
  */
 export function checkAuditTrail(pr) {
   const comments = Array.isArray(pr.comments) ? pr.comments : [];
-  const verdicts = verdictComments(comments);
-
-  const latest = verdicts.at(-1);
-  if (latest && !latest.approving) {
-    const bad = latest.values.find((value) => !APPROVING_VERDICTS.has(value));
+  if (comments.length >= COMMENT_CAP) {
     return [
-      `the latest comment with a Verdict line says "${bad}", need APPROVE or APPROVE WITH NITS`,
+      `too many comments to audit (${comments.length}; gh may return only the first ${COMMENT_CAP}): maintainer merges this one`,
     ];
   }
-  const qualifies = verdicts.some(
-    (entry) => entry.approving && entry.length >= AUDIT_MIN_LENGTH,
-  );
-  return qualifies
-    ? []
-    : [
-        `no audit-trail comment (${comments.length} comment(s), none of ${AUDIT_MIN_LENGTH}+ characters with an approving "Verdict:" line): paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)`,
-      ];
+  const latest = verdictComments(comments).at(-1);
+  if (latest && !latest.approving) {
+    return [
+      `the latest comment with a Verdict line says "${latest.bad}", need APPROVE or APPROVE WITH NITS`,
+    ];
+  }
+  if (latest && latest.length >= AUDIT_MIN_LENGTH) return [];
+  const why = latest
+    ? `the latest Verdict comment is ${latest.length} characters; a re-approval must carry the report`
+    : `${comments.length} comment(s), none with an approving "Verdict:" line`;
+  return [
+    `no audit-trail comment (${why}; need an approving "Verdict:" comment of ${AUDIT_MIN_LENGTH}+ characters as the latest): paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)`,
+  ];
 }
 
 /** Returns the maintainer-only pattern a path matches, or null. */
@@ -609,15 +697,24 @@ export async function runPendingCleanups() {
  * temp worktree and dirs, then exit 128+n.
  */
 export function installSignalHandlers(proc = process) {
+  // `on`, not `once`, and one shared flag: a second signal while cleanup is
+  // still running must neither abort it (a `once` listener would be gone and
+  // the default action would kill the process) nor start a second cleanup.
+  let cleaning = false;
   for (const [signal, code] of [
     ["SIGHUP", 129],
     ["SIGINT", 130],
     ["SIGQUIT", 131],
     ["SIGTERM", 143],
   ]) {
-    proc.once(signal, async () => {
-      await runPendingCleanups();
-      proc.exit(code);
+    proc.on(signal, async () => {
+      if (cleaning) return;
+      cleaning = true;
+      try {
+        await runPendingCleanups();
+      } finally {
+        proc.exit(code);
+      }
     });
   }
 }
@@ -693,6 +790,29 @@ export function defaultRunner(file, args, options = {}) {
 
 export const defaultFs = {
   mkdtemp: (prefix) => mkdtemp(path.join(tmpdir(), prefix)),
+  // Directories (not symlinks) in the temp dir that this user owns and whose
+  // name starts with merge-pr-; the caller applies the name and age rules.
+  listTemp: async () => {
+    const dir = tmpdir();
+    const uid = typeof process.getuid === "function" ? process.getuid() : null;
+    const entries = await readdir(dir, { withFileTypes: true });
+    const found = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.startsWith("merge-pr-")) continue;
+      try {
+        const info = await lstat(path.join(dir, entry.name));
+        if (uid !== null && info.uid !== uid) continue;
+        found.push({
+          name: entry.name,
+          path: path.join(dir, entry.name),
+          mtimeMs: info.mtimeMs,
+        });
+      } catch {
+        // vanished
+      }
+    }
+    return found;
+  },
   symlink: (target, link) => symlink(target, link, "dir"),
   rm: (target) => rm(target, { recursive: true, force: true }),
 };
@@ -734,6 +854,65 @@ function splitNul(stdout) {
     .filter(Boolean);
 }
 
+export const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+// mkdtemp appends six random characters.
+const TEMP_NAME = /^merge-pr-(?:home-)?[A-Za-z0-9]{6}$/;
+
+/**
+ * Removes merge-pr-* worktree and merge-pr-home-* directories that a SIGKILLed
+ * run left behind, then prunes git's worktree records. Only directories older
+ * than 24 h are touched: a younger one may belong to a run in progress. An
+ * entry with an unreadable timestamp counts as young. Never throws.
+ */
+export async function cleanStaleTemp({ run, fs, cwd, now = Date.now() }) {
+  const removed = [];
+  try {
+    const entries = fs.listTemp ? await fs.listTemp() : [];
+    for (const entry of entries) {
+      if (!TEMP_NAME.test(entry.name)) continue;
+      if (!(now - entry.mtimeMs > STALE_AFTER_MS)) continue;
+      await run("git", ["worktree", "remove", "--force", entry.path], {
+        cwd,
+      }).catch(() => {});
+      await fs.rm(entry.path).catch(() => {});
+      removed.push(entry.name);
+    }
+  } catch {
+    // best effort
+  }
+  await run("git", ["worktree", "prune"], { cwd }).catch(() => {});
+  return removed;
+}
+
+/**
+ * Checks `git diff --raw -z` output for the exceptions: each excepted path must
+ * be a regular file, mode 100644 on both sides (000000 before, for a new file).
+ * A symlink (120000) or an executable (100755) is refused.
+ */
+export function checkExceptionModes(rawStdout) {
+  const failures = [];
+  const tokens = String(rawStdout ?? "").split("\0");
+  for (let i = 0; i < tokens.length - 1; i += 1) {
+    const meta = tokens[i].match(
+      /^:(\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]\d*$/,
+    );
+    if (!meta) continue;
+    const file = tokens[i + 1];
+    i += 1;
+    if (!RESTRICTED_EXCEPTIONS.includes(file)) continue;
+    const [, oldMode, newMode] = meta;
+    if (
+      (oldMode !== "100644" && oldMode !== "000000") ||
+      newMode !== "100644"
+    ) {
+      failures.push(
+        `touches ${file} as a non-regular file (mode ${oldMode} -> ${newMode}; need 100644): maintainer merges this one`,
+      );
+    }
+  }
+  return failures;
+}
+
 /**
  * Gate 6. Merges the PR head onto current origin/main in a temporary
  * worktree. Never touches the caller's checkout. The worktree is always
@@ -742,7 +921,12 @@ function splitNul(stdout) {
  * refused anyway.
  */
 export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
-  const result = { failures: [], notes: [], changedFiles: [] };
+  const result = {
+    failures: [],
+    notes: [],
+    changedFiles: [],
+    fileFailures: [],
+  };
   const head = pr.headRefOid;
 
   if (
@@ -754,6 +938,8 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
   }
 
   const git = (args, options = {}) => run("git", args, { cwd, ...options });
+
+  await cleanStaleTemp({ run, fs, cwd });
 
   const fetched = await git(["fetch", "origin", BASE_BRANCH, pr.headRefName]);
   if (fetched.code !== 0) {
@@ -864,6 +1050,34 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
     }
     for (const file of splitNul(mergeDiff.stdout)) changed.add(file);
 
+    // The css-baseline exception covers a regular file only: a symlink to
+    // .claude/settings.json has the same path.
+    const excepted = RESTRICTED_EXCEPTIONS.filter((file) => changed.has(file));
+    if (excepted.length > 0) {
+      const raw = await run(
+        "git",
+        [
+          ...GIT_NAMES,
+          "diff",
+          "--cached",
+          "--raw",
+          "--no-renames",
+          "-z",
+          `origin/${BASE_BRANCH}`,
+          "--",
+          ...excepted,
+        ],
+        { cwd: worktree },
+      );
+      if (raw.code !== 0) {
+        result.failures.push(
+          `git diff --raw of the merge result failed: ${tail(raw.stderr, 3)}`,
+        );
+        return result;
+      }
+      result.fileFailures.push(...checkExceptionModes(raw.stdout));
+    }
+
     if (behind) {
       if (!runTests) {
         result.notes.push("npm test skipped: other gates already failed");
@@ -933,14 +1147,19 @@ export const USAGE = [
   "  3  review   no CHANGES_REQUESTED review decision",
   "  4  record   exactly one '## Review record': Verdict APPROVE or APPROVE WITH",
   "              NITS (every Verdict line), 'Findings resolved: yes'",
-  "  4b audit    the latest PR comment with a 'Verdict:' line must be exactly",
-  "              APPROVE or APPROVE WITH NITS (a later REQUEST CHANGES refuses),",
-  "              and one approving comment must be 200+ characters (the",
-  "              reviewer's report pasted verbatim); author comments count",
-  "  5  files    no maintainer-only file (agent instructions, .claude/** except",
-  "              css-baseline.sha256, CI, manifests...) and no path with a",
+  "  4b audit    the latest PR comment that mentions a verdict must itself be",
+  "              exactly 'Verdict: APPROVE' or APPROVE WITH NITS and 200+",
+  "              characters (the reviewer's report pasted verbatim). Decorated",
+  "              lines are read (**bold**, #, -, `code`, NBSP, full-width colon)",
+  "              and it fails closed: any other line with the word 'verdict' is",
+  "              a block, a quoted block too (a quoted approval counts for",
+  "              nothing). 100+ comments are refused. Author comments count",
+  "  5  files    no maintainer-only file (agent instructions at any depth,",
+  "              .claude/** except css-baseline.sha256 as a regular file,",
+  "              .vscode, .devcontainer, CI, manifests...) and no path with a",
   "              control character; checked against gh and against git",
-  "  6  merge    clean test-merge onto origin/main (updates origin/main and",
+  "  6  merge    clean test-merge onto origin/main (also removes merge-pr-* temp",
+  "              dirs older than 24 h; updates origin/main and",
   "              origin/<branch> remote-tracking refs); npm test, with a",
   "              scrubbed environment, if head is behind. Limits: PR test code",
   "              still runs here; the scrub is a mitigation, not a sandbox",
@@ -1006,7 +1225,10 @@ export async function main(argv, deps = {}) {
     mergeGate.notes = result.notes;
     const filesGate = gates.find((gate) => gate.id === "files");
     const known = new Set(filesGate.failures);
-    for (const failure of checkFiles(result.changedFiles)) {
+    for (const failure of [
+      ...checkFiles(result.changedFiles),
+      ...result.fileFailures,
+    ]) {
       if (!known.has(failure)) filesGate.failures.push(failure);
     }
   } else {

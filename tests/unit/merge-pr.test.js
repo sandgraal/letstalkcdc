@@ -1,12 +1,15 @@
 import { execFileSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,9 +30,12 @@ import {
   RESTRICTED_PATTERNS,
   checkAuditTrail,
   checkChecks,
+  checkExceptionModes,
   checkFiles,
   checkReviewRecord,
   checkState,
+  cleanStaleTemp,
+  defaultFs,
   defaultRunner,
   installSignalHandlers,
   main,
@@ -131,6 +137,9 @@ function makeEnv({
   testCode = 0,
   mergeCommit = "b".repeat(40),
   ghMergeCode = 0,
+  raw = null,
+  rawCode = 0,
+  tempEntries = null,
 } = {}) {
   const calls = [];
   const out = [];
@@ -155,6 +164,14 @@ function makeEnv({
     if (key.startsWith("gh pr merge")) return res(ghMergeCode, "", "boom");
     if (key.startsWith("git fetch")) return res(fetchCode, "", "fetch broke");
     if (key.startsWith("git cat-file")) return res(catFileCode);
+    if (file === "git" && args.includes("--raw")) {
+      return res(
+        rawCode,
+        raw ??
+          ":000000 100644 0000000 1111111 A\0.claude/css-baseline.sha256\0",
+        "raw broke",
+      );
+    }
     if (file === "git" && args.includes("diff")) {
       return args.includes("--cached")
         ? res(mergeDiffCode, nul(mergeDiff), "diff broke")
@@ -188,6 +205,7 @@ function makeEnv({
     rm: async (target) => {
       fsCalls.push(`rm ${target}`);
     },
+    ...(tempEntries ? { listTemp: async () => tempEntries } : {}),
   };
   return {
     calls,
@@ -659,6 +677,169 @@ describe("gate 4b: audit-trail comment", () => {
     });
   });
 
+  describe("decorated verdicts and fail-closed parsing", () => {
+    const long = (line) => `${line}\n${"x".repeat(220)}`;
+    const at = (iso, body) => ({
+      author: { login: "same" },
+      createdAt: iso,
+      body,
+    });
+    const approve = at("2026-10-10T10:00:00Z", long("Verdict: APPROVE"));
+    const later = (body) => at("2026-10-10T11:00:00Z", long(body));
+    const fresh = at("2026-10-10T12:00:00Z", long("Verdict: APPROVE"));
+
+    // Each of these must stop an earlier approval from standing.
+    const BLOCKS = [
+      ["bold", "**Verdict: REQUEST CHANGES**"],
+      ["heading", "## Verdict: CHANGES REQUESTED"],
+      ["bullet", "- Verdict: CHANGES REQUESTED"],
+      ["star bullet", "* Verdict: REQUEST CHANGES"],
+      ["plus bullet", "+ Verdict: REQUEST CHANGES"],
+      ["numbered list", "1. Verdict: REQUEST CHANGES"],
+      ["backtick span", "`Verdict: REQUEST CHANGES`"],
+      ["underscore emphasis", "__Verdict: REQUEST CHANGES__"],
+      ["quoted", "> Verdict: REQUEST CHANGES"],
+      ["nested quote", "> > Verdict: REQUEST CHANGES"],
+      ["dash separator", "Verdict - REQUEST CHANGES"],
+      ["value on the next line", "Verdict:\nREQUEST CHANGES"],
+      ["value on the next line, CRLF", "Verdict:\r\nREQUEST CHANGES"],
+      ["leading NBSP", "\u00a0Verdict: REQUEST CHANGES"],
+      ["full-width colon", "Verdict\uff1a REQUEST CHANGES"],
+      ["upper-case keyword, lower-case value", "VERDICT: Changes requested"],
+      ["zero-width space inside the word", "Ver\u200bdict: REQUEST CHANGES"],
+      ["ideographic space", "\u3000Verdict: REQUEST CHANGES"],
+      ["line separator", "ok\u2028Verdict: REQUEST CHANGES"],
+      ["html tags", "<b>Verdict: REQUEST CHANGES</b>"],
+      ["prose prefix", "Final verdict: request changes"],
+      ["emoji prefix", "\u274c Verdict: REQUEST CHANGES"],
+      ["empty value", "Verdict:"],
+      ["no colon", "Verdict REQUEST CHANGES"],
+    ];
+
+    it.each(BLOCKS)("a later %s block refuses", (_label, line) => {
+      const failures = withComments([approve, later(line)]);
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).toMatch(/latest comment with a Verdict line says/);
+    });
+
+    it.each(BLOCKS)("approve, %s block, fresh approve unblocks", (_l, line) => {
+      expect(withComments([approve, later(line), fresh])).toEqual([]);
+    });
+
+    it("keeps the readable value in the message", () => {
+      expect(
+        withComments([approve, later("**Verdict: REQUEST CHANGES**")])[0],
+      ).toContain('says "REQUEST CHANGES"');
+    });
+
+    // Decoration around the line or the value still approves.
+    it.each([
+      ["bold line", "**Verdict: APPROVE**"],
+      ["bold keyword", "**Verdict:** APPROVE"],
+      ["heading", "## Verdict: APPROVE WITH NITS"],
+      ["bullet and backticks", "- Verdict: `APPROVE`"],
+      ["full-width colon", "Verdict\uff1aAPPROVE"],
+      ["NBSP around", "\u00a0Verdict:\u00a0APPROVE"],
+      ["lower-case keyword", "verdict: APPROVE"],
+      ["numbered", "1. Verdict: APPROVE"],
+    ])("a %s approval passes", (_label, line) => {
+      expect(withComments([at("2026-10-10T10:00:00Z", long(line))])).toEqual(
+        [],
+      );
+    });
+
+    it("does not approve decorated near-misses", () => {
+      for (const line of [
+        "**Verdict: APPROVED**",
+        "**Verdict: approve**",
+        "Verdict: **NOT** APPROVE",
+        "Verdict: APPROVE.",
+        "Verdict - APPROVE",
+        "Verdict:\nAPPROVE",
+        "\u2705 Verdict: APPROVE",
+        "<b>Verdict: APPROVE</b>",
+      ]) {
+        expect(
+          withComments([at("2026-10-10T10:00:00Z", long(line))]),
+          line,
+        ).toHaveLength(1);
+      }
+    });
+
+    it("fails closed on any other line that mentions a verdict", () => {
+      const body = long("Verdict: APPROVE\nMy verdict is that this is fine.");
+      expect(withComments([at("2026-10-10T10:00:00Z", body)])).toHaveLength(1);
+    });
+
+    describe("quoted lines", () => {
+      it("a quoted approval inside a new comment approves nothing", () => {
+        const block = at(
+          "2026-10-10T09:00:00Z",
+          long("Verdict: REQUEST CHANGES"),
+        );
+        const quoting = later("> Verdict: APPROVE\nsee above");
+        expect(withComments([block, quoting])).toHaveLength(1);
+      });
+
+      it("a quoted approval does not hide the real latest verdict", () => {
+        const quoting = later("> Verdict: APPROVE\nsee above");
+        expect(withComments([approve, quoting])).toEqual([]);
+      });
+
+      it("a quoted block still blocks, even beside an unquoted approval", () => {
+        const both = later("> Verdict: REQUEST CHANGES\nVerdict: APPROVE");
+        expect(withComments([approve, both])).toHaveLength(1);
+      });
+    });
+
+    it("documented limit: a later comment with no Verdict word is not seen", () => {
+      expect(
+        withComments([approve, later("Blocking issues, do not merge.")]),
+      ).toEqual([]);
+    });
+
+    describe("a re-approval must carry a report", () => {
+      it("a short fresh approve after a block is refused", () => {
+        const block = later("Verdict: REQUEST CHANGES");
+        const short = at("2026-10-10T12:00:00Z", "Verdict: APPROVE");
+        const failures = withComments([approve, block, short]);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]).toMatch(/no audit-trail comment/);
+        expect(failures[0]).toMatch(/must carry the report/);
+      });
+
+      it("a long fresh approve after the block is accepted", () => {
+        const block = later("Verdict: REQUEST CHANGES");
+        expect(withComments([approve, block, fresh])).toEqual([]);
+      });
+
+      it("a short latest approve is refused even with no block between", () => {
+        const short = at("2026-10-10T12:00:00Z", "Verdict: APPROVE WITH NITS");
+        expect(withComments([approve, short])).toHaveLength(1);
+      });
+    });
+
+    describe("comment count", () => {
+      const filler = Array.from({ length: 98 }, (_, i) =>
+        at(`2026-10-09T10:${String(i % 60).padStart(2, "0")}:00Z`, "chat"),
+      );
+
+      it("audits 99 comments", () => {
+        expect(withComments([...filler, GOOD_COMMENT])).toEqual([]);
+      });
+
+      it("refuses 100 or more: the newest may not have been returned", () => {
+        for (const extra of [2, 50]) {
+          const many = [...filler, ...Array(extra).fill(GOOD_COMMENT)];
+          const failures = withComments(many);
+          expect(failures).toHaveLength(1);
+          expect(failures[0]).toMatch(/too many comments to audit/);
+          expect(failures[0]).toMatch(/maintainer merges this one/);
+        }
+      });
+    });
+  });
+
   it("tells the agent how to fix it", () => {
     expect(withComments([]).join()).toContain(
       "paste the reviewer's report as a PR comment (gh pr comment <n> --body-file ...)",
@@ -693,14 +874,25 @@ describe("gate 5: maintainer-only files", () => {
     [".claude/skills/review/SKILL.md", "claude skills"],
     [".claude/commands/verify-all.md", "claude commands"],
     ["CLAUDE.md", "agent instructions"],
+    ["docs/sub/CLAUDE.md", "nested agent instructions"],
+    ["CLAUDE.local.md", "local agent instructions"],
+    ["docs/CLAUDE.local.md", "nested local agent instructions"],
     ["AGENTS.md", "agent instructions, other file"],
+    ["playground/ai/AGENTS.md", "nested agents file"],
+    [".mcp.json", "mcp servers"],
+    ["packages/web/.mcp.json", "nested mcp servers"],
+    [".vscode/tasks.json", "vscode tasks run commands"],
+    [".devcontainer/devcontainer.json", "devcontainer"],
     ["docs/CONDUCTOR.md", "orchestration rules"],
     ["docs/TEAM-CHARTER.md", "team charter"],
     ["docs/DECISIONS.md", "decision register"],
     [".gitattributes", "gitattributes"],
+    ["tools/sub/.gitattributes", "nested gitattributes"],
     [".gitmodules", "gitmodules"],
+    ["vendor/x/.gitmodules", "nested gitmodules"],
     [".npmrc", "root npmrc"],
     ["playground/.npmrc", "playground npmrc"],
+    ["packages/web/.npmrc", "npmrc at any depth"],
     [".husky/pre-commit", "husky hooks"],
     ["vitest.config.mjs", "vitest config"],
     ["vitest.config.ts", "vitest config, other extension"],
@@ -769,7 +961,9 @@ describe("gate 5: maintainer-only files", () => {
       "docs/.github/notes.md",
       "docs/CLAUDE.md.bak",
       "src/assets/js/app.js",
-      "src/pages/cdc/claude.md",
+      "src/pages/cdc/claude-notes.md",
+      "docs/.vscode-notes.md",
+      "docs/mcp.json",
     ];
     expect(checkFiles(files)).toEqual([]);
     for (const file of files) expect(restrictedPatternFor(file)).toBeNull();
@@ -906,6 +1100,186 @@ describe("gate 5 cross-check against git", () => {
   });
 });
 
+describe("gate 5: the css-baseline exception needs a regular file", () => {
+  const baseline = ".claude/css-baseline.sha256";
+  const rawLine = (oldMode, newMode, status = "M") =>
+    `:${oldMode} ${newMode} 0000000 1111111 ${status}\0${baseline}\0`;
+
+  it("accepts a new regular file and an edited regular file", () => {
+    expect(checkExceptionModes(rawLine("000000", "100644", "A"))).toEqual([]);
+    expect(checkExceptionModes(rawLine("100644", "100644"))).toEqual([]);
+    expect(checkExceptionModes("")).toEqual([]);
+  });
+
+  it.each([
+    ["a new symlink", "000000", "120000"],
+    ["a file turned into a symlink", "100644", "120000"],
+    ["an executable", "100644", "100755"],
+    ["a new executable", "000000", "100755"],
+    ["a symlink edited in place", "120000", "120000"],
+    ["a symlink turned into a file", "120000", "100644"],
+    ["a deletion", "100644", "000000"],
+    ["a submodule", "000000", "160000"],
+  ])("refuses %s (%s -> %s)", (_label, oldMode, newMode) => {
+    const failures = checkExceptionModes(rawLine(oldMode, newMode));
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toContain(`touches ${baseline} as a non-regular file`);
+    expect(failures[0]).toContain("maintainer merges this one");
+  });
+
+  it("ignores other paths in the raw output", () => {
+    const other = ":000000 120000 0000000 1111111 A\0docs/link.md\0";
+    expect(checkExceptionModes(other)).toEqual([]);
+  });
+
+  it("through the full flow: a regular file passes, a symlink refuses", async () => {
+    const ok = makeEnv({ diff: [baseline] });
+    expect(await ok.exec(["7"])).toBe(0);
+    expect(ok.text()).toMatch(/PASS {2}5\. +files/);
+
+    const bad = makeEnv({
+      diff: [baseline],
+      raw: rawLine("000000", "120000", "A"),
+    });
+    expect(await bad.exec(["7", "--execute"])).toBe(1);
+    expect(bad.text()).toMatch(/FAIL {2}5\. +files/);
+    expect(bad.text()).toContain("as a non-regular file");
+    expect(bad.merged()).toBe(false);
+  });
+
+  it("asks git for the merge result's raw diff, only for that path", async () => {
+    const env = makeEnv({ diff: [baseline] });
+    await env.exec(["7"]);
+    const call = env.calls.find((c) => c.args.includes("--raw"));
+    expect(call.cwd).toBe(TMP);
+    expect(call.args).toContain("--cached");
+    expect(call.args).toContain("-z");
+    expect(call.args.slice(-3)).toEqual(["origin/main", "--", baseline]);
+    const none = makeEnv();
+    await none.exec(["7"]);
+    expect(none.calls.some((c) => c.args.includes("--raw"))).toBe(false);
+  });
+
+  it("fails closed when the raw diff cannot be read", async () => {
+    const env = makeEnv({ diff: [baseline], rawCode: 128 });
+    expect(await env.exec(["7", "--execute"])).toBe(1);
+    expect(env.text()).toMatch(/diff --raw of the merge result failed/);
+    expect(env.merged()).toBe(false);
+  });
+});
+
+describe("stale temp directories", () => {
+  const HOUR = 3_600_000;
+  const entry = (name, ageHours) => ({
+    name,
+    path: `/tmp/${name}`,
+    mtimeMs: Date.now() - ageHours * HOUR,
+  });
+  const entries = [
+    entry("merge-pr-old111", 25),
+    entry("merge-pr-home-old222", 48),
+    entry("merge-pr-young3", 23),
+    entry("merge-pr-home-young4", 1),
+    entry("merge-pr-git-old555", 99),
+    entry("merge-pr-notes", 99),
+    { name: "merge-pr-nan666", path: "/tmp/merge-pr-nan666", mtimeMs: NaN },
+  ];
+
+  it("removes old merge-pr-* and merge-pr-home-* dirs and prunes", async () => {
+    const env = makeEnv({ tempEntries: entries });
+    expect(await env.exec(["7"])).toBe(0);
+    const removed = env.fsCalls.filter((c) =>
+      c.startsWith("rm /tmp/merge-pr-"),
+    );
+    // The third rm is this run's own worktree, removed in the normal cleanup.
+    expect(removed.sort()).toEqual([
+      "rm /tmp/merge-pr-home-old222",
+      "rm /tmp/merge-pr-old111",
+      `rm ${TMP}`,
+    ]);
+    const removes = env.calls
+      .filter((c) => c.args.slice(0, 2).join(" ") === "worktree remove")
+      .map((c) => c.args.at(-1));
+    expect(removes).toContain("/tmp/merge-pr-old111");
+    expect(removes).not.toContain("/tmp/merge-pr-young3");
+    expect(env.calls.some((c) => c.args.join(" ") === "worktree prune")).toBe(
+      true,
+    );
+  });
+
+  it("never touches anything younger than 24 h, or with no usable timestamp", async () => {
+    const env = makeEnv({ tempEntries: entries });
+    await env.exec(["7"]);
+    for (const name of [
+      "merge-pr-young3",
+      "merge-pr-home-young4",
+      "merge-pr-nan666",
+      "merge-pr-git-old555",
+      "merge-pr-notes",
+    ]) {
+      expect(env.fsCalls).not.toContain(`rm /tmp/${name}`);
+    }
+  });
+
+  it("a failing cleanup never fails the run", async () => {
+    const run = vi.fn(async () => {
+      throw new Error("git gone");
+    });
+    const fs = {
+      listTemp: async () => entries,
+      rm: async () => {
+        throw new Error("EPERM");
+      },
+    };
+    await expect(cleanStaleTemp({ run, fs, cwd: "/repo" })).resolves.toEqual(
+      expect.any(Array),
+    );
+  });
+
+  describe("on a real directory", () => {
+    let dir;
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      if (dir) rmSync(dir, { recursive: true, force: true });
+    });
+
+    it("removes the old ones and leaves the young, symlinks and others", async () => {
+      dir = mkdtempSync(path.join(tmpdir(), "merge-pr-stale-test-"));
+      vi.stubEnv("TMPDIR", dir);
+      const old = new Date(Date.now() - 30 * HOUR);
+      for (const name of ["merge-pr-old123", "merge-pr-home-old456"]) {
+        mkdirSync(path.join(dir, name));
+        writeFileSync(path.join(dir, name, "f"), "x");
+        utimesSync(path.join(dir, name), old, old);
+      }
+      mkdirSync(path.join(dir, "merge-pr-young12"));
+      mkdirSync(path.join(dir, "other-old123"));
+      utimesSync(path.join(dir, "other-old123"), old, old);
+      mkdirSync(path.join(dir, "elsewhere"));
+      symlinkSync(
+        path.join(dir, "elsewhere"),
+        path.join(dir, "merge-pr-link123"),
+      );
+      const run = vi.fn(async () => ({ code: 0, stdout: "", stderr: "" }));
+      const removed = await cleanStaleTemp({
+        run,
+        fs: defaultFs,
+        cwd: "/repo",
+      });
+      expect(removed.sort()).toEqual([
+        "merge-pr-home-old456",
+        "merge-pr-old123",
+      ]);
+      expect(readdirSync(dir).sort()).toEqual([
+        "elsewhere",
+        "merge-pr-link123",
+        "merge-pr-young12",
+        "other-old123",
+      ]);
+    });
+  });
+});
+
 describe("gate 5 against real git (no stubs)", () => {
   let root;
   let caller;
@@ -978,6 +1352,16 @@ describe("gate 5 against real git (no stubs)", () => {
       gitIn(seed, "rm", "-q", ".github/workflows/ci.yml");
     });
     branch("docs-only", () => put(seed, "docs/ok.md"));
+    const BASELINE = ".claude/css-baseline.sha256";
+    branch("baseline-regular", () => put(seed, BASELINE, "abc123\n"));
+    branch("baseline-symlink", () => {
+      mkdirSync(path.join(seed, ".claude"), { recursive: true });
+      symlinkSync("settings.json", path.join(seed, BASELINE));
+    });
+    branch("baseline-exec", () => {
+      put(seed, BASELINE, "abc123\n");
+      chmodSync(path.join(seed, BASELINE), 0o755);
+    });
 
     // Names with control characters or a leading space, one branch each. The
     // entries go straight into the index, so no filesystem has to hold them.
@@ -1073,6 +1457,22 @@ describe("gate 5 against real git (no stubs)", () => {
     expect(text).not.toMatch(/touches docs\/x\.md/);
     expect(text).toMatch(/FAIL {2}5\. +files/);
   }, 30_000);
+
+  it("lets a regular css-baseline file through, refuses a symlink or exec bit", async () => {
+    const ok = await runAgainstRealGit("baseline-regular");
+    expect(ok.text).toMatch(/PASS {2}5\. +files/);
+    expect(ok.code).toBe(0);
+    for (const name of ["baseline-symlink", "baseline-exec"]) {
+      const bad = await runAgainstRealGit(name);
+      expect(bad.code, name).toBe(1);
+      expect(bad.text, name).toMatch(/FAIL {2}5\. +files/);
+      expect(bad.text, name).toContain(
+        "touches .claude/css-baseline.sha256 as a non-regular file",
+      );
+    }
+    const sym = await runAgainstRealGit("baseline-symlink");
+    expect(sym.text).toContain("000000 -> 120000");
+  }, 60_000);
 
   it("passes a docs-only branch, so the harness is not vacuous", async () => {
     const { code, text } = await runAgainstRealGit("docs-only");
@@ -1326,6 +1726,36 @@ describe("lifecycle", () => {
       expect(await exited).toBe(code);
       expect(cleanup).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it("ignores a second signal while cleanup is still running", async () => {
+    const proc = new EventEmitter();
+    proc.exit = vi.fn();
+    let finish;
+    const gate = new Promise((resolve) => {
+      finish = resolve;
+    });
+    let completed = false;
+    const cleanup = vi.fn(async () => {
+      await gate;
+      completed = true;
+    });
+    registerCleanup(cleanup);
+    installSignalHandlers(proc);
+    proc.emit("SIGINT");
+    proc.emit("SIGTERM");
+    proc.emit("SIGINT");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(proc.exit).not.toHaveBeenCalled();
+    // Handlers stay installed, so a second signal cannot fall to the default.
+    expect(proc.listenerCount("SIGINT")).toBe(1);
+    expect(proc.listenerCount("SIGTERM")).toBe(1);
+    finish();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(completed).toBe(true);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(proc.exit).toHaveBeenCalledTimes(1);
+    expect(proc.exit).toHaveBeenCalledWith(130);
   });
 
   describe("a real signal mid-npm-test leaves nothing behind", () => {
@@ -1743,12 +2173,23 @@ describe("self-attestation is stated, not hidden", () => {
     expect(header).toMatch(/remote-tracking refs/);
     expect(header).toMatch(/LATEST \(by createdAt\)/);
     expect(header).toMatch(/control character/);
+    expect(header).toMatch(/FAILS CLOSED/);
+    expect(header).toMatch(/AND be at least 200 characters/);
+    expect(header).toMatch(/mode 100644/);
+    expect(header).toMatch(/older than 24 h/);
+    expect(header).toMatch(/not re-read|NOT re-read/);
+    expect(header).toMatch(/do not merge/);
+    expect(header).toMatch(/Unicode-invisible/);
+    expect(header).toMatch(/100 or more is refused/);
   });
 
   it("--help describes the 4b rule, the control-character rule and the limits", async () => {
     const env = makeEnv();
     await env.exec(["--help"]);
-    expect(env.text()).toMatch(/latest PR comment with a 'Verdict:'/);
+    expect(env.text()).toMatch(/latest PR comment that mentions a verdict/);
+    expect(env.text()).toMatch(/fails closed/);
+    expect(env.text()).toMatch(/100\+ comments are refused/);
+    expect(env.text()).toMatch(/older than 24 h/);
     expect(env.text()).toMatch(/control character/);
     expect(env.text()).toMatch(/not a sandbox/);
   });
