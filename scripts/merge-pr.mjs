@@ -846,6 +846,17 @@ function tail(text, lines = 12) {
 // which no `^`-anchored matcher would recognise. `--no-renames` reports both
 // sides of a rename, so moving a restricted file out of place is still seen.
 const GIT_NAMES = ["-c", "core.quotepath=false"];
+// `git merge --no-commit` still insists on a committer identity, and a CI
+// runner or fresh container has none ("empty ident name not allowed"). The
+// test-merge is thrown away, so give it a fixed one instead of the caller's.
+const GIT_IDENTITY = [
+  "-c",
+  "user.name=merge-pr",
+  "-c",
+  "user.email=merge-pr@localhost",
+  "-c",
+  "commit.gpgsign=false",
+];
 const NAME_FLAGS = ["--name-only", "--no-renames", "-z"];
 
 function splitNul(stdout) {
@@ -1019,9 +1030,11 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
       return result;
     }
 
-    const merged = await run("git", ["merge", "--no-commit", "--no-ff", head], {
-      cwd: worktree,
-    });
+    const merged = await run(
+      "git",
+      [...GIT_IDENTITY, "merge", "--no-commit", "--no-ff", head],
+      { cwd: worktree },
+    );
     if (merged.code !== 0) {
       result.failures.push(
         `head does not merge cleanly onto origin/${BASE_BRANCH}: ${tail(merged.stdout || merged.stderr, 4)}`,

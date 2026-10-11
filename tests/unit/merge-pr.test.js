@@ -187,7 +187,11 @@ function makeEnv({
     if (key.startsWith("git worktree add")) return ok();
     if (key.startsWith("git worktree remove")) return ok();
     if (key.startsWith("git worktree prune")) return ok();
-    if (key.startsWith("git merge --no-commit --no-ff")) {
+    if (
+      file === "git" &&
+      args.includes("merge") &&
+      args.includes("--no-commit")
+    ) {
       if (onMerge) await onMerge();
       return res(mergeCode, "CONFLICT (content): Merge conflict in a.txt", "");
     }
@@ -878,7 +882,7 @@ describe("gate 5: maintainer-only files", () => {
     ["CLAUDE.local.md", "local agent instructions"],
     ["docs/CLAUDE.local.md", "nested local agent instructions"],
     ["AGENTS.md", "agent instructions, other file"],
-    ["playground/ai/AGENTS.md", "nested agents file"],
+    ["docs/ai/AGENTS.md", "nested agents file"],
     [".mcp.json", "mcp servers"],
     ["packages/web/.mcp.json", "nested mcp servers"],
     [".vscode/tasks.json", "vscode tasks run commands"],
@@ -1280,7 +1284,43 @@ describe("stale temp directories", () => {
   });
 });
 
+// A CI runner or fresh container has no git identity, and `git merge` refuses
+// to run without one ("empty ident name not allowed"). A developer machine
+// often hides that by guessing a name from the account. These tests run real
+// git, so make every developer machine behave like the runner: no global or
+// system config, and never guess an identity.
+const GIT_HERMETIC = {
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_KEY_0: "user.useConfigOnly",
+  GIT_CONFIG_VALUE_0: "true",
+};
+const GIT_IDENTITY_VARS = [
+  "GIT_AUTHOR_NAME",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_COMMITTER_NAME",
+  "GIT_COMMITTER_EMAIL",
+];
+function useHermeticGit() {
+  const saved = {};
+  beforeAll(() => {
+    for (const key of [...Object.keys(GIT_HERMETIC), ...GIT_IDENTITY_VARS]) {
+      saved[key] = process.env[key];
+      delete process.env[key];
+    }
+    Object.assign(process.env, GIT_HERMETIC);
+  });
+  afterAll(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+}
+
 describe("gate 5 against real git (no stubs)", () => {
+  useHermeticGit();
   let root;
   let caller;
   const heads = {};
@@ -1500,9 +1540,22 @@ describe("gate 6: test-merge", () => {
   it("runs the merge in the temp worktree, never in the caller's checkout", async () => {
     const env = makeEnv();
     await env.exec(["7"]);
-    const merge = env.calls.find((c) => c.args[0] === "merge");
+    const merge = env.calls.find((c) => c.args.includes("merge"));
     expect(merge.cwd).toBe(TMP);
-    expect(merge.args).toEqual(["merge", "--no-commit", "--no-ff", OID]);
+    // The identity is passed on the command line, not read from the runner's
+    // config, so a machine with no git identity still merges.
+    expect(merge.args).toEqual([
+      "-c",
+      "user.name=merge-pr",
+      "-c",
+      "user.email=merge-pr@localhost",
+      "-c",
+      "commit.gpgsign=false",
+      "merge",
+      "--no-commit",
+      "--no-ff",
+      OID,
+    ]);
     const add = env.calls.find(
       (c) => c.args.slice(0, 2).join(" ") === "worktree add",
     );
@@ -1759,6 +1812,7 @@ describe("lifecycle", () => {
   });
 
   describe("a real signal mid-npm-test leaves nothing behind", () => {
+    useHermeticGit();
     let base;
     let caller;
     let head;
