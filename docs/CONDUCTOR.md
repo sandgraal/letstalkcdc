@@ -14,10 +14,10 @@ and [`../CLAUDE.md`](../CLAUDE.md) (how the repo works).
 
 Exactly two models are permitted:
 
-| Tier   | Model               | Used for                                              |
-| ------ | ------------------- | ----------------------------------------------------- |
-| Haiku  | `claude-haiku-5-5`  | search, measurement, running checks, mechanical edits |
-| Sonnet | `claude-sonnet-5-5` | the conductor, implementation, review, CSS            |
+| Tier   | Model               | Used for                                                             |
+| ------ | ------------------- | -------------------------------------------------------------------- |
+| Haiku  | `claude-haiku-5-5`  | search, measurement, running checks, mechanical edits                |
+| Sonnet | `claude-sonnet-5-5` | the conductor, implementation, review, CSS, content review, drafting |
 
 Nothing above Sonnet is configured, and a task that seems to need more is
 split into smaller tasks or taken to the maintainer. The one sanctioned
@@ -58,18 +58,22 @@ them), so "read-only" is **an instruction plus a missing tool, not a
 sandbox**. The reviewer and the Definition of Done are what catch a
 violation.
 
-| Role           | Model  | Tools                   | Does                                            | Never                                      |
-| -------------- | ------ | ----------------------- | ----------------------------------------------- | ------------------------------------------ |
-| `conductor`    | sonnet | read, Bash, spawn roles | picks work, briefs roles, integrates, ships PRs | edit files via Bash, `gh pr merge`, Tier 3 |
-| `scout`        | haiku  | read, Bash              | find, inventory, measure, report                | modify anything                            |
-| `verifier`     | haiku  | read, Bash              | run checks, report pass / fail verbatim         | fix failures                               |
-| `scribe`       | haiku  | read, edit, Bash        | checkboxes, changelog, docs, one-line config    | logic, CSS, anything needing judgement     |
-| `implementer`  | sonnet | read, edit, Bash        | code, templates, tests, workflows, deps         | CSS under `src/assets/css/`                |
-| `reviewer`     | sonnet | read, Bash              | independent review of a diff                    | fix what it finds                          |
-| `css-refactor` | sonnet | read, edit, Bash        | all CSS, with byte-identity proof               | claim "identical" without both hashes      |
+| Role               | Model  | Tools                   | Does                                            | Never                                          |
+| ------------------ | ------ | ----------------------- | ----------------------------------------------- | ---------------------------------------------- |
+| `conductor`        | sonnet | read, Bash, spawn roles | picks work, briefs roles, integrates, ships PRs | edit files via Bash, `gh pr merge`, Tier 3     |
+| `scout`            | haiku  | read, Bash              | find, inventory, measure, report                | modify anything                                |
+| `verifier`         | haiku  | read, Bash              | run checks, report pass / fail verbatim         | fix failures                                   |
+| `scribe`           | haiku  | read, edit, Bash        | checkboxes, changelog, docs, one-line config    | logic, CSS, anything needing judgement         |
+| `implementer`      | sonnet | read, edit, Bash        | code, templates, tests, workflows, deps         | CSS under `src/assets/css/`                    |
+| `reviewer`         | sonnet | read, Bash              | independent review of a diff                    | fix what it finds                              |
+| `css-refactor`     | sonnet | read, edit, Bash        | all CSS, with byte-identity proof               | claim "identical" without both hashes          |
+| `technical-editor` | sonnet | read, Bash              | CDC accuracy and thesis review of content PRs   | edit a page, or verify what it cannot open     |
+| `growth-writer`    | sonnet | read, Bash              | draft the weekly post and newsletter blurb      | publish, or invent numbers, quotes, experience |
 
 Separation of duties is deliberate: the role that writes a change never
-verifies or approves it.
+verifies or approves it. When to pick which role, and the weekly rhythm, are in
+[`TEAM-CHARTER.md`](TEAM-CHARTER.md). A PR that adds or rewrites a page that
+teaches CDC needs a `technical-editor` report as well as the `reviewer`'s.
 
 ## The loop
 
@@ -254,7 +258,9 @@ model ID is pending): a single agent file in `.claude/agents/`, spawnable
 only by the conductor, with a written justification in the PR for every use.
 Until it exists, split the task or ask. Adding it is a Tier 3 change: it
 means editing the roster, `availableModels`, `guard-agent-model.mjs` and
-`tests/unit/agent-roster.test.js` together.
+`tests/unit/agent-roster.test.js` together. The role is named `sme-reviewer`;
+the exact steps, and the interim substitute, are in
+[`TEAM-CHARTER.md`](TEAM-CHARTER.md#escalation-role-not-enabled).
 
 ### Permissions and hooks, concretely
 

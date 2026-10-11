@@ -46,10 +46,12 @@ describe("subagent roster", () => {
       [
         "conductor",
         "css-refactor",
+        "growth-writer",
         "implementer",
         "reviewer",
         "scout",
         "scribe",
+        "technical-editor",
         "verifier",
       ].sort(),
     );
@@ -75,13 +77,21 @@ describe("subagent roster", () => {
       "implementer",
       "reviewer",
       "css-refactor",
+      "technical-editor",
+      "growth-writer",
     ]) {
       expect(agents[name].model).toBe("claude-sonnet-5-5");
     }
   });
 
   it("keeps read-only roles read-only", () => {
-    for (const name of ["scout", "verifier", "reviewer"]) {
+    for (const name of [
+      "scout",
+      "verifier",
+      "reviewer",
+      "technical-editor",
+      "growth-writer",
+    ]) {
       const tools = agents[name].tools.split(",").map((t) => t.trim());
       expect(tools).not.toContain("Edit");
       expect(tools).not.toContain("Write");
