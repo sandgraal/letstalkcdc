@@ -158,9 +158,30 @@ describe("agent entry points", () => {
   });
 });
 
+// Linear scans only (indexOf / split): no backtracking-prone regexes on
+// file content, so adversarial input cannot trigger ReDoS.
 const frontmatter = (text) => {
-  const m = text.match(/^---\n([\s\S]*?)\n---\n/);
-  return m ? m[1] : null;
+  if (!text.startsWith("---\n")) return null;
+  const end = text.indexOf("\n---\n", 3);
+  return end === -1 ? null : text.slice(4, end);
+};
+
+// Returns the quoted globs listed under `paths:`, or [] when there is none.
+// A list item is an indented `- "glob"` line; the list stops at the first
+// line that is not one.
+const frontmatterPaths = (fm) => {
+  const lines = fm.split("\n");
+  const start = lines.findIndex((l) => l.trimEnd() === "paths:");
+  if (start === -1) return [];
+  const globs = [];
+  for (const line of lines.slice(start + 1)) {
+    const item = line.trimStart();
+    const indented = item.length < line.length;
+    if (!indented || !item.startsWith('- "') || !item.endsWith('"')) break;
+    if (item.length < 5) break; // needs at least one glob character
+    globs.push(item.slice(3, -1));
+  }
+  return globs;
 };
 
 describe("rules and skills frontmatter", () => {
@@ -192,10 +213,21 @@ describe("rules and skills frontmatter", () => {
       const text = fs.readFileSync(path.join(rulesDir, file), "utf8");
       const fm = frontmatter(text);
       expect(fm, "frontmatter").not.toBeNull();
-      expect(fm).toMatch(/^paths:\s*\n(\s+- ".+"\n?)+$/m);
+      expect(frontmatterPaths(fm).length).toBeGreaterThan(0);
       expect(text.trimEnd().split("\n").length).toBeLessThan(80);
     },
   );
+
+  it("parses a 200 KB adversarial paths: block in under a second", () => {
+    const fm = `paths:${'\n  - "a"'.repeat(25_000)}\n  - "a" - "`;
+    expect(fm.length).toBeGreaterThan(200_000);
+    const started = performance.now();
+    const globs = frontmatterPaths(fm);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(globs).toHaveLength(25_001);
+    expect(frontmatterPaths("paths:\n")).toEqual([]);
+    expect(frontmatterPaths('name: x\n  - "a"')).toEqual([]);
+  });
 
   it("still has the three original skills (more are allowed)", () => {
     expect(skills).toEqual(expect.arrayContaining(EXPECTED_SKILLS));
