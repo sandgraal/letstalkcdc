@@ -17,13 +17,17 @@ separate app with its own `package.json`, copied into the site at deploy.
 
 ## Orientation: read in this order
 
-1. [`docs/AUTOPSY-BRIEF.md`](docs/AUTOPSY-BRIEF.md) — measurements, risks, open work.
-2. [`docs/STATE-OF-PROJECT.md`](docs/STATE-OF-PROJECT.md) — dated dashboard.
-3. [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) — roles, routing, merge and push policy. Model policy: see docs/CONDUCTOR.md.
+1. [`docs/AUTOPSY-BRIEF.md`](docs/AUTOPSY-BRIEF.md) — large; read sections 4, 6,
+   9 and 10 first (measurements, risks, open work).
+2. [`docs/STATE-OF-PROJECT.md`](docs/STATE-OF-PROJECT.md) — dated snapshot; its
+   counts are historical, recompute any number with the commands it lists.
+3. [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) — roles, routing, model, merge and push policy.
+4. Day-1 checklist: TEAM-CHARTER.md in docs/, once PR #447 has merged.
 
 Then `docs/IMPLEMENTATION-PLAN.md`, the authoritative checklist: find your
-item, do the work, flip `- [ ]` to `- [x]` in the same commit. Phase 13 is the
-agent queue; Phase 14 is the maintainer's decisions: do not start those. New
+item, do the work, flip `- [ ]` to `- [x]` in the same commit. The team's queue
+is Phase 17 (not on main yet? PR #448 is open: `gh pr list`), then older
+agent-executable boxes; Phase 14 is the maintainer's: do not start those. New
 work that fits no phase: add it to the lowest phase it belongs to or append a
 new Phase heading.
 
@@ -90,8 +94,8 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
 
 - **Commits:** Conventional Commits, lowercase scope, imperative, body wrapped
   near 72 columns, e.g. `fix(ci): pin SITE_HOST in linkcheck.yml`. Prefer new
-  commits over `--amend`; never `--no-verify` or `--no-gpg-sign`. End Claude-authored commits with
-  the `Co-Authored-By` trailer the harness gives you; add a
+  commits over `--amend`; never `--no-verify` or `--no-gpg-sign`. End
+  Claude-authored commits with the harness's `Co-Authored-By` trailer; add a
   `https://claude.ai/code/session_<id>` footer only with a real session id.
 - **Branches:** `claude/<short-name>-<id>`; PRs go into `main`. Who may push,
   merge and open PRs is in `docs/CONDUCTOR.md`, not here.
@@ -119,13 +123,6 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
   CI run does not block a merge. Merge policy: see docs/CONDUCTOR.md.
 - `npm install` in CI (use `npm ci`); pushing without `npm run format` and lint.
 
-## Auto-rewake
-
-A Stop hook (`.claude/scripts/check-merged-prs.sh`) may rewake a session when a
-`claude/*` PR merges (within 6 hours, not yet acknowledged). State: gitignored
-`.claude/.merge-watcher-state.json`. Disable: remove the Stop entry in
-`.claude/settings.json` (maintainer-owned) or delete the state file.
-
 ## Where to read more
 
 - `docs/CONTRIBUTING.md`, `docs/SETUP.md` (env vars, Supabase), `docs/HOSTING.md`
@@ -134,6 +131,9 @@ A Stop hook (`.claude/scripts/check-merged-prs.sh`) may rewake a session when a
 - `docs/TRACING.md` is retired; `docs/archive/` is history, not spec.
   `CHANGELOG.md` `[Unreleased]` is the dev-cycle scratchpad.
 - Roles: `.claude/agents/`; slash commands: `.claude/commands/`.
+- Auto-rewake: Stop hook `.claude/scripts/check-merged-prs.sh` may rewake a
+  session when a `claude/*` PR merges (state: `.claude/.merge-watcher-state.json`;
+  disable by deleting it or the Stop entry in maintainer-owned `.claude/settings.json`).
 
 ## First-run mines
 

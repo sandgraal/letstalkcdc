@@ -9,7 +9,7 @@ Distilled from `docs/adding-modules.md`; read that file for full examples.
 Content rules (thesis, errata, dates) are in `.claude/rules/content.md`.
 
 1. **Plan item.** Find or add the item in `docs/IMPLEMENTATION-PLAN.md`
-   (Phase 13 is the agent queue). You flip its box in the same commit.
+   (Phase 17, the plan's current phase, is the team queue). You flip its box in the same commit.
 2. **Register in `src/_data/series.mjs`** first: `key` (the slug), `title`,
    `description`, `href` (`<key>/`, no leading slash, copy a neighbour),
    `tags`, `skillLevel` and `related` (other keys). This drives the overview
