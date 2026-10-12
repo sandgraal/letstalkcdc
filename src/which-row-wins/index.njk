@@ -504,7 +504,7 @@ WHEN NOT MATCHED THEN
       it, so a replayed older update finds nothing to lose to. Either keep a marker row (a
       <code>deleted</code> flag plus the delete&rsquo;s position) or rely on a target feature that keeps the delete for a
       stated time, and know the time: two days in BigQuery and Databricks by default. When the marker may finally go is
-      the subject of a later module on deletes that stay deleted.
+      the subject of <a href="{{ '/deletes-stay-deleted/' | url }}">Deletes That Stay Deleted</a>.
     </p>
   </section>
 

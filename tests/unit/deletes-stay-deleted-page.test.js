@@ -84,7 +84,7 @@ describe("front matter and registration", () => {
 
   it("dates the page 2026-10-09 in its data file", () => {
     expect(data.datePublished).toBe("2026-10-09");
-    expect(data.dateModified).toBe("2026-10-09");
+    expect(data.dateModified).toBe("2026-10-11");
   });
 
   it("is registered once in series.mjs with a matching key and href", () => {
@@ -289,6 +289,66 @@ describe("banned wording", () => {
       /\b(?:seamless(?:ly)?|robust|leverage|game-?changer)\b/i,
     );
     expect(source).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+  });
+});
+
+describe("the before image of a delete event is conditional (P17-12)", () => {
+  // Every sentence that says what a delete event holds must carry both
+  // qualifiers: PostgreSQL key columns only unless REPLICA IDENTITY FULL, and
+  // MySQL binlog_row_image=FULL for the full row.
+  const cells = [
+    ...body.matchAll(/<td>([^<]*(?:<code>[^<]*<\/code>[^<]*)*)<\/td>/g),
+  ].map((m) => text(m[1]));
+
+  const withBefore = cells.filter(
+    (c) => /before image/.test(c) && /delete event|op: "d"/.test(c),
+  );
+
+  it("finds the three places that describe the before image of a delete", () => {
+    expect(withBefore).toHaveLength(3);
+  });
+
+  it("states both qualifiers in each of them", () => {
+    for (const s of withBefore) {
+      expect(s, s).toMatch(/PostgreSQL/);
+      expect(s, s).toMatch(/REPLICA IDENTITY FULL/);
+      expect(s, s).toMatch(/MySQL/);
+      expect(s, s).toMatch(/binlog_row_image=FULL/);
+    }
+  });
+
+  it("states the PostgreSQL and MySQL conditions only as far as they are certain", () => {
+    for (const s of withBefore) {
+      expect(s, s).toMatch(
+        /with the default replica identity on a table that has a primary key/,
+      );
+      expect(s, s).toMatch(/only the key columns/);
+      expect(s, s).toMatch(/adds the rest of the row/);
+      expect(s, s).toMatch(/other replica identity settings differ/);
+      expect(s, s).toMatch(
+        /binlog_row_image controls how much of the row is written/,
+      );
+      expect(s, s).toMatch(/the full row needs binlog_row_image=FULL/);
+    }
+  });
+
+  it("no longer says unqualified that the delete event holds the before image", () => {
+    expect(prose).not.toMatch(
+      /It is the delete event\. It holds the before image\./,
+    );
+    expect(prose).not.toMatch(/delete event, before image included/);
+  });
+
+  it("records the correction in errata.mjs, link-free", async () => {
+    const { default: errata } = await import("../../src/_data/errata.mjs");
+    const e = errata.find(
+      (x) => x.id === "delete-event-before-image-2026-10-11",
+    );
+    expect(e).toBeTruthy();
+    expect(e.urls).toContain("/deletes-stay-deleted/");
+    expect(e.body).toMatch(/REPLICA IDENTITY FULL/);
+    expect(e.body).toMatch(/binlog_row_image=FULL/);
+    expect(e.body).not.toMatch(/href=/);
   });
 });
 

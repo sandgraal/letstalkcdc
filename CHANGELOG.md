@@ -8,12 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/llms.txt` for language-model crawlers (P17-21).** A plain-text index in
+  the llmstxt.org shape (title, summary, links with descriptions), generated
+  at build time from the same indexable-page rule and series order as
+  `sitemap.xml`, so noindex pages and redirect stubs never appear. It states
+  that the content is CC BY 4.0 and that attribution is required. The host
+  comes from `site.host`, not a literal. A unit test builds the site and
+  checks that every listed URL is a built, indexable page and that the list
+  equals the sitemap's.
 - **Handoff kit for the next agent team (Phase 17).** The plan gains Phase 17:
   the kit, an autopsy split into a part that starts now and a part that waits
   for the 2026-11-06 data snapshot, a no-regret track that needs no audience
   data, a data-gated menu (41 items beyond the kit, all Size S or M) and six
-  follow-ups from the kit's reviews. Shipped: a decisions log
-  (`docs/DECISIONS.md`), PR and issue templates, Dependabot with majors in
+  follow-ups from the kit's reviews. All kit items have shipped: a decisions
+  log (`docs/DECISIONS.md`), PR and issue templates, Dependabot with majors in
   separate PRs and a worktree prune (#430); a maintainer guide
   (`docs/MAINTAINER-TASKS.md`, #431); a shorter `CLAUDE.md` with path-scoped
   rules and skills, correcting its "branch-protected" and "Vite 7" claims,
@@ -36,6 +44,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test cases, thesis-lint rules, guard cases or hooks shrinks. Touches
   `.claude/**`, so the maintainer merges it. The `/team-end` and `/team-start`
   edits wait for the commands PR (P17-62). No site or CSS change.
+  and a fix to the merge watcher (#432, #443); a thesis lint over the site's
+  copy (`npm run lint:thesis`, #444), a gated merge script
+  (`scripts/merge-pr.mjs`, #445), an autonomy charter with guard hooks and
+  permissions (#446), a team charter with two new roles and a weekly-digest
+  skill (#447), Phase 17 in the plan (#448) and the cold-start fixes with
+  `docs/COLD-START-DRILL.md` (#449). The post-merge sweep (P17-59) is in
+  review: it brings the maintainer guide, team charter, content rules, loop
+  and state snapshot in line with what merged, and records the maintainer's
+  answers of 2026-10-11 in `docs/DECISIONS.md` (no stronger model for now, a
+  public contact address, a vendor-disclosure policy whose wording awaits
+  approval, the merge preference, content review, the first two weeks). Next:
+  the maintainer adds required status checks to the `default` ruleset
+  (P17-3), the cold-start drill is re-run, and the autopsy (part A) and the
+  no-regret track start. `docs/AUTOPSY-BRIEF.md` now names the autopsy's
+  next-phase draft Phase 18. No site or CSS change.
 - **Playground labs linked from the lessons (P16-26).** The playground
   gains a `redeliver` operation that re-sends a delivered change with its
   original log position, guard modes for the log lane's destination (none,
@@ -145,6 +168,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Content corrections from the accuracy sample (P17-12).** Five pages
+  were wrong or unguarded, each with a per-page errata entry
+  (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-11.
+  `/snapshotting/`: the PostgreSQL setup said to reload, but `wal_level` and
+  `max_replication_slots` need a server restart; the REPEATABLE READ plus
+  `pg_current_wal_lsn()` lines are now labelled an illustration with their
+  race stated (a commit between the snapshot and the LSN is missed) and a
+  pointer to the PostgreSQL documentation for creating a logical replication
+  slot (no tested recipe); three claims that a plain boundary snapshot
+  resumes from the last chunk now say only an incremental snapshot does.
+  `/deletes-stay-deleted/`, `/event-envelope/` (quiz), `/use-cases/` and
+  `/security/`: a delete event's before image holds only the key columns on
+  PostgreSQL with the default replica identity unless `REPLICA IDENTITY FULL`,
+  and the full row on MySQL needs `binlog_row_image=FULL`; the pages said it
+  always held the row. `/is-cdc-exactly-once/`: the guard now points to the
+  (position, seq) pair for same-position changes, and the untraceable
+  "an independent review ran them on PGlite" sentence is replaced by a unit
+  test that runs the page's SQL on PGlite. `/which-row-wins/`: a stale
+  "later module" reference is now a link. `/merge-cookbook/`: its three
+  "handling hard parts" Postgres blocks (reload, view, purge) are now
+  executed in the PGlite test that backs the page's "executed against PGlite"
+  line. Not changed, pending the maintainer: Debezium Kafka-signal behaviour,
+  `message.key.columns`, initial-snapshot restart, flattening defaults and
+  MySQL `SHOW MASTER STATUS`.
 - **Heading levels are correct without changing how they look (P16-9).**
   Headings that skipped a level were promoted to the right level and keep
   their appearance through the `.h-as-3` / `.h-as-4` helpers; stat numbers

@@ -60,3 +60,9 @@ at the end of this file.
 ## Run log
 
 - 2026-10-11, preview of the kit PRs merged (thesis lint left out): 12 of 12 answered correctly; 5 contradictions reported (work queue pointers, merge permission wording in MAINTAINER-TASKS.md, missing lint:thesis wording, stale STATE-OF-PROJECT facts, heavy AUTOPSY-BRIEF as a first read); part 1 fixes in PR #449, rest in P17-59.
+- 2026-10-11, drill 1 (preview with the kit PRs merged): 12 of 12 answered; 5 contradictions; fixes in #449 and the sweep.
+- 2026-10-11, drill 2 (sweep branch at 633f188): 12 of 12 answered; 5 contradictions; fixed in 300ade7.
+- 2026-10-11, drill 3 (sweep branch at 300ade7), run by a Sonnet `reviewer` after the Haiku scout ran out of turns: 12 of 12 answered correctly with citations; 5 findings (orientation order, thesis not in CLAUDE.md, Tier 3 scope of `.claude/**`, no single "next Ready item", P17-59 status and date wording); fixed in the commit that follows 300ade7 (P17-59).
+- To do (P17-10): the confirmation drill on real `main` after the sweep PR merges. Pass = 12 of 12 and zero contradictions.
+
+Note: a Haiku scout can run out of its 30 turns on this drill. Use a Sonnet `reviewer` with Read only.

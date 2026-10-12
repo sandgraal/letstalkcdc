@@ -50,32 +50,46 @@ const xmlEscape = (s) =>
  * dateModified, and the deploy checkout is shallow, so a git date would be
  * the date of the latest commit to anything, not of the playground.
  */
-const extraUrls = [{ url: "/playground/" }];
+const extraUrls = [
+  {
+    url: "/playground/",
+    // Read by llms.txt (src/llms.txt.11ty.cjs); the sitemap ignores them.
+    // They mirror the playground's own <title> and meta description.
+    title: "CDC Change Feed Playground",
+    description:
+      "Try Change Data Capture in your browser: run inserts, updates and deletes on a made-up table and watch the change events they produce. No real data.",
+  },
+];
 
-module.exports = class {
+const exclusionTags = ["draft", "noindex"];
+
+/**
+ * The one rule for "is this collection item an indexable page?". The sitemap
+ * and llms.txt both call it, so the two lists cannot drift apart.
+ */
+const isIndexable = (item) => {
+  if (!item.url) return false;
+  if (item.inputPath.includes("/_redirects/")) return false;
+  if (item.fileSlug === "404") return false;
+  if (item.data?.eleventyExcludeFromSitemap) return false;
+  if (item.data?.tags && exclusionTags.some((t) => item.data.tags.includes(t)))
+    return false;
+  return true;
+};
+
+class Sitemap {
   data() {
     return {
       permalink: "/sitemap.xml",
       eleventyExcludeFromCollections: true,
-      exclusionTags: ["draft", "noindex"],
+      exclusionTags,
     };
   }
 
-  render({ collections, site, exclusionTags }) {
+  render({ collections, site }) {
     const base = (site?.host || "").replace(/\/$/, "");
 
-    const candidates = collections.all.filter((item) => {
-      if (!item.url) return false;
-      if (item.inputPath.includes("/_redirects/")) return false;
-      if (item.fileSlug === "404") return false;
-      if (item.data?.eleventyExcludeFromSitemap) return false;
-      if (
-        item.data?.tags &&
-        exclusionTags.some((tag) => item.data.tags.includes(tag))
-      )
-        return false;
-      return true;
-    });
+    const candidates = collections.all.filter(isIndexable);
 
     const unique = Array.from(
       new Map(
@@ -98,4 +112,9 @@ module.exports = class {
 
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
   }
-};
+}
+
+Sitemap.isIndexable = isIndexable;
+Sitemap.extraUrls = extraUrls;
+
+module.exports = Sitemap;
