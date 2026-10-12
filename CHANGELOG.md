@@ -47,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when it overrode gate 5, and as the whole body. `docs/CONDUCTOR.md` states
   that a compromised registry release or a malicious bump of a named package
   still passes.
+- **Third review of the Dependabot lane (P17-65).** Lockfile versions and
+  dependency specs are now allowlists (plain semver for `version`; a semver
+  range or a dist-tag word for specs, which the real lockfile contains), so
+  `gist:`, `workspace:`, tarball names and the like are refused. Added and
+  removed `package.json` dependency keys are compared as own keys. Each changed
+  value must be higher than before and equal to the version the title (or the
+  package's line of the group body) names.
 - **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
   per RFC 9116 (`Contact` mailto the maintainer's designated public address,
   `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and

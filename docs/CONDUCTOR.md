@@ -282,17 +282,25 @@ author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
     with `lockfileVersion` 2 or 3. Every entry of `packages` (and of the v1
     `dependencies` tree, recursively) must have a `resolved` that starts with
     `https://registry.npmjs.org/` and contains no second `://`, no
-    `link: true`, no `version` and no dependency spec (`dependencies`,
-    `devDependencies`, `optionalDependencies`, `peerDependencies`,
-    `requires`) that begins with `file:`, `git`, `github:`, `http:` or `npm:`,
-    contains `://`, or contains a `/` (an `owner/repo` or path spec). An entry
-    with no `resolved` (the root `""`) is fine. Because it reads the parsed
-    values, a JSON-escaped key (`"\u0072esolved"`) cannot hide a git
+    `link: true`, and these are **allowlists**: every non-root `version` must
+    be a plain semver (never a tag), and every dependency spec
+    (`dependencies`, `devDependencies`, `optionalDependencies`,
+    `peerDependencies`, `requires`) must be a semver range or a dist-tag
+    word (`^[A-Za-z][A-Za-z0-9._-]*$`, not ending in `.tgz`, `.tar` or
+    `.tar.gz`). Anything else is refused by not matching: `gist:`, `file:`,
+    `workspace:`, `git+https:`, `github:`, `npm:` aliases, URLs, `owner/repo`,
+    a name with `@`, `:`, `/` or a backslash, a tarball name. A tag is allowed
+    in a lock entry's specs because npm records one there (the real lockfile
+    has `latest` under `node_modules/@paulirish/trace_engine`) and a tag
+    resolves through the registry; it does not fetch from anywhere else. What
+    pins the source is the `resolved` registry-prefix check above, not the
+    spec. The root entry `""` has no `resolved` and its `version` is not
+    checked. Because it reads the parsed values, a JSON-escaped key (`"\u0072esolved"`) cannot hide a git
     resolution. As a second, raw-text check, any **added** line of the
     lockfile and `package.json` patch that contains a backslash refuses the
-    lane. This reads the whole resulting lockfile, so an existing git, file or
-    `npm:` alias entry anywhere in it would refuse every Dependabot PR until
-    removed (none exist today).
+    lane. This reads the whole resulting lockfile, so an existing entry that
+    fails these rules would refuse every Dependabot PR until removed
+    (`package-lock.json` and `playground/package-lock.json` both pass today).
   - **`package.json` is tied to the packages the PR names.** Parsed, it may
     differ from `main` only in `version` and the four dependency maps
     (`dependencies`, `devDependencies`, `optionalDependencies`,
@@ -301,9 +309,16 @@ author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
     **key sets must be identical** (no package added, removed, renamed or
     moved between maps), every **changed value** must match
     `^[\^~]?\d+\.\d+\.\d+$` (so no `npm:` alias, git, `file:` or URL spec,
-    tag, or range with `||`), and the set of packages whose value changed must
-    be **non-empty and a subset** of the packages named by the PR title, or,
-    for a group PR, by the "Updates `pkg` from X to Y" lines in the body.
+    tag, or range with `||`; tags are refused here even though a lock entry
+    may hold one), and the set of packages whose value changed must be
+    **non-empty and a subset** of the packages named by the PR title, or, for
+    a group PR, by the "Updates `pkg` from X to Y" lines in the body. Keys are
+    compared as the manifest's own keys (`Object.hasOwn`), so a new package
+    named `constructor` or `toString` is seen as added. Each changed value,
+    with a leading `^` or `~` stripped, must be **strictly greater** than the
+    old one (major.minor.patch) and **equal** to the `to` version the title, or
+    that package's own line of the group body, names (a leading `v` in the
+    title is ignored); a downgrade or an unrelated value voids the lane.
     Consequence: a lockfile-only change (no `package.json` change, as for a
     transitive dependency) is refused, because nothing ties it to the named
     package; the maintainer or `--maintainer-approved` handles those.

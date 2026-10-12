@@ -848,23 +848,42 @@ const LOCK_DEPENDENCY_MAPS = [
   "peerDependencies",
   "requires",
 ];
-// A version or spec that is not a registry semver: file:, git..., github:,
-// http: and npm: specs, and anything with a scheme separator.
-const SUSPECT_SPEC = /^(?:file:|git|github:|http:|npm:)|:\/\//i;
+// Allowlists, not denylists: a non-root entry's `version` must be a plain
+// registry version, and a dependency or `requires` spec must be a semver range
+// or a dist-tag word. Everything else (links, aliases, gist:/file:/workspace:/
+// git specs, tarball names, owner/repo) is refused by not matching.
+const LOCK_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const SPEC_CHARS = /^[0-9A-Za-z.\-+^~<>=| *xX]+$/;
+// One whitespace-separated piece of a range: a comparator, a (partial)
+// version or wildcard, or the `-` of a hyphen range.
+const SPEC_TOKEN =
+  /^(?:-|[<>=^~]+|[<>=^~]*v?(?:\d+|[xX*])(?:\.(?:\d+|[xX*]))*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
+// A dist-tag such as `latest`: npm records it in a lock entry's dependency
+// maps, and it resolves through the registry. It has no `:`, `/`, `@` or `\`.
+const SPEC_TAG = /^[A-Za-z][A-Za-z0-9._-]*$/;
+// A bare file name is a tag by shape, so archive names are refused by suffix.
+const ARCHIVE_SUFFIX = /\.(?:tgz|tar|tar\.gz)$/i;
+
+function isSemverRange(spec) {
+  if (!SPEC_CHARS.test(spec)) return false;
+  return spec.split("||").every((alternative) => {
+    const tokens = alternative.split(/ +/).filter(Boolean);
+    return tokens.length > 0 && tokens.every((t) => SPEC_TOKEN.test(t));
+  });
+}
 
 function lockSpecProblem(spec) {
   if (typeof spec !== "string") return "is not a string";
-  if (SUSPECT_SPEC.test(spec)) return "is a file, git, URL or alias spec";
-  // semver ranges and tags never contain a slash; `owner/repo` and `../x` do
-  if (spec.includes("/")) return "is a path or owner/repo spec";
-  return null;
+  if (isSemverRange(spec)) return null;
+  if (SPEC_TAG.test(spec) && !ARCHIVE_SUFFIX.test(spec)) return null;
+  return "is not a semver range or a dist-tag";
 }
 
 /**
  * Checks a parsed lockfile entry (a `packages` value, or a v1-style
  * `dependencies` value, which nests). `where` names it in a problem.
  */
-function lockEntryProblems(where, entry, problems, depth = 0) {
+function lockEntryProblems(where, entry, problems, depth = 0, root = false) {
   if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
     problems.push(`${where} is not an object`);
     return;
@@ -887,9 +906,9 @@ function lockEntryProblems(where, entry, problems, depth = 0) {
       );
     }
   }
-  if (entry.version !== undefined) {
+  if (entry.version !== undefined && !root) {
     const version = entry.version;
-    if (typeof version !== "string" || SUSPECT_SPEC.test(version)) {
+    if (typeof version !== "string" || !LOCK_VERSION.test(version)) {
       problems.push(
         `${where} has a version that is not a registry version: ${JSON.stringify(version)?.slice(0, 100)}`,
       );
@@ -945,7 +964,13 @@ export function lockfileProblems(text) {
     problems.push("package-lock.json has no packages object");
   } else {
     for (const [key, entry] of Object.entries(packages)) {
-      lockEntryProblems(`packages[${JSON.stringify(key)}]`, entry, problems);
+      lockEntryProblems(
+        `packages[${JSON.stringify(key)}]`,
+        entry,
+        problems,
+        0,
+        key === "",
+      );
     }
   }
   if (lock.dependencies !== undefined) {
@@ -977,8 +1002,9 @@ export const PLAIN_DEPENDENCY_VERSION = /^[\^~]?\d+\.\d+\.\d+$/;
 
 /**
  * Compares the four dependency maps of package.json on main and in the merge
- * result. Returns `{ problems, changed }`: `changed` is the sorted package
- * names whose value differs; `problems` lists every key added, removed or
+ * result. Returns `{ problems, changed }`: `changed` is the list (sorted by
+ * name) of `{ name, from, to }` for every package whose value differs, with
+ * the raw values; `problems` lists every key added, removed or
  * renamed, and every changed value that is not a plain [^~]major.minor.patch.
  * Unreadable input is a problem (fail closed).
  */
@@ -992,7 +1018,7 @@ export function dependencyMapChanges(baseText, headText) {
     };
   }
   const problems = [];
-  const changed = new Set();
+  const changed = [];
   const isMap = (value) =>
     value && typeof value === "object" && !Array.isArray(value);
   for (const map of DEPENDENCY_MAPS) {
@@ -1002,16 +1028,20 @@ export function dependencyMapChanges(baseText, headText) {
       problems.push(`package.json ${map} is not an object`);
       continue;
     }
-    const added = Object.keys(to).filter((name) => !(name in from));
-    const removed = Object.keys(from).filter((name) => !(name in to));
+    // Own keys only: `in` would find `constructor` or `toString` on the
+    // prototype and let a package of that name be added unnoticed.
+    const added = Object.keys(to).filter((name) => !Object.hasOwn(from, name));
+    const removed = Object.keys(from).filter(
+      (name) => !Object.hasOwn(to, name),
+    );
     if (added.length > 0 || removed.length > 0) {
       problems.push(
         `package.json ${map} adds or removes packages (+${added.slice(0, 3).join(",") || "none"} -${removed.slice(0, 3).join(",") || "none"})`,
       );
     }
     for (const name of Object.keys(to)) {
-      if (!(name in from) || from[name] === to[name]) continue;
-      changed.add(name);
+      if (!Object.hasOwn(from, name) || from[name] === to[name]) continue;
+      changed.push({ name, from: from[name], to: to[name] });
       if (
         typeof to[name] !== "string" ||
         !PLAIN_DEPENDENCY_VERSION.test(to[name])
@@ -1022,7 +1052,8 @@ export function dependencyMapChanges(baseText, headText) {
       }
     }
   }
-  return { problems: [...new Set(problems)], changed: [...changed].sort() };
+  changed.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { problems: [...new Set(problems)], changed };
 }
 
 function parseManifest(text) {
@@ -1067,6 +1098,43 @@ export function comparePackageJson(baseText, headText) {
   };
 }
 
+const MANIFEST_VERSION = /^[\^~]?(\d+)\.(\d+)\.(\d+)$/;
+
+/**
+ * One changed package.json dependency (`{ name, from, to }`, the raw values)
+ * against what the PR names. The new value, without a leading ^ or ~, must be
+ * strictly greater than the old one, and must equal the `to` version the title
+ * (or the group body's "Updates `pkg` from X to Y" line) gives for it. Returns
+ * the reason it is not, or null. A package the PR does not name is reported
+ * elsewhere; only the direction is checked for it.
+ */
+function changeProblem({ name, from, to }, bumps) {
+  const label = `package.json ${JSON.stringify(name)} ${JSON.stringify(from)?.slice(0, 40)} -> ${JSON.stringify(to)?.slice(0, 40)}`;
+  const parts = (value) => {
+    const m = MANIFEST_VERSION.exec(typeof value === "string" ? value : "");
+    return m ? m.slice(1).map(BigInt) : null;
+  };
+  const before = parts(from);
+  const after = parts(to);
+  if (!before || !after) {
+    return `${label}: not comparable as plain [^~]major.minor.patch versions`;
+  }
+  const order = before.findIndex((n, i) => n !== after[i]);
+  if (order === -1 || after[order] < before[order]) {
+    return `${label}: not an increase`;
+  }
+  const wanted = bumps.filter((bump) => bump.name === name);
+  const target = String(to).replace(/^[\^~]/, "");
+  // package.json cannot carry a `v` (PLAIN_DEPENDENCY_VERSION), a title may.
+  const wrong = wanted.find(
+    (bump) => bump.to.replace(/^[\^~]?v?/, "") !== target,
+  );
+  if (wrong) {
+    return `${label}: the PR names ${wrong.to}, not ${target}`;
+  }
+  return null;
+}
+
 /**
  * Decides whether a PR may use the Dependabot lane, which is exempt from gates
  * 4 and 4b only. Returns `{ author, eligible, reasons, summary }`: `author` is
@@ -1076,9 +1144,11 @@ export function comparePackageJson(baseText, headText) {
  * `extraReasons` are content problems found by the test-merge (lockfile URLs,
  * package.json keys); any of them voids the lane. Every commit must be
  * authored by Dependabot, and `author.is_bot` must be exactly true.
- * `changedPackages`, when given (the package names whose value changed in the
- * package.json dependency maps), must be non-empty and a subset of the
- * packages the title (or a group PR's body) names.
+ * `changedPackages`, when given (`{ name, from, to }` for each package whose
+ * value changed in the package.json dependency maps, from
+ * `dependencyMapChanges`), must be non-empty, a subset of the packages the
+ * title (or a group PR's body) names, and each must go up to exactly the
+ * version the PR names.
  */
 export function dependabotLane(
   pr,
@@ -1130,7 +1200,13 @@ export function dependabotLane(
   }
   if (changedPackages) {
     const named = new Set(bumps.map((bump) => bump.name));
-    const unnamed = changedPackages.filter((name) => !named.has(name));
+    const unnamed = [
+      ...new Set(
+        changedPackages
+          .map((change) => change.name)
+          .filter((n) => !named.has(n)),
+      ),
+    ];
     if (changedPackages.length === 0) {
       reasons.push(
         "package.json changes no dependency version, so nothing ties the PR to the package it names",
@@ -1142,6 +1218,10 @@ export function dependabotLane(
           .map((name) => JSON.stringify(name))
           .join(", ")}`,
       );
+    }
+    for (const change of changedPackages) {
+      const problem = changeProblem(change, bumps);
+      if (problem) reasons.push(problem);
     }
   }
 

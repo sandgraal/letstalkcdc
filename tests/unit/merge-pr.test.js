@@ -42,6 +42,7 @@ import {
   dependabotCommitProblems,
   dependabotLane,
   dependencyMapChanges,
+  DEPENDENCY_MAPS,
   defaultFs,
   defaultRunner,
   installSignalHandlers,
@@ -97,25 +98,39 @@ const LANE_MANIFEST = {
   devDependencies: { eslint: "9.1.0", prettier: "3.0.0" },
 };
 const laneBase = () => JSON.stringify(LANE_MANIFEST, null, 2);
+// `bump` is a list of names (each gets its last digit raised by one) or an
+// object of name -> exact new value.
 const laneMerged = (bump = [], changes = {}) => {
   const manifest = structuredClone(LANE_MANIFEST);
-  for (const name of bump) {
+  const wanted = Array.isArray(bump)
+    ? Object.fromEntries(bump.map((name) => [name, null]))
+    : bump;
+  for (const [name, value] of Object.entries(wanted)) {
     for (const map of ["dependencies", "devDependencies"]) {
       if (name in manifest[map]) {
-        manifest[map][name] = manifest[map][name].replace(/\d+$/, (digits) =>
-          String(Number(digits) + 1),
-        );
+        manifest[map][name] =
+          value ??
+          manifest[map][name].replace(/\d+$/, (digits) =>
+            String(Number(digits) + 1),
+          );
       }
     }
   }
   return JSON.stringify({ ...manifest, ...changes }, null, 2);
 };
-// The packages a Dependabot PR's title (or group body) names.
+// The packages a Dependabot PR's title (or group body) names, with the version
+// each goes to (name -> exact new package.json value).
 const namedBy = (pr) => {
-  const single = /bump\s+(\S+)\s+from/i.exec(pr.title ?? "");
-  if (single) return [single[1]];
-  return [...String(pr.body ?? "").matchAll(/^Updates `([^`\n]+)` from/gm)].map(
-    (m) => m[1],
+  const single = /bump\s+(\S+)\s+from\s+\S+\s+to\s+v?(\S+)/i.exec(
+    pr.title ?? "",
+  );
+  if (single) return { [single[1]]: single[2] };
+  return Object.fromEntries(
+    [
+      ...String(pr.body ?? "").matchAll(
+        /^Updates `([^`\n]+)` from \S+ to (\S+?)\.?$/gm,
+      ),
+    ].map((m) => [m[1], m[2]]),
   );
 };
 const BENIGN_PATCH = [
@@ -3002,6 +3017,52 @@ describe("review fixes round 2 (P17-65): G1 the lockfile is parsed, G2 the named
       }
     });
 
+    it("refuses specs that are not a semver range or a dist-tag, in every map", () => {
+      for (const map of [...DEPENDENCY_MAPS, "requires"]) {
+        for (const spec of [
+          "gist:11081aaa281",
+          "evil.tgz",
+          "evil.tar",
+          "evil.tar.gz",
+          "workspace:*",
+          "git+https://x/y.git",
+          "file:../x",
+          "owner/repo",
+          "@scope/pkg",
+          "evil@1.0.0",
+          "back\\slash",
+          "latest:x",
+          "1.0.0 latest",
+          "",
+        ]) {
+          expect(
+            lockfileProblems(entry({ [map]: { y: spec } })),
+            `${map} ${JSON.stringify(spec)}`,
+          ).toEqual([
+            expect.stringMatching(/not a semver range or a dist-tag/),
+          ]);
+        }
+      }
+    });
+
+    it("accepts a dist-tag in a non-root dependency spec, as npm records it", () => {
+      for (const map of [...DEPENDENCY_MAPS, "requires"]) {
+        for (const spec of ["latest", "next", "beta-2", "^1.2.3", "1.x"]) {
+          expect(lockfileProblems(entry({ [map]: { y: spec } })), spec).toEqual(
+            [],
+          );
+        }
+      }
+    });
+
+    it("never takes a tag as a version", () => {
+      for (const version of ["latest", "next", "1.0", "1.0.0 ", "^1.0.0"]) {
+        expect(lockfileProblems(entry({ version })), version).toEqual([
+          expect.stringMatching(/version that is not a registry version/),
+        ]);
+      }
+    });
+
     it("refuses a bad spec in requires, and anything nested in a v2 tree", () => {
       const v2 = (tree) =>
         JSON.stringify({
@@ -3149,7 +3210,7 @@ describe("review fixes round 2 (P17-65): G1 the lockfile is parsed, G2 the named
         ...changes,
       });
 
-    it("reports nothing for identical files, and the changed names otherwise", () => {
+    it("reports nothing for identical files, and name, from and to otherwise", () => {
       expect(dependencyMapChanges(text(), text())).toEqual({
         problems: [],
         changed: [],
@@ -3163,7 +3224,14 @@ describe("review fixes round 2 (P17-65): G1 the lockfile is parsed, G2 the named
             peerDependencies: { p: "^4.0.1" },
           }),
         ),
-      ).toEqual({ problems: [], changed: ["a", "d", "p"] });
+      ).toEqual({
+        problems: [],
+        changed: [
+          { name: "a", from: "1.0.0", to: "1.0.1" },
+          { name: "d", from: "2.0.0", to: "~2.1.0" },
+          { name: "p", from: "^4.0.0", to: "^4.0.1" },
+        ],
+      });
     });
 
     it.each([
@@ -3237,7 +3305,33 @@ describe("review fixes round 2 (P17-65): G1 the lockfile is parsed, G2 the named
         );
         expect(result.problems, JSON.stringify(bad)).toHaveLength(1);
         expect(result.problems[0]).toContain("package.json dependencies.a");
-        expect(result.changed).toEqual(["a"]);
+        expect(result.changed).toEqual([{ name: "a", from: "1.0.0", to: bad }]);
+      }
+    });
+
+    it("sees an added key that Object.prototype also has (constructor, __proto__, toString)", () => {
+      for (const key of ["constructor", "__proto__", "toString"]) {
+        const withKey = JSON.parse(
+          `{"dependencies":{"a":"1.0.0","b":"^1.0.0","${key}":"1.0.0"}}`,
+        );
+        expect(Object.keys(withKey.dependencies), key).toContain(key);
+        const result = dependencyMapChanges(
+          text(),
+          JSON.stringify({ ...JSON.parse(text()), ...withKey }),
+        );
+        expect(result.problems, key).toEqual([
+          expect.stringMatching(
+            new RegExp(`dependencies adds or removes packages \\(\\+${key}`),
+          ),
+        ]);
+        // and as a removed key
+        const back = dependencyMapChanges(
+          JSON.stringify({ ...JSON.parse(text()), ...withKey }),
+          text(),
+        );
+        expect(back.problems, key).toEqual([
+          expect.stringMatching(new RegExp(`-${key}\\)`)),
+        ]);
       }
     });
 
@@ -3349,23 +3443,131 @@ describe("review fixes round 2 (P17-65): G1 the lockfile is parsed, G2 the named
       const title =
         "chore(deps): Bump the npm-minor-patch group with 2 updates";
       const subset = env(botPr({ title, body }), {
-        mergedManifest: laneMerged(["eslint"]),
+        mergedManifest: laneMerged({ eslint: "9.4.0" }),
       });
       expect(await subset.exec(["7", "--execute"])).toBe(0);
       await refused(
         env(botPr({ title, body }), {
-          mergedManifest: laneMerged(["eslint", "lodash"]),
+          mergedManifest: laneMerged({ eslint: "9.4.0", lodash: "4.17.21" }),
         }),
         /does not name: "lodash"/,
       );
     });
 
+    describe("N3 direction and agreement with the title", () => {
+      const bump = (title, ...changes) => ({
+        lane: dependabotLane(botPr({ title }), MANIFESTS, [], changes),
+      });
+      const change = (to, from = "^1.2.0", name = "lodash") => ({
+        name,
+        from,
+        to,
+      });
+      const REASON = /dependabot lane refused: /;
+
+      it("accepts a value equal to the title's, with or without ^ or ~", () => {
+        for (const [from, to] of [
+          ["1.2.0", "1.2.1"],
+          ["^1.2.0", "^1.2.1"],
+          ["~1.2.0", "~1.2.1"],
+          ["^1.2.0", "1.2.1"],
+          ["1.2.0", "~1.2.1"],
+        ]) {
+          expect(
+            bump("Bump lodash from 1.2.0 to 1.2.1", change(to, from)).lane
+              .eligible,
+            `${from} -> ${to}`,
+          ).toBe(true);
+        }
+      });
+
+      it("refuses ^1.2.0 -> ^9.0.0 under a title that says 1.2.0 to 1.2.1", () => {
+        const { lane } = bump(
+          "Bump lodash from 1.2.0 to 1.2.1",
+          change("^9.0.0"),
+        );
+        expect(lane.eligible).toBe(false);
+        expect(lane.reasons.join(";")).toMatch(
+          /the PR names 1\.2\.1, not 9\.0\.0/,
+        );
+      });
+
+      it.each([
+        ["^1.2.0", "^1.1.9"],
+        ["1.2.0", "1.2.0"],
+        ["~1.2.3", "~1.2.2"],
+        ["^2.0.0", "^1.9.9"],
+      ])("refuses %s -> %s, which is not an increase", (from, to) => {
+        const { lane } = bump(
+          `Bump lodash from ${from.replace(/^[\^~]/, "")} to ${to.replace(/^[\^~]/, "")}`,
+          change(to, from),
+        );
+        expect(lane.eligible).toBe(false);
+        expect(lane.reasons.join(";")).toMatch(/not an increase/);
+      });
+
+      it("refuses a from that cannot be compared", () => {
+        const { lane } = bump(
+          "Bump lodash from 1.2.0 to 1.2.1",
+          change("1.2.1", "latest"),
+        );
+        expect(lane.eligible).toBe(false);
+        expect(lane.reasons.join(";")).toMatch(/not comparable/);
+      });
+
+      it("checks each package of a group against its own line of the body", () => {
+        const body = [
+          "Updates `eslint` from 9.1.0 to 9.4.0",
+          "Updates `prettier` from 3.0.0 to 3.0.3",
+        ].join("\n");
+        const pr = botPr({
+          title: "chore(deps): Bump the npm group with 2 updates",
+          body,
+        });
+        const eslint = { name: "eslint", from: "9.1.0", to: "9.4.0" };
+        const prettier = { name: "prettier", from: "3.0.0", to: "3.0.3" };
+        expect(
+          dependabotLane(pr, MANIFESTS, [], [eslint, prettier]).eligible,
+        ).toBe(true);
+        // prettier takes eslint's version: still an increase, but not its own
+        const swapped = dependabotLane(
+          pr,
+          MANIFESTS,
+          [],
+          [eslint, { ...prettier, to: "9.4.0" }],
+        );
+        expect(swapped.eligible).toBe(false);
+        expect(swapped.reasons.join(";")).toMatch(
+          /"prettier".*the PR names 3\.0\.3, not 9\.4\.0/,
+        );
+      });
+
+      it("voids the lane through the whole flow with the refusal note", async () => {
+        const e = env(botPr(), {
+          mergedManifest: laneMerged({ lodash: "^9.0.0" }),
+        });
+        expect(await e.exec(["7", "--execute"])).toBe(1);
+        expect(e.text()).toMatch(REASON);
+        expect(e.text()).toMatch(/the PR names 4\.17\.21, not 9\.0\.0/);
+        expect(e.merged()).toBe(false);
+        const down = env(botPr(), {
+          mergedManifest: laneMerged({ lodash: "4.17.19" }),
+        });
+        expect(await down.exec(["7", "--execute"])).toBe(1);
+        expect(down.text()).toMatch(/not an increase/);
+        expect(down.merged()).toBe(false);
+      });
+    });
+
     it("dependabotLane applies the check only when it is given the changed names", () => {
       const pr = botPr();
       expect(dependabotLane(pr, MANIFESTS, [], null).eligible).toBe(true);
-      expect(dependabotLane(pr, MANIFESTS, [], ["lodash"]).eligible).toBe(true);
+      const up = { name: "lodash", from: "4.17.20", to: "4.17.21" };
+      expect(dependabotLane(pr, MANIFESTS, [], [up]).eligible).toBe(true);
       expect(dependabotLane(pr, MANIFESTS, [], []).eligible).toBe(false);
-      expect(dependabotLane(pr, MANIFESTS, [], ["other"]).eligible).toBe(false);
+      expect(
+        dependabotLane(pr, MANIFESTS, [], [{ ...up, name: "other" }]).eligible,
+      ).toBe(false);
     });
   });
 });
