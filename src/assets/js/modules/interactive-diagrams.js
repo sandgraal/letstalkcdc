@@ -11,18 +11,17 @@
  * @exports {function} initInteractiveDiagrams
  */
 
+import { getMermaidScript } from "../utils/vendor-scripts.js";
+
 const doc = document;
 
-/** CDN URL for Mermaid.js (ESM build) */
-const MERMAID_CDN =
-  "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
-
 /**
- * Load an external script dynamically and return a promise.
+ * Load a script dynamically and return a promise.
  * @param {string} src - Script URL
+ * @param {string} integrity - Subresource Integrity value for the file
  * @returns {Promise<void>}
  */
-const loadScript = (src) =>
+const loadScript = (src, integrity) =>
   new Promise((resolve, reject) => {
     const existing = doc.querySelector(`script[src="${src}"]`);
     if (existing) {
@@ -40,6 +39,7 @@ const loadScript = (src) =>
     }
     const script = doc.createElement("script");
     script.src = src;
+    script.setAttribute("integrity", integrity);
     script.defer = true;
     script.crossOrigin = "anonymous";
     script.addEventListener("load", () => {
@@ -203,7 +203,9 @@ const initInteractiveDiagrams = async (tracer) => {
   });
 
   try {
-    await loadScript(MERMAID_CDN);
+    const mermaidScript = getMermaidScript();
+    if (!mermaidScript) throw new Error("Mermaid script location not found");
+    await loadScript(mermaidScript.src, mermaidScript.integrity);
   } catch (error) {
     console.warn("Mermaid.js failed to load:", error);
     blocks.forEach((block) => block.classList.remove("diagram-loading"));

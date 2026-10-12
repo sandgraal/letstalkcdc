@@ -147,6 +147,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Mermaid and Chart.js are self-hosted with Subresource Integrity
+  (P17-23).** Both libraries are pinned dev dependencies (`mermaid` 11.17.2,
+  `chart.js` 4.4.4) and no longer load from `cdn.jsdelivr.net`. Mermaid is
+  copied at build time to a content-hashed `/assets/vendor/mermaid.<hash>.min.js`
+  and the loaders add `integrity` (sha384, computed from the file) and
+  `crossorigin`; Chart.js is a lazily imported, hashed Vite chunk. Both are
+  still fetched only on pages that draw a diagram or a chart. The privacy page
+  now names jsDelivr only for the Playground's Supabase library. A unit test
+  checks the hashed files, every integrity value and that no CDN host appears
+  in `src/` or the built site, apart from the privacy page.
+
 - **`/intro/` Lighthouse performance floor ratcheted from 0.82 to 0.84.**
   Set from ten CI `lighthouse` jobs after the render-blocking stylesheet fix
   (median score 0.88, best-of-3 per job 0.86 to 0.92). The badge in

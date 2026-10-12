@@ -208,6 +208,7 @@
     <link rel="preload" href="{{ '/fonts/ibm-plex-sans-700.woff2' | url }}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{{ '/fonts/ibm-plex-mono-400.woff2' | url }}" as="font" type="font/woff2" crossorigin>
     {{ 'src/assets/js/app.js, src/assets/js/progress-ui.js' | vitePreloads | safe }}
+    {% include "components/vendor-scripts.njk" %}
     {% include "components/analytics.njk" %}
   </head>
   <body{% if seriesKey %} data-journey-slug="{{ seriesKey }}"{% endif %}>

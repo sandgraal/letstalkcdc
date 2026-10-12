@@ -1,7 +1,7 @@
 /**
  * Unit tests for the Interactive Diagrams module
  *
- * Since the module lazy-loads Mermaid from CDN, tests focus on:
+ * Since the module lazy-loads the self-hosted Mermaid script, tests focus on:
  * - Early return when no .mermaid blocks exist
  * - Theme detection logic
  * - Tooltip creation and cleanup
@@ -13,6 +13,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { initInteractiveDiagrams } from "../../../src/assets/js/modules/interactive-diagrams.js";
 
+// Where the page template says the vendored Mermaid file lives (P17-23).
+const MERMAID_PATH = "/assets/vendor/mermaid.0123456789ab.min.js";
+const MERMAID_INTEGRITY =
+  "sha384-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const MERMAID_SRC = new URL(MERMAID_PATH, document.baseURI).href;
+
+const addVendorMeta = () => {
+  const meta = document.createElement("meta");
+  meta.name = "cdc-vendor-mermaid";
+  meta.content = MERMAID_PATH;
+  meta.dataset.integrity = MERMAID_INTEGRITY;
+  document.head.appendChild(meta);
+};
+
 describe("interactive-diagrams module", () => {
   const mockTracer = {
     trackInteraction: vi.fn(),
@@ -23,6 +37,10 @@ describe("interactive-diagrams module", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     vi.clearAllMocks();
+    document
+      .querySelectorAll('meta[name^="cdc-vendor-"]')
+      .forEach((m) => m.remove());
+    addVendorMeta();
     // Remove any existing mermaid script tags
     document
       .querySelectorAll('script[src*="mermaid"]')
@@ -45,6 +63,42 @@ describe("interactive-diagrams module", () => {
     await expect(initInteractiveDiagrams(mockTracer)).resolves.toBeUndefined();
     // No script should be appended
     expect(document.querySelector('script[src*="mermaid"]')).toBeNull();
+  });
+
+  it("loads the same-origin Mermaid file with its integrity hash", async () => {
+    document.body.innerHTML = '<pre class="mermaid">graph LR; A-->B;</pre>';
+    let appended = null;
+    vi.spyOn(document.head, "appendChild").mockImplementation((el) => {
+      if (el.tagName === "SCRIPT") {
+        appended = el;
+        setTimeout(() => el.dispatchEvent(new Event("error")), 0);
+      }
+      return el;
+    });
+
+    await initInteractiveDiagrams(mockTracer);
+
+    expect(appended).not.toBeNull();
+    expect(appended.src).toBe(MERMAID_SRC);
+    expect(new URL(appended.src).origin).toBe(window.location.origin);
+    expect(appended.getAttribute("integrity")).toBe(MERMAID_INTEGRITY);
+    expect(appended.crossOrigin).toBe("anonymous");
+    document.head.appendChild.mockRestore?.();
+  });
+
+  it("degrades quietly when the page does not declare the Mermaid file", async () => {
+    document.querySelector('meta[name="cdc-vendor-mermaid"]').remove();
+    document.body.innerHTML = '<pre class="mermaid">graph LR; A-->B;</pre>';
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await initInteractiveDiagrams(mockTracer);
+
+    expect(document.querySelector('script[src*="mermaid"]')).toBeNull();
+    expect(
+      document.querySelector(".mermaid").classList.contains("diagram-loading"),
+    ).toBe(false);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("adds loading class to .mermaid blocks before loading", async () => {
@@ -79,8 +133,7 @@ describe("interactive-diagrams module", () => {
     beforeEach(() => {
       // Pretend Mermaid.js script is already loaded
       const fakeScript = document.createElement("script");
-      fakeScript.src =
-        "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+      fakeScript.src = MERMAID_SRC;
       fakeScript.dataset.loaded = "true";
       document.head.appendChild(fakeScript);
 
@@ -285,8 +338,7 @@ describe("interactive-diagrams module", () => {
 
       // Setup fake mermaid
       const fakeScript = document.createElement("script");
-      fakeScript.src =
-        "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+      fakeScript.src = MERMAID_SRC;
       fakeScript.dataset.loaded = "true";
       document.head.appendChild(fakeScript);
       window.mermaid = {

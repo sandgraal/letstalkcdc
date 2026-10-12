@@ -3,6 +3,7 @@ import path from "path";
 import { getPathPrefix } from "./lib/path-prefix.mjs";
 import { parseAssistantYaml } from "./lib/assistant-yaml.mjs";
 import { renderHeadExtra } from "./lib/render-head-extra.mjs";
+import { getMermaidAsset } from "./lib/vendor-assets.mjs";
 
 // ---------------------------------------------------------------------------
 // Vite manifest helpers — resolve hashed asset paths in production builds.
@@ -86,6 +87,9 @@ const escapeAttributeValue = (value) =>
 
 export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
+    // Mermaid, self-hosted at a content-hashed path (P17-23); the SRI value
+    // is published to templates by src/_data/vendor.mjs.
+    [getMermaidAsset().source]: getMermaidAsset().outputPath,
     "src/static": "/",
     "src/assets/css/styles.min.css": "assets/css/styles.css",
     "src/assets/css/pages": "assets/css/pages",
