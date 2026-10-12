@@ -50,6 +50,8 @@ const llmsSource = readFileSync(
   "utf8",
 );
 
+const realSite = (await import("../../src/_data/site.mjs")).default;
+
 const linksOf = (txt) =>
   [...txt.matchAll(/^- \[([^\]]*)\]\(([^)]+)\)/gm)].map((m) => ({
     title: m[1],
@@ -68,6 +70,7 @@ describe("llms.txt template rules", () => {
     host: BASE,
     title: "Test Manual",
     author: "Test Author",
+    brand: "Test Brand",
     description: "A test summary.",
   };
   const series = [{ key: "first" }, { key: "second" }];
@@ -122,8 +125,52 @@ describe("llms.txt template rules", () => {
     expect(txt).toContain(LICENSE_URL);
     expect(txt).toMatch(/CC BY 4\.0/);
     expect(txt).toMatch(/Attribution is required/);
-    expect(txt).toContain("Test Manual, by Test Author");
-    expect(txt).toContain(`(${BASE}/)`);
+    expect(txt).toContain(
+      `credit "Test Manual by Test Author (Test Brand), ${BASE}/, licensed under CC BY 4.0 (${LICENSE_URL})"`,
+    );
+  });
+
+  it("says exactly-once end to end is not achievable, never merely unclaimed", () => {
+    const txt = render([]);
+    expect(txt).toMatch(
+      /End-to-end exactly-once across independent systems is not achievable\./,
+    );
+    expect(txt).not.toContain("is not claimed");
+  });
+
+  it("uses the attribution sentence LICENSE-CONTENT.md prescribes", () => {
+    // Parse the example from the licence doc: a blockquote that may wrap.
+    const doc = readFileSync(path.join(ROOT, "LICENSE-CONTENT.md"), "utf8");
+    const quote = doc
+      .split("### Attribution")[1]
+      .split(/^## /m)[0]
+      .split("\n")
+      .filter((l) => l.startsWith(">"))
+      .map((l) => l.replace(/^>\s?/, ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const m = quote.match(
+      /^(.+?) by (.+?) \((.+?)\), (https:\/\/\S+\/), licensed under CC BY 4\.0 \((https:\/\/\S+)\)$/,
+    );
+    expect(m, `unparseable example: ${quote}`).not.toBeNull();
+    const [, title, author, brand, url, licence] = m;
+
+    // Same author, title and brand as the site data, the same licence URL,
+    // and the URL has the shape `<site.host>/`.
+    expect(title).toBe(realSite.title);
+    expect(author).toBe(realSite.author);
+    expect(brand).toBe(realSite.brand);
+    expect(licence).toBe(LICENSE_URL);
+
+    // Render with the doc's own host so the whole sentence can be compared.
+    const txt = new LlmsTemplate().render({
+      collections: { all: [] },
+      site: { ...realSite, host: url.replace(/\/$/, "") },
+      series,
+    });
+    const generated = txt.match(/credit "([^"]+)"/)?.[1];
+    expect(generated).toBe(quote);
   });
 
   it("lists lessons in series.mjs order, then the other pages", () => {
@@ -254,7 +301,7 @@ describe("built llms.txt", () => {
     expect(llms).toContain(LICENSE_URL);
     expect(llms).toMatch(/Attribution is required/);
     expect(llms).toContain(
-      `CDC: The Missing Manual, by Christopher Ennis (${BASE}/)`,
+      `credit "CDC: The Missing Manual by Christopher Ennis (Let's Talk CDC), ${BASE}/, licensed under CC BY 4.0 (${LICENSE_URL})"`,
     );
   });
 });

@@ -11,7 +11,8 @@
  * the path prefix) plus the page URL; no host is written in this file.
  *
  * AI crawlers are allowed (docs/DECISIONS.md, "AI crawlers and licensing");
- * the content is CC BY 4.0, so the file says attribution is required.
+ * the content is CC BY 4.0, so the file says attribution is required, using
+ * the sentence LICENSE-CONTENT.md prescribes.
  */
 const Sitemap = require("./sitemap.11ty.cjs");
 
@@ -65,12 +66,14 @@ module.exports = class {
     const section = (heading, items) =>
       items.length ? `## ${heading}\n\n${items.map(line).join("\n")}\n` : "";
 
-    const attribution = `${site?.title}, by ${site?.author} (${base}/)`;
+    // The wording LICENSE-CONTENT.md prescribes; tests/unit/llms-txt.test.js
+    // parses that file and fails if this sentence drifts from it.
+    const attribution = `${site?.title} by ${site?.author} (${site?.brand}), ${base}/, licensed under CC BY 4.0 (${LICENSE_URL})`;
 
     return [
       `# ${site?.title}\n`,
       `> ${site?.description}\n`,
-      `A free, English-language learning resource on change data capture. Its thesis: delivery is at-least-once, and correctness lives in an idempotent sink keyed on the primary key and ordered by source log position, not by ts_ms. End-to-end exactly-once across independent systems is not claimed.\n`,
+      `A free, English-language learning resource on change data capture. Its thesis: delivery is at-least-once, and correctness lives in an idempotent sink keyed on the primary key and ordered by source log position, not by ts_ms. End-to-end exactly-once across independent systems is not achievable.\n`,
       `AI crawlers and retrieval tools are welcome. The content is licensed CC BY 4.0 (${LICENSE_URL}). Attribution is required: credit "${attribution}", link to the page you used, and say if you made changes.\n`,
       `The full list of pages is also in ${base}/sitemap.xml.\n`,
       section("Lessons", lessons),
