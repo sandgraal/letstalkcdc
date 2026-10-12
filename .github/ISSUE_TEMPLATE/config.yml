@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question or start a discussion
+    url: https://github.com/sandgraal/letstalkcdc/discussions
+    about: Questions, ideas and general feedback belong in Discussions.
+  - name: Known corrections (errata)
+    url: https://sandgraal.github.io/letstalkcdc/errata/
+    about: Check whether the correction you have in mind is already listed.

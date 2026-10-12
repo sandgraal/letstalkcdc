@@ -1,0 +1,39 @@
+name: Content error
+description: A page states something that is wrong, outdated or unclear
+title: "[content] "
+labels: ["content-error"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the correction. Corrections with a source are the
+        most useful kind. Confirmed errors are listed on the public
+        [errata page](https://sandgraal.github.io/letstalkcdc/errata/).
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      placeholder: https://sandgraal.github.io/letstalkcdc/...
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: The claim
+      description: Quote the sentence or describe the claim you think is wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source that contradicts it
+      description: A link to documentation, a release note, a spec or a reproducible test.
+    validations:
+      required: true
+  - type: input
+    id: thesis-point
+    attributes:
+      label: Thesis point (if any)
+      description: If the claim supports one of the site's numbered thesis points, which one?
+    validations:
+      required: false
