@@ -19,6 +19,7 @@ The running checklist for in-flight work is
   in the same commit that closes the task.
 - **[AUTOPSY-BRIEF.md](AUTOPSY-BRIEF.md)** — Briefing pack for a team doing
   an evidence-based site autopsy: measurements to re-run, risks, open work
+- **[autopsy-log-2026-10.md](autopsy-log-2026-10.md)** — Evidence log for the October 2026 autopsy (part A: reproduction, data sources, first accuracy sample)
 - **[TEAM-CHARTER.md](TEAM-CHARTER.md)** — How the agent team starts cold and
   runs: roles, rhythm, weekly digest, stop-and-ask triggers
 - **[DECISIONS.md](DECISIONS.md)** — Dated log of maintainer decisions
