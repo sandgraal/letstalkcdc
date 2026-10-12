@@ -28,13 +28,16 @@ import {
   PR_FIELDS,
   RECHECK_FIELDS,
   RESTRICTED_PATTERNS,
+  bumpProblem,
   checkAuditTrail,
   checkChecks,
   checkExceptionModes,
   checkFiles,
   checkReviewRecord,
   checkState,
+  cleanApprovalText,
   cleanStaleTemp,
+  dependabotLane,
   defaultFs,
   defaultRunner,
   installSignalHandlers,
@@ -872,11 +875,9 @@ describe("gate 5: maintainer-only files", () => {
     [".github/pull_request_template.md", "anything under .github"],
     [".claude/settings.json", "claude settings"],
     [".claude/hooks/guard.mjs", "claude hooks"],
-    [".claude/scripts/check-merged-prs.sh", "claude scripts"],
     [".claude/agents/reviewer.md", "claude agents"],
     [".claude/rules/testing.md", "claude rules"],
     [".claude/skills/review/SKILL.md", "claude skills"],
-    [".claude/commands/verify-all.md", "claude commands"],
     ["CLAUDE.md", "agent instructions"],
     ["docs/sub/CLAUDE.md", "nested agent instructions"],
     ["CLAUDE.local.md", "local agent instructions"],
@@ -909,8 +910,6 @@ describe("gate 5: maintainer-only files", () => {
     ["CNAME", "domain"],
     ["LICENSE", "license"],
     ["LICENSE.md", "license with extension"],
-    ["package.json", "root manifest"],
-    ["package-lock.json", "root lockfile"],
     ["playground/package.json", "playground manifest"],
     ["playground/package-lock.json", "playground lockfile"],
   ];
@@ -944,10 +943,10 @@ describe("gate 5: maintainer-only files", () => {
       ".github/workflows/déploy.yml",
       "supabase/é.sql",
       "LICENSEé",
-      "package-locK.json",
+      "playground/package-locK.json",
       // Compatibility look-alikes that a case-folding filesystem may equate.
-      "package-loc\u212a.json",
-      "\uff50ackage.json",
+      "playground/package-loc\u212a.json",
+      "playground/\uff50ackage.json",
     ]) {
       expect(checkFiles([file])).toHaveLength(1);
     }
@@ -971,6 +970,69 @@ describe("gate 5: maintainer-only files", () => {
     ];
     expect(checkFiles(files)).toEqual([]);
     for (const file of files) expect(restrictedPatternFor(file)).toBeNull();
+  });
+
+  describe("released to agents on 2026-10-12 (P17-65)", () => {
+    const released = [
+      "package.json",
+      "package-lock.json",
+      ".claude/commands/verify-all.md",
+      ".claude/commands/sub/deeper.md",
+      ".claude/scripts/check-merged-prs.sh",
+    ];
+
+    it.each(released)("passes gate 5: %s", (file) => {
+      expect(restrictedPatternFor(file)).toBeNull();
+      expect(checkFiles([{ path: file }])).toEqual([]);
+    });
+
+    it("keeps the list from regrowing those four patterns", () => {
+      for (const gone of [
+        "package.json",
+        "package-lock.json",
+        ".claude/commands/**",
+        ".claude/scripts/**",
+      ]) {
+        expect(RESTRICTED_PATTERNS).not.toContain(gone);
+      }
+    });
+
+    it.each([
+      ".claude/hooks/guard-bash.mjs",
+      ".claude/settings.json",
+      ".claude/agents/conductor.md",
+      ".claude/rules/css.md",
+      ".claude/skills/new-module/SKILL.md",
+      ".github/workflows/ci.yml",
+      ".github/dependabot.yml",
+      "scripts/merge-pr.mjs",
+      "tests/unit/merge-pr.test.js",
+      "playground/package.json",
+      "playground/package-lock.json",
+    ])("still refuses %s", (file) => {
+      expect(checkFiles([{ path: file }])).toEqual([
+        `touches ${file}: maintainer merges this one`,
+      ]);
+    });
+
+    it.each([
+      ".Claude/commands/x.md",
+      ".claude/Commands/x.md",
+      ".claude/SCRIPTS/x.sh",
+      ".claude/commands",
+      ".claude/commands/",
+      ".claude/scripts",
+      ".claude/commandsx/x.md",
+      ".claude/commands/../settings.json",
+      ".claude/scripts/../hooks/guard-bash.mjs",
+      ".claude/commands/./x.md",
+      ".claude//commands/x.md",
+      "./.claude/commands/x.md",
+      ".claude\\commands\\x.md",
+      ".claude/commands/a\nb.md",
+    ])("does not excuse the look-alike %j", (file) => {
+      expect(checkFiles([file])).toHaveLength(1);
+    });
   });
 
   it("excuses only the exact css-baseline path, not variants of it", () => {
@@ -1058,9 +1120,9 @@ describe("gate 5: maintainer-only files", () => {
 
 describe("gate 5 cross-check against git", () => {
   it("catches a restricted file that gh did not list but git diff did", async () => {
-    const env = makeEnv({ diff: ["src/a.njk", "package.json"] });
+    const env = makeEnv({ diff: ["src/a.njk", "playground/package.json"] });
     expect(await env.exec(["7", "--execute"])).toBe(1);
-    expect(env.text()).toMatch(/touches package\.json/);
+    expect(env.text()).toMatch(/touches playground\/package\.json/);
     expect(env.merged()).toBe(false);
   });
 
@@ -1129,6 +1191,56 @@ describe("gate 5: the css-baseline exception needs a regular file", () => {
     expect(failures).toHaveLength(1);
     expect(failures[0]).toContain(`touches ${baseline} as a non-regular file`);
     expect(failures[0]).toContain("maintainer merges this one");
+  });
+
+  describe("paths under .claude/commands/ and .claude/scripts/", () => {
+    const raw = (oldMode, newMode, file, status = "M") =>
+      `:${oldMode} ${newMode} 0000000 1111111 ${status}\0${file}\0`;
+
+    it.each([
+      ["a regular file", "100644", "100644"],
+      ["a new file", "000000", "100644"],
+      ["a new executable script", "000000", "100755"],
+      ["an executable made plain", "100755", "100644"],
+      ["a deletion", "100644", "000000"],
+    ])("accepts %s", (_label, oldMode, newMode) => {
+      expect(
+        checkExceptionModes(raw(oldMode, newMode, ".claude/scripts/a.sh")),
+      ).toEqual([]);
+      expect(
+        checkExceptionModes(raw(oldMode, newMode, ".claude/commands/a.md")),
+      ).toEqual([]);
+    });
+
+    it.each([
+      ["a new symlink", "000000", "120000"],
+      ["a file turned into a symlink", "100644", "120000"],
+      ["a symlink removed", "120000", "000000"],
+      ["a submodule", "000000", "160000"],
+    ])("refuses %s", (_label, oldMode, newMode) => {
+      const failures = checkExceptionModes(
+        raw(oldMode, newMode, ".claude/commands/a.md"),
+      );
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).toContain(
+        "touches .claude/commands/a.md as a non-regular file",
+      );
+    });
+
+    it("asks for the raw diff of such a path in the full flow", async () => {
+      const ok = makeEnv({ diff: [".claude/commands/a.md"] });
+      expect(await ok.exec(["7"])).toBe(0);
+      expect(ok.calls.find((c) => c.args.includes("--raw")).args.at(-1)).toBe(
+        ".claude/commands/a.md",
+      );
+      const bad = makeEnv({
+        diff: [".claude/commands/a.md"],
+        raw: raw("000000", "120000", ".claude/commands/a.md", "A"),
+      });
+      expect(await bad.exec(["7", "--execute"])).toBe(1);
+      expect(bad.text()).toMatch(/FAIL {2}5\. +files/);
+      expect(bad.merged()).toBe(false);
+    });
   });
 
   it("ignores other paths in the raw output", () => {
@@ -1402,6 +1514,20 @@ describe("gate 5 against real git (no stubs)", () => {
       put(seed, BASELINE, "abc123\n");
       chmodSync(path.join(seed, BASELINE), 0o755);
     });
+    branch("commands-regular", () => put(seed, ".claude/commands/new.md"));
+    branch("scripts-exec", () => {
+      put(seed, ".claude/scripts/run.sh", "#!/bin/sh\n");
+      chmodSync(path.join(seed, ".claude/scripts/run.sh"), 0o755);
+    });
+    branch("scripts-symlink", () => {
+      mkdirSync(path.join(seed, ".claude/scripts"), { recursive: true });
+      symlinkSync("../settings.json", path.join(seed, ".claude/scripts/x.sh"));
+    });
+    branch("root-manifest", () => {
+      put(seed, "package.json", "{}\n");
+      put(seed, "package-lock.json", "{}\n");
+    });
+    branch("hooks-file", () => put(seed, ".claude/hooks/x.mjs"));
 
     // Names with control characters or a leading space, one branch each. The
     // entries go straight into the index, so no filesystem has to hold them.
@@ -1512,6 +1638,23 @@ describe("gate 5 against real git (no stubs)", () => {
     }
     const sym = await runAgainstRealGit("baseline-symlink");
     expect(sym.text).toContain("000000 -> 120000");
+  }, 60_000);
+
+  it("lets released .claude paths and the root manifests through; a symlink or a hook still refuses", async () => {
+    for (const name of ["commands-regular", "scripts-exec", "root-manifest"]) {
+      const ok = await runAgainstRealGit(name);
+      expect(ok.text, name).toMatch(/PASS {2}5\. +files/);
+      expect(ok.code, name).toBe(0);
+    }
+    const link = await runAgainstRealGit("scripts-symlink");
+    expect(link.code).toBe(1);
+    expect(link.text).toMatch(/FAIL {2}5\. +files/);
+    expect(link.text).toContain(
+      "touches .claude/scripts/x.sh as a non-regular file",
+    );
+    const hook = await runAgainstRealGit("hooks-file");
+    expect(hook.code).toBe(1);
+    expect(hook.text).toContain("touches .claude/hooks/x.mjs");
   }, 60_000);
 
   it("passes a docs-only branch, so the harness is not vacuous", async () => {
@@ -1642,7 +1785,10 @@ describe("main flow: every gate blocks --execute end to end", () => {
     },
     "changes requested": { reviewDecision: "CHANGES_REQUESTED" },
     "workflow file": { files: [{ path: ".github/workflows/ci.yml" }] },
-    lockfile: { files: [{ path: "package-lock.json" }] },
+    "playground lockfile": {
+      files: [{ path: "playground/package-lock.json" }],
+    },
+    "hook file": { files: [{ path: ".claude/hooks/guard-bash.mjs" }] },
   };
 
   it.each(Object.entries(refusals))("refuses: %s", async (_name, overrides) => {
@@ -1697,7 +1843,7 @@ describe("main flow", () => {
         statusCheckRollup: [],
         body: "no record",
         comments: [],
-        files: [{ path: "package.json" }],
+        files: [{ path: "playground/package.json" }],
       }),
     });
     expect(await env.exec(["7", "--execute"])).toBe(1);
@@ -1732,6 +1878,449 @@ describe("main flow", () => {
     const env = makeEnv({ ghMergeCode: 1 });
     expect(await env.exec(["7", "--execute"])).toBe(1);
     expect(env.err.join()).toMatch(/gh pr merge failed/);
+  });
+});
+
+describe("--maintainer-approved", () => {
+  const TEXT = "i approve merging PR 7 with the workflow change";
+  const workflowPr = (overrides = {}) =>
+    greenPr({ files: [{ path: ".github/workflows/ci.yml" }], ...overrides });
+  const FLAG = "--maintainer-approved";
+
+  it("main exits 2 and runs nothing when the value is missing, short or repeated", async () => {
+    for (const argv of [
+      ["7", FLAG],
+      ["7", FLAG, "--execute"],
+      ["7", "--execute", FLAG],
+      ["7", FLAG, ""],
+      ["7", FLAG, "too short"],
+      ["7", FLAG, "   padded 9   "],
+      ["7", FLAG, "\x1b\x1b\x1b\x1b\x1b\x1b\x1b\x1b\x1b\x1b\x1b\x1b"],
+      ["7", `${FLAG}=short`],
+      ["7", FLAG, TEXT, FLAG, TEXT],
+      ["7", FLAG, TEXT, "extra"],
+    ]) {
+      const env = makeEnv({ pr: workflowPr() });
+      expect(await env.exec(argv), JSON.stringify(argv)).toBe(2);
+      expect(env.calls, JSON.stringify(argv)).toHaveLength(0);
+    }
+  });
+
+  it("accepts exactly 10 characters after trimming, in both spellings", async () => {
+    for (const argv of [
+      ["7", FLAG, "  0123456789  "],
+      ["7", `${FLAG}=0123456789`],
+    ]) {
+      const env = makeEnv({ pr: workflowPr() });
+      expect(await env.exec(argv), JSON.stringify(argv)).toBe(0);
+    }
+  });
+
+  it("without the flag the same PR is refused", async () => {
+    const env = makeEnv({ pr: workflowPr() });
+    expect(await env.exec(["7", "--execute"])).toBe(1);
+    expect(env.text()).toMatch(/FAIL {2}5\. +files/);
+  });
+
+  it("turns the gate 5 failure into a PASS with a visible note (dry run stays dry)", async () => {
+    const env = makeEnv({ pr: workflowPr() });
+    expect(await env.exec(["7", FLAG, TEXT])).toBe(0);
+    const text = env.text();
+    expect(text).toMatch(/PASS {2}5\. +files/);
+    expect(text).toContain(`maintainer-approved: ${TEXT}`);
+    expect(text).toContain(
+      "overrode: touches .github/workflows/ci.yml: maintainer merges this one",
+    );
+    expect(text).toMatch(/Dry run: nothing merged/);
+    expect(env.merged()).toBe(false);
+  });
+
+  it("merges with --execute and repeats the text in the merge output", async () => {
+    const env = makeEnv({ pr: workflowPr() });
+    expect(await env.exec(["7", "--execute", FLAG, TEXT])).toBe(0);
+    expect(env.merged()).toBe(true);
+    const lines = env.text().split("\n");
+    const merged = lines.findIndex((l) => l.startsWith("MERGED PR #7"));
+    expect(lines[merged + 1]).toBe(`maintainer-approved: ${TEXT}`);
+  });
+
+  it("also overrides files that only git reports (three-dot and merge result)", async () => {
+    const env = makeEnv({
+      pr: greenPr(),
+      diff: [".github/workflows/ci.yml"],
+      mergeDiff: [".claude/hooks/guard-bash.mjs"],
+    });
+    expect(await env.exec(["7", "--execute", FLAG, TEXT])).toBe(0);
+    expect(env.text()).toContain(
+      "overrode: touches .claude/hooks/guard-bash.mjs",
+    );
+    expect(env.text()).toContain("overrode: touches .github/workflows/ci.yml");
+  });
+
+  it("still runs npm test on a branch that is behind (gate 5 no longer blocks it)", async () => {
+    const env = makeEnv({ pr: workflowPr(), ancestorCode: 1 });
+    expect(await env.exec(["7", FLAG, TEXT])).toBe(0);
+    expect(env.calls.some((c) => c.file === "npm")).toBe(true);
+  });
+
+  it("truncates to 200 characters and strips control characters", async () => {
+    const env = makeEnv({ pr: workflowPr() });
+    const long = `ok\x1b[31m\nline two ${"a".repeat(300)}`;
+    expect(await env.exec(["7", FLAG, long])).toBe(0);
+    const line = env.out.find((l) => l.startsWith("maintainer-approved: "));
+    // eslint-disable-next-line no-control-regex -- asserting they are gone
+    expect(line).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+    expect(line).toContain("ok [31m line two ");
+    expect(line.length).toBe("maintainer-approved: ".length + 200 + 3);
+    expect(line.endsWith("...")).toBe(true);
+    expect(cleanApprovalText("  a\x00b\x7fc  ")).toBe("a b c");
+  });
+
+  it("is a record only when no file needs it, and still prints the text", async () => {
+    const env = makeEnv();
+    expect(await env.exec(["7", FLAG, TEXT])).toBe(0);
+    expect(env.text()).toContain(`maintainer-approved: ${TEXT}`);
+    expect(env.text()).not.toContain("overrode:");
+  });
+
+  describe("bypasses gate 5 only", () => {
+    const red = { name: "e2e", status: "COMPLETED", conclusion: "FAILURE" };
+    const others = {
+      "gate 1 (draft)": [{ isDraft: true }, "state"],
+      "gate 2 (red check)": [{ statusCheckRollup: [red] }, "checks"],
+      "gate 3 (changes requested)": [
+        { reviewDecision: "CHANGES_REQUESTED" },
+        "review",
+      ],
+      "gate 4 (no review record)": [{ body: "Looks fine to me." }, "record"],
+      "gate 4b (no audit comment)": [{ comments: [] }, "audit"],
+    };
+
+    it.each(Object.entries(others))(
+      "%s still refuses",
+      async (_name, [overrides, id]) => {
+        const env = makeEnv({ pr: workflowPr(overrides) });
+        expect(await env.exec(["7", "--execute", FLAG, TEXT])).toBe(1);
+        expect(env.text()).toMatch(new RegExp(`FAIL {2}\\w+\\. +${id}`));
+        expect(env.text()).toMatch(/PASS {2}5\. +files/);
+        expect(env.merged()).toBe(false);
+      },
+    );
+
+    it("gate 6 (merge conflict) still refuses", async () => {
+      const env = makeEnv({ pr: workflowPr(), mergeCode: 1 });
+      expect(await env.exec(["7", "--execute", FLAG, TEXT])).toBe(1);
+      expect(env.text()).toMatch(/FAIL {2}6\. +merge/);
+      expect(env.merged()).toBe(false);
+    });
+
+    it("a closed PR still refuses", async () => {
+      const env = makeEnv({ pr: workflowPr({ state: "CLOSED" }) });
+      expect(await env.exec(["7", "--execute", FLAG, TEXT])).toBe(1);
+      expect(env.merged()).toBe(false);
+    });
+  });
+
+  it("--help documents the flag as an honour-system record", async () => {
+    const env = makeEnv();
+    await env.exec(["--help"]);
+    expect(env.text()).toContain("--maintainer-approved");
+    expect(env.text()).toMatch(/honour-system record, not authentication/);
+  });
+});
+
+describe("Dependabot lane", () => {
+  const bot = { login: "dependabot[bot]", is_bot: true };
+  const MANIFESTS = [{ path: "package.json" }, { path: "package-lock.json" }];
+  const botPr = (overrides = {}) =>
+    greenPr({
+      author: bot,
+      title: "chore(deps): Bump lodash from 4.17.20 to 4.17.21",
+      body: "Bumps [lodash](https://github.com/lodash/lodash) from 4.17.20 to 4.17.21.",
+      comments: [],
+      files: MANIFESTS,
+      ...overrides,
+    });
+  const env = (pr, extra = {}) =>
+    makeEnv({ pr, diff: ["package.json", "package-lock.json"], ...extra });
+
+  it("reads the author and the title from gh", () => {
+    expect(PR_FIELDS.split(",")).toEqual(
+      expect.arrayContaining(["author", "title"]),
+    );
+  });
+
+  it.each([
+    ["a patch bump", "Bump lodash from 4.17.20 to 4.17.21"],
+    ["a minor bump", "chore(deps): Bump eslint from 9.1.0 to 9.4.2"],
+    ["a minor bump with a v prefix", "Bump x from v1.2.3 to v1.9.0"],
+    [
+      "a bump with a group suffix",
+      "chore(deps): Bump x from 2.0.2 to 2.9.0 in the npm-minor-patch group",
+    ],
+  ])(
+    "merges %s with no review record and no audit comment",
+    async (_n, title) => {
+      const e = env(botPr({ title }));
+      expect(await e.exec(["7", "--execute"])).toBe(0);
+      expect(e.merged()).toBe(true);
+      expect(e.text()).toMatch(/PASS {2}4\. +record/);
+      expect(e.text()).toMatch(/PASS {2}4b\. +audit/);
+      expect(e.text()).toContain("dependabot lane: review record not required");
+      expect(e.text()).toContain("dependabot lane: audit comment not required");
+    },
+  );
+
+  it("accepts the author spelling gh prints (app/dependabot)", async () => {
+    const e = env(botPr({ author: { login: "app/dependabot", is_bot: true } }));
+    expect(await e.exec(["7"])).toBe(0);
+  });
+
+  it("works for a lockfile-only change", async () => {
+    const e = makeEnv({
+      pr: botPr({ files: [{ path: "package-lock.json" }] }),
+      diff: ["package-lock.json"],
+    });
+    expect(await e.exec(["7", "--execute"])).toBe(0);
+  });
+
+  it.each([
+    [
+      "a major bump",
+      "Bump jsdom from 24.1.3 to 30.1.2",
+      /a major version change/,
+    ],
+    [
+      "a major bump of an action",
+      "Bump actions/cache from 4 to 6",
+      /not a plain major\.minor\.patch/,
+    ],
+    [
+      "a pre-release",
+      "Bump x from 1.0.0 to 1.1.0-beta.1",
+      /pre-release or unparseable/,
+    ],
+    [
+      "a pre-release origin",
+      "Bump x from 1.0.0-rc.1 to 1.0.0",
+      /pre-release or unparseable/,
+    ],
+    ["a two-part version", "Bump x from 1.2 to 1.3", /unparseable/],
+    ["a downgrade", "Bump x from 1.5.0 to 1.4.0", /not an increase/],
+    ["no change", "Bump x from 1.5.0 to 1.5.0", /not an increase/],
+    ["a non-bump title", "Update lodash", /title is not/],
+    [
+      "a multi-package title with no versions",
+      "chore(deps): Bump react-dom and @types/react-dom in /playground",
+      /title is not/,
+    ],
+  ])("refuses %s and says why", async (_n, title, why) => {
+    const e = env(botPr({ title }));
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toMatch(/FAIL {2}4b\. +audit/);
+    expect(e.text()).toMatch(why);
+    expect(e.text()).toContain("dependabot lane refused:");
+    expect(e.merged()).toBe(false);
+  });
+
+  it.each([
+    [
+      "a human with a dependabot-like title",
+      { login: "someone", is_bot: false },
+    ],
+    ["a look-alike login", { login: "dependabot", is_bot: false }],
+    [
+      "a look-alike bot name",
+      { login: "dependabot-preview[bot]", is_bot: true },
+    ],
+    [
+      "a login with the right name but is_bot false",
+      { login: "dependabot[bot]", is_bot: false },
+    ],
+    ["a missing author", undefined],
+  ])("refuses %s", async (_n, author) => {
+    const e = env(botPr({ author }));
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toMatch(/FAIL {2}4b\. +audit/);
+    expect(e.text()).not.toContain("dependabot lane");
+    expect(e.merged()).toBe(false);
+  });
+
+  it("refuses when gh lists an extra file", async () => {
+    const e = env(botPr({ files: [...MANIFESTS, { path: "src/app.js" }] }));
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toContain("touches files other than package.json");
+    expect(e.merged()).toBe(false);
+  });
+
+  it("refuses when only the merge result shows an extra file", async () => {
+    const e = makeEnv({
+      pr: botPr(),
+      diff: ["package.json"],
+      mergeDiff: ["package.json", "src/app.js"],
+    });
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toMatch(/FAIL {2}4b\. +audit/);
+    expect(e.text()).toContain("touches files other than package.json");
+    expect(e.merged()).toBe(false);
+  });
+
+  it("refuses the playground manifests (outside the two root files)", async () => {
+    const e = makeEnv({
+      pr: botPr({
+        title: "Bump x from 1.0.0 to 1.0.1 in /playground",
+        files: [{ path: "playground/package.json" }],
+      }),
+      diff: ["playground/package.json"],
+    });
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toMatch(/FAIL {2}5\. +files/);
+  });
+
+  it("refuses a GitHub Actions bump, with or without --maintainer-approved for gates 4 and 4b", async () => {
+    const pr = botPr({
+      title: "chore(deps): Bump actions/cache from 4.0.0 to 4.1.0",
+      files: [{ path: ".github/workflows/ci.yml" }],
+    });
+    const plain = makeEnv({ pr, diff: [".github/workflows/ci.yml"] });
+    expect(await plain.exec(["7", "--execute"])).toBe(1);
+    expect(plain.text()).toMatch(/FAIL {2}5\. +files/);
+    expect(plain.text()).toMatch(/FAIL {2}4\. +record/);
+
+    const approved = makeEnv({ pr, diff: [".github/workflows/ci.yml"] });
+    expect(
+      await approved.exec([
+        "7",
+        "--execute",
+        "--maintainer-approved",
+        "approved in chat for this actions bump",
+      ]),
+    ).toBe(1);
+    expect(approved.text()).toMatch(/PASS {2}5\. +files/);
+    expect(approved.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(approved.merged()).toBe(false);
+  });
+
+  it("still needs green checks, a clean test-merge and no changes requested", async () => {
+    const red = { name: "e2e", status: "COMPLETED", conclusion: "FAILURE" };
+    for (const [overrides, extra, id] of [
+      [{ statusCheckRollup: [red] }, {}, "checks"],
+      [{ reviewDecision: "CHANGES_REQUESTED" }, {}, "review"],
+      [{ isDraft: true }, {}, "state"],
+      [{}, { mergeCode: 1 }, "merge"],
+    ]) {
+      const e = env(botPr(overrides), extra);
+      expect(await e.exec(["7", "--execute"]), id).toBe(1);
+      expect(e.text(), id).toMatch(new RegExp(`FAIL {2}\\w+\\. +${id}`));
+      expect(e.merged(), id).toBe(false);
+    }
+  });
+
+  it("does not make a human PR on package.json skip the review record", async () => {
+    const e = env(
+      greenPr({ comments: [], body: "no record", files: MANIFESTS }),
+    );
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+  });
+
+  describe("group PRs", () => {
+    const groupBody = (...lines) =>
+      [
+        "Bumps the npm-minor-patch group with 2 updates in the / directory.",
+        "",
+        ...lines,
+      ].join("\n");
+    const groupTitle =
+      "chore(deps): Bump the npm-minor-patch group with 2 updates";
+
+    it("merges when the body lists every update and all are patch/minor", async () => {
+      const e = env(
+        botPr({
+          title: groupTitle,
+          body: groupBody(
+            "Updates `eslint` from 9.1.0 to 9.4.0",
+            "<details>",
+            "Updates `prettier` from 3.0.0 to 3.0.3",
+          ),
+        }),
+      );
+      expect(await e.exec(["7", "--execute"])).toBe(0);
+      expect(e.text()).toContain("eslint 9.1.0 -> 9.4.0");
+    });
+
+    it.each([
+      [
+        "a major bump hidden in the group",
+        groupTitle,
+        groupBody(
+          "Updates `eslint` from 9.1.0 to 9.4.0",
+          "Updates `prettier` from 3.0.0 to 4.0.0",
+        ),
+        /a major version change/,
+      ],
+      [
+        "a body that lists fewer updates than the title",
+        groupTitle,
+        groupBody("Updates `eslint` from 9.1.0 to 9.4.0"),
+        /title says 2 updates but the body lists 1/,
+      ],
+      [
+        "a body that lists more updates than the title",
+        groupTitle,
+        groupBody(
+          "Updates `a` from 1.0.0 to 1.0.1",
+          "Updates `b` from 1.0.0 to 1.0.1",
+          "Updates `c` from 1.0.0 to 1.0.1",
+        ),
+        /title says 2 updates but the body lists 3/,
+      ],
+      [
+        "a body with no Updates lines",
+        groupTitle,
+        "Bumps the group.",
+        /no "Updates/,
+      ],
+      [
+        "a title with no update count",
+        "chore(deps): Bump the npm-minor-patch group",
+        groupBody("Updates `a` from 1.0.0 to 1.0.1"),
+        /does not say how many updates/,
+      ],
+    ])("refuses %s", async (_n, title, body, why) => {
+      const e = env(botPr({ title, body }));
+      expect(await e.exec(["7", "--execute"])).toBe(1);
+      expect(e.text()).toMatch(why);
+      expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+      expect(e.merged()).toBe(false);
+    });
+  });
+
+  describe("bumpProblem and dependabotLane", () => {
+    it("accepts patch and minor increases only", () => {
+      expect(bumpProblem("x", "1.2.3", "1.2.4")).toBeNull();
+      expect(bumpProblem("x", "1.2.3", "1.3.0")).toBeNull();
+      expect(bumpProblem("x", "1.2.3", "1.10.0")).toBeNull();
+      expect(bumpProblem("x", "1.2.3", "2.0.0")).toMatch(/major/);
+      expect(bumpProblem("x", "0.9.0", "1.0.0")).toMatch(/major/);
+      expect(bumpProblem("x", "1.2.3", "1.2.3-rc.1")).toMatch(/pre-release/);
+      expect(bumpProblem("x", "1.2.3", "1.2.3+build")).toMatch(/pre-release/);
+      expect(bumpProblem("x", "1.3.0", "1.2.9")).toMatch(/not an increase/);
+    });
+
+    it("is not applicable to a PR from anyone else", () => {
+      expect(dependabotLane(greenPr())).toEqual({
+        author: false,
+        eligible: false,
+        reasons: [],
+        summary: "",
+      });
+    });
   });
 });
 

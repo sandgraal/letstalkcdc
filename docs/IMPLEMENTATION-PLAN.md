@@ -2729,6 +2729,17 @@ these blocks merging the kit or the drill (P17-10).
       `include-hidden-files: true` on the upload-artifact step in `ci.yml`,
       then the conductor removes the skip and its test. Needs: none.
       _Status: not started._
+- [x] **P17-65 · Relax four merge and push guardrails (maintainer-approved
+      2026-10-12).** The merge script's maintainer-only list drops the root
+      `package.json`, `package-lock.json`, `.claude/commands/**` and
+      `.claude/scripts/**`; `--maintainer-approved "<text>"` turns a gate 5
+      failure into a visible note and bypasses nothing else; a Dependabot
+      patch or minor lane skips gates 4 and 4b; `guard-bash.mjs` allows a push
+      of a `claude/*` branch that touches `.github/`. Tests in
+      `tests/unit/merge-pr.test.js` and `tests/unit/guard-bash.test.js`;
+      `docs/CONDUCTOR.md` (Merge-script exceptions) and `docs/DECISIONS.md`
+      record it. Touches the merge script, its tests, a hook and
+      `docs/CONDUCTOR.md`, so the maintainer merges it by hand.
 
 ### Autopsy, in two parts
 

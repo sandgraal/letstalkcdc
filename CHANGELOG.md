@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Four merge and push guardrails relaxed, as the maintainer approved in
+  chat on 2026-10-12 (P17-65).** (1) `scripts/merge-pr.mjs` no longer lists
+  the root `package.json`, `package-lock.json`, `.claude/commands/**` or
+  `.claude/scripts/**` as maintainer-only (a symlink or submodule under the
+  two `.claude` directories is still refused). (2) New
+  `--maintainer-approved "<text>"` (10 or more characters) turns a gate 5
+  failure into a visible note and bypasses no other gate; it is an
+  honour-system record, not authentication. (3) A Dependabot lane: a patch or
+  minor bump by `dependabot[bot]` that changes only the root manifests skips
+  the review record and the audit comment; majors, pre-releases, unparseable
+  versions, groups whose body cannot be checked, Actions bumps and extra files
+  are refused with the reason. (4) `guard-bash.mjs` allows a `git push` of a
+  `claude/*` branch that touches `.github/`; every other push rule stands.
+  `docs/CONDUCTOR.md` has a "Merge-script exceptions" section; the decision is
+  in `docs/DECISIONS.md`.
 - **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
   per RFC 9116 (`Contact` mailto the maintainer's designated public address,
   `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and

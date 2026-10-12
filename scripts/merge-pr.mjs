@@ -64,8 +64,12 @@
 //               docs/CONDUCTOR.md, docs/TEAM-CHARTER.md, docs/DECISIONS.md,
 //               .husky/**, .vscode/**, .devcontainer/**, the test/lint/
 //               lighthouse configs, this script and its tests, supabase/**,
-//               CNAME, LICENSE*, and the npm manifests and lockfiles. Anything
-//               that steers agents or the pipeline is merged by a human.
+//               CNAME, LICENSE*, and the playground's npm manifest and lockfile.
+//               Released to agents on 2026-10-12: the root package.json and
+//               package-lock.json, and regular files under .claude/commands/
+//               and .claude/scripts/ (a symlink or submodule there is refused).
+//               Anything that steers agents or the pipeline is merged by a
+//               human.
 //   6  merge    head merges cleanly onto current origin/main in a temporary
 //               worktree; if head is behind main, `npm test` must also pass there
 //               in a scrubbed environment (see Limits). At the start, stale
@@ -109,7 +113,21 @@
 // rule (it also does not take effect as that directory). Comments are assumed
 // to be capped at 100 by `gh pr view --json comments`; 100 or more is refused.
 //
-// There is deliberately no override flag, and never --admin, --auto or --rebase.
+// The one override is `--maintainer-approved "<text>"` (2026-10-12, see
+// docs/DECISIONS.md): it turns a gate 5 FAIL into a PASS with a visible note and
+// bypasses nothing else. It is an HONOUR-SYSTEM record, not authentication: the
+// script cannot tell whether the maintainer really said it. The conductor may
+// pass it only after the maintainer's own chat message says to merge that PR.
+// There is no other override, and never --admin, --auto or --rebase.
+//
+// Dependabot lane (same decision): a PR whose author (read from
+// `gh pr view --json author`, never the title alone) is Dependabot, whose title
+// is `Bump <pkg> from <a> to <b>` or `Bump the <group> group ...` with every
+// per-package bump listed in the body, whose bumps are all patch or minor
+// (plain major.minor.patch), and whose changed files are only the root
+// package.json and package-lock.json, is exempt from gates 4 and 4b. Gates
+// 1, 2, 3, 5 and 6 still apply; so does everything for GitHub Actions bumps
+// (they touch .github/).
 //
 // The gate functions below are pure (parsed JSON in, failure list out). All
 // process, git and filesystem access goes through injected dependencies so the
@@ -123,6 +141,8 @@ import { fileURLToPath } from "node:url";
 
 export const PR_FIELDS = [
   "number",
+  "title",
+  "author",
   "state",
   "isDraft",
   "baseRefName",
@@ -193,8 +213,6 @@ export const RESTRICTED_PATTERNS = [
   "supabase/**",
   "CNAME",
   "LICENSE*",
-  "package.json",
-  "package-lock.json",
   "playground/package.json",
   "playground/package-lock.json",
 ];
@@ -203,6 +221,34 @@ export const RESTRICTED_PATTERNS = [
 // change the baseline hash. Matched against the raw path, so a case variant or
 // a Unicode look-alike is not excused.
 export const RESTRICTED_EXCEPTIONS = [".claude/css-baseline.sha256"];
+
+// Directories under .claude/** that the maintainer released to agents
+// (2026-10-12, docs/DECISIONS.md): slash commands and helper scripts. Same
+// rules as the exact exceptions: matched against the raw, case-sensitive path
+// (so `.Claude/commands/x` and `.claude/commands/../settings.json` are not
+// excused), and gate 6 refuses a symlink or submodule at such a path. Unlike
+// the css-baseline exception, a script may be executable (100755) and a file
+// may be deleted. `.claude/hooks/`, settings, agents, rules and skills stay
+// restricted.
+export const RESTRICTED_EXCEPTION_PREFIXES = [
+  ".claude/commands/",
+  ".claude/scripts/",
+];
+
+/** True for a path under one of RESTRICTED_EXCEPTION_PREFIXES, spelled plainly. */
+export function isPrefixException(file) {
+  if (typeof file !== "string") return false;
+  const prefix = RESTRICTED_EXCEPTION_PREFIXES.find((p) => file.startsWith(p));
+  if (!prefix || file.length === prefix.length) return false;
+  if (normalizePath(file) !== file) return false;
+  return !file
+    .split("/")
+    .some((seg) => seg === "" || seg === "." || seg === "..");
+}
+
+function isException(file) {
+  return RESTRICTED_EXCEPTIONS.includes(file) || isPrefixException(file);
+}
 
 function globToRegExp(glob) {
   let source = "";
@@ -575,7 +621,7 @@ export function checkAuditTrail(pr) {
 
 /** Returns the maintainer-only pattern a path matches, or null. */
 export function restrictedPatternFor(file) {
-  if (RESTRICTED_EXCEPTIONS.includes(file)) return null;
+  if (isException(file)) return null;
   const normalized = normalizePath(file);
   const hit = RESTRICTED_MATCHERS.find(({ regex }) => regex.test(normalized));
   return hit ? hit.pattern : null;
@@ -601,8 +647,138 @@ export function checkFiles(files) {
   return [...new Set(failures)];
 }
 
+// ---------------------------------------------------------------------------
+// Dependabot lane
+// ---------------------------------------------------------------------------
+
+// The maintainer approved this lane in chat on 2026-10-12 (docs/DECISIONS.md).
+// `gh pr view --json author` reports the bot as "app/dependabot"; the REST API
+// spells it "dependabot[bot]". Neither string can be a human login (a login
+// has no `/` or brackets), so an exact match is a real author check.
+const DEPENDABOT_LOGINS = new Set(["dependabot[bot]", "app/dependabot"]);
+export const DEPENDABOT_FILES = ["package.json", "package-lock.json"];
+
+const SEMVER = /^v?(\d+)\.(\d+)\.(\d+)$/;
+const BUMP_TITLE =
+  /^(?:[a-z]+(?:\([^)]*\))?!?:[ \t]*)?bump[ \t]+(\S+)[ \t]+from[ \t]+(\S+)[ \t]+to[ \t]+(\S+)(?:[ \t]+in[ \t]+.+)?$/i;
+const GROUP_TITLE =
+  /^(?:[a-z]+(?:\([^)]*\))?!?:[ \t]*)?bump[ \t]+the[ \t]+\S+[ \t]+group\b/i;
+// "Updates `pkg` from 1.2.3 to 1.2.4" in a Dependabot group PR body.
+const BODY_UPDATE = /^Updates `([^`\n]+)` from (\S+) to (\S+?)\.?[ \t]*$/gm;
+
+/**
+ * Compares two versions. Returns null when the bump is a patch or minor
+ * increase, otherwise the reason it is not acceptable.
+ */
+export function bumpProblem(name, from, to) {
+  const a = SEMVER.exec(from);
+  const b = SEMVER.exec(to);
+  if (!a || !b) {
+    return `${name} ${from} -> ${to}: not a plain major.minor.patch version (pre-release or unparseable)`;
+  }
+  const [, aMajor, aMinor, aPatch] = a.map(Number);
+  const [, bMajor, bMinor, bPatch] = b.map(Number);
+  if (aMajor !== bMajor) {
+    return `${name} ${from} -> ${to}: a major version change`;
+  }
+  const up = bMinor > aMinor || (bMinor === aMinor && bPatch > aPatch);
+  if (!up) return `${name} ${from} -> ${to}: not an increase`;
+  return null;
+}
+
+/**
+ * Decides whether a PR may use the Dependabot lane, which is exempt from gates
+ * 4 and 4b only. Returns `{ author, eligible, reasons, summary }`: `author` is
+ * whether the PR was opened by Dependabot (so a refusal is worth explaining),
+ * `reasons` why it is not eligible. `changedFiles`, when given (git's own list
+ * after the test-merge), must also be only the two root manifests.
+ */
+export function dependabotLane(pr, changedFiles = null) {
+  const login = pr.author?.login;
+  if (!DEPENDABOT_LOGINS.has(login) || pr.author?.is_bot === false) {
+    return { author: false, eligible: false, reasons: [], summary: "" };
+  }
+  const reasons = [];
+  const title = String(pr.title ?? "").trim();
+  const bumps = [];
+
+  const single = BUMP_TITLE.exec(title);
+  if (single) {
+    bumps.push({ name: single[1], from: single[2], to: single[3] });
+  } else if (GROUP_TITLE.test(title)) {
+    const body = String(pr.body ?? "");
+    for (const m of body.matchAll(BODY_UPDATE)) {
+      bumps.push({ name: m[1], from: m[2], to: m[3] });
+    }
+    const declared = /\bwith (\d+) updates?\b/i.exec(title)?.[1];
+    if (bumps.length === 0) {
+      reasons.push(
+        'group PR: no "Updates `pkg` from X to Y" lines in the body to verify',
+      );
+    } else if (declared === undefined) {
+      reasons.push(
+        "group PR: the title does not say how many updates it has, so the body cannot be checked for completeness",
+      );
+    } else if (Number(declared) !== bumps.length) {
+      reasons.push(
+        `group PR: the title says ${declared} updates but the body lists ${bumps.length}`,
+      );
+    }
+  } else {
+    reasons.push(
+      'title is not "Bump <pkg> from <a> to <b>" or "Bump the <group> group ..."',
+    );
+  }
+  for (const { name, from, to } of bumps) {
+    const problem = bumpProblem(name, from, to);
+    if (problem) reasons.push(problem);
+  }
+
+  const paths = (list) =>
+    (list ?? []).map((f) => (typeof f === "string" ? f : f?.path));
+  const listed = paths(pr.files);
+  const all = changedFiles ? [...listed, ...paths(changedFiles)] : listed;
+  if (listed.length === 0) reasons.push("no changed files listed");
+  const stray = [...new Set(all)].filter(
+    (file) => !DEPENDABOT_FILES.includes(file),
+  );
+  if (stray.length > 0) {
+    reasons.push(
+      `touches files other than package.json / package-lock.json: ${stray
+        .slice(0, 5)
+        .map((f) => JSON.stringify(f))
+        .join(", ")}${stray.length > 5 ? ", ..." : ""}`,
+    );
+  }
+
+  const summary = bumps
+    .map(({ name, from, to }) => `${name} ${from} -> ${to}`)
+    .join(", ");
+  return { author: true, eligible: reasons.length === 0, reasons, summary };
+}
+
+export const APPROVAL_MIN_LENGTH = 10;
+export const APPROVAL_MAX_DISPLAY = 200;
+
+/** Replaces control characters (C0, DEL, C1) with spaces and trims. */
+export function cleanApprovalText(text) {
+  return (
+    String(text ?? "")
+      // eslint-disable-next-line no-control-regex -- the point is to remove them
+      .replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
+      .trim()
+  );
+}
+
 /** Gates 1-5 (including 4b), the ones that need only the parsed `gh pr view` JSON. */
-export function evaluateStaticGates(pr) {
+export function evaluateStaticGates(pr, options = {}) {
+  const lane = options.lane ?? dependabotLane(pr);
+  const laneNote = (what) =>
+    `dependabot lane: ${what} not required (${lane.summary})`;
+  const laneRefusal =
+    lane.author && !lane.eligible
+      ? [`dependabot lane refused: ${lane.reasons.join("; ")}`]
+      : [];
   return [
     {
       id: "state",
@@ -626,13 +802,15 @@ export function evaluateStaticGates(pr) {
       id: "record",
       num: "4",
       label: "review record approves",
-      failures: checkReviewRecord(pr),
+      failures: lane.eligible ? [] : checkReviewRecord(pr),
+      notes: lane.eligible ? [laneNote("review record")] : laneRefusal,
     },
     {
       id: "audit",
       num: "4b",
       label: "reviewer report pasted as a comment",
-      failures: checkAuditTrail(pr),
+      failures: lane.eligible ? [] : checkAuditTrail(pr),
+      notes: lane.eligible ? [laneNote("audit comment")] : [],
     },
     {
       id: "files",
@@ -896,13 +1074,16 @@ export async function cleanStaleTemp({ run, fs, cwd, now = Date.now() }) {
 }
 
 /**
- * Checks `git diff --raw -z` output for the exceptions: each excepted path must
- * be a regular file, mode 100644 on both sides (000000 before, for a new file).
- * A symlink (120000) or an executable (100755) is refused.
+ * Checks `git diff --raw -z` output for the exceptions. An exact exception (the
+ * css-baseline) must be a regular file, mode 100644 on both sides (000000
+ * before, for a new file); a symlink (120000) or an executable (100755) is
+ * refused. A path under RESTRICTED_EXCEPTION_PREFIXES may also be executable or
+ * deleted (000000 after), but a symlink or a submodule (160000) is refused.
  */
 export function checkExceptionModes(rawStdout) {
   const failures = [];
   const tokens = String(rawStdout ?? "").split("\0");
+  const regular = new Set(["100644", "100755"]);
   for (let i = 0; i < tokens.length - 1; i += 1) {
     const meta = tokens[i].match(
       /^:(\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]\d*$/,
@@ -910,14 +1091,16 @@ export function checkExceptionModes(rawStdout) {
     if (!meta) continue;
     const file = tokens[i + 1];
     i += 1;
-    if (!RESTRICTED_EXCEPTIONS.includes(file)) continue;
+    const exact = RESTRICTED_EXCEPTIONS.includes(file);
+    if (!exact && !isPrefixException(file)) continue;
     const [, oldMode, newMode] = meta;
-    if (
-      (oldMode !== "100644" && oldMode !== "000000") ||
-      newMode !== "100644"
-    ) {
+    const bad = exact
+      ? (oldMode !== "100644" && oldMode !== "000000") || newMode !== "100644"
+      : (oldMode !== "000000" && !regular.has(oldMode)) ||
+        (newMode !== "000000" && !regular.has(newMode));
+    if (bad) {
       failures.push(
-        `touches ${file} as a non-regular file (mode ${oldMode} -> ${newMode}; need 100644): maintainer merges this one`,
+        `touches ${file} as a non-regular file (mode ${oldMode} -> ${newMode}; need ${exact ? "100644" : "a regular file"}): maintainer merges this one`,
       );
     }
   }
@@ -1065,7 +1248,7 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
 
     // The css-baseline exception covers a regular file only: a symlink to
     // .claude/settings.json has the same path.
-    const excepted = RESTRICTED_EXCEPTIONS.filter((file) => changed.has(file));
+    const excepted = [...changed].filter(isException);
     if (excepted.length > 0) {
       const raw = await run(
         "git",
@@ -1149,11 +1332,16 @@ async function fetchPr(number, run, cwd, fields = PR_FIELDS) {
 }
 
 export const USAGE = [
-  "usage: node scripts/merge-pr.mjs <pr-number> [--execute]",
+  'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--maintainer-approved "<text>"]',
   "       node scripts/merge-pr.mjs --help",
   "",
   "Dry run by default: evaluates every gate and prints a table. --execute",
   "squash-merges (and deletes the branch) only when every gate passes.",
+  "",
+  '--maintainer-approved "<text>" (10+ characters) turns a gate 5 failure into a',
+  "PASS with a visible note quoting <text>. It bypasses no other gate. It is an",
+  "honour-system record, not authentication: pass it only after the",
+  "maintainer's own chat message says to merge this PR.",
   "",
   "  1  state    open, not a draft, base main",
   "  2  checks   every check on the head commit green",
@@ -1168,9 +1356,16 @@ export const USAGE = [
   "              a block, a quoted block too (a quoted approval counts for",
   "              nothing). 100+ comments are refused. Author comments count",
   "  5  files    no maintainer-only file (agent instructions at any depth,",
-  "              .claude/** except css-baseline.sha256 as a regular file,",
-  "              .vscode, .devcontainer, CI, manifests...) and no path with a",
-  "              control character; checked against gh and against git",
+  "              .claude/** except css-baseline.sha256 and regular files under",
+  "              .claude/commands/ and .claude/scripts/, .vscode,",
+  "              .devcontainer, CI...) and no path with a control character;",
+  "              checked against gh and against git. The root package.json and",
+  "              package-lock.json are no longer on the list",
+  "  4/4b Dependabot lane: a PR by dependabot[bot] (author is read, not the",
+  "              title) bumping one package patch/minor, touching only the root",
+  "              package.json / package-lock.json, skips gates 4 and 4b. Majors,",
+  "              pre-releases, unparseable versions and groups whose body",
+  "              cannot be checked are refused with the reason",
   "  6  merge    clean test-merge onto origin/main (also removes merge-pr-* temp",
   "              dirs older than 24 h; updates origin/main and",
   "              origin/<branch> remote-tracking refs); npm test, with a",
@@ -1178,7 +1373,8 @@ export const USAGE = [
   "              still runs here; the scrub is a mitigation, not a sandbox",
   "",
   `NOTE: ${SELF_ATTESTATION_NOTE}`,
-  "There is no override flag; --admin, --auto and --rebase are never used.",
+  "The only override is --maintainer-approved, for gate 5; --admin, --auto and",
+  "--rebase are never used.",
 ].join("\n");
 
 /**
@@ -1197,16 +1393,62 @@ export async function main(argv, deps = {}) {
     return 0;
   }
 
-  const flags = argv.filter((arg) => arg.startsWith("-"));
-  const positional = argv.filter((arg) => !arg.startsWith("-"));
-  const unknown = flags.filter((flag) => flag !== "--execute");
-  const execute = flags.includes("--execute");
+  let execute = false;
+  let approvalRaw = null;
+  const unknown = [];
+  const positional = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--execute") {
+      execute = true;
+    } else if (
+      arg === "--maintainer-approved" ||
+      arg.startsWith("--maintainer-approved=")
+    ) {
+      let value = null;
+      if (arg === "--maintainer-approved") {
+        // The value is the next argument; one that looks like a flag is a
+        // missing value, not a reason.
+        const next = argv[i + 1];
+        if (next !== undefined && !next.startsWith("-")) {
+          value = next;
+          i += 1;
+        }
+      } else {
+        value = arg.slice("--maintainer-approved=".length);
+      }
+      if (approvalRaw !== null || value === null) unknown.push(arg);
+      else approvalRaw = value;
+    } else if (arg.startsWith("-")) {
+      unknown.push(arg);
+    } else {
+      positional.push(arg);
+    }
+  }
 
   const number = positional.length === 1 ? parsePrNumber(positional[0]) : null;
   if (number === null || unknown.length > 0) {
-    err("usage: node scripts/merge-pr.mjs <pr-number> [--execute]");
-    err("<pr-number> must be a positive integer; --execute is the only flag.");
+    err(
+      'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--maintainer-approved "<text>"]',
+    );
+    err(
+      "<pr-number> must be a positive integer; --execute and --maintainer-approved <text> are the only flags (each at most once).",
+    );
     return 2;
+  }
+  let approval = null;
+  if (approvalRaw !== null) {
+    const cleaned = cleanApprovalText(approvalRaw);
+    if (cleaned.length < APPROVAL_MIN_LENGTH) {
+      err(
+        `usage: --maintainer-approved needs the maintainer's words, at least ${APPROVAL_MIN_LENGTH} characters after trimming and removing control characters.`,
+      );
+      return 2;
+    }
+    approval =
+      cleaned.length > APPROVAL_MAX_DISPLAY
+        ? `${cleaned.slice(0, APPROVAL_MAX_DISPLAY)}...`
+        : cleaned;
   }
 
   let pr;
@@ -1221,7 +1463,26 @@ export async function main(argv, deps = {}) {
     return 1;
   }
 
-  const gates = evaluateStaticGates(pr);
+  let lane = dependabotLane(pr);
+  const gates = evaluateStaticGates(pr, { lane });
+
+  // --maintainer-approved turns a gate 5 failure into a visible note and
+  // nothing else. It is applied again after gate 6, which can add file failures.
+  const overridden = [];
+  const applyApproval = () => {
+    const filesGate = gates.find((gate) => gate.id === "files");
+    if (!approval || !filesGate) return;
+    overridden.push(...filesGate.failures);
+    filesGate.failures = [];
+    filesGate.notes =
+      overridden.length > 0
+        ? [
+            `maintainer-approved: ${approval}`,
+            ...overridden.map((failure) => `overrode: ${failure}`),
+          ]
+        : [];
+  };
+  applyApproval();
 
   // Gate 6 needs a real, open PR to fetch; otherwise it is reported as skipped.
   const mergeGate = {
@@ -1237,12 +1498,25 @@ export async function main(argv, deps = {}) {
     mergeGate.failures = result.failures;
     mergeGate.notes = result.notes;
     const filesGate = gates.find((gate) => gate.id === "files");
-    const known = new Set(filesGate.failures);
+    const known = new Set([...filesGate.failures, ...overridden]);
     for (const failure of [
       ...checkFiles(result.changedFiles),
       ...result.fileFailures,
     ]) {
       if (!known.has(failure)) filesGate.failures.push(failure);
+    }
+    applyApproval();
+    // The file list from the test-merge must also be only the two manifests;
+    // if not, the Dependabot lane is void and gates 4 and 4b apply in full.
+    if (lane.eligible) {
+      lane = dependabotLane(pr, result.changedFiles);
+      if (!lane.eligible) {
+        const full = evaluateStaticGates(pr, { lane });
+        for (const id of ["record", "audit"]) {
+          const at = gates.findIndex((gate) => gate.id === id);
+          gates[at] = full.find((gate) => gate.id === id);
+        }
+      }
     }
   } else {
     mergeGate.failures.push("not tested: PR is not open");
@@ -1251,6 +1525,7 @@ export async function main(argv, deps = {}) {
 
   const failed = gates.filter((gate) => gate.failures.length > 0);
   out(`merge-pr: PR #${number} (${execute ? "execute" : "dry run"})`);
+  if (approval) out(`maintainer-approved: ${approval}`);
   out(formatGateTable(gates));
 
   if (failed.length > 0) {
@@ -1324,6 +1599,7 @@ export async function main(argv, deps = {}) {
     return 1;
   }
   out(`MERGED PR #${number} (squash, branch deleted).`);
+  if (approval) out(`maintainer-approved: ${approval}`);
 
   try {
     const view = await run(
