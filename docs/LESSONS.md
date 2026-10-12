@@ -259,3 +259,20 @@ Entries whose source is 'conductor session record' were observed by the conducto
   [`check-merged-prs.sh`](../.claude/scripts/check-merged-prs.sh), a maintainer
   merge.
 - Status: open
+
+### L-015 The merge watcher's rewake message now points at /team-start (closes L-014)
+
+- Date: 2026-10-12 (source: P17-62(b); closes L-014, which stays as written)
+- What happened: L-014 recorded that the watcher's rewake message told a
+  session to work the Phase 13 queue. The message now tells the session to run
+  `/team-start`, which reads the charter, the handoff and the lessons and picks
+  the next Ready Phase 17 item.
+- Root cause: the directive text lived only in the script and nothing compared
+  it with the charter.
+- Prevented by: [`check-merged-prs.test.js`](../tests/unit/check-merged-prs.test.js)
+  runs the real script and asserts the directive names `/team-start` and no
+  longer mentions Phase 13; the script header states that the directive is
+  data to the receiving session. The file is
+  [`check-merged-prs.sh`](../.claude/scripts/check-merged-prs.sh), merged by the
+  maintainer.
+- Status: prevented

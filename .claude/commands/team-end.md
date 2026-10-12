@@ -67,7 +67,31 @@ it is merged with `node scripts/merge-pr.mjs`. A handoff PR carries no plan
 item, so the one-plan-item-per-PR rule has nothing to count. Numbers in it
 come from commands run this session.
 
-### 5. Report to the maintainer
+### 5. Retro
+
+The learning loop from the "Retro" section of `docs/TEAM-CHARTER.md`: models
+do not learn between sessions, so the repo has to. Do this before the report,
+and brief a role for any file change (the conductor has no edit tools).
+
+1. List what went wrong or was slow this session: a failed check, a review
+   finding, a retried or abandoned task, a guard denial, a stale document.
+2. For each, ask: **what check would have caught it?** A test, a lint rule, a
+   hook, a doc check; prefer one that runs in `npm test`. Fix the class of the
+   mistake, not the instance. If no check is possible, write the one-line
+   reason.
+3. Append a `docs/LESSONS.md` entry for each lesson not already covered, in
+   the ledger's format (append only; a correction is a new entry).
+4. Where a check is missing, open the item: a PR that adds the test, or a plan
+   item under "Handoff kit follow-ups".
+5. Anything that needs the maintainer (a guardrail that would have to change,
+   a baseline, a ruleset) goes under "Needs you".
+
+Self-improvement boundary (`docs/CONDUCTOR.md`): agents may add tests, lints,
+docs and lessons, but may not weaken a hook, permission, required check,
+test, charter text or baseline. Never weaken or remove a guardrail to make a
+problem go away; stop and ask instead.
+
+### 6. Report to the maintainer
 
 Reply in the chat with a short summary: what merged, what is open and its CI,
 the prune dry-run result, and anything that needs the maintainer's decision,

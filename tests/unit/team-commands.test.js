@@ -185,6 +185,16 @@ describe("/team-start", () => {
     expect(text).not.toContain("docs/DECISIONS.md`");
   });
 
+  it("reads the open and partially lessons before anything else", () => {
+    expect(text).toContain(
+      'rg -n "^- Status: (open|partially)" docs/LESSONS.md',
+    );
+    const lessons = text.indexOf("docs/LESSONS.md");
+    expect(lessons).toBeGreaterThan(-1);
+    expect(lessons).toBeLessThan(text.indexOf("### 1. Sync"));
+    expect(text).toMatch(/open` and `partially` lessons first/);
+  });
+
   it("cuts worktrees from origin/main and leaves a non-main primary checkout alone", () => {
     expect(text).toContain(
       "git worktree add .claude/worktrees/<name> -b claude/<short> origin/main",
@@ -200,6 +210,23 @@ describe("/team-end and /team-digest", () => {
     expect(text).not.toMatch(/worktree-prune\.sh\s+--execute/);
     expect(text).toMatch(/Open[\s\S]*Blocked[\s\S]*Next/);
     expect(text).toMatch(/scribe/);
+  });
+
+  it("/team-end has the Retro step, ledger entries and the self-improvement boundary", () => {
+    const text = read("team-end");
+    const retro = text.slice(
+      text.indexOf("### 5. Retro"),
+      text.indexOf("### 6. Report"),
+    );
+    expect(retro.length).toBeGreaterThan(0);
+    expect(retro).toMatch(/what went wrong or was slow/);
+    expect(retro).toContain("what check would have caught it?");
+    expect(retro).toMatch(/Append a `docs\/LESSONS.md` entry/);
+    expect(retro).toMatch(/open the item/i);
+    expect(retro).toContain('"Needs you"');
+    expect(retro).toMatch(
+      /may add tests, lints,\s+docs and lessons, but may not weaken a hook, permission, required check,\s+test, charter text or baseline/,
+    );
   });
 
   it("/team-end has one handoff route: CHANGELOG only, shipped as a docs(handoff) PR", () => {

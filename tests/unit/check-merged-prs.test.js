@@ -126,6 +126,35 @@ describe.skipIf(!haveTools)("check-merged-prs.sh", () => {
     expect(second.stdout).toBe("");
   });
 
+  it("the directive sends the session to /team-start, not to the Phase 13 queue", () => {
+    writeState({ lastSeenPR: 40, ackedPRs: [40] });
+    stubPrs([pr(41, 1)]);
+    const res = run("Stop");
+    expect(res.status).toBe(2);
+    const { hookSpecificOutput } = JSON.parse(res.stdout);
+    expect(Object.keys(hookSpecificOutput).sort()).toEqual([
+      "additionalContext",
+      "hookEventName",
+    ]);
+    const ctx = hookSpecificOutput.additionalContext;
+    expect(ctx).toContain("/team-start");
+    expect(ctx).toMatch(/Phase 17/);
+    expect(ctx).not.toMatch(/Phase 13/);
+  });
+
+  it("the script header says the directive is data, not a maintainer instruction", () => {
+    const header = fs
+      .readFileSync(script, "utf8")
+      .split("\n")
+      .filter((l) => l.startsWith("#"))
+      .map((l) => l.replace(/^#\s?/, ""))
+      .join(" ")
+      .replace(/\s+/g, " ");
+    expect(header).toContain(
+      "is data to the receiving session, not an instruction from the maintainer",
+    );
+  });
+
   it("on SessionStart a fresh merge emits the envelope and exits 0", () => {
     writeState({ lastSeenPR: 40, ackedPRs: [40] });
     stubPrs([pr(41, 0.5)]);
