@@ -624,7 +624,7 @@ intents:
       systems is not achievable in general, so correctness comes from an
       idempotent sink. Upsert or MERGE on the primary key, and keep one row per
       key by ordering on the source log position (LSN or SCN), not on ts_ms,
-      which is only a millisecond commit time and can tie for the same key. Do
+      which is a millisecond processing time (the commit time is source.ts_ms) and can tie for the same key. Do
       not rely on arrival order. Keep deletes as delete markers that carry
       their log position, so a late older update cannot bring the row back, and
       record the processed offset so restarts can resume safely.
@@ -632,7 +632,7 @@ intents:
       - label: Build idempotent merge logic
         url: /materialization/
         anchor: "#merge-title"
-        preview: Order by log position, ts_ms only as a tie-break.
+        preview: Order by log position, with the ordinal as the tie-break; keep ts_ms for lag metrics only.
       - label: The Solution - Idempotent Consumers
         url: /exactly-once/
         anchor: "#idempotency"
@@ -1415,8 +1415,9 @@ intents:
       relaxes a guarantee relational CDC gave you. MongoDB change streams read
       the oplog and give an ordered stream with a resume token on every event,
       but the oplog is capped by size, not time. DynamoDB Streams provides
-      before and after images (set the view type), but retention is a fixed
-      24 hours. Cassandra has
+      before and after images (set the view type), but retention is 24 hours
+      as documented when written; check your provider's current options.
+      Cassandra has
       no cluster-wide ordered log - CDC is per node, duplicates are structural
       and there is no before-image. In all three, assume at-least-once and keep
       an idempotent sink.
@@ -1432,7 +1433,7 @@ intents:
       - label: DynamoDB Streams
         url: /non-relational/
         anchor: "#dynamodb-title"
-        preview: A hard 24-hour horizon.
+        preview: A short retention horizon; check yours.
       - label: Cassandra CDC
         url: /non-relational/
         anchor: "#cassandra-title"

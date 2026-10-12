@@ -191,6 +191,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Content corrections from the second accuracy sample (P17-13).** Five
+  pages were wrong, each with a per-page errata entry
+  (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-12.
+  `/oracle-notes/`: the guard and the latest-wins query used the SCN alone
+  (`MAX(source_scn)`), but an Oracle SCN can repeat inside a transaction; they
+  now use a (position, tie-break) pair, the exposed SCN / commit timestamp is
+  for lag metrics only, and the Oracle SQL is labelled not run against an
+  Oracle database. `/non-relational/`: the Cassandra cell timestamp is a write
+  time assigned by the coordinator or the client, not a logical clock, so the
+  page now says it is reproduced only to mirror the source's conflict rule and
+  can be skewed; the LSN-equivalent checklist no longer offers the cell
+  timestamp or a MongoDB resume token; two unverifiable DynamoDB absolutes
+  (retention cannot be extended, a full scan is the only repair) are worded as
+  the page's assumption. `/exactly-once/`: the `processed_events` recipe now
+  says the ID insert and the sink write share one transaction (otherwise a
+  crash between them loses the event), the event-ID pseudocode and MERGEs are
+  stated to dedupe replays only, and two MERGE blocks are labelled untested.
+  `/partitioning/`: "at most, as a secondary tie-break" for `ts_ms` is now
+  "lag metrics only; use the ordinal as the tie-break", the simulator's
+  Ordering guarantee readout says "Per-key, broken for the hot key" once the
+  hot key is salted over several shards (new pure function in
+  `src/assets/js/lib/partitioning-kpi.js`), and the PostgreSQL block is now run
+  on PGlite by a test. `/materialization/`: `ts_ms` is a processing time, the
+  commit time is `source.ts_ms`; the Snowflake MERGE is labelled untested, and
+  its guard logic is run as a PostgreSQL MERGE on PGlite. A new test runs the
+  guard on `/sql-server-mysql-cdc/` on PGlite with the scenarios the page
+  lists. The thesis-lint allowlist reason for the Cassandra sentence is
+  updated. Open questions for the maintainer are listed in the PR.
+  Technical-editor review nits applied in a second commit: the Cassandra
+  paragraph is scoped (merging on cell timestamps can reproduce the source's
+  winner only with its rule for equal timestamps, which the page does not
+  state; "the one place this site endorses merging on the source's own
+  timestamp"), the DynamoDB 24-hour figure is worded as documented when the
+  page was written (heading, callout, assistant answer), `/oracle-notes/`
+  says the tie-break is one orderable column and links the merge cookbook,
+  `/exactly-once/` requires a unique key on the event ID in the sink's store
+  and says to use `INSERT ... ON CONFLICT DO NOTHING` (checked on PGlite),
+  the `/partitioning/` static KPI line no longer says "per-key only", and
+  the `ts_ms` residue in the assistant knowledge base, the style guide and
+  the Oracle quickstart (now also listed in its errata entry) is corrected.
+
 - **Smoke check for `security.txt` tolerates the CI artifact dropping
   dot-directories (P17-29, P17-64).** The `smoke-tests` job failed with
   `.well-known/security.txt: missing from build output` because

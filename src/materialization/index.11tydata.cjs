@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-10-09",
+  dateModified: "2026-10-12",
   seriesKey: "materialization",
   heroConfig: {
     title: "Materialization 101",
