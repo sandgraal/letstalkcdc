@@ -374,7 +374,7 @@ describe("tie-break and provenance wording (P17-12)", () => {
   it("no longer cites an untraceable independent review", () => {
     expect(prose).not.toMatch(/independent review/);
     expect(prose).toMatch(
-      /tests run the statements as printed \(only the placeholder numbers differ\) on PGlite/,
+      /tests run the statements as printed \(the placeholder numbers differ and comments and the final COMMIT are stripped\) on PGlite/,
     );
   });
 

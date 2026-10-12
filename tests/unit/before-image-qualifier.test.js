@@ -50,6 +50,18 @@ describe("before image qualifier, everywhere it is stated", () => {
     expect(beforeQuestion).not.toMatch(/complete row state/);
   });
 
+  it("event-envelope quiz explanation puts the qualifier ahead of the reconstruct claim and hedges it", () => {
+    const qualifier = beforeQuestion.indexOf("depends on the source");
+    const claim = beforeQuestion.indexOf(
+      "Where the before image holds the row,",
+    );
+    expect(qualifier).toBeGreaterThan(-1);
+    expect(claim).toBeGreaterThan(qualifier);
+    expect(beforeQuestion).toMatch(
+      /Where the before image holds the row, this allows consumers to see what changed/,
+    );
+  });
+
   it("assistant answer for the event envelope", () => {
     hasQualifier(flat(envelopeAnswer));
     expect(flat(envelopeAnswer)).toMatch(/only the key columns/);
@@ -61,6 +73,25 @@ describe("before image qualifier, everywhere it is stated", () => {
       /"before" and "after" state of the data \(how much of the row "before" holds depends on the source/,
     );
     hasQualifier(t);
+    // The hedges used on /deletes-stay-deleted/.
+    expect(t).toMatch(
+      /with the default replica identity on a table that has a primary key, a delete or update carries only the key columns in the before image; REPLICA IDENTITY FULL adds the rest of the row, and other replica identity settings differ/,
+    );
+  });
+
+  it("use-cases renders its inline code as <code>, not literal backticks, in the qualifier", () => {
+    const src = read("src/use-cases/index.njk");
+    expect(src).toMatch(/<code>REPLICA IDENTITY FULL<\/code>/);
+    expect(src).toMatch(/<code>binlog_row_image=FULL<\/code>/);
+    expect(src).not.toMatch(/`REPLICA IDENTITY FULL`|`binlog_row_image=FULL`/);
+  });
+
+  it("security page says topics hold up to complete row images, depending on the source settings", () => {
+    const t = flat(read("src/security/index.njk"));
+    expect(t).toMatch(
+      /because they contain up to complete row images, depending on the source settings, rather than curated events/,
+    );
+    expect(t).not.toMatch(/contain complete row images/);
   });
 
   it("security page no longer says the log holds the before image indefinitely", () => {

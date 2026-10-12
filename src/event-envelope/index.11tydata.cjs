@@ -30,7 +30,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "The 'before' and 'after' fields capture the row state before and after the change. This allows consumers to see what changed, implement custom diffing logic, or reconstruct the state without querying the source database. How much of the row 'before' holds depends on the source. PostgreSQL: with the default replica identity on a table that has a primary key, the before image carries only the key columns; REPLICA IDENTITY FULL adds the rest of the row, and other replica identity settings differ, so check yours. MySQL: binlog_row_image controls how much of the row is written (FULL, MINIMAL, NOBLOB); the full row needs binlog_row_image=FULL.",
+          "The 'before' and 'after' fields capture the row state before and after the change. How much of the row 'before' holds depends on the source. Where the before image holds the row, this allows consumers to see what changed, implement custom diffing logic, or reconstruct the state without querying the source database. PostgreSQL: with the default replica identity on a table that has a primary key, the before image carries only the key columns; REPLICA IDENTITY FULL adds the rest of the row, and other replica identity settings differ, so check yours. MySQL: binlog_row_image controls how much of the row is written (FULL, MINIMAL, NOBLOB); the full row needs binlog_row_image=FULL.",
       },
       {
         question:

@@ -318,9 +318,11 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             <summary><strong>How consistent reads behave</strong></summary>
             <ul>
               <li>
-                <strong>PostgreSQL:</strong> REPEATABLE READ +
-                <code>pg_export_snapshot()</code> keeps scans stable; long scans
-                can delay VACUUM, so watch table bloat alerts.
+                <strong>PostgreSQL:</strong> REPEATABLE READ keeps scans stable
+                within one transaction (<code>pg_export_snapshot()</code> lets
+                other sessions import that transaction's snapshot, but neither
+                gives you a log position); long scans can delay VACUUM, so
+                watch table bloat alerts.
               </li>
               <li>
                 <strong>MySQL/InnoDB:</strong>

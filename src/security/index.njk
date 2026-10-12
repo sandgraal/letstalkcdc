@@ -134,8 +134,8 @@ canonicalPath: "/security/"
       </li>
       <li>
         <strong>Broker ACLs per topic.</strong> CDC topics usually deserve
-        tighter ACLs than application topics, because they contain complete row
-        images rather than curated events.
+        tighter ACLs than application topics, because they contain up to complete row
+        images, depending on the source settings, rather than curated events.
       </li>
       <li>
         <strong>The DLQ is a copy too.</strong> A dead-letter topic holds full

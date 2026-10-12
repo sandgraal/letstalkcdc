@@ -105,6 +105,19 @@ describe("the PostgreSQL snippet: boundary lines", () => {
     expect(e.body).toMatch(/check the documentation for your version/);
   });
 
+  it("the cheatsheet says neither REPEATABLE READ nor pg_export_snapshot() gives a log position", () => {
+    const flatSrc = page
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    expect(flatSrc).toMatch(
+      /REPEATABLE READ keeps scans stable within one transaction \( pg_export_snapshot\(\) lets other sessions import that transaction's snapshot, but neither gives you a log position\)/,
+    );
+    expect(flatSrc).not.toMatch(
+      /REPEATABLE READ \+ pg_export_snapshot\(\) keeps scans stable/,
+    );
+  });
+
   it("the preflight checklist step says the isolation level alone is not a boundary", () => {
     expect(JSON.stringify(data)).toMatch(
       /the isolation level alone does not give a consistent boundary: see the boundary note/,

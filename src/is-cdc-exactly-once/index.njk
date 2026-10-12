@@ -335,7 +335,7 @@ COMMIT;</code></pre>
     <p>
       On start or partition assignment, read <code>next_offset</code> from <code>sink_offsets</code> and
       <code>seek</code> there. Run on one customer key, the same two statements behave like this (this repository's
-      tests run the statements as printed (only the placeholder numbers differ) on PGlite 0.5.8, which is PostgreSQL 18.3 compiled to WebAssembly,
+      tests run the statements as printed (the placeholder numbers differ and comments and the final COMMIT are stripped) on PGlite 0.5.8, which is PostgreSQL 18.3 compiled to WebAssembly,
       and the logic in SQLite 3.54, which accepts the same <code>ON CONFLICT ... WHERE</code> form; the table below
       matched in both. They were not run on a PostgreSQL server by this repository):
     </p>
