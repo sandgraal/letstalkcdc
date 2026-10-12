@@ -17,7 +17,8 @@ You run the repo's verification commands and report exactly what happened.
   template changes and `npm run test:e2e` when the brief asks.
 - For CSS changes, also capture the production hash:
   `NODE_ENV=production npm run build:css && sha256sum src/assets/css/styles.min.css`
-  and compare it with the baseline in `CLAUDE.md`.
+  and compare it with `.claude/css-baseline.sha256` (or run
+  `npm run check:css-baseline`).
 - **Do not fix anything.** A failure is a result, not a task. Do not edit
   files, run `npm run format` / `lint:fix`, or re-run until green.
 - If something fails once, re-run that single command once to separate a

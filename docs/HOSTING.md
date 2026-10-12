@@ -33,7 +33,7 @@ Deploy to GitHub Pages (_site/ directory)
 
 The interactive Change Feed Playground lives in `playground/` (imported with its
 history from `sandgraal/Lets-Talk-CDC-Change-Feed-Playground`) and has its own
-toolchain (Vite 7, React, TypeScript). It is a static app whose bundles in
+toolchain (Vite 8, React, TypeScript). It is a static app whose bundles in
 `playground/assets/generated/` are committed, so `scripts/publish-playground.sh`
 copies `index.html` (with the `__SITE_URL__` placeholder in its `<head>` filled
 from `SITE_HOST` and `ELEVENTY_PATH_PREFIX`), `CDC_logo.png`, and `assets/` into

@@ -12,13 +12,15 @@ The overview page consumes `src/_data/series.mjs`. Add a new object to that arra
   key: 'anatomy-of-connectors',
   title: 'Anatomy of Connectors',
   description: 'Explain the moving parts inside a CDC connector so operators can debug sync drift confidently.',
-  href: '/anatomy-of-connectors/',
+  href: 'anatomy-of-connectors/',
   ctaLabel: 'Start Exploring',
   tags: [
     { label: 'Core Concept', variant: 'tag-concept' }
   ]
 }
 ```
+
+`href` is relative to the site root with a trailing slash and no leading slash (like `intro/`); templates prepend `/` and apply the `| url` filter themselves.
 
 > **Why first?** The `series.mjs` dataset drives navigation chrome, SEO metadata for adjacent modules, and the overview grid. Updating it before writing content ensures the automated wiring (description text, CTA label, badge/tags) is ready as soon as the page ships.
 

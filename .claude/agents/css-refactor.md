@@ -22,9 +22,10 @@ You are the CSS-refactor agent for the Let's Talk CDC repo.
    sha256sum src/assets/css/styles.min.css
    ```
 
-   The current-`main` baseline is recorded in `CLAUDE.md`. If your
-   captured hash doesn't match `main`'s, stop and reconcile — your
-   branch may already contain CSS drift.
+   The current-`main` baseline is recorded in `.claude/css-baseline.sha256`
+   (compare with `npm run check:css-baseline`). If your captured hash
+   doesn't match `main`'s, stop and reconcile — your branch may already
+   contain CSS drift.
 
 3. **Make the change.**
 
@@ -34,7 +35,8 @@ You are the CSS-refactor agent for the Let's Talk CDC repo.
    - one line per file changed (what + why)
    - hash before / hash after
    - if hashes differ: was that intentional? If yes, document it in
-     the commit message and update the baseline in `CLAUDE.md`. If no,
+     the commit message, update `.claude/css-baseline.sha256`, and append
+     the old value + reason to `docs/css-baseline-history.md`. If no,
      revert.
 
 ## Anti-patterns (these will fail review)
