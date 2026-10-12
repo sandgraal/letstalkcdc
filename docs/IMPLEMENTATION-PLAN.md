@@ -2628,6 +2628,48 @@ these blocks merging the kit or the drill (P17-10).
       Size: S. Role: `implementer`. Needs: none.
       _Status: not started._
 
+- [x] **P17-61 · Learning loop: lessons ledger, regression-artifact rule,
+      retro step, ratchet test.** Outcome: a mistake met once is stopped by the
+      repo the next time, because models do not learn between sessions.
+      Accept: `docs/LESSONS.md` exists with a header (format, append-only,
+      pruning rule) and entries that each name a root cause, a mechanism and a
+      status of `prevented`, `partially` or `open`; the Definition of Done in
+      `docs/CONDUCTOR.md` requires a regression artifact or a one-line reason
+      for any bug, finding, CI failure or process mistake; the Autonomy charter
+      has a "Self-improvement boundary" (tests, lints, docs and entries are
+      allowed; weakening a guardrail or lowering a baseline is the
+      maintainer's); `docs/TEAM-CHARTER.md` has a "Retro" step;
+      `tests/unit/ratchet.test.js` fails when a count in
+      `.claude/ratchet-baseline.json` drops (unit test files, test cases,
+      thesis-lint rules, guard-bash cases, hooks, and the merge script, the
+      drill and the ledger must exist) and checks the ledger's format. Verify:
+      `npx vitest run tests/unit/ratchet.test.js tests/unit/doc-facts.test.js`,
+      `npm run verify-all`, and a mutation (lower a count in a copy, the test
+      fails). Size: M. Role: `implementer`, then `reviewer`. Needs: none.
+      _Status 2026-10-11: shipped in the PR carrying this change (touches
+      `.claude/**`, `docs/CONDUCTOR.md` and `docs/TEAM-CHARTER.md`, so the
+      maintainer merges it by hand). Not in it: the `/team-end` retro step and
+      the `/team-start` line that reads the open lessons, because neither
+      command file was on `main` yet; both are P17-62 (a)._
+- [ ] **P17-62 · Close the open ledger entries.** Outcome: the `open` and
+      `partially` entries in `docs/LESSONS.md` that an agent can close, are
+      closed. Accept: (a) `.claude/commands/team-end.md` has the Retro step
+      (the five steps in `docs/TEAM-CHARTER.md`, "Retro") and
+      `.claude/commands/team-start.md` has one line telling the conductor to
+      read the `open` and `partially` entries first
+      (`rg -n "^- Status: (open|partially)" docs/LESSONS.md`), pinned by
+      `tests/unit/team-commands.test.js`; (b) the auto-continue directive in
+      `.claude/scripts/check-merged-prs.sh` names the Phase 17 queue, not
+      Phase 13 (a Tier 3 file: the maintainer merges it); (c) a doc-facts
+      check fails on new time-relative wording ("not on main yet", "until
+      this PR merges") outside an allowlist that P17-59 empties. Each closed
+      entry gets a new `LESSONS.md` entry that cites the old ID. Verify:
+      `npx vitest run tests/unit/team-commands.test.js tests/unit/doc-facts.test.js tests/unit/ratchet.test.js`,
+      `npm run verify-all`. Size: S. Role: `implementer`, then `reviewer`.
+      Needs: P17-60 merged for (a); (c) waits for P17-59.
+      _Status: not started._
+
+- [ ] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
 - [x] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
       document describes the kit as pending after it has merged. Accept
       (testable): `docs/MAINTAINER-TASKS.md` says agents merge only through
@@ -2669,6 +2711,20 @@ these blocks merging the kit or the drill (P17-10).
       none. Touches `.github/**`, so the maintainer merges it.
       _Status 2026-10-12: shipped in the PR carrying this change; awaiting CI
       validation of the flag._
+- [x] **P17-60 · Session commands: `/team-start`, `/team-end`, `/team-digest`.**
+      Outcome: a working session of the agent team starts and ends the same
+      way every time. Accept: `.claude/commands/team-start.md`, `team-end.md`
+      and `team-digest.md` exist with a `description` frontmatter; they route
+      merges only through `scripts/merge-pr.mjs`, state the stop-and-ask rule
+      and the Sonnet and Haiku only rule, and `team-start` keeps the primary
+      checkout on a fast-forward of `main` with all work in worktrees; none
+      tells anyone to merge directly, skip hooks, push to `main` or force-push;
+      `docs/TEAM-CHARTER.md` has a "Running a session" section and the Day-1
+      checklist points at `/team-start`. Verify:
+      `npx vitest run tests/unit/team-commands.test.js`, `npm run verify-all`.
+      Size: S. Role: `implementer`. Needs: none.
+      _Status: shipped in the PR carrying this change (touches `.claude/**`
+      and `docs/TEAM-CHARTER.md`, so the maintainer merges it by hand)._
 
 ### Autopsy, in two parts
 

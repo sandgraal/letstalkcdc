@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Session commands for the agent team (P17-60).** `/team-start`,
+  `/team-end` and `/team-digest` in `.claude/commands/` make a working session
+  start and end the same way: sync with worktrees only, read the handoff,
+  merge ready `claude/*` PRs through `scripts/merge-pr.mjs`, check a Phase 17
+  item is not already merged or in flight, then close with a clean-worktree
+  check, a prune dry run and a dated Open / Blocked / Next block shipped as a
+  `docs(handoff)` PR. The digest runs `growth-writer` first and posts once.
+  `docs/TEAM-CHARTER.md` gains a "Running a session" section. A unit test pins
+  the rules. No site or CSS change.
 - **`/llms.txt` for language-model crawlers (P17-21).** A plain-text index in
   the llmstxt.org shape (title, summary, links with descriptions), generated
   at build time from the same indexable-page rule and series order as
@@ -25,6 +34,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separate PRs and a worktree prune (#430); a maintainer guide
   (`docs/MAINTAINER-TASKS.md`, #431); a shorter `CLAUDE.md` with path-scoped
   rules and skills, correcting its "branch-protected" and "Vite 7" claims,
+  and a fix to the merge watcher (#432). In review: a thesis lint over the
+  site's copy (#444), a gated merge script (#445), an autonomy charter with
+  guard hooks and permissions (#446) and a team charter with two new roles and
+  a weekly-digest skill (#447, stacked on #446); cold-start drill run; fixes
+  in review (#449).
+  `docs/AUTOPSY-BRIEF.md` now names the autopsy's next-phase draft Phase 18.
+  No site or CSS change.
+- **Learning loop for the agent team (P17-61).** Models do not learn between
+  sessions, so the repo does: `docs/LESSONS.md` is an append-only ledger of
+  mistakes, each with its root cause and the test, lint, hook or doc that now
+  stops it (eight entries seeded from the kit's own PRs); the Definition of
+  Done requires a regression artifact for any bug, finding, CI failure or
+  process mistake; the Autonomy charter gains a "Self-improvement boundary"
+  (agents add checks freely, only the maintainer weakens a guardrail); the
+  team charter gains a "Retro" step; and `tests/unit/ratchet.test.js` with
+  `.claude/ratchet-baseline.json` fails if the number of unit test files,
+  test cases, thesis-lint rules, guard cases or hooks shrinks. Touches
+  `.claude/**`, so the maintainer merges it. The `/team-end` and `/team-start`
+  edits wait for the commands PR (P17-62). No site or CSS change.
   and a fix to the merge watcher (#432, #443); a thesis lint over the site's
   copy (`npm run lint:thesis`, #444), a gated merge script
   (`scripts/merge-pr.mjs`, #445), an autonomy charter with guard hooks and

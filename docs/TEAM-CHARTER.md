@@ -51,6 +51,9 @@ with `ls` anyway if a path looks wrong, and believe the repo over this table.
 
 Run from a fresh clone, or a worktree off fresh `main`.
 
+The conductor runs the whole routine below as `/team-start` (see
+[Running a session](#running-a-session)).
+
 ```bash
 git fetch origin && git switch main && git pull --ff-only
 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --no-audit --no-fund
@@ -94,6 +97,25 @@ when they disagree.
 Then pick work: the next Phase 17 item, then older agent-executable boxes
 (see [Backlog map](#backlog-map)), check it against the Definition of Ready in
 `CONDUCTOR.md`, and brief a role.
+
+## Running a session
+
+Three slash commands in `.claude/commands/` make every session start and end
+the same way. The conductor reads the command file and follows it.
+
+- `/team-start`: sync (the primary checkout only fast-forwards `main`; all
+  work is in worktrees cut from `origin/main`), read the latest handoff block
+  (and any open `docs(handoff)` PR and the newest digest), merge ready PRs
+  through `node scripts/merge-pr.mjs` (dry run first; only `claude/*` PRs by
+  the team's account), check that a Phase 17 item is not already merged or in
+  flight before picking it, brief roles. It stops and asks on the triggers
+  below.
+- `/team-end`: check every worktree is clean, list open PRs and CI, show the
+  `scripts/worktree-prune.sh` dry run, have a `scribe` write the dated
+  handoff block (shipped as a `docs(handoff): YYYY-MM-DD` PR through the same
+  gate), and report what needs the maintainer's decision under "Needs you"
+  (these feed the digest).
+- `/team-digest`: runs the weekly-digest skill (below).
 
 ## Roles and when to use each
 
@@ -207,6 +229,31 @@ holds, or when the Tier 3 list there applies. In addition, stop and ask for:
   security-contact text.
 - **A request for a stronger model.** See below.
 
+## Retro
+
+The learning loop. Models do not learn between sessions, so the repo has to.
+Run this at the end of every session (it is a step of `/team-end` once that
+command exists in your checkout; otherwise run it by hand). The ledger is
+[`LESSONS.md`](LESSONS.md); the boundary on what an agent may change is
+"Self-improvement boundary" in [`CONDUCTOR.md`](CONDUCTOR.md#self-improvement-boundary).
+
+1. List what went wrong or was slow this session: a failed check, a review
+   finding, a retried or abandoned task, a guard denial, a stale document.
+2. For each, ask: **what check would have caught it?** A test, a lint rule, a
+   hook, a doc check. Prefer one that runs in `npm test`. Fix the class of the
+   mistake, not the instance. If no check is possible, write the one-line
+   reason.
+3. Append a `LESSONS.md` entry for each lesson not already covered (append
+   only; a correction is a new entry).
+4. Where a check is missing, open the item: a PR that adds the test, or a plan
+   item under "Handoff kit follow-ups" in the plan.
+5. Anything that needs the maintainer (a guardrail that would have to change,
+   a baseline, a ruleset) goes under "Needs you". Never weaken or remove a
+   guardrail to make a problem go away.
+
+At the start of a session, read the `open` and `partially` entries first:
+`rg -n "^- Status: (open|partially)" docs/LESSONS.md`.
+
 ## Escalation role (NOT enabled)
 
 **Policy.** Sonnet 5.5 and Haiku 5.5 are the only models. A stronger model is
@@ -256,12 +303,18 @@ The repo is the memory. Local memory files, chat history and worktree state
 are not the record: the next session starts from `git log`, the plan and the
 changelog.
 
-End every session by appending a dated note (`YYYY-MM-DD`) to both
-`CHANGELOG.md` `[Unreleased]` and the plan item you worked on, listing:
+End every session by writing a dated note (`YYYY-MM-DD`) into
+`CHANGELOG.md` `[Unreleased]`, as one rolling "Latest handoff" block that
+replaces the previous one. It ships as a small PR titled
+`docs(handoff): YYYY-MM-DD` through the same gate as any change (reviewer
+pass required; `CHANGELOG.md` is not a restricted path). The note lists:
 
 - **Open**: PRs awaiting CI or review, branches with unmerged work.
 - **Blocked**: what is waiting on whom, with the date it was raised.
 - **Next**: the one item the next session should start with, and why.
+
+Plan items are not edited by the note. Only when something is blocked, add a
+pointer in the plan item to the handoff block, not a copy of it.
 
 Clean up your worktrees before you stop.
 
