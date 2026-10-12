@@ -1,5 +1,14 @@
 # State of the project — 2026-10-09
 
+> **Addendum 2026-10-11:** (a) the production CSS baseline hash now lives in
+> `.claude/css-baseline.sha256` (check with `npm run check:css-baseline`), not
+> in `CLAUDE.md`; (b) open plan boxes: do not trust the counts below, run
+> `grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md` (63 when #448 lands,
+> because Phase 17 adds the handoff-kit and autopsy items); (c) Phase 17
+> (handoff kit, autopsy, next-phase menu) and the open PRs #444-#448 are not
+> reflected below; (d) a new snapshot should be written once those merge (plan
+> item P17-59).
+
 A dated snapshot of Let's Talk CDC, written for someone who has not seen it
 before. Every number below came from a command run on 2026-10-09 against
 `main` at **`bd5a2a4`** (`bd5a2a4b2068ca6214966d9e4ccb1df4dbc7bde9`, "feat(playground):
@@ -120,9 +129,9 @@ Re-measure: `npm run build:lhci && npm run lighthouse`.
 
 ## Production CSS baseline
 
-`c5806349294d3bc295a07c93054684a70545d291216916e45cef1c154017f944`, recorded
-in `CLAUDE.md` and `.claude/commands/css-byte-check.md`; reproduced on this
-commit:
+`c5806349294d3bc295a07c93054684a70545d291216916e45cef1c154017f944`, as of
+2026-10-09 (the current value is in `.claude/css-baseline.sha256`, see the
+addendum at the top); reproduced on this commit:
 
 ```bash
 NODE_ENV=production npm run build:css && shasum -a 256 src/assets/css/styles.min.css
