@@ -161,6 +161,10 @@ An item is done only when all of these hold:
 - [ ] New or changed behaviour has a test that would fail without the change.
 - [ ] A `reviewer` has returned `APPROVE` or `APPROVE WITH NITS` for any
       change to logic, templates or CSS, and its findings are resolved.
+- [ ] Any bug, review finding, CI failure or process mistake met while doing
+      the item ends in a regression artifact (a test, lint, hook or doc check)
+      or a one-line reason why none is possible, and a
+      [`LESSONS.md`](LESSONS.md) entry when the lesson is not already covered.
 - [ ] The plan checkbox is flipped, with a one-line note of what proved it.
 - [ ] `CHANGELOG.md` `[Unreleased]` is updated if a reader or contributor
       would notice.
@@ -401,6 +405,29 @@ merge | cherry-pick | rebase | stash pop` of a ref whose tree differs
   is for an isolated subagent running in a worktree (`guard-edit.mjs`
   normalises a worktree directory to its primary checkout and falls back to
   git when it is unset).
+
+### Self-improvement boundary
+
+Models do not learn between sessions; the repo is what the next session
+inherits. Agents may make the repo harder to get wrong, and may not make it
+easier. A mistake is only closed by a mechanism (see [`LESSONS.md`](LESSONS.md)).
+
+- **Allowed without asking:** add a test, a lint rule or a doc check; add a
+  `LESSONS.md` entry; propose a skill or rule as a PR; tighten a check. Prefer
+  an executable check to a paragraph, and fix the class of the mistake, not
+  only the instance.
+- **Maintainer only:** anything that weakens or removes a hook, a permission,
+  a required check, a test, charter text or a model pin, or that lowers a
+  baseline (`.claude/ratchet-baseline.json`). A failing ratchet is fixed by
+  restoring what was removed, never by editing the baseline. What holds this:
+  `scripts/merge-pr.mjs` refuses any PR that touches `.claude/**` (hooks,
+  settings, agents, the ratchet baseline; only the CSS baseline hash file is
+  excepted) or this file, so the maintainer
+  merges those by hand. A deleted or weakened test elsewhere is held only by
+  the ratchet's counts, the reviewer and this rule.
+- **Keep `CLAUDE.md` small.** Lessons live in the ledger. Only a rule that
+  matters in every session goes in `CLAUDE.md`, and one that matters for
+  certain files goes in `.claude/rules/`.
 
 ### Working rules
 

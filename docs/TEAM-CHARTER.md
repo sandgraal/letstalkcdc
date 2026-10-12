@@ -229,6 +229,31 @@ holds, or when the Tier 3 list there applies. In addition, stop and ask for:
   security-contact text.
 - **A request for a stronger model.** See below.
 
+## Retro
+
+The learning loop. Models do not learn between sessions, so the repo has to.
+Run this at the end of every session (it is a step of `/team-end` once that
+command exists in your checkout; otherwise run it by hand). The ledger is
+[`LESSONS.md`](LESSONS.md); the boundary on what an agent may change is
+"Self-improvement boundary" in [`CONDUCTOR.md`](CONDUCTOR.md#self-improvement-boundary).
+
+1. List what went wrong or was slow this session: a failed check, a review
+   finding, a retried or abandoned task, a guard denial, a stale document.
+2. For each, ask: **what check would have caught it?** A test, a lint rule, a
+   hook, a doc check. Prefer one that runs in `npm test`. Fix the class of the
+   mistake, not the instance. If no check is possible, write the one-line
+   reason.
+3. Append a `LESSONS.md` entry for each lesson not already covered (append
+   only; a correction is a new entry).
+4. Where a check is missing, open the item: a PR that adds the test, or a plan
+   item under "Handoff kit follow-ups" in the plan.
+5. Anything that needs the maintainer (a guardrail that would have to change,
+   a baseline, a ruleset) goes under "Needs you". Never weaken or remove a
+   guardrail to make a problem go away.
+
+At the start of a session, read the `open` and `partially` entries first:
+`rg -n "^- Status: (open|partially)" docs/LESSONS.md`.
+
 ## Escalation role (NOT enabled)
 
 **Policy.** Sonnet 5.5 and Haiku 5.5 are the only models. A stronger model is
