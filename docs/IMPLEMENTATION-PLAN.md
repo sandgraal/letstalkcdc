@@ -2347,9 +2347,10 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       the charter is missing. Verify: `npx vitest run`, `npm run verify-all`,
       and a recorded attempt of each blocked action showing the block. Size:
       M. Role: `implementer`, then `reviewer`. Needs: none.
-      _Status 2026-10-11: open as #446 (maintainer-merged; last independent
-      review REQUEST CHANGES, fixes not yet re-reviewed). On the branch the charter is an
-      "Autonomy charter" section of `docs/CONDUCTOR.md`, enforced by
+      _Status 2026-10-11: open as #446 (to be merged by the maintainer,
+      since it touches `.claude/**`; last independent review REQUEST CHANGES,
+      fixes not yet re-reviewed). On the branch the charter is an "Autonomy
+      charter" section of `docs/CONDUCTOR.md`, enforced by
       `.claude/hooks/guard-bash.mjs` and `guard-edit.mjs`, an updated
       `guard-agent-model.mjs` and `.claude/settings.json`. The reviews showed
       the hooks are a net, not a boundary; the open residuals are P17-55._
