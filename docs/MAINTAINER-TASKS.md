@@ -4,118 +4,136 @@ Everything in this guide needs the maintainer: a login to an account the agent
 team does not hold, a settings change only an admin can make, a decision, or a
 step outside the repository. The agent team cannot do these and should not try.
 
-Written 2026-10-09 against `origin/main` at `8e748fc`. Where a claim could not be
+Written 2026-10-09 against `origin/main` at `8e748fc`, and brought up to date on
+2026-10-11 (P17-59), after the handoff kit merged. Where a claim could not be
 checked from the repository, the task says **unverified**.
+
+## Who merges what
+
+Agents merge only through `scripts/merge-pr.mjs` (the charter's Tier 2, in
+[`CONDUCTOR.md`](CONDUCTOR.md)). The script refuses a PR that is red, unreviewed
+or touches a maintainer-only path. PRs on those paths (`.github/**`, `.claude/**`,
+`CLAUDE.md`, the charter documents, `docs/DECISIONS.md`, manifests and lockfiles,
+`supabase/**`, licence files) are prepared by the team and merged by you. Task 1
+is that merge. Settings, accounts, secrets and decisions stay yours (Tier 3).
 
 ## How to use this guide
 
 - Work top to bottom. The table gives the time, the date and what each task
   needs. Order matters where one task depends on another.
 - Tick the `[ ]` in the table as you finish each task. Your copy is yours to
-  tick; the agent team does not edit this file.
+  tick. The agent team does not edit it directly: it prepares edits to this file
+  as PRs that you merge (it is not on the merge gate's list, but it is your guide).
 - The intended way to use it is a live session with an AI assistant in this
   repository. Ask the assistant to walk you through a task. It can run the `gh`
   and `npm` commands, read files and draft text. You do the clicks, the logins
   and the decisions. Ask it to show the exact command or click path before
   anything changes a setting.
-- Only two items have fixed dates: the domain name (a target of 2026-10-23, set
-  in the brief for this guide and not written anywhere else in the repository)
-  and the snapshot (2026-11-06, from P16-12).
+- Only two items have fixed dates: the domain name (a target of 2026-10-23,
+  recorded in `docs/DECISIONS.md` and `docs/TEAM-CHARTER.md`) and the snapshot
+  (2026-11-06, from P16-12).
 
 ## The list
 
-| #   | Task                                                                              | Why                                                                      | Time                            | When                                 | Needs                                     |
-| --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------- | ------------------------------------ | ----------------------------------------- |
-| 1   | [ ] Merge the Autonomy Charter PR (P17-1)                                         | Sets how the agent team merges its own PRs                               | 5 min                           | Now, first                           | Merge rights; the open charter PR         |
-| 2   | [ ] Require CI checks on the `default` ruleset                                    | A red CI run does not block a merge today                                | 10 min                          | Before the next merge batch          | Repository admin                          |
-| 3   | [ ] Repository settings: description, topics, social preview, alerts, Discussions | Discoverability, security alerts, community threads                      | 15 min                          | This week                            | Repository admin                          |
-| 4   | [ ] File the upstream Debezium docs issue (P15-39)                                | Debezium's docs name a setting PostgreSQL does not present as a slot cap | 10 min                          | When you are ready; the draft exists | A GitHub account                          |
-| 5   | [ ] Confirm nothing runs `.codacy/cli.sh`, then remove it (P15-52)                | Removes a launcher that nothing is known to use                          | 5 min                           | This week                            | Codacy dashboard access                   |
-| 6   | [ ] Choose the domain name and move the site (P15-13)                             | Canonicals, sitemap and search listings all follow the host              | Not estimated                   | Decide by 2026-10-23                 | Registrar, DNS, repository admin          |
-| 7   | [ ] GoatCounter: keep the dashboard private, or change the privacy page first     | `/privacy/` says the maintainer reads the totals                         | 5 min                           | Before 2026-11-06                    | GoatCounter login                         |
-| 8   | [ ] Supabase: run the three queries and paste the output                          | Feedback counts and retention jobs (P16-25)                              | 10 min                          | Before 2026-11-06; again at 30 rows  | Supabase dashboard with SQL access        |
-| 9   | [ ] Snapshot day: Search Console and GoatCounter exports (P16-12, P16-25)         | The first dated baseline                                                 | 20 min                          | 2026-11-06                           | Search Console owner; GoatCounter login   |
-| 10  | [ ] Answer the three charter questions                                            | The charter needs these answers                                          | Decisions; not timed            | When the charter is in front of you  | Decisions; a public contact address       |
-| 11  | [ ] Weekly: read the digest and write one outward post                            | Keeps the team's view current and the site visible                       | About 15 min, plus about 1 hour | Weekly                               | Digest location (unverified, see task 11) |
-| 12  | [ ] Docker for the labs (P15-37, P15-46)                                          | Labs are not run in CI and pin older versions than the pages             | Not estimated                   | When you choose who runs them        | Someone with Docker, or a decision        |
+| #   | Task                                                                              | Why                                                                      | Time                            | When                                 | Needs                                   |
+| --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------- | ------------------------------------ | --------------------------------------- |
+| 1   | [ ] Merge the restricted-path PRs the team prepares (now: P17-59)                 | The merge script refuses these paths, so only you can merge them         | 5 min each                      | Now, first                           | Merge rights; the open PR               |
+| 2   | [ ] Require CI checks on the `default` ruleset (P17-3)                            | A red CI run does not block a merge today                                | 10 min                          | Today, before the next merge batch   | Repository admin                        |
+| 3   | [ ] Repository settings: description, topics, social preview, alerts, Discussions | Discoverability, security alerts, community threads                      | 15 min                          | This week                            | Repository admin                        |
+| 4   | [ ] File the upstream Debezium docs issue (P15-39)                                | Debezium's docs name a setting PostgreSQL does not present as a slot cap | 10 min                          | When you are ready; the draft exists | A GitHub account                        |
+| 5   | [ ] Confirm nothing runs `.codacy/cli.sh`, then remove it (P15-52)                | Removes a launcher that nothing is known to use                          | 5 min                           | This week                            | Codacy dashboard access                 |
+| 6   | [ ] Choose the domain name and move the site (P15-13)                             | Canonicals, sitemap and search listings all follow the host              | Not estimated                   | Decide by 2026-10-23                 | Registrar, DNS, repository admin        |
+| 7   | [ ] GoatCounter: keep the dashboard private, or change the privacy page first     | `/privacy/` says the maintainer reads the totals                         | 5 min                           | Before 2026-11-06                    | GoatCounter login                       |
+| 8   | [ ] Supabase: run the three queries and paste the output                          | Feedback counts and retention jobs (P16-25)                              | 10 min                          | Before 2026-11-06; again at 30 rows  | Supabase dashboard with SQL access      |
+| 9   | [ ] Snapshot day: Search Console and GoatCounter exports (P16-12, P16-25)         | The first dated baseline                                                 | 20 min                          | 2026-11-06                           | Search Console owner; GoatCounter login |
+| 10  | [x] Answer the three charter questions (answered 2026-10-11)                      | The charter needs these answers                                          | Done                            | Done                                 | Recorded in `docs/DECISIONS.md`         |
+| 11  | [ ] Weekly: read the digest and write one outward post                            | Keeps the team's view current and the site visible                       | About 15 min, plus about 1 hour | Weekly                               | A GitHub login to read the digest issue |
+| 12  | [ ] Docker for the labs (P15-37, P15-46)                                          | Labs are not run in CI and pin older versions than the pages             | Not estimated                   | When you choose who runs them        | Someone with Docker, or a decision      |
 
 ## The tasks
 
-### 1. Merge the Autonomy Charter PR (P17-1)
+### 1. Merge the restricted-path PRs the team prepares (now: P17-59)
 
-**Why.** The charter sets what the agent team may merge and what stays with
-you. Today the team stops at the PR (`docs/CONDUCTOR.md`). The brief says a merge
-script, `scripts/merge-pr.mjs`, is being added by P17-2 so the team can merge
-its own PRs once the charter allows it.
-
-**Check first.** At `origin/main` `8e748fc`, `docs/IMPLEMENTATION-PLAN.md` has no
-Phase 17 (it is being added separately) and `scripts/merge-pr.mjs` does not
-exist. The charter is therefore not on `main` yet; look for an open PR or
-branch. If you cannot find it, stop: this task is not ready.
+**Why.** The merge script refuses any PR that touches a maintainer-only path
+(`scripts/merge-pr.mjs`, and the list in `docs/CONDUCTOR.md`). The team prepares
+such PRs and stops. You read them and merge them. The post-merge sweep (P17-59,
+shipped in the sweep PR) is one such PR; it edits `docs/CONDUCTOR.md`,
+`docs/TEAM-CHARTER.md`, `docs/DECISIONS.md` and `.claude/rules/`.
 
 **Steps**
 
-1. Run `gh pr list --state open` and find the charter PR by its title.
-2. Read the PR description and the **Files changed** tab. Check whether
-   `docs/CONDUCTOR.md` changes its "Stop at the PR" rule (item 7 today), and
-   which paths it treats as maintainer-only.
+1. Run `gh pr list --state open` and find the PR by its title.
+2. Read the PR description and the **Files changed** tab. Check that the
+   restricted paths changed are the ones the description says.
 3. Check CI with `gh pr checks <number>` or the Checks tab. The ruleset does not
-   block a red run yet (task 2), so you are the check.
+   block a red run until task 2 is done, so until then you are the check.
 4. On the PR page, choose **Squash and merge**, then confirm. Squash is the
    pattern on `main`: commit subjects end in `(#NNN)`.
-5. Run `git switch main && git pull`. Do not expect `scripts/merge-pr.mjs` yet;
-   it arrives with P17-2.
+5. Run `git switch main && git pull`.
 
-**Done when:** the charter is on `main`. The merge script is a separate item.
+**Done when:** the PR is on `main`. Repeat for any later restricted-path PR.
 
-### 2. Require CI checks on the `default` ruleset
+### 2. Require CI checks on the `default` ruleset (P17-3)
 
 **Why.** The `default` ruleset (ID `16512225`) has the rules `deletion`,
 `non_fast_forward`, `code_scanning`, `code_quality` and `pull_request`. It has no
 required status checks, so a red CI run does not block a merge. Four `unit-tests`
-runs on `main` failed on 2026-10-09 (`docs/AUTOPSY-BRIEF.md` section 7).
+runs on `main` failed on 2026-10-09 (`docs/AUTOPSY-BRIEF.md` section 7). The merge
+script checks the gate for agents; this makes GitHub enforce it for everyone.
 
 **Steps**
 
-1. Repository **Settings → Rules → Rulesets** → `default`.
-2. **Edit** → **Add rule** → **Require status checks to pass**.
-3. Tick **Require branches to be up to date before merging**.
-4. Add these check names. They are job IDs from `.github/workflows/ci.yml`,
-   which sets no `name:` on any job:
+1. Repository **Settings → Rules → Rulesets** → `default` → **Edit**.
+2. **Add rule** → **Require status checks to pass**.
+3. Add exactly these seven check names. They are job IDs from
+   `.github/workflows/ci.yml`, which sets no `name:` on any job:
    - `build`
    - `lint`
    - `unit-tests`
-   - `lychee` (the job in `.github/workflows/linkcheck.yml`; the workflow itself
-     is called "Link check")
-5. Save changes.
+   - `e2e-tests`
+   - `a11y-tests`
+   - `smoke-tests`
+   - `security-audit`
+4. **Require branches to be up to date before merging** is optional and off by
+   default. Turning it on forces an **Update branch** and a full re-run after every
+   other merge, which is slow when several PRs are queued.
+5. Leave the **bypass list empty**.
+6. Save changes.
 
-This set is the recommended minimum from `docs/AUTOPSY-BRIEF.md` section 8,
-risk 3, which calls the link check `linkcheck`. The job in the workflow file is
-`lychee`, and a required check must match the job name. Other jobs are optional.
+**Do not require**
 
-**Do not require (yet)**
-
-- The `preflight` job (in `.github/workflows/playground-preflight.yml`) and the
-  `generated-bundle-check` job (in `.github/workflows/playground-generated-bundles.yml`).
-  Both run only when `playground/**` changes, so on any other PR they never
-  report and the PR waits forever.
-- `lighthouse` and `e2e-tests`. The Lighthouse job failed on `main` with
-  `NO_FCP` (run 37898380673), and one e2e layout test failed once in a local run
-  with no explanation (`docs/AUTOPSY-BRIEF.md` section 7). Add them once those are fixed.
+- `lychee` (the job in `.github/workflows/linkcheck.yml`). It checks external
+  links, and a third-party 503 would block an unrelated PR. It stays a signal you
+  read, not a gate.
+- `lighthouse`. The runner can lose LCP or FCP (`NO_LCP`, `NO_FCP`; run
+  37898380673), so a correct PR could be blocked by a flaky measurement.
+- The `preflight` job (`.github/workflows/playground-preflight.yml`) and the
+  `generated-bundle-check` job (`.github/workflows/playground-generated-bundles.yml`).
+  Both run only when `playground/**` changes, so on any other PR they never report
+  and the PR waits forever.
 
 **Watch out**
 
 - The check picker offers only names that have reported recently. If a name is
   missing, let one PR run first.
-- The CodeQL quirk: a PR can show **BLOCKED** with "code scanning cannot
-  determine alerts". The `code_scanning` rule is waiting for CodeQL's result on
-  the PR head. Click **Update branch** on the PR and let the checks run again.
+- The ruleset already has a CodeQL `code_scanning` rule. A PR can show
+  **BLOCKED** with "code scanning cannot determine alerts". The rule is waiting
+  for CodeQL's result on the PR head. Click **Update branch** on the PR and let the
+  checks run again.
 - Once a check is required, a PR on which it never runs is blocked. After
   saving, open an existing PR and confirm it can still merge.
 
-**Done when:** `gh api repos/sandgraal/letstalkcdc/rulesets/16512225` shows a
-`required_status_checks` rule with the names above. Reading the ruleset needs
-only read access.
+**Verify.**
+
+1. `gh api repos/sandgraal/letstalkcdc/rulesets/16512225` shows a
+   `required_status_checks` rule with the seven names. Reading the ruleset needs
+   only read access.
+2. Open a throwaway PR from a new branch with one deliberately failing unit test.
+   When `unit-tests` goes red, confirm the merge button is blocked. Close the PR
+   without merging and delete the branch.
+
+**Done when:** both checks above pass, and `docs/DECISIONS.md` records the
+"up to date" choice (P17-3).
 
 ### 3. Repository settings: description, topics, social preview, alerts, Discussions
 
@@ -138,9 +156,14 @@ the repository.
    `sips`). Read "Open decisions" first: the cover's licence is not settled.
 3. **Settings → Code security** (on some layouts, "Security & analysis"): check
    that **Dependabot alerts** and **Dependabot security updates** are on, and turn
-   them on if not. The repository has
-   no `.github/dependabot.yml`, which security updates do not need. Expect
-   Dependabot pull requests.
+   them on if not. The configuration file `.github/dependabot.yml` is already in
+   the repository (added in #430: grouped weekly updates, one PR per major
+   version), so nothing to add there. Expect Dependabot pull requests.
+   Also, two leftover repository variables from the retired Copilot setup,
+   `COPILOT_AGENT_FIREWALL_ENABLED` and
+   `COPILOT_AGENT_FIREWALL_ALLOW_LIST_ADDITIONS`, can be deleted under
+   **Settings → Secrets and variables → Actions → Variables**; nothing reads
+   them.
 4. **Settings → General → Features**: tick **Discussions**, then **Set up
    discussions**.
    - Categories: `docs/DISCUSSIONS_SEED.md` expects Show and Tell, a debugging
@@ -213,9 +236,8 @@ sitemap, Search Console and every `sandgraal.github.io` link follow it.
 `docs/DOMAIN-MIGRATION.md` describes the move as a variable change once the
 checklist is worked through.
 
-**Timing.** The target is **2026-10-23**, a date from the brief that the
-repository does not record. `docs/AUTOPSY-BRIEF.md` section 9
-advises deciding before search history builds on the current host. The 28-day
+**Timing.** The target is **2026-10-23** (`docs/DECISIONS.md`, "Hosting").
+`docs/AUTOPSY-BRIEF.md` section 9 advises deciding before search history builds on the current host. The 28-day
 snapshot (task 9) is measured on whichever host is live on 2026-11-06, and P16-12
 says to re-verify after a move. Choose the order on purpose.
 
@@ -333,42 +355,38 @@ pages, 28 days after GoatCounter and Search Console began counting.
 **Done when:** P16-12 has a dated snapshot and the ten-page Lighthouse record.
 P16-25 stays open until the feedback threshold is met.
 
-### 10. Answer the three charter questions
+### 10. Answer the three charter questions (ANSWERED 2026-10-11)
 
-**Why.** The brief for this guide lists three questions the charter needs
-answered. The charter text is not in this repository yet, so check its wording
-when it is in front of you (task 1). If the charter PR lists them as open,
-answer them there or in a follow-up PR.
+**Answered.** The three questions were answered on 2026-10-11 and are recorded in
+`docs/DECISIONS.md`. Nothing is left for you here except the follow-up in the
+third answer.
 
-1. **Stronger model for the escalation role.** `CLAUDE.md` says only Haiku 5.5 and
-   Sonnet 5.5 are permitted, and a hook and a unit test enforce it. Your answer is
-   either "none" or one specific model ID. Permitting an ID also changes the hook
-   and the test, so the assistant has to make both changes together.
-2. **Public contact for `security.txt`.** No `security.txt` exists; `src/static/.well-known`
-   is absent. Give an address you are content to publish in a public repository,
-   not a personal inbox. The standard path is under `/.well-known/` on the host,
-   and this project site does not own the host root, so the file can sit only
-   under `/letstalkcdc/` until the domain move (task 6).
-3. **Vendor-disclosure policy for comparison content.** Pages such as `/compare/`,
-   `/tooling/` and the cloud labs name vendor products. The vendor data is in
-   `src/_data/cdcVendors.mjs` and `src/_data/cdcCompare.mjs`. `/methodology/` says
-   there is "no vendor sponsorship". Decide what the policy says: whether any vendor
-   may see a page before it is published, how vendor objections are handled (the
-   errata mechanism in `src/_data/errata.mjs` is one route), and whether that
-   methodology sentence stays as it is. The assistant drafts any wording change.
+1. **Stronger model for the escalation role:** none. The `sme-reviewer` role stays
+   disabled. Fact-checking is the `technical-editor` role plus your own reading.
+2. **Public contact for `security.txt`:** the address is recorded in
+   `docs/DECISIONS.md`. P17-29 can now build `security.txt` and the contact page.
+   The file can sit only under `/letstalkcdc/` until the domain move (task 6),
+   because this project site does not own the host root.
+3. **Vendor-disclosure policy:** decided; see `docs/DECISIONS.md`. The wording that
+   goes on the About page and on the vendor's lab page is drafted for your approval
+   before anything is published (P17-30). No vendor-comparison content until it is
+   published. Check at that point whether the `/methodology/` sentence "no vendor
+   sponsorship" still reads true next to the disclosure.
 
-**Done when:** each answer is written into the charter, or into a follow-up PR,
-and the methodology sentence agrees with the policy.
+**Done when:** you have approved the disclosure wording (P17-30).
 
 ### 11. Weekly: the digest and one outward post
 
 **Why.** Keeps the team's view current and the site visible.
 
-**Digest (about 15 min).** The brief refers to a team digest. Nothing in this
-repository produces one, and `CLAUDE.md` says there is no agent handoff system and
-not to recreate one. **Unverified:** where the digest is posted. Ask the assistant
-in the session where it lands, and write the answer here before the first weekly
-read.
+**Digest (about 15 min).** The conductor produces the digest with the
+`weekly-digest` skill (`.claude/skills/weekly-digest/SKILL.md`) and posts it as a
+GitHub issue titled `Weekly digest YYYY-MM-DD`. Find it with
+`gh issue list --search "Weekly digest"`. It lists merged PRs, open PRs, CI
+health, the pages that need your human read, and the decisions that are due. It
+is a public issue, so it holds aggregates only and never quotes visitor text. This
+is not the retired handoff system; the digest is a status report, and the record
+stays in the plan, the changelog and `git log`.
 
 **Outward post (about 1 hour).** Pick a channel you already use. The repository
 names none. `docs/COMMUNITY.md` covers the Discussions setup, moderation and the
@@ -429,8 +447,9 @@ repository itself. Each needs your answer before work on it starts.
 ## What the team will never do without you
 
 - **Repository variables and secrets** (Settings → Secrets and variables →
-  Actions). On 2026-10-09 the variables set were `SUPABASE_URL`,
-  `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME` and `GOATCOUNTER_CODE`;
+  Actions). On 2026-10-09 the variables the site uses were `SUPABASE_URL`,
+  `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME` and `GOATCOUNTER_CODE`,
+  plus two leftover Copilot variables (`COPILOT_AGENT_FIREWALL_*`);
   `SITE_HOST` and `ELEVENTY_PATH_PREFIX` were not set (task 6 sets them). The Fortify workflow reads `FOD_*` and
   `SSC_*` secrets, which may not be set (**unverified**). Values never go in the
   repository or in a chat.
@@ -443,10 +462,11 @@ repository itself. Each needs your answer before work on it starts.
   live Supabase project. The team can write the SQL; you run it. The same goes for
   any change to grants or policies.
 - **The domain**: the name, the purchase, DNS and the Pages custom domain.
-- **Anything on the maintainer-only path list** of the merge script that P17-2
-  is adding. The script does not exist on `main` yet.
-- **Merging**, until the charter says otherwise. `docs/CONDUCTOR.md` says "Stop at
-  the PR", and merging is the maintainer's.
+- **Anything on the maintainer-only path list** of `scripts/merge-pr.mjs`. The
+  script refuses those PRs; the team prepares them and you merge them (task 1).
+- **Merging outside the gate.** The team merges only through
+  `scripts/merge-pr.mjs`, and only when it is confident. When it is not, it stops
+  and asks you in the chat.
 - **Force-pushes and history rewrites** on `main`. The ruleset blocks
   non-fast-forward pushes.
 - **Outward statements under your name**: upstream issues, public posts, vendor

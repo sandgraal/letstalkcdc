@@ -693,6 +693,7 @@ mitigation.
    2026-11-06 (P16-12).
 3. **Merge policy:** whether to keep conductor-merges under the standing grant,
    and whether to add required status checks to the ruleset.
+   Answered 2026-10-11: see docs/DECISIONS.md (merge preference).
 4. **Who reviews content:** name the SME or a second human, and where review
    texts are kept.
 5. **Labs on Debezium 3.x (P15-46, Size L):** the maintainer has no Docker, so

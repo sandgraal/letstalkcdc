@@ -1,7 +1,7 @@
 # Decisions log
 
-Maintainer decisions for Let's Talk CDC, recorded 2026-10-09. One short
-entry each: what was decided, why in one line, and where it stands. This
+Maintainer decisions for Let's Talk CDC, recorded 2026-10-09 and, where
+noted, 2026-10-11. One short entry each: what was decided, why in one line, and where it stands. This
 file is public; it records decisions, not motives beyond what is stated.
 
 Basis values: **Decided** means the maintainer stated it. **Default** means
@@ -174,22 +174,25 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 ## AI development
 
 - **Decision:** Sonnet 5.5 and Haiku 5.5 only. A stronger model only when
-  absolutely needed, through one gated role (model not yet chosen).
+  absolutely needed, through one gated role (no model for now; see the
+  2026-10-11 entry below).
   Autonomy is defined in [CONDUCTOR.md](CONDUCTOR.md). The repo is
   Claude-only (Copilot, Codex and ChatGPT are retired). Evals and lints are
   quality gates.
 - **Why:** A small, enforced roster keeps cost and behaviour predictable;
   automated gates catch drift.
 - **Basis:** Decided (a stronger model only when absolutely needed; Claude-only). Default (the rest).
-- **Status:** Decided; escalation model Pending.
+- **Status:** Decided; the escalation role is not enabled (2026-10-11).
 
 ## Legal
 
 - **Decision:** Cover art is AI-generated and released by the maintainer.
-  Add trademark disclaimers and a security contact (address pending).
+  Add trademark disclaimers and a security contact (address recorded
+  2026-10-11, below).
 - **Why:** State rights and ownership plainly; give reporters a way in.
 - **Basis:** Decided (a security contact and trademark disclaimers). Default (the cover-art wording).
-- **Status:** Pending (public contact email).
+- **Status:** Decided; the contact address is recorded (2026-10-11); the
+  `security.txt` and contact page are plan item P17-29.
 
 ## Maintainer time
 
@@ -201,9 +204,80 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 
 ---
 
+## 2026-10-11 answers
+
+### No stronger model for now (2026-10-11)
+
+- **Decision:** No stronger model for now. The `sme-reviewer` role stays
+  disabled. Fact-checking is the `technical-editor` role plus the
+  maintainer's own reading.
+- **Why:** The two permitted models are enough while content PRs also get a
+  technical-editor pass and the maintainer's own read.
+- **Status:** Decided. Reopen only if the maintainer supplies a model ID; the
+  steps are in [TEAM-CHARTER.md](TEAM-CHARTER.md), "Escalation role".
+- **Basis:** Decided.
+
+### Public contact address (2026-10-11)
+
+- **Decision:** The public address for security reports and contact is
+  cennisc@gmail.com. The maintainer designated it as public.
+- **Why:** Reporters need a way in, and `security.txt` needs a `Contact`.
+- **Status:** Decided. Use it in `security.txt` and the contact page (P17-29).
+  Under the project site the file can sit only below `/letstalkcdc/` until the
+  domain move.
+- **Basis:** Decided.
+
+### Vendor-disclosure policy (2026-10-11)
+
+- **Decision:** The maintainer is a current employee of a vendor that is
+  featured in the Cloud labs. This will be disclosed on the About or
+  methodology page and on that vendor's lab page. The wording is drafted for
+  the maintainer's approval before anything is published. No vendor-comparison
+  content until the disclosure is published. (The vendor is not named in this
+  file.)
+- **Why:** Readers should be able to weigh the content knowing the
+  relationship, and the "no vendor sponsorship" line on the methodology page
+  must stay true next to it.
+- **Status:** Decided; the wording is pending the maintainer's approval
+  (P17-30).
+- **Basis:** Decided.
+
+### Merge preference (2026-10-11)
+
+- **Decision:** The team merges as much as it confidently can through the
+  gate (`scripts/merge-pr.mjs`). When it is not confident, it stops and asks
+  the maintainer in the chat. PRs on restricted paths are prepared by the team
+  and handed to the maintainer to merge.
+- **Why:** Routine PRs should not wait on the maintainer, and the gate
+  refuses red, unreviewed and restricted PRs.
+- **Status:** Decided.
+- **Basis:** Decided.
+
+### Content review (2026-10-11)
+
+- **Decision:** The maintainer reads the pages the weekly digest flags. One
+  outside practitioner will be invited to review the new CDC modules; the
+  `growth-writer` role drafts the invitation and the maintainer sends it.
+- **Why:** A page may say it was reviewed only after a human has read it
+  (see Provenance), and an outside reader adds a second view.
+- **Status:** Decided; the invitation is not yet drafted or sent.
+- **Basis:** Decided.
+
+### First two weeks (2026-10-11)
+
+- **Decision:** Run autopsy part A and the no-regret track in parallel. The
+  audience and SEO readout waits until after 2026-11-06.
+- **Why:** Part A and the no-regret items need no audience data; the readout
+  needs the 2026-11-06 snapshot.
+- **Status:** Decided; see Phase 17 in
+  [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+- **Basis:** Decided.
+
+---
+
 ## Pending
 
-- Model ID for the escalation role
-- Public contact email
-- Vendor-disclosure policy
 - Domain name (decision due 2026-10-23)
+- Approval of the vendor-disclosure wording (P17-30)
+- Whether "Require branches to be up to date" is switched on for the
+  required status checks (optional; off by default; P17-3)

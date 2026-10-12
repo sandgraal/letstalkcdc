@@ -6,10 +6,15 @@ protocol it sits on is [`CONDUCTOR.md`](CONDUCTOR.md) (roster, tiers, merge
 gate); the repo's mechanics are in [`../CLAUDE.md`](../CLAUDE.md); what the
 maintainer decided is in [`DECISIONS.md`](DECISIONS.md).
 
-This charter was added in a PR that touches `.claude/agents/**` and
-`.claude/skills/**`, which are Tier 3 paths, so that PR is merged by the
-maintainer by hand, not through the merge script. The same holds for any later
-change to those paths.
+The charter, the roles and the skills are Tier 3 paths (`.claude/agents/**`,
+`.claude/skills/**`, `docs/TEAM-CHARTER.md`, `docs/CONDUCTOR.md`,
+`docs/DECISIONS.md`). A change to any of them is prepared by the team and merged
+by the maintainer by hand, not through the merge script. Two controls, kept
+apart: the Edit/Write guard protects only settings, hooks, scripts and agents
+(rules, skills and commands are instructions and can be edited in a worktree),
+but `scripts/merge-pr.mjs` refuses **all** of `.claude/**` (except
+`.claude/css-baseline.sha256`), so rule, skill, command and agent changes are
+always merged by the maintainer.
 
 ## Mission
 
@@ -24,27 +29,23 @@ APIs), and the maintainer gives it about an hour a week outward-facing, so
 the pace is set by what that hour can read, not by what the team can write.
 Accuracy beats volume.
 
-## Where each file lives until merged
+## Where each piece lives
 
-Several pieces this charter refers to were still in open PRs when it was
-written. Do not assume a file exists: check with `ls`, and if it is missing,
-read it from its branch (`git show <branch>:<path>`) or find its PR with
-`gh pr list`. Anything marked "once present" below is conditional on the file
-existing in your checkout, and so are the commands that depend on it.
+All of the handoff kit is on `main` (merged 2026-10-11; some GitHub timestamps
+read 2026-10-12 because they are UTC). Check
+with `ls` anyway if a path looks wrong, and believe the repo over this table.
 
-| Piece                                                                                         | State when written | Where to read it if absent             |
-| --------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------- |
-| `docs/DECISIONS.md`, `docs/MAINTAINER-TASKS.md`, `scripts/worktree-prune.sh`                  | on `main`          | n/a                                    |
-| Lean `CLAUDE.md`, `.claude/rules/`, `.claude/skills/` (new-module, content-update, seo-check) | on `main`          | n/a                                    |
-| `scripts/merge-pr.mjs` (the merge gate)                                                       | not on `main` yet  | branch `claude/p17-2-merge-gate`       |
-| `scripts/thesis-lint.mjs` and `npm run lint:thesis`                                           | not on `main` yet  | branch `claude/p17-7-thesis-lint`      |
-| Autonomy charter in `CONDUCTOR.md` and the guard hooks in `.claude/hooks/`                    | not on `main` yet  | branch `claude/p17-1-autonomy-charter` |
-| Phase 17 in `docs/IMPLEMENTATION-PLAN.md`                                                     | not on `main` yet  | branch `claude/p17-9-phase-17`         |
-
-This charter is stacked on the autonomy-charter branch. Branches are
-published as their PRs open, so a branch may exist only locally for the person
-who made it; `gh pr list` is the shared index. The `weekly-digest` skill and
-the `technical-editor` and `growth-writer` roles arrive with this PR.
+| Piece                                                                                         | Merged in |
+| --------------------------------------------------------------------------------------------- | --------- |
+| `docs/DECISIONS.md`, templates, Dependabot, `scripts/worktree-prune.sh`                       | #430      |
+| `docs/MAINTAINER-TASKS.md`                                                                    | #431      |
+| Lean `CLAUDE.md`, `.claude/rules/`, `.claude/skills/` (new-module, content-update, seo-check) | #432      |
+| `scripts/merge-pr.mjs` (the merge gate)                                                       | #445      |
+| Autonomy charter in `CONDUCTOR.md` and the guard hooks in `.claude/hooks/`                    | #446      |
+| `scripts/thesis-lint.mjs` and `npm run lint:thesis`                                           | #444      |
+| This charter, `technical-editor`, `growth-writer`, the `weekly-digest` skill                  | #447      |
+| Phase 17 in `docs/IMPLEMENTATION-PLAN.md`                                                     | #448      |
+| Cold-start fixes and `docs/COLD-START-DRILL.md`                                               | #449      |
 
 ## Day-1 checklist (cold start)
 
@@ -63,7 +64,7 @@ the three tiers and the merge command from memory):
 
 1. [`../CLAUDE.md`](../CLAUDE.md): commands, pipeline, anti-patterns.
 2. [`CONDUCTOR.md`](CONDUCTOR.md): roster, loop, Definition of Done,
-   Autonomy charter (tiers 0 to 3, the merge script), once present.
+   Autonomy charter (tiers 0 to 3, the merge script).
 3. This file.
 4. [`STATE-OF-PROJECT.md`](STATE-OF-PROJECT.md): a dated snapshot. The
    `main` commit it was measured at is named near the top.
@@ -74,11 +75,10 @@ the three tiers and the merge command from memory):
 7. [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md): what only the maintainer can
    do, and what is waiting on them.
 8. [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md): the checklist. Phase 17
-   is the team's queue; until its PR merges it is on branch
-   `claude/p17-9-phase-17` (`git show claude/p17-9-phase-17:docs/IMPLEMENTATION-PLAN.md`).
+   is the team's queue.
 
-If a file above is not in your checkout, see the table above and say in your
-notes that you read it from a branch.
+If a file above is missing from your checkout, your checkout is stale: run
+`git fetch origin && git pull --ff-only` before you go on.
 
 The state doc is a snapshot, so find out what moved since it was written:
 
@@ -86,8 +86,8 @@ The state doc is a snapshot, so find out what moved since it was written:
 git fetch origin && git log --oneline <state-doc-sha>..origin/main
 ```
 
-`<state-doc-sha>` is the short SHA the state doc names (at the time of
-writing, `bd5a2a4`). Read every subject line; open any PR that changes
+`<state-doc-sha>` is the short SHA the state doc names (the newest snapshot
+at the top of `STATE-OF-PROJECT.md`). Read every subject line; open any PR that changes
 `docs/`, `.claude/` or a content page. Believe the repo over the snapshot
 when they disagree.
 
@@ -118,7 +118,7 @@ Use-when notes:
 - `technical-editor` runs on every PR that adds or rewrites a page that
   teaches CDC, in addition to `reviewer`. It runs the page re-verification
   checklist (AUTOPSY-BRIEF section 4), the page's test and the thesis lint
-  (once `npm run lint:thesis` exists), and checks version claims against `src/_data/toolVersions.mjs`. It cannot
+  (`npm run lint:thesis`), and checks version claims against `src/_data/toolVersions.mjs`. It cannot
   browse the web: whatever it lists under "needs maintainer or sme" goes in
   the PR body and the digest, not into the page as verified.
 - `growth-writer` drafts from merged changes and real numbers only. The
@@ -141,8 +141,8 @@ Use-when notes:
   branches. The checkbox flips in the PR that closes the item.
 - **WIP limit: the conductor keeps at most 3 of its own PRs open.** At 3,
   stop opening new ones: wait for CI, run the review, merge through
-  `node scripts/merge-pr.mjs <n> --execute` (once that script is present;
-  until then the maintainer merges), then continue. A fourth open PR
+  `node scripts/merge-pr.mjs <n> --execute` (a PR on a maintainer-only path
+  is handed to the maintainer instead), then continue. A fourth open PR
   means review queue is the bottleneck, so the next action is to review,
   not to write.
 - **Never idle-wait.** While CI runs or a reviewer works, run roles in the
@@ -159,9 +159,8 @@ Use-when notes:
 
 On top of the Definition of Done in `CONDUCTOR.md`:
 
-- [ ] **Thesis lint** passes once `npm run lint:thesis` exists on `main`
-      (`scripts/thesis-lint.mjs`, P17-7). Before then, say in the PR that it
-      did not exist yet.
+- [ ] **Thesis lint** passes: `npm run lint:thesis`
+      (`scripts/thesis-lint.mjs`, P17-7). It also runs inside `npm test`.
 - [ ] **Review record in the PR body and the full report as a PR comment**:
       `## Review record` with `Verdict:` and `Findings resolved: yes`, and
       the reviewer's whole report pasted via `gh pr comment`. For content,
@@ -215,10 +214,12 @@ used only when absolutely needed, through exactly one gated role named
 `sme-reviewer`. Its only job is fact-checking **new or rewritten
 thesis-bearing pages**. Every use needs a written justification in the PR:
 which page, which claims, and why `technical-editor` was not enough. It is
-spawnable only by the conductor. It is not enabled today: no model ID has
-been supplied (see `docs/DECISIONS.md`, "AI development").
+spawnable only by the conductor. It is not enabled: the maintainer decided on
+2026-10-11 that there is no stronger model for now, and no model ID will be
+supplied for now (see `docs/DECISIONS.md`, "AI development" and the entry
+"No stronger model for now").
 
-**Steps to enable it once the maintainer supplies a model ID** (this is a
+**Steps to enable it if the maintainer ever supplies a model ID** (this is a
 Tier 3 change; the maintainer merges it by hand):
 
 1. Add `.claude/agents/sme-reviewer.md`: same frontmatter shape as
@@ -267,8 +268,7 @@ Clean up your worktrees before you stop.
 ## Backlog map
 
 - **Candidate work**: Phase 17 in `docs/IMPLEMENTATION-PLAN.md` is the team's
-  queue (until its PR merges it lives on branch `claude/p17-9-phase-17`; see
-  the table above). Older agent-executable boxes in the plan come next,
+  queue. Older agent-executable boxes in the plan come next,
   lowest-numbered first. Phase 14 is the maintainer's register; do not start it.
 - **Content candidates** (`docs/DECISIONS.md`, "Content direction"):
   lakehouse table formats, CDC for AI (keeping vector stores and RAG
@@ -284,5 +284,8 @@ Clean up your worktrees before you stop.
   | ---------- | -------------------------------------------------------------------------------------------------------------------- |
   | 2026-10-23 | Domain decision target. Until it is made, no work that bakes in a host or a new name.                                |
   | 2026-11-06 | First 28-day data snapshot (Search Console, GoatCounter): do not pick the next content phase from guesses before it. |
+
+  Dates are the maintainer's local dates; GitHub timestamps are UTC, so
+  evening merges show the next day.
 
   Put both dates in the digest's "decisions needed" section as they near.
