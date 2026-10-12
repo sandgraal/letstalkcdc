@@ -35,7 +35,8 @@ strongest to weakest:
 2. Every role pins a full model ID in its frontmatter (not an alias, which
    resolves differently on Bedrock / Vertex).
 3. `.claude/settings.json` sets `availableModels`, remaps the `opus` and
-   `fable` aliases to Sonnet 5.5, and defaults subagents to Sonnet 5.5.
+   `fable` aliases to Sonnet 5.5. It does not set a subagent default: the
+   roles are pinned by their own frontmatter (layer 2).
 4. `.claude/hooks/guard-agent-model.mjs` denies a per-call `model` override
    other than `haiku` / `sonnet` (or their full IDs).
 

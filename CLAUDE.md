@@ -22,19 +22,18 @@ separate app with its own `package.json`, copied into the site at deploy.
 2. [`docs/STATE-OF-PROJECT.md`](docs/STATE-OF-PROJECT.md) — dated snapshot; its
    counts are historical, recompute any number with the commands it lists.
 3. [`docs/CONDUCTOR.md`](docs/CONDUCTOR.md) — roles, routing, model, merge and push policy.
-4. Day-1 checklist: TEAM-CHARTER.md in docs/, once PR #447 has merged.
+4. Day-1 checklist: [`docs/TEAM-CHARTER.md`](docs/TEAM-CHARTER.md).
 
 Then `docs/IMPLEMENTATION-PLAN.md`, the authoritative checklist: find your
 item, do the work, flip `- [ ]` to `- [x]` in the same commit. The team's queue
-is Phase 17 (not on main yet? PR #448 is open: `gh pr list`), then older
-agent-executable boxes; Phase 14 is the maintainer's: do not start those. New
+is Phase 17, then older agent-executable boxes; Phase 14 is the maintainer's: do not start those. New
 work that fits no phase: add it to the lowest phase it belongs to or append a
 new Phase heading.
 
 ## Commands
 
 ```bash
-npm ci                    # install (not `npm install`) in fresh checkouts
+npm ci                    # install (not `npm install`); the SessionStart hook runs it only if node_modules is missing, the one sanctioned install
 npm run dev               # eleventy --serve on http://localhost:8080
 npm run build             # production build to _site/
 npm test                  # vitest unit suite

@@ -55,9 +55,9 @@ is that merge. Settings, accounts, secrets and decisions stay yours (Tier 3).
 
 **Why.** The merge script refuses any PR that touches a maintainer-only path
 (`scripts/merge-pr.mjs`, and the list in `docs/CONDUCTOR.md`). The team prepares
-such PRs and stops. You read them and merge them. The PR open now is the P17-59
-post-merge sweep, which edits `docs/CONDUCTOR.md`, `docs/TEAM-CHARTER.md`,
-`docs/DECISIONS.md` and `.claude/rules/`.
+such PRs and stops. You read them and merge them. The post-merge sweep (P17-59:
+see its plan item for status) is one such PR; it edits `docs/CONDUCTOR.md`,
+`docs/TEAM-CHARTER.md`, `docs/DECISIONS.md` and `.claude/rules/`.
 
 **Steps**
 
@@ -155,9 +155,14 @@ the repository.
    `sips`). Read "Open decisions" first: the cover's licence is not settled.
 3. **Settings → Code security** (on some layouts, "Security & analysis"): check
    that **Dependabot alerts** and **Dependabot security updates** are on, and turn
-   them on if not. The repository has
-   no `.github/dependabot.yml`, which security updates do not need. Expect
-   Dependabot pull requests.
+   them on if not. The configuration file `.github/dependabot.yml` is already in
+   the repository (added in #430: grouped weekly updates, one PR per major
+   version), so nothing to add there. Expect Dependabot pull requests.
+   Also, two leftover repository variables from the retired Copilot setup,
+   `COPILOT_AGENT_FIREWALL_ENABLED` and
+   `COPILOT_AGENT_FIREWALL_ALLOW_LIST_ADDITIONS`, can be deleted under
+   **Settings → Secrets and variables → Actions → Variables**; nothing reads
+   them.
 4. **Settings → General → Features**: tick **Discussions**, then **Set up
    discussions**.
    - Categories: `docs/DISCUSSIONS_SEED.md` expects Show and Tell, a debugging
@@ -441,8 +446,9 @@ repository itself. Each needs your answer before work on it starts.
 ## What the team will never do without you
 
 - **Repository variables and secrets** (Settings → Secrets and variables →
-  Actions). On 2026-10-09 the variables set were `SUPABASE_URL`,
-  `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME` and `GOATCOUNTER_CODE`;
+  Actions). On 2026-10-09 the variables the site uses were `SUPABASE_URL`,
+  `SUPABASE_PUBLISHABLE_KEY`, `BUTTONDOWN_USERNAME` and `GOATCOUNTER_CODE`,
+  plus two leftover Copilot variables (`COPILOT_AGENT_FIREWALL_*`);
   `SITE_HOST` and `ELEVENTY_PATH_PREFIX` were not set (task 6 sets them). The Fortify workflow reads `FOD_*` and
   `SSC_*` secrets, which may not be set (**unverified**). Values never go in the
   repository or in a chat.

@@ -2322,8 +2322,9 @@ The next-phase draft that the autopsy produces is **Phase 18**.
 
 Item fields are as defined in Phase 13. Every item is Size S or M, names a
 role from `CONDUCTOR.md` and names its **Needs**. Two roles are added by
-P17-6 (`technical-editor`, `growth-writer`); until that PR merges, use
-`reviewer` for the technical-editor work and `implementer` for the writing.
+P17-6 (`technical-editor`, `growth-writer`, merged in #447); use
+`technical-editor` for the technical review and `growth-writer` for the
+writing.
 Boxes are ticked by the conductor when the work merges, not before.
 Decisions already taken are recorded in `DECISIONS.md` (merged in #430). The
 ones that shape this phase: $0 recurring spend; the brand "Let's Talk CDC";
@@ -2347,7 +2348,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       the charter is missing. Verify: `npx vitest run`, `npm run verify-all`,
       and a recorded attempt of each blocked action showing the block. Size:
       M. Role: `implementer`, then `reviewer`. Needs: none.
-      _2026-10-12: shipped in #446 (restricted paths, so it was merged by
+      _2026-10-12 (UTC): shipped in #446 (restricted paths, so it was merged by
       the maintainer). The charter is an "Autonomy
       charter" section of `docs/CONDUCTOR.md`, enforced by
       `.claude/hooks/guard-bash.mjs` and `guard-edit.mjs`, an updated
@@ -2383,7 +2384,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       Role: `implementer`, then `reviewer`. Needs: none (the maintainer-only
       list is embedded in the script; P17-1 should keep it and the charter in
       agreement, see P17-57).
-      _2026-10-12: shipped in #445. It was reviewed through three rounds and
+      _2026-10-12 (UTC): shipped in #445. It was reviewed through three rounds and
       the last fix commit did not get a fourth independent review. CI revealed
       tests depended on the runner's git identity (fixed in 66a3c08)._
 - [ ] **P17-3 · Required status checks on the `default` ruleset.** Outcome:
@@ -2416,7 +2417,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       `doc-facts` test fails when documented facts go stale. Verify:
       `npx vitest run`, `npm run verify-all`, `npm run check:css-baseline`.
       Size: M. Role: `implementer`, then `reviewer`. Needs: none.
-      _2026-10-11: shipped in #432. Follow-up #443 (merged 2026-10-12) fixed
+      _2026-10-11: shipped in #432. Follow-up #443 (merged 2026-10-12 UTC) fixed
       a `doc-facts` test left red on `main` by the merge order of #431 and
       #432._
 - [x] **P17-5 · Decisions log, templates, Dependabot and worktree prune.**
@@ -2443,7 +2444,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       model-lock test still passes. Verify: `npx vitest run`,
       `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
-      _2026-10-12: shipped in #447 (restricted paths, merged by the
+      _2026-10-12 (UTC): shipped in #447 (restricted paths, merged by the
       maintainer after #446). The fixes made after a review of APPROVE WITH
       NITS were not re-reviewed independently._
 - [x] **P17-7 · Thesis lint.** Outcome: copy cannot re-introduce the two
@@ -2461,7 +2462,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       correctness. Verify: `npm run lint:thesis`,
       `npx vitest run tests/unit/thesis-lint.test.js`, `npm run verify-all`.
       Size: M. Role: `implementer`, then `reviewer`. Needs: none.
-      _2026-10-12: shipped in #444. It had two review rounds; the last fix
+      _2026-10-12 (UTC): shipped in #444. It had two review rounds; the last fix
       commit did not get a third independent review._
 - [x] **P17-8 · Maintainer guide.** Outcome: the maintainer has one page of
       what only they can do, with the command or the click path. Accept:
@@ -2482,7 +2483,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       `CHANGELOG.md` entry exists; the item statuses below match the PRs.
       Verify: `npx prettier --check docs CHANGELOG.md`, `npx vitest run`,
       `npm run verify-all`. Size: S. Role: `implementer`. Needs: none.
-      _2026-10-12: shipped in #448; its text was brought up to date after
+      _2026-10-12 (UTC): shipped in #448; its text was brought up to date after
       #430, #431 and #432 merged._
 - [ ] **P17-10 · Cold-start drill.** Outcome: proof that the kit works for
       someone with no history. Accept: a fresh agent session, given only the
@@ -2491,14 +2492,13 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       drill's notes list every point where it had to ask or guess, and each
       such point becomes a fix to the kit. Verify: the drill's PR, plus its
       notes file. Size: M. Role: `conductor` runs it; `reviewer` reads the
-      notes. Needs: P17-1, P17-2, P17-4, P17-5, P17-6 and P17-8 merged, and
-      P17-55 and P17-56 decided.
-      _Status 2026-10-11: Drill run 2026-10-11 against a preview with the kit PRs merged (thesis lint left out for a package.json conflict): a fresh Haiku scout answered 12 of 12 orientation questions correctly from the repo alone, and reported five contradictions (work queue still Phase 13 in CLAUDE.md/CONDUCTOR.md/new-module skill; MAINTAINER-TASKS.md saying merging is the maintainer's and that no digest exists and that 2026-10-23 appears nowhere else; content.md saying there is no lint:thesis; stale STATE-OF-PROJECT facts; AUTOPSY-BRIEF too heavy as a first read). Part 1 fixes are in PR #449. Stays open until the post-merge sweep (P17-59) is done and the drill is re-run against real main with no contradictions._
+      notes. Needs: P17-1, P17-2, P17-4, P17-5, P17-6 and P17-8 merged.
+      _Status 2026-10-11: Drill run 2026-10-11 against a preview with the kit PRs merged (thesis lint left out for a package.json conflict): a fresh Haiku scout answered 12 of 12 orientation questions correctly from the repo alone, and reported five contradictions (work queue still Phase 13 in CLAUDE.md/CONDUCTOR.md/new-module skill; MAINTAINER-TASKS.md saying merging is the maintainer's and that no digest exists and that 2026-10-23 appears nowhere else; content.md saying there is no lint:thesis; stale STATE-OF-PROJECT facts; AUTOPSY-BRIEF too heavy as a first read). Part 1 fixes merged in #449. Stays open until the post-merge sweep (P17-59) is done and the drill is re-run against real main with no contradictions._
 
 ### Handoff kit follow-ups
 
 Added 2026-10-11 from the review rounds of the kit's pull requests. None of
-these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
+these blocks merging the kit or the drill (P17-10).
 
 - [ ] **P17-52 · Narrow the thesis lint's exactly-once scope words, and
       decide R3.** Outcome: an exactly-once claim is no longer excused by a
@@ -2527,7 +2527,7 @@ these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
       the matching allowlist entry is removed in the same PR (the lint fails
       on a stale entry, which proves the removal). Verify:
       `npm run lint:thesis`, `npx vitest run`, `npm run smoke:core`. Size: S.
-      Role: `technical-editor` (until P17-6 merges: `reviewer`), then a
+      Role: `technical-editor`, then a
       second `reviewer`. Needs: #444 merged; a maintainer read of the new
       wording.
       _Status: not started._
@@ -2712,8 +2712,8 @@ items, not silent fixes.
       indexing report, sitemap status, rich results and social previews are
       compared with the sitemap's URLs; every exclusion is listed with a
       reason; this closes P16-12. Verify: the exports the maintainer supplies,
-      plus `npm run audit:seo`. Size: M. Role: `growth-writer` analyses (until
-      P17-6 merges, `scout`), then `reviewer`. Needs: the 28-day snapshot of
+      plus `npm run audit:seo`. Size: M. Role: `growth-writer` analyses, then
+      `reviewer`. Needs: the 28-day snapshot of
       2026-11-06 and the access listed in `MAINTAINER-TASKS.md`.
 - [ ] **P17-20 · Audience and feedback readout (day 12).** Outcome: either a
       grouped list of real reader questions, or an honest note that the data
@@ -2805,8 +2805,8 @@ goes to `css-refactor` with before and after production hashes.
       extract) it says what that cannot guarantee; `dateModified` is bumped;
       the page links to `/which-row-wins/`. Verify: `npx vitest run`,
       `npm run smoke:core`, and `rg -n "ORDER BY updated_at" src` with each
-      remaining hit explained. Size: S. Role: `technical-editor` (until P17-6
-      merges: `implementer`), then `reviewer`. Needs: a maintainer read of the
+      remaining hit explained. Size: S. Role: `technical-editor`, then
+      `reviewer`. Needs: a maintainer read of the
       new wording before merge. The other cloud-lab pages were not checked by
       this item.
 - [ ] **P17-28 · Accessibility statement.** Outcome: a public statement of the
@@ -2834,8 +2834,8 @@ goes to `css-refactor` with before and after production hashes.
       $0 funding model, the review process (what P17-26 means), the licence
       and the vendor-disclosure policy as the maintainer states it; linked
       from the footer. Verify: `npm run verify-all`, `npm run smoke:core`.
-      Size: S. Role: `growth-writer` drafts (until P17-6 merges:
-      `implementer`), then `reviewer`. Needs: the maintainer's vendor-disclosure
+      Size: S. Role: `growth-writer` drafts, then
+      `reviewer`. Needs: the maintainer's vendor-disclosure
       policy.
       _2026-10-11: the policy is decided (see [`DECISIONS.md`](DECISIONS.md),
       "Vendor-disclosure policy"), but the wording must be drafted for the

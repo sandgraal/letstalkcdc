@@ -26,7 +26,7 @@ Accuracy beats volume.
 
 ## Where each piece lives
 
-All of the handoff kit is on `main` (merged 2026-10-11 and 2026-10-12). Check
+All of the handoff kit is on `main` (merged 2026-10-11 and 2026-10-12, UTC). Check
 with `ls` anyway if a path looks wrong, and believe the repo over this table.
 
 | Piece                                                                                         | Merged in |
