@@ -257,7 +257,7 @@ head_extra: |
           <div class="kpi">
             <h3>Ordering guarantee</h3>
             <div id="kOrdering" class="val">Per-key</div>
-            <p class="muted">Global order is not guaranteed (per-key only).</p>
+            <p class="muted">Global order is not guaranteed.</p>
           </div>
         </div>
         <div class="panel panel--spaced">
@@ -377,7 +377,7 @@ head_extra: |
           stale value can win. <code>source.ts_ms</code> keeps the original
           commit time on a replayed streaming event, but it is still
           millisecond-coarse and clock-dependent. Keep <code>ts_ms</code> for
-          lag metrics and, at most, as a secondary tie-break.
+          lag metrics only; use the ordinal as the tie-break.
         </p>
         <p>
           The consumer then uses a <code>MERGE</code> (or
@@ -450,6 +450,12 @@ WHEN NOT MATCHED THEN
   -- If the record doesn't exist, create it (a delete creates a delete marker)
   INSERT (id, payload, deleted, source_lsn)
   VALUES (S.id, S.payload, (S.op = 'd'), S.lsn);</code></pre>
+          <p class="muted">
+            Executed on PGlite (PostgreSQL compiled to WebAssembly) by this
+            site&rsquo;s unit tests, with the <code>:name</code> placeholders
+            replaced by literals: insert, replay, late older change and delete
+            marker. It has not been run on a PostgreSQL server.
+          </p>
         </div>
         <div class="codebox">
           <h3>Tie-break within one log position (sequence) — BigQuery example</h3>
@@ -466,6 +472,10 @@ WHEN MATCHED AND (T.lsn &lt; S.lsn OR (T.lsn = S.lsn AND T.seq &lt; S.seq)) THEN
   UPDATE SET payload = S.p, lsn = S.lsn, seq = S.seq
 WHEN NOT MATCHED THEN
   INSERT (id, lsn, seq, payload) VALUES (S.id, S.lsn, S.seq, S.p);</code></pre>
+          <p class="muted">
+            Untested: not run against a live BigQuery project. Check it against
+            your own schema before use.
+          </p>
         </div>
         <p class="muted">
           A primary-key <a href="{{ '/glossary/#upsert' | url }}">upsert</a> with a log-position guard makes the sink

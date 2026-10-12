@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { extname, join, relative, resolve } from "node:path";
+import { SKIP_NOTE, securityTxtCheckMode } from "../lib/smoke-security-txt.mjs";
 
 const root = resolve(".");
 const outputDirName = process.env.BUILD_OUTPUT_DIR ?? "_site";
@@ -489,6 +490,45 @@ if (existsSync(join(outputDir, privacyFile))) {
   }
 } else {
   failures.push(`${privacyFile}: page missing — /privacy/ build broken`);
+}
+
+// /.well-known/security.txt (RFC 9116, P17-29) and the /contact/ page it
+// points at: the file must be built (a dot directory is easy to lose in a
+// passthrough or a Pages upload) with its required fields, and the page must
+// exist, with a single h1 and the #security anchor the file's Policy uses.
+const securityTxtPath = join(outputDir, ".well-known", "security.txt");
+const securityTxtMode = securityTxtCheckMode({
+  env: process.env,
+  wellKnownExists: existsSync(join(outputDir, ".well-known")),
+  dotDirs: readdirSync(outputDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.startsWith("."))
+    .map((e) => e.name),
+});
+if (securityTxtMode === "skip") {
+  console.log(`.well-known/security.txt check ${SKIP_NOTE}`);
+} else if (existsSync(securityTxtPath)) {
+  const txt = readFileSync(securityTxtPath, "utf8");
+  for (const field of ["Contact", "Expires", "Canonical"]) {
+    if (!new RegExp(`^${field}: \\S`, "m").test(txt)) {
+      failures.push(
+        `.well-known/security.txt: required field ${field} missing`,
+      );
+    }
+  }
+} else {
+  failures.push(".well-known/security.txt: missing from build output");
+}
+const contactFile = "contact/index.html";
+if (existsSync(join(outputDir, contactFile))) {
+  const html = read(contactFile);
+  if ((html.match(/<h1\b/g) || []).length !== 1) {
+    failures.push(`${contactFile}: expected exactly one <h1>`);
+  }
+  if (!html.includes('id="security"')) {
+    failures.push(`${contactFile}: expected anchor id="security" missing`);
+  }
+} else {
+  failures.push(`${contactFile}: page missing — /contact/ build broken`);
 }
 
 if (failures.length) {
