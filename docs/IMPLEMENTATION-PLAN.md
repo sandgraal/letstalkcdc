@@ -2862,7 +2862,7 @@ goes to `css-refactor` with before and after production hashes.
       `npm run verify-all`, `npm run smoke:core`, `npm run smoke:a11y`. Size:
       S. Role: `implementer`, then `reviewer`. Needs: none; the report route is
       the GitHub issue template from P17-5 until P17-29 gives a contact email.
-- [ ] **P17-29 · `security.txt` and a contact page.** Outcome: there is a
+- [x] **P17-29 · `security.txt` and a contact page.** Outcome: there is a
       standard way to report a security problem and to reach the author.
       Accept: `/.well-known/security.txt` per RFC 9116 with `Contact`,
       `Expires` (within a year) and `Canonical`; a `/contact/` page; both
@@ -2872,6 +2872,11 @@ goes to `css-refactor` with before and after production hashes.
       `implementer`. Needs: the maintainer's public contact email.
       _2026-10-11: the contact address is now decided; see
       [`DECISIONS.md`](DECISIONS.md), "Public contact address". Ready._
+      _Status: shipped in the PR carrying this change. `security.txt` is a
+      build-time template (`src/security.txt.11ty.cjs`), not a static file, so
+      `Canonical` follows `site.host`; `Expires` is fixed (2027-10-12) and a
+      unit test fails once it passes. Not verified from here: that GitHub
+      Pages serves the dot directory (see the PR notes)._
 - [ ] **P17-30 · Disclosure and about page.** Outcome: readers can see who
       writes the site, how it is funded and what relationships exist with the
       tools it discusses. Accept: an `/about/` page stating the author, the

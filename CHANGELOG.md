@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
+  per RFC 9116 (`Contact` mailto the maintainer's designated public address,
+  `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and
+  `Policy`), generated at build time so `Canonical` follows `site.host`. A
+  `/contact/` page covers reporting a content error (the GitHub form and the
+  errata page), a security problem (email, GitHub private reporting,
+  `security.txt`) and a general message, with no promised reply time. It is
+  linked from the footer, the privacy page and the methodology page, and is in
+  the sitemap and `llms.txt` through the shared rule. `SECURITY.md` lists the
+  email. Under the project site the file is served only below
+  `/letstalkcdc/.well-known/`, not at the host root, until the domain move. A
+  unit test builds the site and checks the fields, `Expires` window, sitemap,
+  llms.txt, footer link and that the address is in no `<title>`, meta tag or
+  JSON-LD.
 - **Session commands for the agent team (P17-60).** `/team-start`,
   `/team-end` and `/team-digest` in `.claude/commands/` make a working session
   start and end the same way: sync with worktrees only, read the handoff,

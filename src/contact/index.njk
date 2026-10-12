@@ -1,0 +1,105 @@
+---
+layout: base.njk
+title: "Contact and Reporting Problems"
+description: "How to report a wrong or outdated claim, how to report a security problem, and how to send the maintainer a general message."
+canonicalPath: "/contact/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: "Contact",
+  description: "<p>Three kinds of message, three routes: a claim on a page that is wrong, a security problem with the site, or anything else. This is a one-person project, so there is no promised reply time.</p>",
+  align: "center",
+  skillLevel: "About"
+}) | safe }}
+
+<p class="prose">Last updated: <time datetime="{{ dateModified }}">{{ dateModified }}</time></p>
+
+<section class="prose" aria-labelledby="content-error">
+  <h2 id="content-error">A page says something wrong</h2>
+  <p>
+    Corrections are the most useful mail this site gets, and a correction
+    with a source is the most useful kind.
+  </p>
+  <ul>
+    <li>
+      <strong>Open a content-error issue</strong> on GitHub with the
+      <a href="https://github.com/{{ site.repository }}/issues/new?template=content-error.yml">content-error form</a>.
+      It asks for the page, the claim, and what you think is right. Issues
+      are public, so do not put anything private in one.
+    </li>
+    <li>
+      <strong>Check the <a href="{{ '/errata/' | url }}">errata page</a></strong>
+      first: it lists the corrections already made. How a correction is
+      handled is described under
+      <a href="{{ '/methodology/' | url }}#corrections">"When we're wrong"</a>
+      in the methodology.
+    </li>
+    <li>
+      <strong>Or fix it yourself:</strong> every page footer has an "Edit
+      this page on GitHub" link that opens the page source in the editor.
+    </li>
+  </ul>
+</section>
+
+<section class="prose" aria-labelledby="security">
+  <h2 id="security">A security problem</h2>
+  <p>
+    The site is static pages with a little browser JavaScript, and the only
+    server-side piece is an optional database table that receives assistant
+    votes and the Change Feed Playground's rows. Please report anything you
+    find in that scope: a script injection, a leaked key or secret, a
+    database permission that is too wide, or a vulnerable dependency.
+  </p>
+  <ul>
+    <li>
+      <strong>Email</strong>
+      <a href="mailto:{{ author.contactEmail }}">{{ author.contactEmail }}</a>.
+      This is the maintainer's designated public address for security
+      reports. Say which page or file, the steps to reproduce, and the impact.
+    </li>
+    <li>
+      <strong>Or use GitHub's private reporting</strong> from the repository's
+      Security tab, as described in the
+      <a href="https://github.com/{{ site.repository }}/blob/main/SECURITY.md">security policy</a>.
+    </li>
+    <li>
+      <strong>For tools:</strong> the standard
+      <a href="{{ '/.well-known/security.txt' | url }}">security.txt</a>
+      file carries the same contact. Under this project address it can be
+      served only below the site's own path, not at the host root.
+    </li>
+  </ul>
+  <p>
+    Please do not open a public issue for a vulnerability, and do not put
+    real data, secrets or connection strings in a report. Reports are read
+    by one person and a reply is not guaranteed within any particular time.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="general">
+  <h2 id="general">Anything else</h2>
+  <p>
+    For a question, a suggestion or a general message, write to
+    <a href="mailto:{{ author.contactEmail }}">{{ author.contactEmail }}</a>
+    or message {{ author.name }} on
+    <a href="{{ author.advisoryUrl }}" rel="noopener">LinkedIn</a>. To ask
+    what the assistant or the playground stored about you, or to ask for an
+    entry to be deleted, read the
+    <a href="{{ '/privacy/' | url }}#delete">privacy page</a> first.
+  </p>
+  <p>
+    An email address is not a private channel from the web's point of view:
+    this one is published on this page, so it can attract spam.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="ai-assisted">
+  <h2 id="ai-assisted">About how the content is written</h2>
+  <p>
+    Much of the text on this site is drafted with AI assistance. A page is
+    described as reviewed by the maintainer only after he has confirmed that
+    review. This is why correction reports matter: they are one way a wrong
+    claim gets found.
+  </p>
+</section>
