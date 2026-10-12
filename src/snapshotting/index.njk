@@ -267,11 +267,11 @@ SELECT pg_current_wal_lsn();  -- record this
                 transaction snapshot is taken before the LSN is read, so a
                 commit in between is invisible to the scan yet sits below the
                 recorded LSN, and a stream that starts at that LSN misses it.
-                The correct approach is to create the logical replication slot,
-                which yields a consistent point and an exported snapshot, and to
-                read the tables in a transaction that uses that exported
-                snapshot (see <code>pg_export_snapshot()</code> in the
-                cheatsheet below).
+                Reading the LSN and taking the snapshot in two separate steps
+                can miss a commit between them, so a procedure must obtain the
+                consistent point and the snapshot together. The PostgreSQL
+                documentation for creating a logical replication slot describes
+                how to do this; check the documentation for your version.
               </p>
             </details>
 
@@ -579,7 +579,7 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
             <p class="muted">
               The strict <code>&lt;</code> makes a replay of the same change
               (same position) a no-op. If two different changes to one key can
-              share a position, order by and compare the (position, ordinal)
+              share a position, order by and compare the (position, seq)
               pair; see
               <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>
               and <a href="{{ '/materialization/' | url }}#sql">Materialization</a>.
@@ -623,8 +623,10 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
               size; run on a replica; pause between chunks.
             </li>
             <li>
-              <strong>Log purged mid-snapshot:</strong> restart from last
-              completed chunk; increase retention; consider replica. On
+              <strong>Log purged mid-snapshot:</strong> for a plain boundary
+              snapshot the boundary is no longer valid: start the snapshot
+              again; increase retention; consider replica. An incremental
+              snapshot can resume from its last completed chunk. On
               Postgres, a slot that lost its WAL cannot be resumed at all; see
               the
               <a href="{{ '/postgres-replication-slots/' | url }}"

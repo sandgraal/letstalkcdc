@@ -147,36 +147,49 @@ export default [
         so a commit in between is invisible to the scan yet sits below the
         recorded LSN, and a stream that starts at that LSN misses it. The
         snippet is now labelled as an illustration of the idea only, with the
-        race stated. The correct approach is to create the logical
-        replication slot, which yields a consistent point and an exported
-        snapshot, and read the tables in a transaction that uses that
-        exported snapshot. This site does not provide a tested recipe for
-        that.</p>`,
+        race stated. Reading the LSN and taking the snapshot in two
+        separate steps can miss a commit between them, so a procedure must
+        obtain the consistent point and the snapshot together. The
+        PostgreSQL documentation for creating a logical replication slot
+        describes how to do this; check the documentation for your version.
+        This site does not provide a tested recipe for that.</p>`,
   },
   {
     id: "snapshot-resume-claim-2026-10-11",
     urls: ["/snapshotting/"],
     title: "Corrected: only incremental snapshots resume mid-table",
     dateModified: "2026-10-11",
-    body: `<p>Two statements said a plain boundary snapshot could resume from
+    body: `<p>Three statements said a plain boundary snapshot could resume from
         its last completed chunk. The page's own description of snapshot
         modes says only an incremental snapshot supports resuming
-        mid-table. Both statements now say that: with an idempotent sink,
-        re-reading rows is harmless, and only an incremental snapshot
-        resumes from the last completed chunk.</p>`,
+        mid-table. All three now say that: with an idempotent sink,
+        re-reading rows is harmless, only an incremental snapshot
+        resumes from the last completed chunk, and if the log is purged
+        mid-snapshot a plain boundary snapshot has to start again.</p>`,
   },
   {
     id: "delete-event-before-image-2026-10-11",
-    urls: ["/deletes-stay-deleted/"],
+    urls: [
+      "/deletes-stay-deleted/",
+      "/event-envelope/",
+      "/use-cases/",
+      "/security/",
+    ],
     title: "Corrected: a delete event does not always carry the full row",
     dateModified: "2026-10-11",
-    body: `<p>The page said a delete event holds the row as it was (the
-        before image). That is only true under the right source settings.
-        On PostgreSQL the before image holds only the key columns unless the
-        table has <code>REPLICA IDENTITY FULL</code>. On MySQL the full row
-        needs <code>binlog_row_image=FULL</code>. The three places that
-        described the before image now state both conditions. A sink that
-        needs the old column values of a deleted row must not assume them.</p>`,
+    body: `<p>The pages said a delete event holds the row as it was (the
+        before image), or that the log holds the before image. That is only
+        true under the right source settings. On PostgreSQL, with the default
+        replica identity on a table that has a primary key, the before image
+        carries only the key columns; <code>REPLICA IDENTITY FULL</code>
+        adds the rest of the row, and other replica identity settings
+        differ, so check yours. On MySQL, <code>binlog_row_image</code>
+        controls how much of the row is written (FULL, MINIMAL, NOBLOB); the
+        full row needs <code>binlog_row_image=FULL</code>. The places that
+        described the before image now state both conditions: the delete
+        page, the event envelope quiz, the use cases page and the security
+        page. A sink that needs the old column values of a deleted row must
+        not assume them.</p>`,
   },
   {
     id: "exactly-once-sql-claims-2026-10-11",
@@ -186,7 +199,7 @@ export default [
     body: `<p>The sink example compares a single position,
         <code>customers.src_lsn &lt; EXCLUDED.src_lsn</code>, with no
         tie-break. If two different changes to one key can share a position,
-        compare a (position, ordinal) pair instead; the page now says so and
+        compare a (position, seq) pair instead; the page now says so and
         points to the merge cookbook. The page also said an independent
         review had run the PostgreSQL statements on PGlite and that the
         table matched. Nothing in this repository recorded that review, so

@@ -8,8 +8,8 @@
  *   - the snippet does not tell the reader a reload applies wal_level or
  *     max_replication_slots (both need a restart);
  *   - the REPEATABLE READ + pg_current_wal_lsn() lines are labelled as an
- *     illustration with the race stated, and the slot / exported snapshot
- *     approach is named;
+ *     illustration with the race stated, and the documentation for creating a slot
+ *     is pointed to (no tested recipe, no exported-snapshot claim);
  *   - only an incremental snapshot is said to resume mid-table;
  *   - the corrections are recorded in errata.mjs and the page is re-dated.
  */
@@ -83,10 +83,32 @@ describe("the PostgreSQL snippet: boundary lines", () => {
     expect(pgNote).toMatch(/misses it/);
   });
 
-  it("names the correct approach: a replication slot and its exported snapshot", () => {
-    expect(pgNote).toMatch(/create the logical replication slot/);
-    expect(pgNote).toMatch(/exported snapshot/);
-    expect(pgNote).toContain("pg_export_snapshot()");
+  it("says only what is certain: two separate steps can miss a commit, so obtain the point and the snapshot together", () => {
+    expect(pgNote).toMatch(
+      /Reading the LSN and taking the snapshot in two separate steps can miss a commit between them/,
+    );
+    expect(pgNote).toMatch(
+      /a procedure must obtain the consistent point and the snapshot together/,
+    );
+    expect(pgNote).toMatch(
+      /documentation for creating a logical replication slot describes how to do this; check the documentation for your version/,
+    );
+  });
+
+  it("does not present pg_export_snapshot() as the slot's snapshot", () => {
+    expect(pgNote).not.toContain("pg_export_snapshot()");
+    expect(pgNote).not.toMatch(/exported snapshot/);
+    const e = errata.find(
+      (x) => x.id === "postgres-snapshot-lsn-race-2026-10-11",
+    );
+    expect(e.body).not.toMatch(/exported snapshot|pg_export_snapshot/);
+    expect(e.body).toMatch(/check the documentation for your version/);
+  });
+
+  it("the preflight checklist step says the isolation level alone is not a boundary", () => {
+    expect(JSON.stringify(data)).toMatch(
+      /the isolation level alone does not give a consistent boundary: see the boundary note/,
+    );
   });
 });
 
@@ -107,6 +129,30 @@ describe("resume claims", () => {
     );
     // ...consistently with the mode list further down.
     expect(prose).toMatch(/supports resuming mid-table/);
+  });
+
+  it("the gotchas line for a purged log does not tell a plain snapshot to resume", () => {
+    expect(prose).not.toMatch(
+      /Log purged mid-snapshot: restart from last completed chunk/,
+    );
+    expect(prose).toMatch(
+      /Log purged mid-snapshot: for a plain boundary snapshot the boundary is no longer valid: start the snapshot again; increase retention/,
+    );
+    expect(prose).toMatch(
+      /An incremental snapshot can resume from its last completed chunk/,
+    );
+  });
+
+  it("the errata entry counts all three statements", () => {
+    const e = errata.find((x) => x.id === "snapshot-resume-claim-2026-10-11");
+    expect(e.body).toMatch(/Three statements/);
+    expect(e.body).toMatch(/All three now say that/);
+    expect(e.body).not.toMatch(/Two statements|Both statements/);
+  });
+
+  it("names the tie-break element seq, as the merge cookbook does", () => {
+    expect(prose).toMatch(/\(position, seq\) pair/);
+    expect(prose).not.toMatch(/ordinal/);
   });
 });
 

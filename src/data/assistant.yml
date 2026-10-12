@@ -1178,9 +1178,16 @@ intents:
       primary key is the stable identifier for idempotent upserts, and the log
       position or transaction identifier is where you resume when reprocessing.
       The before image matters for audit pipelines, SCD Type 2 tables and cache
-      invalidation. A delete is an event with op d and a log position; Debezium
-      follows it with a tombstone (a record with a null value) so a compacted
-      topic can eventually drop the key. The tombstone has no position.
+      invalidation, but how much of the row it holds depends on the source.
+      PostgreSQL: with the default replica identity on a table that has a
+      primary key, the before image carries only the key columns; REPLICA
+      IDENTITY FULL adds the rest of the row, and other replica identity
+      settings differ, so check yours. MySQL: binlog_row_image controls how
+      much of the row is written (FULL, MINIMAL, NOBLOB); the full row needs
+      binlog_row_image=FULL. A delete is an event with op d and a log
+      position; Debezium follows it with a tombstone (a record with a null
+      value) so a compacted topic can eventually drop the key. The tombstone
+      has no position.
     links:
       - label: What lives inside the envelope
         url: /event-envelope/

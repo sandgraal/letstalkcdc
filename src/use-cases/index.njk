@@ -256,7 +256,11 @@ head_extra: |
           <p>
             <strong>The CDC Solution:</strong> The stream of events produced by
             log-based CDC *is* a perfect, immutable audit log. Each event
-            captures the "before" and "after" state of the data, a precise
+            captures the "before" and "after" state of the data (how much of
+            the row "before" holds depends on the source: on PostgreSQL the
+            default replica identity gives only the key columns unless the
+            table has `REPLICA IDENTITY FULL`; on MySQL the full row needs
+            `binlog_row_image=FULL`), a precise
             timestamp, the type of operation (`INSERT`, `UPDATE`, `DELETE`), and
             metadata about the transaction. This entire stream can be durably
             archived to low-cost object storage (like Amazon S3), creating a

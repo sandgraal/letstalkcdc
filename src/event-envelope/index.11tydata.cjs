@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-02-06",
-  dateModified: "2026-10-09",
+  dateModified: "2026-10-11",
   seriesKey: "event-envelope",
   heroConfig: {
     title: "Design the Event Envelope",
@@ -30,7 +30,7 @@ module.exports = {
         ],
         correct: "2",
         explanation:
-          "The 'before' and 'after' fields capture the complete row state before and after the change. This allows consumers to see exactly what changed, implement custom diffing logic, or reconstruct the full state without querying the source database.",
+          "The 'before' and 'after' fields capture the row state before and after the change. This allows consumers to see what changed, implement custom diffing logic, or reconstruct the state without querying the source database. How much of the row 'before' holds depends on the source. PostgreSQL: with the default replica identity on a table that has a primary key, the before image carries only the key columns; REPLICA IDENTITY FULL adds the rest of the row, and other replica identity settings differ, so check yours. MySQL: binlog_row_image controls how much of the row is written (FULL, MINIMAL, NOBLOB); the full row needs binlog_row_image=FULL.",
       },
       {
         question:

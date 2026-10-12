@@ -317,6 +317,21 @@ describe("the before image of a delete event is conditional (P17-12)", () => {
     }
   });
 
+  it("states the PostgreSQL and MySQL conditions only as far as they are certain", () => {
+    for (const s of withBefore) {
+      expect(s, s).toMatch(
+        /with the default replica identity on a table that has a primary key/,
+      );
+      expect(s, s).toMatch(/only the key columns/);
+      expect(s, s).toMatch(/adds the rest of the row/);
+      expect(s, s).toMatch(/other replica identity settings differ/);
+      expect(s, s).toMatch(
+        /binlog_row_image controls how much of the row is written/,
+      );
+      expect(s, s).toMatch(/the full row needs binlog_row_image=FULL/);
+    }
+  });
+
   it("no longer says unqualified that the delete event holds the before image", () => {
     expect(prose).not.toMatch(
       /It is the delete event\. It holds the before image\./,
@@ -324,13 +339,13 @@ describe("the before image of a delete event is conditional (P17-12)", () => {
     expect(prose).not.toMatch(/delete event, before image included/);
   });
 
-  it("records the correction in errata.mjs for this page only, link-free", async () => {
+  it("records the correction in errata.mjs, link-free", async () => {
     const { default: errata } = await import("../../src/_data/errata.mjs");
     const e = errata.find(
       (x) => x.id === "delete-event-before-image-2026-10-11",
     );
     expect(e).toBeTruthy();
-    expect(e.urls).toEqual(["/deletes-stay-deleted/"]);
+    expect(e.urls).toContain("/deletes-stay-deleted/");
     expect(e.body).toMatch(/REPLICA IDENTITY FULL/);
     expect(e.body).toMatch(/binlog_row_image=FULL/);
     expect(e.body).not.toMatch(/href=/);

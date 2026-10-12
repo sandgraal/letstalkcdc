@@ -24,7 +24,7 @@ module.exports = {
         summary:
           "Verify retention, privileges, and isolation settings before starting.",
         detail:
-          "<p>Confirm log retention covers the expected snapshot duration. Grant replication privileges. Enable consistent-read isolation (<code>REPEATABLE READ</code> or <code>SNAPSHOT</code>). Document rollback steps in the runbook.</p>",
+          "<p>Confirm log retention covers the expected snapshot duration. Grant replication privileges. Enable consistent-read isolation (<code>REPEATABLE READ</code> or <code>SNAPSHOT</code>; the isolation level alone does not give a consistent boundary: see the boundary note). Document rollback steps in the runbook.</p>",
       },
       {
         icon: "📍",

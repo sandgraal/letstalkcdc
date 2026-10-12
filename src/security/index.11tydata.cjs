@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-08-27",
-  dateModified: "2026-08-27",
+  dateModified: "2026-10-11",
   seriesKey: "security",
   heroConfig: {
     title: "Security, PII & Access Control",

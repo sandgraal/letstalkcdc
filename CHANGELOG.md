@@ -139,14 +139,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/snapshotting/`: the PostgreSQL setup said to reload, but `wal_level` and
   `max_replication_slots` need a server restart; the REPEATABLE READ plus
   `pg_current_wal_lsn()` lines are now labelled an illustration with their
-  race stated (a commit between the snapshot and the LSN is missed) and the
-  slot plus exported-snapshot approach named; two claims that a plain
-  boundary snapshot resumes from the last chunk now say only an incremental
-  snapshot does. `/deletes-stay-deleted/`: a delete event's before image
-  holds only the key columns on PostgreSQL unless `REPLICA IDENTITY FULL`,
-  and the full row on MySQL needs `binlog_row_image=FULL`; the page said it
+  race stated (a commit between the snapshot and the LSN is missed) and a
+  pointer to the PostgreSQL documentation for creating a logical replication
+  slot (no tested recipe); three claims that a plain boundary snapshot
+  resumes from the last chunk now say only an incremental snapshot does.
+  `/deletes-stay-deleted/`, `/event-envelope/` (quiz), `/use-cases/` and
+  `/security/`: a delete event's before image holds only the key columns on
+  PostgreSQL with the default replica identity unless `REPLICA IDENTITY FULL`,
+  and the full row on MySQL needs `binlog_row_image=FULL`; the pages said it
   always held the row. `/is-cdc-exactly-once/`: the guard now points to the
-  (position, ordinal) pair for same-position changes, and the untraceable
+  (position, seq) pair for same-position changes, and the untraceable
   "an independent review ran them on PGlite" sentence is replaced by a unit
   test that runs the page's SQL on PGlite. `/which-row-wins/`: a stale
   "later module" reference is now a link. `/merge-cookbook/`: its three

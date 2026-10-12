@@ -362,9 +362,9 @@ describe("the page's SQL, as printed, executed on PGlite (P17-12)", () => {
 });
 
 describe("tie-break and provenance wording (P17-12)", () => {
-  it("points to the (position, ordinal) pair for same-position changes, linking the merge cookbook", () => {
+  it("points to the (position, seq) pair for same-position changes, linking the merge cookbook", () => {
     expect(prose).toMatch(
-      /If two different changes to one key can share a position, compare the \(position, ordinal\) pair instead/,
+      /If two different changes to one key can share a position, compare the \(position, seq\) pair instead/,
     );
     expect(page).toMatch(
       /share a position[\s\S]{0,120}href="\{\{ '\/merge-cookbook\/' \| url \}\}"/,
@@ -374,8 +374,18 @@ describe("tie-break and provenance wording (P17-12)", () => {
   it("no longer cites an untraceable independent review", () => {
     expect(prose).not.toMatch(/independent review/);
     expect(prose).toMatch(
-      /tests run the statements exactly as printed on PGlite/,
+      /tests run the statements as printed \(only the placeholder numbers differ\) on PGlite/,
     );
+  });
+
+  it("names the tie-break element seq, as the merge cookbook does, not ordinal", () => {
+    const cookbook = readFileSync(
+      path.join(ROOT, "src/merge-cookbook/index.njk"),
+      "utf8",
+    );
+    expect(cookbook).toMatch(/<code>SEQ<\/code>/);
+    expect(prose).not.toMatch(/ordinal/);
+    expect(prose).not.toMatch(/exactly as printed/);
   });
 
   it("records the correction in errata.mjs for this page only, link-free", () => {
