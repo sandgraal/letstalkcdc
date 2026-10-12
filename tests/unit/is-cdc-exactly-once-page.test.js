@@ -2,10 +2,13 @@
  * Guard: /is-cdc-exactly-once/ (content-gap plan M2). Reads the real page
  * source. Scope: every exactly-once statement is per hop, the Debezium hedge
  * and the Kafka issue statuses are kept, links resolve, and the page's SQL is
- * executed (in SQLite, which shares the ON CONFLICT ... WHERE form; it is not
- * run on PostgreSQL).
+ * executed (as printed on PGlite, PostgreSQL 18.3 compiled to WebAssembly, and
+ * the logic again in SQLite, which shares the ON CONFLICT ... WHERE form; not
+ * on a PostgreSQL server).
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
+import errata from "../../src/_data/errata.mjs";
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,7 +54,7 @@ describe("front matter and registration", () => {
   it("has dates, canonical path and a matching series entry", () => {
     expect(fm).toMatch(/^canonicalPath: "\/is-cdc-exactly-once\/"$/m);
     expect(data.datePublished).toBe("2026-10-09");
-    expect(data.dateModified).toBe("2026-10-09");
+    expect(data.dateModified).toBe("2026-10-11");
     expect(data.seriesKey).toBe("is-cdc-exactly-once");
     const entry = series.find((s) => s.key === "is-cdc-exactly-once");
     expect(entry.href).toBe("is-cdc-exactly-once/");
@@ -191,7 +194,7 @@ describe("wording", () => {
   });
 
   it("says what was not run", () => {
-    expect(prose).toMatch(/not run on PostgreSQL by this repository/);
+    expect(prose).toMatch(/not run on a PostgreSQL server by this repository/);
     expect(prose).toMatch(
       /None of these ran against a live Debezium and Kafka stack/,
     );
@@ -314,4 +317,71 @@ describe("the page's SQL runs and behaves as the table says", async () => {
       ).toBe(59);
     },
   );
+});
+
+describe("the page's SQL, as printed, executed on PGlite (P17-12)", () => {
+  const sql = codeBlocks.find((c) => c.includes("CREATE TABLE customers"));
+  let db;
+  afterAll(async () => db?.close());
+
+  it("gives the rows and 'rows changed' counts the table claims", async () => {
+    db = new PGlite();
+    const [ddl, tx] = sql.split("BEGIN;");
+    await db.exec(ddl);
+    const stmts = tx
+      .replace(/COMMIT;\s*$/, "")
+      .replace(/--.*$/gm, "")
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    expect(stmts).toHaveLength(2);
+    // [Kafka offset, name, source position, rows changed]: the page's table.
+    const arrivals = [
+      [40, "a", 100, 1],
+      [41, "b", 110, 1],
+      [57, "b", 110, 0],
+      [58, "a", 100, 0],
+    ];
+    for (const [offset, name, lsn, changed] of arrivals) {
+      await db.exec("BEGIN");
+      const r = await db.query(stmts[0], [1, name, false, lsn]);
+      // The page numbers the placeholders across both statements ($5..$7);
+      // a separately prepared statement needs them renumbered from $1.
+      const offsetStmt = stmts[1].replace(/\$(\d)/g, (_, n) => `$${n - 4}`);
+      await db.query(offsetStmt, ["cdc.customers", 0, offset + 1]);
+      await db.exec("COMMIT");
+      expect(r.affectedRows, `offset ${offset}`).toBe(changed);
+    }
+    const row = (await db.query("SELECT name, src_lsn FROM customers")).rows[0];
+    expect(row.name).toBe("b");
+    expect(Number(row.src_lsn)).toBe(110);
+    const off = (await db.query("SELECT next_offset FROM sink_offsets"))
+      .rows[0];
+    expect(Number(off.next_offset)).toBe(59);
+  }, 60_000);
+});
+
+describe("tie-break and provenance wording (P17-12)", () => {
+  it("points to the (position, ordinal) pair for same-position changes, linking the merge cookbook", () => {
+    expect(prose).toMatch(
+      /If two different changes to one key can share a position, compare the \(position, ordinal\) pair instead/,
+    );
+    expect(page).toMatch(
+      /share a position[\s\S]{0,120}href="\{\{ '\/merge-cookbook\/' \| url \}\}"/,
+    );
+  });
+
+  it("no longer cites an untraceable independent review", () => {
+    expect(prose).not.toMatch(/independent review/);
+    expect(prose).toMatch(
+      /tests run the statements exactly as printed on PGlite/,
+    );
+  });
+
+  it("records the correction in errata.mjs for this page only, link-free", () => {
+    const e = errata.find((x) => x.id === "exactly-once-sql-claims-2026-10-11");
+    expect(e).toBeTruthy();
+    expect(e.urls).toEqual(["/is-cdc-exactly-once/"]);
+    expect(e.body).not.toMatch(/href=/);
+  });
 });

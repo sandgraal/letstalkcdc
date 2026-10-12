@@ -143,7 +143,7 @@ scripts:
         <tr>
           <th scope="row">Snapshot with boundary</th>
           <td>Log handoff preserves ordering; replays apply idempotently.</td>
-          <td>Resume from last chunk + saved offset; no target surgery.</td>
+          <td>Saved offset + idempotent replays; no target surgery. Only an incremental snapshot resumes mid-table (see below).</td>
         </tr>
         <tr>
           <th scope="row">Incremental snapshot</th>
@@ -249,16 +249,30 @@ scripts:
           <div class="perdb-grid">
             <details>
               <summary><strong>PostgreSQL</strong></summary>
-              <pre><code>-- Requirements (once/admin):
+              <pre><code>-- Requirements (once/admin). Both settings need a server restart;
+-- pg_reload_conf() does not apply either of them.
 ALTER SYSTEM SET wal_level = logical;
 ALTER SYSTEM SET max_replication_slots = 10;  -- adjust
-SELECT pg_reload_conf();
+-- Now restart PostgreSQL, then check:
+SHOW wal_level;  -- must say: logical
 
+-- Illustration of the idea only, NOT a procedure (race: see the note below).
 -- Boundary + consistent read (within one tx while snapshotting):
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SELECT pg_current_wal_lsn();  -- record this
 -- Keep transaction open during table scans; Debezium coordinates via logical slot.
 </code></pre>
+              <p>
+                The boundary lines above show the idea only and have a race: the
+                transaction snapshot is taken before the LSN is read, so a
+                commit in between is invisible to the scan yet sits below the
+                recorded LSN, and a stream that starts at that LSN misses it.
+                The correct approach is to create the logical replication slot,
+                which yields a consistent point and an exported snapshot, and to
+                read the tables in a transaction that uses that exported
+                snapshot (see <code>pg_export_snapshot()</code> in the
+                cheatsheet below).
+              </p>
             </details>
 
             <details>
@@ -489,8 +503,10 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             don’t duplicate data.
           </li>
           <li>
-            <strong>Resume safely:</strong> Snapshots should be restartable:
-            resume from last completed chunk and the recorded high-watermark.
+            <strong>Restart safely:</strong> Snapshots should be restartable.
+            Because the sink is idempotent, re-reading rows is harmless. Only
+            an incremental snapshot resumes mid-table, from the last completed
+            chunk and the recorded watermark.
           </li>
         </ul>
         <!-- SME ADDITIONS START: Patterns, Observability, Lab, Gotchas -->

@@ -121,4 +121,78 @@ export default [
         position. The errata page's source-connector note was updated to
         match.</p>`,
   },
+  {
+    id: "postgres-wal-level-needs-restart-2026-10-11",
+    urls: ["/snapshotting/"],
+    title: "Corrected: the PostgreSQL setup needs a server restart",
+    dateModified: "2026-10-11",
+    body: `<p>The PostgreSQL snippet ran <code>ALTER SYSTEM SET wal_level =
+        logical</code> and <code>ALTER SYSTEM SET max_replication_slots =
+        10</code> and then <code>SELECT pg_reload_conf()</code>. Both
+        settings have the context <code>postmaster</code> in
+        <code>pg_settings</code>, which means they only take effect after a
+        server restart; a reload does not apply them. A reader who followed
+        the snippet would not have had a logical slot available. The snippet
+        now says a restart is required and checks <code>SHOW wal_level</code>
+        afterwards.</p>`,
+  },
+  {
+    id: "postgres-snapshot-lsn-race-2026-10-11",
+    urls: ["/snapshotting/"],
+    title: "Corrected: the PostgreSQL boundary snippet has a race",
+    dateModified: "2026-10-11",
+    body: `<p>The snippet opened a <code>REPEATABLE READ</code> transaction and
+        then ran <code>SELECT pg_current_wal_lsn()</code> to record the
+        boundary. The transaction snapshot is taken before the LSN is read,
+        so a commit in between is invisible to the scan yet sits below the
+        recorded LSN, and a stream that starts at that LSN misses it. The
+        snippet is now labelled as an illustration of the idea only, with the
+        race stated. The correct approach is to create the logical
+        replication slot, which yields a consistent point and an exported
+        snapshot, and read the tables in a transaction that uses that
+        exported snapshot. This site does not provide a tested recipe for
+        that.</p>`,
+  },
+  {
+    id: "snapshot-resume-claim-2026-10-11",
+    urls: ["/snapshotting/"],
+    title: "Corrected: only incremental snapshots resume mid-table",
+    dateModified: "2026-10-11",
+    body: `<p>Two statements said a plain boundary snapshot could resume from
+        its last completed chunk. The page's own description of snapshot
+        modes says only an incremental snapshot supports resuming
+        mid-table. Both statements now say that: with an idempotent sink,
+        re-reading rows is harmless, and only an incremental snapshot
+        resumes from the last completed chunk.</p>`,
+  },
+  {
+    id: "delete-event-before-image-2026-10-11",
+    urls: ["/deletes-stay-deleted/"],
+    title: "Corrected: a delete event does not always carry the full row",
+    dateModified: "2026-10-11",
+    body: `<p>The page said a delete event holds the row as it was (the
+        before image). That is only true under the right source settings.
+        On PostgreSQL the before image holds only the key columns unless the
+        table has <code>REPLICA IDENTITY FULL</code>. On MySQL the full row
+        needs <code>binlog_row_image=FULL</code>. The three places that
+        described the before image now state both conditions. A sink that
+        needs the old column values of a deleted row must not assume them.</p>`,
+  },
+  {
+    id: "exactly-once-sql-claims-2026-10-11",
+    urls: ["/is-cdc-exactly-once/"],
+    title: "Corrected: the guard has no tie-break, and a review claim",
+    dateModified: "2026-10-11",
+    body: `<p>The sink example compares a single position,
+        <code>customers.src_lsn &lt; EXCLUDED.src_lsn</code>, with no
+        tie-break. If two different changes to one key can share a position,
+        compare a (position, ordinal) pair instead; the page now says so and
+        points to the merge cookbook. The page also said an independent
+        review had run the PostgreSQL statements on PGlite and that the
+        table matched. Nothing in this repository recorded that review, so
+        the sentence has been replaced. The statements are now executed as
+        printed on PGlite (PostgreSQL 18.3 compiled to WebAssembly) by this
+        site's unit tests, and the logic is also run in SQLite. Neither is a
+        PostgreSQL server.</p>`,
+  },
 ];

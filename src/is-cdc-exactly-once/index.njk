@@ -334,10 +334,10 @@ ON CONFLICT (topic, part) DO UPDATE SET next_offset = EXCLUDED.next_offset;
 COMMIT;</code></pre>
     <p>
       On start or partition assignment, read <code>next_offset</code> from <code>sink_offsets</code> and
-      <code>seek</code> there. Run on one customer key, the same two statements behave like this (the logic was run
-      in SQLite 3.54, which accepts the same <code>ON CONFLICT ... WHERE</code> form, and this repository's test runs
-      them in SQLite; the PostgreSQL statements were not run on PostgreSQL by this repository, but an independent
-      review ran them on PGlite 18.3 and the table below matched):
+      <code>seek</code> there. Run on one customer key, the same two statements behave like this (this repository's
+      tests run the statements exactly as printed on PGlite 0.5.8, which is PostgreSQL 18.3 compiled to WebAssembly,
+      and the logic in SQLite 3.54, which accepts the same <code>ON CONFLICT ... WHERE</code> form; the table below
+      matched in both. They were not run on a PostgreSQL server by this repository):
     </p>
     <table>
       <caption>One key, four Kafka records, and what the two guards each catch</caption>
@@ -356,6 +356,11 @@ COMMIT;</code></pre>
         <tr><th scope="row">58</th><td>name = a, position 100, arriving late</td><td>b, 110 (0 rows changed)</td><td>Position guard.</td></tr>
       </tbody>
     </table>
+    <p>
+      The strict <code>&lt;</code> makes a replay of the same change (same position) a no-op. If two different
+      changes to one key can share a position, compare the (position, ordinal) pair instead; the
+      <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> shows that form.
+    </p>
     <p>
       The two guards cover different failures. Storing the offset with the row means a consumer that crashes
       between the write and the offset commit cannot leave them out of step: the transaction rolled back or it

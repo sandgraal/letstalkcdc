@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-10-09",
-  dateModified: "2026-10-09",
+  dateModified: "2026-10-11",
   seriesKey: "which-row-wins",
   heroConfig: {
     title: "Which Row Wins in Your Target",
