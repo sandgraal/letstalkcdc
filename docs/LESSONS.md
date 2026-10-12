@@ -8,6 +8,8 @@ repo stops it. This ledger records each mistake and what now stops it.
 stated reason says none can.** Prose alone is not a mechanism. Prefer an
 executable check; fix the class of the mistake, not the instance.
 
+Entries whose source is 'conductor session record' were observed by the conductor in the 2026-10-11 session and cannot be reconstructed from git history.
+
 ## How to use it
 
 - **Format.** One block per entry: a `### L-NNN title` heading, then five
@@ -174,3 +176,86 @@ executable check; fix the class of the mistake, not the instance.
   trusted; a correction ships with an entry in `src/_data/errata.mjs`. There is no
   automatic check for restart-versus-reload style claims.
 - Status: partially
+
+### L-009 Scout roles on a 30-turn budget ran out of turns on long tasks
+
+- Date: 2026-10-11 (source: conductor session record)
+- What happened: Haiku-pinned scout roles hit their 30-turn limit and returned
+  no report on long mechanical tasks: the autopsy measurement run and one
+  cold-start drill.
+- Root cause: a 30-turn budget is too small for tasks of about 20 or more
+  commands.
+- Prevented by: for such tasks, brief a Sonnet role (`reviewer` or
+  `implementer`, read-only by instruction) or split the task, under the
+  escalate-after-one-failure rule in
+  [`CONDUCTOR.md`](CONDUCTOR.md#when-something-fails). Nothing executable
+  enforces the budget yet.
+- Status: partially
+
+### L-010 Scribe runs left work uncommitted or unverified
+
+- Date: 2026-10-11 (source: conductor session record)
+- What happened: The scribe role twice left its work uncommitted or unverified:
+  the maintainer-tasks guide and the drill-questions file.
+- Root cause: the haiku role ran out of turns, or treated the commit as the
+  conductor's job.
+- Prevented by: the conductor checks `git status` and `git log` in the worktree
+  after every writer and escalates to `implementer` on failure, and briefs say
+  explicitly whether to commit. This is a conductor habit, not an executable
+  check; see [`CONDUCTOR.md`](CONDUCTOR.md#when-something-fails) and
+  [`scribe.md`](../.claude/agents/scribe.md).
+- Status: partially
+
+### L-011 More than about four agents at once overloaded the machine
+
+- Date: 2026-10-11 (source: conductor session record)
+- What happened: Running more than about four agents at once pushed the
+  machine's load average above 50 and made unrelated unit tests time out at
+  5 seconds.
+- Root cause: concurrent test runs compete for CPU, and vitest's default
+  5-second per-test timeout is too short for tests slowed by that load.
+- Prevented by: a cap of about four concurrent roles, stated in the
+  `/team-start` command; `--testTimeout=120000` for local runs; CI as the final
+  check. The cap is a stated convention, not an executable check.
+- Status: partially
+
+### L-012 Review records copied a first-round verdict forward
+
+- Date: 2026-10-11 (source: conductor session record, PR bodies #445 and #446)
+- What happened: Two PR review records first said APPROVE WITH NITS although
+  the latest independent review of each had said REQUEST CHANGES; the conductor
+  corrected both.
+- Root cause: the first-round verdict was copied forward into the record.
+- Prevented by: the merge gate in [`merge-pr.mjs`](../scripts/merge-pr.mjs)
+  requires the LATEST audit comment to approve, and the template placeholders
+  cannot pass. The rule is to always record the latest verdict and say what is
+  not re-reviewed. The gate part is prevented; the author part rests on that
+  rule alone.
+- Status: partially
+
+### L-013 The merge script reported failure after a successful squash merge
+
+- Date: 2026-10-11 (source: PR #451)
+- What happened: `scripts/merge-pr.mjs --execute` reported failure after the
+  squash merge had succeeded, because `gh pr merge --delete-branch` exits
+  non-zero when a worktree still holds the local branch.
+- Root cause: the branch-deletion step fails while a worktree holds the branch,
+  and that non-zero exit is read as a failed merge.
+- Prevented by: none yet. After any non-zero exit from the merge call, verify
+  with `gh pr view <n> --json state`; the fix is tracked in P17-57 of
+  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
+- Status: open
+
+### L-014 The merge watcher's rewake message still points at the Phase 13 queue
+
+- Date: 2026-10-11 (source: merge-watcher events after #447, #448 and #451)
+- What happened: After #447, #448 and #451 merged, the merge watcher's rewake
+  message still told a session to work the Phase 13 queue, although the charter
+  makes Phase 17 the queue.
+- Root cause: the script text was not updated with the charter, and the file is
+  hook-protected, so only a maintainer merge can change it.
+- Prevented by: none yet. Tracked in P17-62(b) of
+  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md); the file is
+  [`check-merged-prs.sh`](../.claude/scripts/check-merged-prs.sh), a maintainer
+  merge.
+- Status: open
