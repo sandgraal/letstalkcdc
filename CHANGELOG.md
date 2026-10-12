@@ -18,9 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`docs/MAINTAINER-TASKS.md`, #431); a shorter `CLAUDE.md` with path-scoped
   rules and skills, correcting its "branch-protected" and "Vite 7" claims,
   and a fix to the merge watcher (#432). In review: a thesis lint over the
-  site's copy (#444) and a gated merge script (#445). Pending, on branches
-  with no PR yet: an autonomy charter with guard hooks and permissions, and a
-  team charter with two new roles and a weekly-digest skill.
+  site's copy (#444), a gated merge script (#445), an autonomy charter with
+  guard hooks and permissions (#446) and a team charter with two new roles and
+  a weekly-digest skill (#447, stacked on #446).
   `docs/AUTOPSY-BRIEF.md` now names the autopsy's next-phase draft Phase 18.
   No site or CSS change.
 - **Playground labs linked from the lessons (P16-26).** The playground

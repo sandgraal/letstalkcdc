@@ -2347,8 +2347,8 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       the charter is missing. Verify: `npx vitest run`, `npm run verify-all`,
       and a recorded attempt of each blocked action showing the block. Size:
       M. Role: `implementer`, then `reviewer`. Needs: none.
-      _Status 2026-10-11: on branch `claude/p17-1-autonomy-charter`, in final
-      fixes after red-team reviews; no PR yet. On the branch the charter is an
+      _Status 2026-10-11: open as #446 (maintainer-merged; last independent
+      review REQUEST CHANGES, fixes not yet re-reviewed). On the branch the charter is an
       "Autonomy charter" section of `docs/CONDUCTOR.md`, enforced by
       `.claude/hooks/guard-bash.mjs` and `guard-edit.mjs`, an updated
       `guard-agent-model.mjs` and `.claude/settings.json`. The reviews showed
@@ -2384,7 +2384,8 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       list is embedded in the script; P17-1 should keep it and the charter in
       agreement, see P17-57).
       _Status 2026-10-11: open as #445, reviewed through three rounds; the
-      last fix commit has not had a fourth independent review._
+      last fix commit has not had a fourth independent review. CI revealed
+      tests depended on the runner's git identity (fixed in 66a3c08)._
 - [ ] **P17-3 · Required status checks on the `default` ruleset.** Outcome:
       GitHub itself refuses a merge when the checks fail (today the ruleset
       has none, so the claim in `CLAUDE.md` that `main` is branch-protected
@@ -2438,8 +2439,8 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       model-lock test still passes. Verify: `npx vitest run`,
       `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
-      _Status 2026-10-11: on branch `claude/p17-6-team-charter`, stacked on
-      P17-1; no PR yet._
+      _Status 2026-10-11: open as #447, stacked on #446 (merge #446 first);
+      fixes after a review of APPROVE WITH NITS not yet re-reviewed._
 - [ ] **P17-7 · Thesis lint.** Outcome: copy cannot re-introduce the two
       claims the site once taught backwards without a test failing. Accept:
       `lib/thesis-lint.mjs`, `scripts/thesis-lint.mjs` (`npm run lint:thesis`)
@@ -2581,6 +2582,25 @@ these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
       declined with a reason. Verify: `npx vitest run tests/unit/merge-pr.test.js`
       for part (b). Size: M. Role: `reviewer` writes the design, `implementer`
       does part (b). Needs: #445 merged; P17-1 merged for the path list.
+      _Status: not started._
+- [ ] **P17-58 · Make commit-making tests hermetic about git identity.**
+      Outcome: every test that creates a commit or merge passes with no git
+      identity configured, as on a CI runner. Evidence: macOS guesses an
+      identity, CI runners do not; CI found tests depending on the runner's
+      identity (fixed in 66a3c08). Accept: each test that runs `git commit` or
+      `git merge` sets `GIT_CONFIG_GLOBAL=/dev/null` and its own identity, and
+      the audit of `tests/unit` for such calls without an identity is recorded
+      in the item's status. Verify: run the unit suite with the environment
+      below, and the identity variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
+      `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) unset:
+
+      ```bash
+      GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0=user.useConfigOnly GIT_CONFIG_VALUE_0=true \
+        npx vitest run tests/unit
+      ```
+
+      Size: S. Role: `implementer`. Needs: none.
       _Status: not started._
 
 ### Autopsy, in two parts
