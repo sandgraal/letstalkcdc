@@ -22,7 +22,8 @@ is that merge. Settings, accounts, secrets and decisions stay yours (Tier 3).
 - Work top to bottom. The table gives the time, the date and what each task
   needs. Order matters where one task depends on another.
 - Tick the `[ ]` in the table as you finish each task. Your copy is yours to
-  tick; the agent team does not edit this file.
+  tick. The agent team does not edit it directly: it prepares edits to this file
+  as PRs that you merge (it is not on the merge gate's list, but it is your guide).
 - The intended way to use it is a live session with an AI assistant in this
   repository. Ask the assistant to walk you through a task. It can run the `gh`
   and `npm` commands, read files and draft text. You do the clicks, the logins
@@ -55,8 +56,8 @@ is that merge. Settings, accounts, secrets and decisions stay yours (Tier 3).
 
 **Why.** The merge script refuses any PR that touches a maintainer-only path
 (`scripts/merge-pr.mjs`, and the list in `docs/CONDUCTOR.md`). The team prepares
-such PRs and stops. You read them and merge them. The post-merge sweep (P17-59:
-see its plan item for status) is one such PR; it edits `docs/CONDUCTOR.md`,
+such PRs and stops. You read them and merge them. The post-merge sweep (P17-59,
+shipped in the sweep PR) is one such PR; it edits `docs/CONDUCTOR.md`,
 `docs/TEAM-CHARTER.md`, `docs/DECISIONS.md` and `.claude/rules/`.
 
 **Steps**

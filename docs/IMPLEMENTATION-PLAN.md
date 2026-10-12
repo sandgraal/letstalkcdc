@@ -2325,7 +2325,10 @@ role from `CONDUCTOR.md` and names its **Needs**. Two roles are added by
 P17-6 (`technical-editor`, `growth-writer`, merged in #447); use
 `technical-editor` for the technical review and `growth-writer` for the
 writing.
-Boxes are ticked by the conductor when the work merges, not before.
+Boxes are ticked in the PR that ships the work (as in `CLAUDE.md`); the PR
+number is added to the status line once it merges.
+Dates are the maintainer's local dates; GitHub timestamps are UTC, so evening
+merges show the next day (the kit merged on 2026-10-11).
 Decisions already taken are recorded in `DECISIONS.md` (merged in #430). The
 ones that shape this phase: $0 recurring spend; the brand "Let's Talk CDC";
 a guided path first and then a 5-page answer-page pilot measured over 8
@@ -2335,6 +2338,23 @@ then Cloudflare Pages (verify the free-tier terms first); a Spanish pilot
 after the content stabilises; PDF / EPUB and a PWA later; a WCAG 2.2 AA
 accessibility statement; self-hosted Mermaid and Chart.js with SRI and a
 CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
+
+### Start here (agent-only, Ready now)
+
+Read the Definition of Ready in `CONDUCTOR.md` before taking one. In this
+order, with the section each lives in:
+
+- Autopsy part A: P17-11, P17-12, P17-13 (after P17-12), P17-14, P17-18. The
+  results of P17-11 and P17-12 are in `docs/autopsy-log-2026-10.md` once that
+  PR merges.
+- No-regret track: P17-21 (`llms.txt`; a PR is in review), P17-23, P17-26,
+  P17-28, P17-29 (`security.txt` and contact page; the contact email is
+  decided), P17-31.
+- Handoff-kit follow-ups: P17-52, P17-57, P17-58.
+
+Maintainer-only or date-gated, do not start: P17-3, P17-16, P17-17, P17-25
+(needs approval), P17-30 (wording approval), P17-48 and P17-49 (domain), and
+everything in the data-gated menu until 2026-11-06.
 
 ### Handoff kit
 
@@ -2493,7 +2513,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       such point becomes a fix to the kit. Verify: the drill's PR, plus its
       notes file. Size: M. Role: `conductor` runs it; `reviewer` reads the
       notes. Needs: P17-1, P17-2, P17-4, P17-5, P17-6 and P17-8 merged.
-      _Status 2026-10-11: Drill run 2026-10-11 against a preview with the kit PRs merged (thesis lint left out for a package.json conflict): a fresh Haiku scout answered 12 of 12 orientation questions correctly from the repo alone, and reported five contradictions (work queue still Phase 13 in CLAUDE.md/CONDUCTOR.md/new-module skill; MAINTAINER-TASKS.md saying merging is the maintainer's and that no digest exists and that 2026-10-23 appears nowhere else; content.md saying there is no lint:thesis; stale STATE-OF-PROJECT facts; AUTOPSY-BRIEF too heavy as a first read). Part 1 fixes merged in #449. Stays open until the post-merge sweep (P17-59) is done and the drill is re-run against real main with no contradictions._
+      _Status 2026-10-11: Drill run 2026-10-11 against a preview with the kit PRs merged (thesis lint left out for a package.json conflict): a fresh Haiku scout answered 12 of 12 orientation questions correctly from the repo alone, and reported five contradictions (work queue still Phase 13 in CLAUDE.md/CONDUCTOR.md/new-module skill; MAINTAINER-TASKS.md saying merging is the maintainer's and that no digest exists and that 2026-10-23 appears nowhere else; content.md saying there is no lint:thesis; stale STATE-OF-PROJECT facts; AUTOPSY-BRIEF too heavy as a first read). Part 1 fixes merged in #449. Drills 2 and 3 on the sweep branch each found five more, all fixed in the sweep PR (P17-59, done there; runs in `docs/COLD-START-DRILL.md`). Stays open until the confirmation drill is run against real main after the sweep PR merges with no contradictions._
 
 ### Handoff kit follow-ups
 
@@ -2608,7 +2628,7 @@ these blocks merging the kit or the drill (P17-10).
       Size: S. Role: `implementer`. Needs: none.
       _Status: not started._
 
-- [ ] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
+- [x] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
       document describes the kit as pending after it has merged. Accept
       (testable): `docs/MAINTAINER-TASKS.md` says agents merge only through
       `scripts/merge-pr.mjs` (the charter's Tier 2), that the digest is
@@ -2627,7 +2647,9 @@ these blocks merging the kit or the drill (P17-10).
       `main`: pass = 12 of 12 answered and zero contradictions reported. Size:
       S. Role: `scribe`, then `reviewer`. Needs:
       #444, #445, #446, #447, #448 and #449 merged.
-      _Status: not started._
+      _Status 2026-10-11: done in the sweep PR; drill runs 1 to 3 are recorded
+      in `docs/COLD-START-DRILL.md`. P17-10 closes after a confirmation drill
+      on real `main`._
 
 ### Autopsy, in two parts
 

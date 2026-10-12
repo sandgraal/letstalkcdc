@@ -17,7 +17,7 @@ running checklist is [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
   P17-1, P17-2, P17-4, P17-5, P17-6, P17-7, P17-8 and P17-9 are shipped.
 - 36 modules (`series.mjs`), 3,454 unit tests in 66 files (3,453 pass and 1 is skipped until `_site/` exists).
 - 10 PRs are open, all Dependabot bumps (#433 to #442). The team has none open;
-  the post-merge sweep (P17-59): see its plan item for status.
+  the post-merge sweep (P17-59) shipped in the sweep PR.
 - `main` has no required status checks yet (ruleset state below). Turning them
   on is the first maintainer task today.
 - The maintainer answered the three charter questions on 2026-10-11; see
@@ -55,17 +55,17 @@ running checklist is [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
 
 ## Phase 17 status
 
-| Item                                                   | State                                                                              |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| P17-1 charter and guard hooks                          | Shipped (#446). Residual hardening is P17-55 and P17-56, not started               |
-| P17-2 merge script                                     | Shipped (#445)                                                                     |
-| P17-3 required status checks                           | Not started; maintainer task 2 in [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md)     |
-| P17-4, P17-5, P17-8 lean `CLAUDE.md`, decisions, guide | Shipped (#432 with #443; #430; #431)                                               |
-| P17-6 team charter, two roles, digest skill            | Shipped (#447)                                                                     |
-| P17-7 thesis lint                                      | Shipped (#444). Follow-ups P17-52 and P17-53 not started                           |
-| P17-9 Phase 17 in the plan                             | Shipped (#448)                                                                     |
-| P17-10 cold-start drill                                | Open: first run passed 12 of 12 with five contradictions; fixes in #449 and P17-59 |
-| P17-59 post-merge sweep                                | See its plan item for status. Done when the drill re-run on `main` finds none      |
+| Item                                                   | State                                                                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| P17-1 charter and guard hooks                          | Shipped (#446). Residual hardening is P17-55 and P17-56, not started                                                                          |
+| P17-2 merge script                                     | Shipped (#445)                                                                                                                                |
+| P17-3 required status checks                           | Not started; maintainer task 2 in [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md)                                                                |
+| P17-4, P17-5, P17-8 lean `CLAUDE.md`, decisions, guide | Shipped (#432 with #443; #430; #431)                                                                                                          |
+| P17-6 team charter, two roles, digest skill            | Shipped (#447)                                                                                                                                |
+| P17-7 thesis lint                                      | Shipped (#444). Follow-ups P17-52 and P17-53 not started                                                                                      |
+| P17-9 Phase 17 in the plan                             | Shipped (#448)                                                                                                                                |
+| P17-10 cold-start drill                                | Open: three runs passed 12 of 12 (five contradictions each); fixes in #449 and the sweep PR; closes after a confirmation drill on real `main` |
+| P17-59 post-merge sweep                                | Shipped in the sweep PR; drill runs 1 to 3 recorded in `docs/COLD-START-DRILL.md`                                                             |
 
 ## Decisions recorded 2026-10-11
 

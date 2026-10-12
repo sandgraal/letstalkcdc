@@ -333,7 +333,10 @@ merge | cherry-pick | rebase | stash pop` of a ref whose tree differs
   a worktree still protects the primary `.claude`; a project directory that
   is itself a worktree is treated as that primary. It does **not** cover
   `.claude/rules`, `skills`, `commands`, `CLAUDE.md` or these docs: they are
-  instructions, reviewed in the PR like any other change. The same paths
+  instructions, so an agent can edit them in a worktree. That is not the
+  merge rule: `scripts/merge-pr.mjs` refuses **all** of `.claude/**` (except
+  `.claude/css-baseline.sha256`), so a change to a rule, skill, command or
+  agent is always merged by the maintainer by hand (Tier 3). The same paths
   _inside_ `.claude/worktrees/<name>/` are allowed on purpose: a branch
   written in its own worktree is how a change to a guard reaches the
   maintainer, who merges it by hand.

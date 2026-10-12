@@ -9,7 +9,12 @@ maintainer decided is in [`DECISIONS.md`](DECISIONS.md).
 The charter, the roles and the skills are Tier 3 paths (`.claude/agents/**`,
 `.claude/skills/**`, `docs/TEAM-CHARTER.md`, `docs/CONDUCTOR.md`,
 `docs/DECISIONS.md`). A change to any of them is prepared by the team and merged
-by the maintainer by hand, not through the merge script.
+by the maintainer by hand, not through the merge script. Two controls, kept
+apart: the Edit/Write guard protects only settings, hooks, scripts and agents
+(rules, skills and commands are instructions and can be edited in a worktree),
+but `scripts/merge-pr.mjs` refuses **all** of `.claude/**` (except
+`.claude/css-baseline.sha256`), so rule, skill, command and agent changes are
+always merged by the maintainer.
 
 ## Mission
 
@@ -26,7 +31,8 @@ Accuracy beats volume.
 
 ## Where each piece lives
 
-All of the handoff kit is on `main` (merged 2026-10-11 and 2026-10-12, UTC). Check
+All of the handoff kit is on `main` (merged 2026-10-11; some GitHub timestamps
+read 2026-10-12 because they are UTC). Check
 with `ls` anyway if a path looks wrong, and believe the repo over this table.
 
 | Piece                                                                                         | Merged in |
@@ -278,5 +284,8 @@ Clean up your worktrees before you stop.
   | ---------- | -------------------------------------------------------------------------------------------------------------------- |
   | 2026-10-23 | Domain decision target. Until it is made, no work that bakes in a host or a new name.                                |
   | 2026-11-06 | First 28-day data snapshot (Search Console, GoatCounter): do not pick the next content phase from guesses before it. |
+
+  Dates are the maintainer's local dates; GitHub timestamps are UTC, so
+  evening merges show the next day.
 
   Put both dates in the digest's "decisions needed" section as they near.
