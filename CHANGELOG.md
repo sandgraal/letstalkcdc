@@ -191,6 +191,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Smoke check for `security.txt` tolerates the CI artifact dropping
+  dot-directories (P17-29, P17-64).** The `smoke-tests` job failed with
+  `.well-known/security.txt: missing from build output` because
+  `actions/upload-artifact` leaves out hidden directories unless
+  `include-hidden-files: true` is set. `scripts/smoke.mjs` now skips that one
+  check, with a visible note, only when the run is CI and `_site` has no
+  dot-directory; any local run, or a CI run where `.well-known` exists, keeps
+  the strict check including `Contact`, `Expires` and `Canonical`. The test
+  that builds the site still covers the file. P17-64 asks the maintainer to
+  set the flag in `ci.yml`, after which the skip is removed.
 - **Content corrections from the accuracy sample (P17-12).** Five pages
   were wrong or unguarded, each with a per-page errata entry
   (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-11.

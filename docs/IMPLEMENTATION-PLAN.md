@@ -2708,6 +2708,28 @@ these blocks merging the kit or the drill (P17-10).
       _Status: shipped in the PR carrying this change (touches `.claude/**`
       and `docs/TEAM-CHARTER.md`, so the maintainer merges it by hand)._
 
+- [ ] **P17-64 · Maintainer: keep dot-directories in the CI site artifact,
+      then remove the smoke skip.** Outcome: the smoke job checks
+      `/.well-known/security.txt` in CI again. Evidence: the `build` job in
+      `.github/workflows/ci.yml` uploads `_site/` with
+      `actions/upload-artifact@v4`, which excludes hidden files and
+      directories by default (`include-hidden-files: false` since v4.4), so
+      `_site/.well-known` never reached the smoke job and PR #459 failed with
+      `.well-known/security.txt: missing from build output`.
+      `scripts/smoke.mjs` now skips that one check, with a visible note, when
+      the run is CI and `_site` has no dot-directory
+      (`lib/smoke-security-txt.mjs`). Accept: the maintainer sets
+      `include-hidden-files: true` on the upload-artifact step in `ci.yml`
+      (a `.github/**` change, so it is theirs); then the conductor removes
+      the skip, `lib/smoke-security-txt.mjs` and
+      `tests/unit/smoke-security-txt.test.js`, and the strict check runs in
+      CI; the ledger entry L-015 moves to `prevented` as a new entry that
+      cites it. Verify: a CI run of the `smoke-tests` job with no skip note
+      in its log; `npm run verify-all`. Size: S. Role: the maintainer sets
+      `include-hidden-files: true` on the upload-artifact step in `ci.yml`,
+      then the conductor removes the skip and its test. Needs: none.
+      _Status: not started._
+
 ### Autopsy, in two parts
 
 The audit is run from [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md). The question
