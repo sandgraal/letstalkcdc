@@ -21,7 +21,7 @@ canonicalPath: "/security/"
       <li>
         <strong>It keeps history the table does not.</strong> An
         <code>UPDATE</code> that scrubs a customer&rsquo;s address leaves one row
-        behind, but the log holds the before-image indefinitely.
+        behind, but the log holds whatever the before image contains, which is the full row only with <code>REPLICA IDENTITY FULL</code> (PostgreSQL) or <code>binlog_row_image=FULL</code> (MySQL).
       </li>
       <li>
         <strong>It fans out.</strong> One connector becomes a topic, which
@@ -134,8 +134,8 @@ canonicalPath: "/security/"
       </li>
       <li>
         <strong>Broker ACLs per topic.</strong> CDC topics usually deserve
-        tighter ACLs than application topics, because they contain complete row
-        images rather than curated events.
+        tighter ACLs than application topics, because they contain up to complete row
+        images, depending on the source settings, rather than curated events.
       </li>
       <li>
         <strong>The DLQ is a copy too.</strong> A dead-letter topic holds full

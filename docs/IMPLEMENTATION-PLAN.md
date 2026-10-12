@@ -2654,7 +2654,9 @@ items, not silent fixes.
       claim and a second reader; errata candidates listed. Verify: the
       checklist filled in per page. Size: M. Role: `technical-editor` (see the
       note at the top of this phase), with `reviewer` as the second reader.
-      Needs: none.
+      Needs: none. Errata fixes in the PR carrying this change (the
+      unambiguous errors from the sample; the open questions stay with the
+      maintainer).
 - [ ] **P17-13 · Content accuracy sample, second six pages (days 3 to 5).**
       Outcome: the same for six more, so the sample is twelve. Accept: as
       P17-12, six different pages, with at least two per claim family across

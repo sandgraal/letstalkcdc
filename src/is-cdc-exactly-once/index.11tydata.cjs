@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-10-09",
-  dateModified: "2026-10-09",
+  dateModified: "2026-10-11",
   seriesKey: "is-cdc-exactly-once",
   heroConfig: {
     title: "Is CDC Exactly-Once? Check Each Hop",

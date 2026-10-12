@@ -198,3 +198,83 @@ describe("postgres card: the acceptance checks pass on good data and can fail", 
     expect(await count(4)).toBe(1); // id 1 is a delete with no marker
   });
 });
+
+// The "handling hard parts" snippets (P17-12). The page says they were
+// executed against PGlite; these tests are what keeps that sentence true.
+describe("postgres snippets under 'handling hard parts': executed behaviour", () => {
+  const reload = block("FROM stg_archive");
+  const viewAndPurge = block("CREATE VIEW customers");
+  const purgeAt = viewAndPurge.indexOf("DELETE FROM");
+  const createView = viewAndPurge.slice(0, purgeAt);
+  const purge = viewAndPurge.slice(purgeAt);
+
+  const seedArchive = async () => {
+    await db.exec(`
+      DROP TABLE IF EXISTS stg_archive;
+      CREATE TABLE stg_archive (LIKE stg_customers);
+    `);
+    for (const r of [
+      [1, "below", "u", 4294967295, 0],
+      [1, "at", "u", 4294967296, 0],
+      [1, "above", "u", 4294967297, 0],
+    ]) {
+      await db.query(
+        "INSERT INTO stg_archive (id, email, op, source_lsn, seq) VALUES ($1,$2,$3,$4,$5)",
+        r,
+      );
+    }
+  };
+
+  it("has the three statements the page shows, each found exactly once", () => {
+    expect(reload).toContain("INSERT INTO stg_customers");
+    expect(createView).toContain("CREATE VIEW customers");
+    expect(purge).toContain("WHERE is_deleted AND source_lsn <");
+  });
+
+  it("reload copies from the trusted position inclusive and nothing below it", async () => {
+    await seedArchive();
+    await db.exec(reload);
+    const { rows } = await db.query(
+      "SELECT email FROM stg_customers ORDER BY source_lsn",
+    );
+    expect(rows.map((r) => r.email)).toEqual(["at", "above"]);
+  });
+
+  it("reload followed by the unchanged upsert lands the newest change, and a second reload changes nothing", async () => {
+    await seedArchive();
+    await db.exec(reload);
+    expect(await apply()).toBe(1);
+    expect((await row(1)).email).toBe("above");
+    await db.exec("TRUNCATE stg_customers");
+    await db.exec(reload); // reload the same window again
+    expect(await apply()).toBe(0);
+    expect((await row(1)).email).toBe("above");
+  });
+
+  it("the customers view hides delete markers and exposes only id and email", async () => {
+    await db.exec("DROP VIEW IF EXISTS customers");
+    await db.exec(createView);
+    await db.exec(`INSERT INTO target_customers VALUES
+      (1,'live',false,100,0),(2,null,true,200,0)`);
+    const { rows, fields } = await db.query("SELECT * FROM customers");
+    expect(rows).toHaveLength(1);
+    expect(Number(rows[0].id)).toBe(1);
+    expect(rows[0].email).toBe("live");
+    expect(fields.map((f) => f.name)).toEqual(["id", "email"]);
+    await db.exec("DROP VIEW customers");
+  });
+
+  it("the purge removes only markers strictly below the bound", async () => {
+    await db.exec(`INSERT INTO target_customers VALUES
+      (1,'live-old',false,100,0),
+      (2,null,true,100,0),
+      (3,null,true,8589934591,0),
+      (4,null,true,8589934592,0),
+      (5,null,true,8589934593,0)`);
+    await db.exec(purge);
+    const { rows } = await db.query(
+      "SELECT id FROM target_customers ORDER BY id",
+    );
+    expect(rows.map((r) => Number(r.id))).toEqual([1, 4, 5]);
+  });
+});
