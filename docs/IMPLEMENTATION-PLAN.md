@@ -2671,7 +2671,7 @@ these blocks merging the kit or the drill (P17-10).
       `/team-end`, the open-lessons line in `/team-start`, both pinned in
       `tests/unit/team-commands.test.js`; the watcher directive in
       `.claude/scripts/check-merged-prs.sh` now says to run `/team-start`,
-      pinned in `tests/unit/check-merged-prs.test.js`; L-015 in
+      pinned in `tests/unit/check-merged-prs.test.js`; L-016 in
       `docs/LESSONS.md` closes L-014. (c) the scheduled drift-check workflow
       stays open: it needs the maintainer. The box stays unticked until (c)
       is done. This change touches `.claude/**`, so the maintainer merges it._
@@ -2715,6 +2715,28 @@ these blocks merging the kit or the drill (P17-10).
       _Status: shipped in the PR carrying this change (touches `.claude/**`
       and `docs/TEAM-CHARTER.md`, so the maintainer merges it by hand)._
 
+- [ ] **P17-64 · Maintainer: keep dot-directories in the CI site artifact,
+      then remove the smoke skip.** Outcome: the smoke job checks
+      `/.well-known/security.txt` in CI again. Evidence: the `build` job in
+      `.github/workflows/ci.yml` uploads `_site/` with
+      `actions/upload-artifact@v4`, which excludes hidden files and
+      directories by default (`include-hidden-files: false` since v4.4), so
+      `_site/.well-known` never reached the smoke job and PR #459 failed with
+      `.well-known/security.txt: missing from build output`.
+      `scripts/smoke.mjs` now skips that one check, with a visible note, when
+      the run is CI and `_site` has no dot-directory
+      (`lib/smoke-security-txt.mjs`). Accept: the maintainer sets
+      `include-hidden-files: true` on the upload-artifact step in `ci.yml`
+      (a `.github/**` change, so it is theirs); then the conductor removes
+      the skip, `lib/smoke-security-txt.mjs` and
+      `tests/unit/smoke-security-txt.test.js`, and the strict check runs in
+      CI; the ledger entry L-015 moves to `prevented` as a new entry that
+      cites it. Verify: a CI run of the `smoke-tests` job with no skip note
+      in its log; `npm run verify-all`. Size: S. Role: the maintainer sets
+      `include-hidden-files: true` on the upload-artifact step in `ci.yml`,
+      then the conductor removes the skip and its test. Needs: none.
+      _Status: not started._
+
 ### Autopsy, in two parts
 
 The audit is run from [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md). The question
@@ -2752,6 +2774,15 @@ items, not silent fixes.
       P17-12, six different pages, with at least two per claim family across
       both batches. Verify: as P17-12. Size: M. Role: `technical-editor`, with
       `reviewer`. Needs: P17-12 (to avoid overlapping pages).
+      Note (2026-10-12): the unambiguous errors from the second sample are
+      fixed on branch `claude/p17-13-errata-fixes` (Oracle SCN tie-break,
+      Cassandra timestamp rationale, `processed_events` same transaction,
+      `ts_ms` as tie-break, `ts_ms` meaning, untested labels, the simulator
+      readout), with five errata entries and tests; the item stays open until
+      the sample itself (six pages with a source per claim) is written up and
+      the maintainer has answered the open questions in the PR. Review nits
+      applied the same day (Cassandra claim scoped, DynamoDB wording, residue
+      in the assistant, quickstart and style guide).
 - [ ] **P17-14 · Executed SQL (day 6).** Outcome: the executed-versus-not
       table in the brief's section 4 is updated. Accept: at least one of
       Snowflake or BigQuery from `/merge-cookbook/`, plus the T-SQL and MySQL
@@ -2911,7 +2942,7 @@ goes to `css-refactor` with before and after production hashes.
       `npm run verify-all`, `npm run smoke:core`, `npm run smoke:a11y`. Size:
       S. Role: `implementer`, then `reviewer`. Needs: none; the report route is
       the GitHub issue template from P17-5 until P17-29 gives a contact email.
-- [ ] **P17-29 · `security.txt` and a contact page.** Outcome: there is a
+- [x] **P17-29 · `security.txt` and a contact page.** Outcome: there is a
       standard way to report a security problem and to reach the author.
       Accept: `/.well-known/security.txt` per RFC 9116 with `Contact`,
       `Expires` (within a year) and `Canonical`; a `/contact/` page; both
@@ -2921,6 +2952,11 @@ goes to `css-refactor` with before and after production hashes.
       `implementer`. Needs: the maintainer's public contact email.
       _2026-10-11: the contact address is now decided; see
       [`DECISIONS.md`](DECISIONS.md), "Public contact address". Ready._
+      _Status: shipped in the PR carrying this change. `security.txt` is a
+      build-time template (`src/security.txt.11ty.cjs`), not a static file, so
+      `Canonical` follows `site.host`; `Expires` is fixed (2027-10-12) and a
+      unit test fails once it passes. Not verified from here: that GitHub
+      Pages serves the dot directory (see the PR notes)._
 - [ ] **P17-30 · Disclosure and about page.** Outcome: readers can see who
       writes the site, how it is funded and what relationships exist with the
       tools it discusses. Accept: an `/about/` page stating the author, the

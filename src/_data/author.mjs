@@ -26,4 +26,9 @@ export default {
   // LinkedIn" CTA on module pages (the wording assumes a LinkedIn URL).
   // Leave null to hide.
   advisoryUrl: "https://www.linkedin.com/in/cennis/",
+  // The maintainer's designated PUBLIC contact address for security reports
+  // and general contact (docs/DECISIONS.md, "Public contact address"). Read by
+  // src/security.txt.11ty.cjs and src/contact/. It is deliberately not used in
+  // any page <title>, meta tag or JSON-LD.
+  contactEmail: "cennisc@gmail.com",
 };

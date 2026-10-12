@@ -1,3 +1,5 @@
+import { orderingGuarantee } from "../lib/partitioning-kpi.js";
+
 const doc = document;
 
 const onReady = (cb) => {
@@ -103,7 +105,8 @@ onReady(() => {
     out.max && (out.max.textContent = Math.round(max).toLocaleString());
     out.p95 && (out.p95.textContent = Math.round(p95).toLocaleString());
     out.lag && (out.lag.textContent = drain ? `${drain.toFixed(1)}s` : "0s");
-    out.ordering && (out.ordering.textContent = "Per-key");
+    out.ordering &&
+      (out.ordering.textContent = orderingGuarantee({ dist: D, shards: S }));
 
     const maxBar = Math.max(...partRate, 1);
     if (out.bars) {

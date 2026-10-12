@@ -260,7 +260,29 @@ Entries whose source is 'conductor session record' were observed by the conducto
   merge.
 - Status: open
 
-### L-015 The merge watcher's rewake message now points at /team-start (closes L-014)
+### L-015 The CI artifact drops dot-directories, so the smoke job lost security.txt
+
+- Date: 2026-10-12 (source: CI `smoke-tests` job on PR #459)
+- What happened: The smoke job failed with `.well-known/security.txt: missing
+from build output` although the build had produced it, because the `build`
+  job passes `_site/` to later jobs with `actions/upload-artifact`, which
+  excludes hidden files and directories by default (`include-hidden-files:
+false` since v4.4).
+- Root cause: a new dot-directory in the build output was only checked against
+  the deploy path (`actions/upload-pages-artifact@v3`, which keeps it), not
+  against the CI artifact hand-off, and the workflow file is the maintainer's.
+- Prevented by: the smoke check now skips only that one check, with a visible
+  note, when the run is CI and `_site` has no dot-directory at all
+  ([`smoke-security-txt.mjs`](../lib/smoke-security-txt.mjs), pinned by
+  `tests/unit/smoke-security-txt.test.js`); `tests/unit/security-contact.test.js`
+  builds the site itself and still covers the file. The real fix is
+  `include-hidden-files: true` on the upload-artifact step in ci.yml, a
+  maintainer change tracked as P17-64 in
+  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md). Until then the smoke job
+  does not check the file in CI.
+- Status: partially
+
+### L-016 The merge watcher's rewake message now points at /team-start (closes L-014)
 
 - Date: 2026-10-12 (source: P17-62(b); closes L-014, which stays as written)
 - What happened: L-014 recorded that the watcher's rewake message told a
