@@ -24,6 +24,8 @@ The running checklist for in-flight work is
   still pending
 - **[MAINTAINER-TASKS.md](MAINTAINER-TASKS.md)** — What only the maintainer can
   do, in order, with dates and a sentence to start a live session
+- **[COLD-START-DRILL.md](COLD-START-DRILL.md)** — Questions, answer key and
+  scoring for the fresh-agent orientation drill (run after doc changes)
 
 ---
 
