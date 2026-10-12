@@ -2625,6 +2625,21 @@ these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
       #444, #445, #446, #447, #448 and #449 merged.
       _Status: not started._
 
+- [x] **P17-60 · Session commands: `/team-start`, `/team-end`, `/team-digest`.**
+      Outcome: a working session of the agent team starts and ends the same
+      way every time. Accept: `.claude/commands/team-start.md`, `team-end.md`
+      and `team-digest.md` exist with a `description` frontmatter; they route
+      merges only through `scripts/merge-pr.mjs`, state the stop-and-ask rule
+      and the Sonnet and Haiku only rule, and `team-start` keeps the primary
+      checkout on a fast-forward of `main` with all work in worktrees; none
+      tells anyone to merge directly, skip hooks, push to `main` or force-push;
+      `docs/TEAM-CHARTER.md` has a "Running a session" section and the Day-1
+      checklist points at `/team-start`. Verify:
+      `npx vitest run tests/unit/team-commands.test.js`, `npm run verify-all`.
+      Size: S. Role: `implementer`. Needs: none.
+      _Status: shipped in the PR carrying this change (touches `.claude/**`
+      and `docs/TEAM-CHARTER.md`, so the maintainer merges it by hand)._
+
 ### Autopsy, in two parts
 
 The audit is run from [`AUTOPSY-BRIEF.md`](AUTOPSY-BRIEF.md). The question

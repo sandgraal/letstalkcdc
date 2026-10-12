@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Session commands for the agent team (P17-60).** `/team-start`,
+  `/team-end` and `/team-digest` in `.claude/commands/` make a working session
+  start and end the same way: sync with worktrees only, read the handoff,
+  merge ready PRs through `scripts/merge-pr.mjs`, pick the next Phase 17
+  item, then close with a clean-worktree check, a prune dry run and a dated
+  Open / Blocked / Next note. `docs/TEAM-CHARTER.md` gains a "Running a
+  session" section. A unit test pins the rules. No site or CSS change.
 - **Handoff kit for the next agent team (Phase 17).** The plan gains Phase 17:
   the kit, an autopsy split into a part that starts now and a part that waits
   for the 2026-11-06 data snapshot, a no-regret track that needs no audience

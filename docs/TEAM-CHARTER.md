@@ -50,6 +50,9 @@ the `technical-editor` and `growth-writer` roles arrive with this PR.
 
 Run from a fresh clone, or a worktree off fresh `main`.
 
+The conductor runs the whole routine below as `/team-start` (see
+[Running a session](#running-a-session)).
+
 ```bash
 git fetch origin && git switch main && git pull --ff-only
 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --no-audit --no-fund
@@ -94,6 +97,21 @@ when they disagree.
 Then pick work: the next Phase 17 item, then older agent-executable boxes
 (see [Backlog map](#backlog-map)), check it against the Definition of Ready in
 `CONDUCTOR.md`, and brief a role.
+
+## Running a session
+
+Three slash commands in `.claude/commands/` make every session start and end
+the same way. The conductor reads the command file and follows it.
+
+- `/team-start`: sync (the primary checkout only fast-forwards `main`; all
+  work is in worktrees), read the latest handoff note, merge ready PRs
+  through `node scripts/merge-pr.mjs` (dry run first), pick the next Ready
+  Phase 17 item, brief roles. It stops and asks on the triggers below.
+- `/team-end`: check every worktree is clean, list open PRs and CI, show the
+  `scripts/worktree-prune.sh` dry run, have a `scribe` append the dated
+  handoff note, and report what needs the maintainer's decision (these feed
+  the digest's `needs-maintainer` section).
+- `/team-digest`: runs the weekly-digest skill (below).
 
 ## Roles and when to use each
 
