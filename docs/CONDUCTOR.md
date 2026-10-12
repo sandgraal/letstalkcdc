@@ -78,10 +78,11 @@ teaches CDC needs a `technical-editor` report as well as the `reviewer`'s.
 
 ## The loop
 
-1. **Select** the next agent-executable item: work the Phase 13 queue in
-   order, then the lowest-numbered open box an agent can do. Where a Phase
-   13 item overlaps an older box, it closes that box in the same commit.
-   Phase 14 items are the maintainer's; do not start them.
+1. **Select** the next agent-executable item: work Phase 17 in
+   `docs/IMPLEMENTATION-PLAN.md` first, then the lowest-numbered older open
+   box an agent can do. Where a Phase 17 item overlaps an older box, it closes
+   that box in the same commit. Phase 14 items are the maintainer's; do not
+   start them.
 2. **Check Ready** (below). If not ready, a `scout` closes the gap first.
 3. **Branch** `claude/<short-name>` from fresh `main`.
 4. **Brief** the role (template below).
@@ -413,8 +414,9 @@ merge | cherry-pick | rebase | stash pop` of a ref whose tree differs
 
 Sonnet 5.5 and Haiku 5.5 remain the only models in the roster. If the
 maintainer's rule "a stronger model only when absolutely needed" is ever
-invoked, it goes through **one** gated role, which does not exist yet (its
-model ID is pending): a single agent file in `.claude/agents/`, spawnable
+invoked, it goes through **one** gated role, which does not exist (the
+maintainer decided on 2026-10-11 that there is no stronger model for now): a
+single agent file in `.claude/agents/`, spawnable
 only by the conductor, with a written justification in the PR for every use.
 Until it exists, split the task or ask. Adding it is a Tier 3 change: it
 means editing the roster, `availableModels`, `guard-agent-model.mjs` and

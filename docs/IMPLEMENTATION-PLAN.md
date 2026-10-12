@@ -2337,7 +2337,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
 
 ### Handoff kit
 
-- [ ] **P17-1 · Autonomy charter, guard hooks and permissions.** Outcome:
+- [x] **P17-1 · Autonomy charter, guard hooks and permissions.** Outcome:
       what an agent may do without asking, and what it may never do, is
       written down and enforced by hooks, not only by prose. Accept: a
       charter document; hooks that block the actions it forbids (push to
@@ -2347,14 +2347,13 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       the charter is missing. Verify: `npx vitest run`, `npm run verify-all`,
       and a recorded attempt of each blocked action showing the block. Size:
       M. Role: `implementer`, then `reviewer`. Needs: none.
-      _Status 2026-10-11: open as #446 (to be merged by the maintainer,
-      since it touches `.claude/**`; last independent review REQUEST CHANGES,
-      fixes not yet re-reviewed). On the branch the charter is an "Autonomy
+      _2026-10-12: shipped in #446 (restricted paths, so it was merged by
+      the maintainer). The charter is an "Autonomy
       charter" section of `docs/CONDUCTOR.md`, enforced by
       `.claude/hooks/guard-bash.mjs` and `guard-edit.mjs`, an updated
       `guard-agent-model.mjs` and `.claude/settings.json`. The reviews showed
       the hooks are a net, not a boundary; the open residuals are P17-55._
-- [ ] **P17-2 · Gated merge script.** Outcome: a PR merges only through one
+- [x] **P17-2 · Gated merge script.** Outcome: a PR merges only through one
       script that refuses unless the gate holds. Accept: `scripts/merge-pr.mjs`
       (`npm run merge-pr`) is a dry run by default and, with `--execute`, runs
       `gh pr merge <n> --squash --delete-branch --match-head-commit <oid>` only
@@ -2384,8 +2383,8 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       Role: `implementer`, then `reviewer`. Needs: none (the maintainer-only
       list is embedded in the script; P17-1 should keep it and the charter in
       agreement, see P17-57).
-      _Status 2026-10-11: open as #445, reviewed through three rounds; the
-      last fix commit has not had a fourth independent review. CI revealed
+      _2026-10-12: shipped in #445. It was reviewed through three rounds and
+      the last fix commit did not get a fourth independent review. CI revealed
       tests depended on the runner's git identity (fixed in 66a3c08)._
 - [ ] **P17-3 · Required status checks on the `default` ruleset.** Outcome:
       GitHub itself refuses a merge when the checks fail (today the ruleset
@@ -2398,7 +2397,10 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       maintainer, in a live session (it changes repo settings, so no agent
       does it). Needs: P17-2 merged, so the gate and the ruleset agree. Steps
       are in [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md), task 2.
-      _Status 2026-10-11: not started._
+      _Status 2026-10-11: not started. Ready now (P17-2 merged in #445). The
+      required set was decided as seven checks (`build`, `lint`, `unit-tests`,
+      `e2e-tests`, `a11y-tests`, `smoke-tests`, `security-audit`; not `lychee`
+      or `lighthouse`); the procedure is in `MAINTAINER-TASKS.md` task 2._
 - [x] **P17-4 · Lean `CLAUDE.md`, rules, skills and the merge-watcher fix.**
       Outcome: an agent loads a short `CLAUDE.md` and pulls detail on demand
       instead of carrying one long file. Accept: `CLAUDE.md` holds the
@@ -2414,8 +2416,9 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       `doc-facts` test fails when documented facts go stale. Verify:
       `npx vitest run`, `npm run verify-all`, `npm run check:css-baseline`.
       Size: M. Role: `implementer`, then `reviewer`. Needs: none.
-      _2026-10-11: shipped in #432. Follow-up #443 (open) fixes a
-      `doc-facts` test left red on `main` by the merge order of #431 and #432._
+      _2026-10-11: shipped in #432. Follow-up #443 (merged 2026-10-12) fixed
+      a `doc-facts` test left red on `main` by the merge order of #431 and
+      #432._
 - [x] **P17-5 · Decisions log, templates, Dependabot and worktree prune.**
       Outcome: decisions survive the session that made them, and routine
       hygiene is automatic. Accept: `docs/DECISIONS.md` records each
@@ -2430,7 +2433,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
       _2026-10-11: shipped in #430._
-- [ ] **P17-6 · Team charter, two new roles and a weekly-digest skill.**
+- [x] **P17-6 · Team charter, two new roles and a weekly-digest skill.**
       Outcome: the team has a written way of working and covers editing and
       growth writing, not only code. Accept: `docs/TEAM-CHARTER.md`;
       `technical-editor` and `growth-writer` role files under
@@ -2440,9 +2443,10 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       model-lock test still passes. Verify: `npx vitest run`,
       `npm run verify-all`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
-      _Status 2026-10-11: open as #447, stacked on #446 (merge #446 first);
-      fixes after a review of APPROVE WITH NITS not yet re-reviewed._
-- [ ] **P17-7 · Thesis lint.** Outcome: copy cannot re-introduce the two
+      _2026-10-12: shipped in #447 (restricted paths, merged by the
+      maintainer after #446). The fixes made after a review of APPROVE WITH
+      NITS were not re-reviewed independently._
+- [x] **P17-7 · Thesis lint.** Outcome: copy cannot re-introduce the two
       claims the site once taught backwards without a test failing. Accept:
       `lib/thesis-lint.mjs`, `scripts/thesis-lint.mjs` (`npm run lint:thesis`)
       and `lib/thesis-lint.allow.json` lint 303 files (lesson pages, data,
@@ -2457,8 +2461,8 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       correctness. Verify: `npm run lint:thesis`,
       `npx vitest run tests/unit/thesis-lint.test.js`, `npm run verify-all`.
       Size: M. Role: `implementer`, then `reviewer`. Needs: none.
-      _Status 2026-10-11: open as #444; two review rounds, the last fix commit
-      has not had a third independent review._
+      _2026-10-12: shipped in #444. It had two review rounds; the last fix
+      commit did not get a third independent review._
 - [x] **P17-8 · Maintainer guide.** Outcome: the maintainer has one page of
       what only they can do, with the command or the click path. Accept:
       `docs/MAINTAINER-TASKS.md` lists each maintainer-only step (settings,
@@ -2469,7 +2473,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       Needs: none.
       _2026-10-11: shipped in #431 with author-side verification only; no
       independent review ran._
-- [ ] **P17-9 · Phase 17 in the plan, and the autopsy brief's naming.**
+- [x] **P17-9 · Phase 17 in the plan, and the autopsy brief's naming.**
       Outcome: the next team can pick work from this plan with the Definition
       of Ready. Accept: this phase exists with the sections below; every item
       is Size S or M with a role and a Needs; `AUTOPSY-BRIEF.md` calls the
@@ -2478,8 +2482,8 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       `CHANGELOG.md` entry exists; the item statuses below match the PRs.
       Verify: `npx prettier --check docs CHANGELOG.md`, `npx vitest run`,
       `npm run verify-all`. Size: S. Role: `implementer`. Needs: none.
-      _Status 2026-10-11: this item, in review; its text was brought up to
-      date after #430, #431 and #432 merged._
+      _2026-10-12: shipped in #448; its text was brought up to date after
+      #430, #431 and #432 merged._
 - [ ] **P17-10 · Cold-start drill.** Outcome: proof that the kit works for
       someone with no history. Accept: a fresh agent session, given only the
       repo and the brief template, picks one Ready item from this phase and
@@ -2821,8 +2825,9 @@ goes to `css-refactor` with before and after production hashes.
       passed through by `eleventy.config.mjs`, built with the `| url` prefix
       where templated, and checked by `smoke:core`. Verify:
       `npm run verify-all`, `npm run smoke:core`. Size: S. Role:
-      `implementer`. Needs: the maintainer's public contact email (an open
-      answer; not Ready until given).
+      `implementer`. Needs: the maintainer's public contact email.
+      _2026-10-11: the contact address is now decided; see
+      [`DECISIONS.md`](DECISIONS.md), "Public contact address". Ready._
 - [ ] **P17-30 · Disclosure and about page.** Outcome: readers can see who
       writes the site, how it is funded and what relationships exist with the
       tools it discusses. Accept: an `/about/` page stating the author, the
@@ -2831,7 +2836,11 @@ goes to `css-refactor` with before and after production hashes.
       from the footer. Verify: `npm run verify-all`, `npm run smoke:core`.
       Size: S. Role: `growth-writer` drafts (until P17-6 merges:
       `implementer`), then `reviewer`. Needs: the maintainer's vendor-disclosure
-      policy (an open answer; not Ready until given).
+      policy.
+      _2026-10-11: the policy is decided (see [`DECISIONS.md`](DECISIONS.md),
+      "Vendor-disclosure policy"), but the wording must be drafted for the
+      maintainer's approval before it is published. Not Ready to publish until
+      the maintainer approves the draft._
 
 ### Data-gated menu
 
