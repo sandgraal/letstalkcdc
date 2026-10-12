@@ -104,13 +104,17 @@ Three slash commands in `.claude/commands/` make every session start and end
 the same way. The conductor reads the command file and follows it.
 
 - `/team-start`: sync (the primary checkout only fast-forwards `main`; all
-  work is in worktrees), read the latest handoff note, merge ready PRs
-  through `node scripts/merge-pr.mjs` (dry run first), pick the next Ready
-  Phase 17 item, brief roles. It stops and asks on the triggers below.
+  work is in worktrees cut from `origin/main`), read the latest handoff block
+  (and any open `docs(handoff)` PR and the newest digest), merge ready PRs
+  through `node scripts/merge-pr.mjs` (dry run first; only `claude/*` PRs by
+  the team's account), check that a Phase 17 item is not already merged or in
+  flight before picking it, brief roles. It stops and asks on the triggers
+  below.
 - `/team-end`: check every worktree is clean, list open PRs and CI, show the
-  `scripts/worktree-prune.sh` dry run, have a `scribe` append the dated
-  handoff note, and report what needs the maintainer's decision (these feed
-  the digest's `needs-maintainer` section).
+  `scripts/worktree-prune.sh` dry run, have a `scribe` write the dated
+  handoff block (shipped as a `docs(handoff): YYYY-MM-DD` PR through the same
+  gate), and report what needs the maintainer's decision under "Needs you"
+  (these feed the digest).
 - `/team-digest`: runs the weekly-digest skill (below).
 
 ## Roles and when to use each
@@ -273,12 +277,18 @@ The repo is the memory. Local memory files, chat history and worktree state
 are not the record: the next session starts from `git log`, the plan and the
 changelog.
 
-End every session by appending a dated note (`YYYY-MM-DD`) to both
-`CHANGELOG.md` `[Unreleased]` and the plan item you worked on, listing:
+End every session by writing a dated note (`YYYY-MM-DD`) into
+`CHANGELOG.md` `[Unreleased]`, as one rolling "Latest handoff" block that
+replaces the previous one. It ships as a small PR titled
+`docs(handoff): YYYY-MM-DD` through the same gate as any change (reviewer
+pass required; `CHANGELOG.md` is not a restricted path). The note lists:
 
 - **Open**: PRs awaiting CI or review, branches with unmerged work.
 - **Blocked**: what is waiting on whom, with the date it was raised.
 - **Next**: the one item the next session should start with, and why.
+
+Plan items are not edited by the note. Only when something is blocked, add a
+pointer in the plan item to the handoff block, not a copy of it.
 
 Clean up your worktrees before you stop.
 

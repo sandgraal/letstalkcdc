@@ -14,10 +14,11 @@ is written by a `scribe`, not by the conductor. Models: Sonnet and Haiku only.
 
 ```bash
 git worktree list
-git -C <each worktree path> status --short
+git -C <worktree path> status --short
 ```
 
-Run `git status` in every worktree listed. Uncommitted work is either
+Run the `git -C <worktree path> status --short` line for every worktree
+listed. Uncommitted work is either
 committed on its `claude/*` branch by the role that owns it, or reported as
 open. Do not discard it.
 
@@ -31,7 +32,11 @@ gh pr checks <n>
 Record, for each PR, whether it is waiting on CI, on review, or on the
 maintainer. A PR that is ready is merged only by
 `node scripts/merge-pr.mjs <n> --execute` after the dry run, and only when
-the review record and CI are in order; otherwise it stays open and is listed.
+the review record and CI are in order, the PR's head is a `claude/*` branch
+of this repository by the team's account, and you are confident (else stop
+and ask, as in `/team-start` step 3). A PR that touches a restricted (Tier 3)
+path is handed to the maintainer, as in `/team-start` step 3. Everything else
+stays open and is listed.
 
 ### 3. Dry-run the worktree prune
 
@@ -44,23 +49,32 @@ finished worktrees is a separate, deliberate step.
 
 ### 4. Delegate the handoff note
 
-Brief a `scribe` (a small writing task; if it fails once, re-brief as an
-`implementer` task) to append a dated (`YYYY-MM-DD`) note to both
-`CHANGELOG.md` `[Unreleased]` and each plan item worked on, with three lines:
+There is ONE handoff route. Brief a `scribe` (a small writing task; if it
+fails once, re-brief as an `implementer` task) to write a dated
+(`YYYY-MM-DD`) note into `CHANGELOG.md` `[Unreleased]` and nowhere else, as a
+single rolling "Latest handoff" block that replaces the previous one. Plan
+items are not edited by the note. The block has three lines:
 
 - **Open**: PRs awaiting CI or review, branches with unmerged work.
-- **Blocked**: what is waiting on whom, with the date it was raised.
+- **Blocked**: what is waiting on whom, with the date it was raised. Durable
+  items for the maintainer live here, and `/team-digest` reads them from here.
 - **Next**: the one item the next session should start with, and why.
 
-The note goes into a PR like any other change (one plan item per PR), through
-a worktree. Numbers in it come from commands run this session.
+It ships as a small PR titled `docs(handoff): YYYY-MM-DD`, from a worktree
+cut from `origin/main`. It goes through the same gate as any other change: a
+`reviewer` pass is required, and `CHANGELOG.md` is not a restricted path, so
+it is merged with `node scripts/merge-pr.mjs`. A handoff PR carries no plan
+item, so the one-plan-item-per-PR rule has nothing to count. Numbers in it
+come from commands run this session.
 
 ### 5. Report to the maintainer
 
 Reply in the chat with a short summary: what merged, what is open and its CI,
-the prune dry-run result, and anything that needs his decision, each with the
-exact decision needed and a date if there is one. Anything a stop-and-ask
-trigger caught this session (see `docs/TEAM-CHARTER.md`) goes here too.
+the prune dry-run result, and anything that needs the maintainer's decision,
+each with the exact decision needed and a date if there is one. Anything a
+stop-and-ask trigger caught this session (see `docs/TEAM-CHARTER.md`) goes
+here too.
 
-Items needing a decision are collected under a `needs-maintainer` heading
-so that `/team-digest` carries them into the next weekly digest.
+Items needing a decision go under "Needs you", the weekly-digest skill's
+section name. Anything that outlives the session is also written on the
+handoff block's Blocked line, which is what `/team-digest` reads.

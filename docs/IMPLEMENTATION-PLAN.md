@@ -2324,7 +2324,9 @@ Item fields are as defined in Phase 13. Every item is Size S or M, names a
 role from `CONDUCTOR.md` and names its **Needs**. Two roles are added by
 P17-6 (`technical-editor`, `growth-writer`); until that PR merges, use
 `reviewer` for the technical-editor work and `implementer` for the writing.
-Boxes are ticked by the conductor when the work merges, not before.
+Boxes are ticked in the PR that ships the work (the PR number is added to
+the item's status line in a follow-up commit once the PR exists), as in
+`CLAUDE.md` and `CONDUCTOR.md`.
 Decisions already taken are recorded in `DECISIONS.md` (merged in #430). The
 ones that shape this phase: $0 recurring spend; the brand "Let's Talk CDC";
 a guided path first and then a 5-page answer-page pilot measured over 8
