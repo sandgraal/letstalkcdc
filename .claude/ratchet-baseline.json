@@ -1,0 +1,12 @@
+{
+  "unitTestFiles": 63,
+  "itCallSites": 2369,
+  "thesisLintRules": 2,
+  "guardBashCases": 912,
+  "hooks": 3,
+  "requiredFiles": [
+    "scripts/merge-pr.mjs",
+    "docs/COLD-START-DRILL.md",
+    "docs/LESSONS.md"
+  ]
+}
