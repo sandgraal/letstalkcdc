@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs(handoff)` PR. The digest runs `growth-writer` first and posts once.
   `docs/TEAM-CHARTER.md` gains a "Running a session" section. A unit test pins
   the rules. No site or CSS change.
+- **`/llms.txt` for language-model crawlers (P17-21).** A plain-text index in
+  the llmstxt.org shape (title, summary, links with descriptions), generated
+  at build time from the same indexable-page rule and series order as
+  `sitemap.xml`, so noindex pages and redirect stubs never appear. It states
+  that the content is CC BY 4.0 and that attribution is required. The host
+  comes from `site.host`, not a literal. A unit test builds the site and
+  checks that every listed URL is a built, indexable page and that the list
+  equals the sitemap's.
 - **Handoff kit for the next agent team (Phase 17).** The plan gains Phase 17:
   the kit, an autopsy split into a part that starts now and a part that waits
   for the 2026-11-06 data snapshot, a no-regret track that needs no audience
@@ -142,6 +150,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Content corrections from the accuracy sample (P17-12).** Five pages
+  were wrong or unguarded, each with a per-page errata entry
+  (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-11.
+  `/snapshotting/`: the PostgreSQL setup said to reload, but `wal_level` and
+  `max_replication_slots` need a server restart; the REPEATABLE READ plus
+  `pg_current_wal_lsn()` lines are now labelled an illustration with their
+  race stated (a commit between the snapshot and the LSN is missed) and a
+  pointer to the PostgreSQL documentation for creating a logical replication
+  slot (no tested recipe); three claims that a plain boundary snapshot
+  resumes from the last chunk now say only an incremental snapshot does.
+  `/deletes-stay-deleted/`, `/event-envelope/` (quiz), `/use-cases/` and
+  `/security/`: a delete event's before image holds only the key columns on
+  PostgreSQL with the default replica identity unless `REPLICA IDENTITY FULL`,
+  and the full row on MySQL needs `binlog_row_image=FULL`; the pages said it
+  always held the row. `/is-cdc-exactly-once/`: the guard now points to the
+  (position, seq) pair for same-position changes, and the untraceable
+  "an independent review ran them on PGlite" sentence is replaced by a unit
+  test that runs the page's SQL on PGlite. `/which-row-wins/`: a stale
+  "later module" reference is now a link. `/merge-cookbook/`: its three
+  "handling hard parts" Postgres blocks (reload, view, purge) are now
+  executed in the PGlite test that backs the page's "executed against PGlite"
+  line. Not changed, pending the maintainer: Debezium Kafka-signal behaviour,
+  `message.key.columns`, initial-snapshot restart, flattening defaults and
+  MySQL `SHOW MASTER STATUS`.
 - **Heading levels are correct without changing how they look (P16-9).**
   Headings that skipped a level were promoted to the right level and keep
   their appearance through the `.h-as-3` / `.h-as-4` helpers; stat numbers

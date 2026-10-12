@@ -143,7 +143,7 @@ scripts:
         <tr>
           <th scope="row">Snapshot with boundary</th>
           <td>Log handoff preserves ordering; replays apply idempotently.</td>
-          <td>Resume from last chunk + saved offset; no target surgery.</td>
+          <td>Saved offset + idempotent replays; no target surgery. Only an incremental snapshot resumes mid-table (see below).</td>
         </tr>
         <tr>
           <th scope="row">Incremental snapshot</th>
@@ -249,16 +249,30 @@ scripts:
           <div class="perdb-grid">
             <details>
               <summary><strong>PostgreSQL</strong></summary>
-              <pre><code>-- Requirements (once/admin):
+              <pre><code>-- Requirements (once/admin). Both settings need a server restart;
+-- pg_reload_conf() does not apply either of them.
 ALTER SYSTEM SET wal_level = logical;
 ALTER SYSTEM SET max_replication_slots = 10;  -- adjust
-SELECT pg_reload_conf();
+-- Now restart PostgreSQL, then check:
+SHOW wal_level;  -- must say: logical
 
+-- Illustration of the idea only, NOT a procedure (race: see the note below).
 -- Boundary + consistent read (within one tx while snapshotting):
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SELECT pg_current_wal_lsn();  -- record this
 -- Keep transaction open during table scans; Debezium coordinates via logical slot.
 </code></pre>
+              <p>
+                The boundary lines above show the idea only and have a race: the
+                transaction snapshot is taken before the LSN is read, so a
+                commit in between is invisible to the scan yet sits below the
+                recorded LSN, and a stream that starts at that LSN misses it.
+                Reading the LSN and taking the snapshot in two separate steps
+                can miss a commit between them, so a procedure must obtain the
+                consistent point and the snapshot together. The PostgreSQL
+                documentation for creating a logical replication slot describes
+                how to do this; check the documentation for your version.
+              </p>
             </details>
 
             <details>
@@ -304,9 +318,11 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             <summary><strong>How consistent reads behave</strong></summary>
             <ul>
               <li>
-                <strong>PostgreSQL:</strong> REPEATABLE READ +
-                <code>pg_export_snapshot()</code> keeps scans stable; long scans
-                can delay VACUUM, so watch table bloat alerts.
+                <strong>PostgreSQL:</strong> REPEATABLE READ keeps scans stable
+                within one transaction (<code>pg_export_snapshot()</code> lets
+                other sessions import that transaction's snapshot, but neither
+                gives you a log position); long scans can delay VACUUM, so
+                watch table bloat alerts.
               </li>
               <li>
                 <strong>MySQL/InnoDB:</strong>
@@ -489,8 +505,10 @@ SELECT CURRENT_SCN FROM V$DATABASE;        -- record
             don’t duplicate data.
           </li>
           <li>
-            <strong>Resume safely:</strong> Snapshots should be restartable:
-            resume from last completed chunk and the recorded high-watermark.
+            <strong>Restart safely:</strong> Snapshots should be restartable.
+            Because the sink is idempotent, re-reading rows is harmless. Only
+            an incremental snapshot resumes mid-table, from the last completed
+            chunk and the recorded watermark.
           </li>
         </ul>
         <!-- SME ADDITIONS START: Patterns, Observability, Lab, Gotchas -->
@@ -563,7 +581,7 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
             <p class="muted">
               The strict <code>&lt;</code> makes a replay of the same change
               (same position) a no-op. If two different changes to one key can
-              share a position, order by and compare the (position, ordinal)
+              share a position, order by and compare the (position, seq)
               pair; see
               <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>
               and <a href="{{ '/materialization/' | url }}#sql">Materialization</a>.
@@ -607,8 +625,10 @@ VALUES (s.customer_id, s.name, s.email, (s.op = 'd'), s.lsn);</code></pre>
               size; run on a replica; pause between chunks.
             </li>
             <li>
-              <strong>Log purged mid-snapshot:</strong> restart from last
-              completed chunk; increase retention; consider replica. On
+              <strong>Log purged mid-snapshot:</strong> for a plain boundary
+              snapshot the boundary is no longer valid: start the snapshot
+              again; increase retention; consider replica. An incremental
+              snapshot can resume from its last completed chunk. On
               Postgres, a slot that lost its WAL cannot be resumed at all; see
               the
               <a href="{{ '/postgres-replication-slots/' | url }}"

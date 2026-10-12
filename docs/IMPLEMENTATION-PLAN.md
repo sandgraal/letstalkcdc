@@ -2671,7 +2671,9 @@ items, not silent fixes.
       claim and a second reader; errata candidates listed. Verify: the
       checklist filled in per page. Size: M. Role: `technical-editor` (see the
       note at the top of this phase), with `reviewer` as the second reader.
-      Needs: none.
+      Needs: none. Errata fixes in the PR carrying this change (the
+      unambiguous errors from the sample; the open questions stay with the
+      maintainer).
 - [ ] **P17-13 · Content accuracy sample, second six pages (days 3 to 5).**
       Outcome: the same for six more, so the sample is twelve. Accept: as
       P17-12, six different pages, with at least two per claim family across
@@ -2745,13 +2747,18 @@ a maintainer answer in **Needs** are Ready only once that answer is in
 `DECISIONS.md`. Anything that needs CSS under `src/assets/css/` stops and
 goes to `css-refactor` with before and after production hashes.
 
-- [ ] **P17-21 · `llms.txt`.** Outcome: language-model crawlers get a plain
+- [x] **P17-21 · `llms.txt`.** Outcome: language-model crawlers get a plain
       index of the site. Accept: `/llms.txt` is generated at build time from
       the page data (title, description, URL, built with the `| url` prefix),
       lists only indexable pages, and a unit test asserts every URL in it
       exists in `_site` and none is `noindex`. Verify: `npx vitest run`,
       `npm run build`, `npm run smoke:core`. Size: S. Role: `implementer`.
-      Needs: none.
+      Needs: none. Shipped in the PR carrying this change (the post-merge sweep, P17-59, adds the PR number): `src/llms.txt.11ty.cjs`
+      shares the sitemap's `isIndexable` rule and playground entry (exported
+      from `src/sitemap.11ty.cjs`) and orders lessons as in
+      `src/_data/series.mjs`; the host is `site.host`; the file states CC BY 4.0
+      and that attribution is required. `robots.txt` is unchanged (it already
+      allows everything). Test: `tests/unit/llms-txt.test.js`.
 - [ ] **P17-22 · Markdown copy of each page.** Outcome: every indexable page
       has a clean `.md` twin that retrieval tools can read. Accept: the build
       writes a Markdown version beside each indexable page's HTML (prose,
