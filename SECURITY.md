@@ -14,6 +14,8 @@ This is a static, vendor-agnostic learning site (HTML/CSS/JS). There’s **no se
 
 **Preferred:** Use GitHub’s private reporting: **Security → Report a vulnerability**
 
+**Or email** cennisc@gmail.com, the maintainer's designated public address for security reports. The site also publishes it in [`security.txt`](https://sandgraal.github.io/letstalkcdc/.well-known/security.txt) and on the [contact page](https://sandgraal.github.io/letstalkcdc/contact/). This is a one-person project, so a reply is not guaranteed within any particular time.
+
 Please include:
 
 - A clear description and impact of the vulnerability.
