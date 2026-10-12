@@ -225,7 +225,24 @@ test` if the head is behind.
   this file, `TEAM-CHARTER.md`, `DECISIONS.md`, supabase, and the other
   secrets and config paths the script lists. `guard-edit.mjs` is unchanged,
   so an agent still cannot Edit/Write `package.json`, `package-lock.json` or
-  `.claude/scripts/` outside a worktree.
+  `.claude/scripts/` outside a worktree. Two rules narrow the release, and one warning:
+  - **Deny list inside the two `.claude` directories.** A file whose name
+    (any depth, case-insensitive) is `CLAUDE.md`, `CLAUDE.local.md`,
+    `AGENTS.md`, `.mcp.json`, `.gitattributes`, `.gitmodules`, `.npmrc`,
+    `.env*`, `settings.json` or `settings.local.json`, or any dotfile or
+    dot-directory, is still maintainer-only there (a nested `CLAUDE.md` would
+    steer agents; a nested `.gitattributes` or `.npmrc` would steer git or
+    npm).
+  - **`package.json` scripts.** `package.json` defines the `merge-pr` and
+    `test` scripts this gate and the guard hook trust, so a PR whose
+    `package.json` `scripts` object (parsed JSON, `origin/main` against the
+    merge result) differs fails gate 5 with "package.json scripts changed:
+    maintainer merges this one". A `package.json` git cannot show or parse
+    fails the same way. `--maintainer-approved` clears it.
+  - **Warning.** `.claude/scripts/check-merged-prs.sh` runs from the Stop and
+    SessionStart hooks, so a merged edit to it executes on the maintainer's
+    machine the next time a session starts or stops. Read any PR that touches
+    it as code that will run there.
 - **`--maintainer-approved "<text>"`.** Turns a gate 5 failure into a PASS
   with a visible note (`maintainer-approved: <text>`, control characters
   stripped, shown to 200 characters). The text must be at least 10
@@ -233,7 +250,10 @@ test` if the head is behind.
   (gates 1 to 4b and 6 still apply), and a dry run stays a dry run. It is an
   honour-system record, not authentication: the script cannot tell who typed
   it. The conductor passes it **only** after the maintainer's own chat
-  message says to merge that PR, and quotes that message as the text.
+  message says to merge that PR, and quotes that message as the text. The
+  same text (control characters removed, 200 characters) is written into the
+  squash-merge commit body after "Maintainer approval (recorded by the
+  conductor, honour system): ", so the record outlives the terminal.
 - **Dependabot lane.** A PR whose author (read with `gh pr view --json
 author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
   whose title is `Bump <pkg> from <a> to <b>` (or `Bump the <group> group
@@ -245,9 +265,21 @@ author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
   reason. Checks, mergeability and the test-merge still apply. GitHub Actions
   bumps (they touch `.github/`) and `playground/` bumps stay refused without
   `--maintainer-approved`, and with it they still need a review record.
-  Honest limit: the lane trusts the author field and the file list; it cannot
-  see that nobody pushed a different commit onto the bot's branch beyond what
-  the test-merge and CI show.
+  The lane is also void, with a `dependabot lane refused:` note and gates 4
+  and 4b applying in full, unless all of these hold (each fails closed):
+  `author.is_bot` is exactly `true`; **every commit** on the PR (`gh pr view
+--json commits`) is authored by `dependabot[bot]` / `app/dependabot` (a
+  missing, empty or 100-commit list, or one that does not end at the head
+  commit, is refused); every `"resolved"` line added to `package-lock.json`
+  starts with `https://registry.npmjs.org/`; and `package.json`, parsed,
+  differs from `main` only in `version`, `dependencies`, `devDependencies`,
+  `optionalDependencies` and `peerDependencies` (so `scripts`, `bin`,
+  `overrides`, `engines`, `main`, `exports` and any other key must be
+  unchanged). Honest limits: this does **not** verify that a published
+  package version is benign (a compromised release from the real registry
+  passes; CI, the test-merge and the maintainer's own dependency habits are
+  the controls there), and a commit's author is a claim stored in the commit,
+  not a signature.
 - **Pushing `.github/`.** `guard-bash.mjs` no longer denies a `git push` of a
   `claude/*` branch because its commits touch `.github/`. Every other push
   rule stands: one `claude/*` branch by explicit name, same name on both

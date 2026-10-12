@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `claude/*` branch that touches `.github/`; every other push rule stands.
   `docs/CONDUCTOR.md` has a "Merge-script exceptions" section; the decision is
   in `docs/DECISIONS.md`.
+- **Hardening of those exceptions after an independent review (P17-65).** The
+  Dependabot lane now also requires every commit to be authored by Dependabot,
+  `author.is_bot` to be exactly true, every added lockfile `"resolved"` URL to
+  start with `https://registry.npmjs.org/`, and `package.json` to differ from
+  `main` only in `version` and the four dependency maps. Inside
+  `.claude/commands/` and `.claude/scripts/`, `CLAUDE.md`, `AGENTS.md`,
+  `.mcp.json`, `.gitattributes`, `.gitmodules`, `.npmrc`, `.env*`,
+  `settings*.json` and any dotfile stay maintainer-only. A changed
+  `package.json` `scripts` object fails gate 5. `--maintainer-approved` text is
+  also written into the squash-merge commit body. `docs/CONDUCTOR.md` states
+  the limits, including that `.claude/scripts/check-merged-prs.sh` runs from
+  the Stop and SessionStart hooks.
 - **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
   per RFC 9116 (`Contact` mailto the maintainer's designated public address,
   `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and

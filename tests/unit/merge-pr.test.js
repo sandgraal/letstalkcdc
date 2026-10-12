@@ -37,10 +37,14 @@ import {
   checkState,
   cleanApprovalText,
   cleanStaleTemp,
+  comparePackageJson,
+  dependabotCommitProblems,
   dependabotLane,
   defaultFs,
   defaultRunner,
   installSignalHandlers,
+  isPrefixException,
+  lockfilePatchProblems,
   main,
   parsePrNumber,
   registerCleanup,
@@ -66,6 +70,43 @@ const GOOD_BODY = [
   "## Notes",
   "none",
 ].join("\n");
+
+const MANIFEST = {
+  name: "letstalkcdc",
+  version: "1.0.0",
+  scripts: { test: "vitest run", "merge-pr": "node scripts/merge-pr.mjs" },
+  dependencies: { lodash: "4.17.20" },
+  devDependencies: { eslint: "9.1.0" },
+};
+const manifestText = (changes = {}) =>
+  JSON.stringify({ ...MANIFEST, ...changes }, null, 2);
+const BENIGN_PATCH = [
+  "diff --git a/package-lock.json b/package-lock.json",
+  "--- a/package-lock.json",
+  "+++ b/package-lock.json",
+  "@@ -1,3 +1,3 @@",
+  '-      "version": "4.17.20",',
+  '+      "version": "4.17.21",',
+  '+      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",',
+  "",
+].join("\n");
+
+const lockText = (resolved) =>
+  JSON.stringify(
+    {
+      lockfileVersion: 3,
+      packages: {
+        "node_modules/lodash": { version: "4.17.21", resolved },
+      },
+    },
+    null,
+    2,
+  );
+const LOCK_REGISTRY = "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz";
+const LOCK_EVIL = "git+ssh://git@example.invalid/evil/lodash.git#abc";
+const LOCK_BEFORE = lockText(
+  "https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz",
+);
 
 const GOOD_COMMENT = {
   author: { login: "someone" },
@@ -143,6 +184,11 @@ function makeEnv({
   raw = null,
   rawCode = 0,
   tempEntries = null,
+  lockPatch = BENIGN_PATCH,
+  lockPatchCode = 0,
+  baseManifest = manifestText(),
+  mergedManifest = manifestText({ dependencies: { lodash: "4.17.21" } }),
+  showCode = 0,
 } = {}) {
   const calls = [];
   const out = [];
@@ -167,6 +213,20 @@ function makeEnv({
     if (key.startsWith("gh pr merge")) return res(ghMergeCode, "", "boom");
     if (key.startsWith("git fetch")) return res(fetchCode, "", "fetch broke");
     if (key.startsWith("git cat-file")) return res(catFileCode);
+    if (key.startsWith("git show origin/main:package.json")) {
+      return res(showCode, baseManifest, "show broke");
+    }
+    if (key === "git show :package.json") {
+      return res(showCode, mergedManifest, "show broke");
+    }
+    if (
+      file === "git" &&
+      args.includes("--no-renames") &&
+      args.includes("package-lock.json") &&
+      !args.includes("--raw")
+    ) {
+      return res(lockPatchCode, lockPatch, "patch broke");
+    }
     if (file === "git" && args.includes("--raw")) {
       return res(
         rawCode,
@@ -1479,6 +1539,8 @@ describe("gate 5 against real git (no stubs)", () => {
     put(seed, "README.md");
     put(seed, "docs/keep.md");
     put(seed, ".github/workflows/ci.yml", "name: ci\n");
+    put(seed, "package.json", `${manifestText()}\n`);
+    put(seed, "package-lock.json", `${LOCK_BEFORE}\n`);
     gitIn(seed, "add", "-A");
     gitIn(seed, "commit", "-m", "base");
     gitIn(seed, "push", "origin", "main");
@@ -1524,8 +1586,34 @@ describe("gate 5 against real git (no stubs)", () => {
       symlinkSync("../settings.json", path.join(seed, ".claude/scripts/x.sh"));
     });
     branch("root-manifest", () => {
-      put(seed, "package.json", "{}\n");
-      put(seed, "package-lock.json", "{}\n");
+      put(
+        seed,
+        "package.json",
+        `${manifestText({ dependencies: { lodash: "4.17.21" } })}\n`,
+      );
+      put(seed, "package-lock.json", `${lockText(LOCK_REGISTRY)}\n`);
+    });
+    branch("root-scripts", () => {
+      put(
+        seed,
+        "package.json",
+        `${manifestText({ scripts: { ...MANIFEST.scripts, postinstall: "sh x" } })}\n`,
+      );
+    });
+    branch("root-evil-lock", () => {
+      put(
+        seed,
+        "package.json",
+        `${manifestText({ dependencies: { lodash: "4.17.21" } })}\n`,
+      );
+      put(seed, "package-lock.json", `${lockText(LOCK_EVIL)}\n`);
+    });
+    branch("root-engines", () => {
+      put(
+        seed,
+        "package.json",
+        `${manifestText({ engines: { node: ">=99" } })}\n`,
+      );
     });
     branch("hooks-file", () => put(seed, ".claude/hooks/x.mjs"));
 
@@ -1563,12 +1651,13 @@ describe("gate 5 against real git (no stubs)", () => {
     if (root) rmSync(root, { recursive: true, force: true });
   });
 
-  async function runAgainstRealGit(name) {
+  async function runAgainstRealGit(name, prOverrides = {}) {
     const pr = greenPr({
       headRefName: name,
       headRefOid: heads[name],
       // gh lists only a harmless file, as when its list is truncated.
       files: [{ path: "README.md" }],
+      ...prOverrides,
     });
     const run = (file, args, options) =>
       file === "gh"
@@ -1641,7 +1730,12 @@ describe("gate 5 against real git (no stubs)", () => {
   }, 60_000);
 
   it("lets released .claude paths and the root manifests through; a symlink or a hook still refuses", async () => {
-    for (const name of ["commands-regular", "scripts-exec", "root-manifest"]) {
+    for (const name of [
+      "commands-regular",
+      "scripts-exec",
+      "root-manifest",
+      "root-engines",
+    ]) {
       const ok = await runAgainstRealGit(name);
       expect(ok.text, name).toMatch(/PASS {2}5\. +files/);
       expect(ok.code, name).toBe(0);
@@ -1656,6 +1750,53 @@ describe("gate 5 against real git (no stubs)", () => {
     expect(hook.code).toBe(1);
     expect(hook.text).toContain("touches .claude/hooks/x.mjs");
   }, 60_000);
+
+  it("fails gate 5 when package.json scripts changed (real git)", async () => {
+    const { code, text } = await runAgainstRealGit("root-scripts");
+    expect(code).toBe(1);
+    expect(text).toMatch(/FAIL {2}5\. +files/);
+    expect(text).toContain(
+      "package.json scripts changed: maintainer merges this one",
+    );
+  }, 30_000);
+
+  describe("the Dependabot lane against real git", () => {
+    const lane = (name, extra = {}) =>
+      runAgainstRealGit(name, {
+        author: { login: "dependabot[bot]", is_bot: true },
+        title: "chore(deps): Bump lodash from 4.17.20 to 4.17.21",
+        body: "Bumps lodash.",
+        comments: [],
+        files: [{ path: "package.json" }, { path: "package-lock.json" }],
+        commits: [
+          { oid: heads[name], authors: [{ login: "dependabot[bot]" }] },
+        ],
+        ...extra,
+      });
+
+    it("merges a registry-only dependency bump", async () => {
+      const { code, text } = await lane("root-manifest");
+      expect(text).toContain("dependabot lane: review record not required");
+      expect(code).toBe(0);
+    }, 30_000);
+
+    it("refuses a lockfile that resolves outside the npm registry", async () => {
+      const { code, text } = await lane("root-evil-lock");
+      expect(code).toBe(1);
+      expect(text).toContain("dependabot lane refused:");
+      expect(text).toContain("outside https://registry.npmjs.org/");
+      expect(text).toMatch(/FAIL {2}4\. +record/);
+    }, 30_000);
+
+    it("refuses a package.json change outside the dependency maps", async () => {
+      const { code, text } = await lane("root-engines", {
+        files: [{ path: "package.json" }],
+      });
+      expect(code).toBe(1);
+      expect(text).toContain("dependabot lane refused:");
+      expect(text).toContain("engines");
+    }, 30_000);
+  });
 
   it("passes a docs-only branch, so the harness is not vacuous", async () => {
     const { code, text } = await runAgainstRealGit("docs-only");
@@ -2039,6 +2180,7 @@ describe("Dependabot lane", () => {
       body: "Bumps [lodash](https://github.com/lodash/lodash) from 4.17.20 to 4.17.21.",
       comments: [],
       files: MANIFESTS,
+      commits: [{ oid: OID, authors: [{ login: "dependabot[bot]" }] }],
       ...overrides,
     });
   const env = (pr, extra = {}) =>
@@ -2321,6 +2463,481 @@ describe("Dependabot lane", () => {
         summary: "",
       });
     });
+  });
+});
+
+describe("review fixes (P17-65): F1 Dependabot lane content", () => {
+  const bot = { login: "dependabot[bot]", is_bot: true };
+  const MANIFESTS = [{ path: "package.json" }, { path: "package-lock.json" }];
+  const authored = (...logins) => ({
+    oid: OID,
+    authors: logins.map((login) => ({ login })),
+  });
+  const botPr = (overrides = {}) =>
+    greenPr({
+      author: bot,
+      title: "chore(deps): Bump lodash from 4.17.20 to 4.17.21",
+      body: "Bumps lodash.",
+      comments: [],
+      files: MANIFESTS,
+      commits: [authored("dependabot[bot]")],
+      ...overrides,
+    });
+  const env = (pr, extra = {}) =>
+    makeEnv({ pr, diff: ["package.json", "package-lock.json"], ...extra });
+  const refused = async (e, why) => {
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toContain("dependabot lane refused:");
+    expect(e.text()).toMatch(why);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toMatch(/FAIL {2}4b\. +audit/);
+    expect(e.merged()).toBe(false);
+  };
+
+  describe("(a) every commit must be authored by dependabot", () => {
+    it("accepts both spellings of the bot, across several commits", async () => {
+      const commits = [
+        { oid: "c".repeat(40), authors: [{ login: "app/dependabot" }] },
+        authored("dependabot[bot]"),
+      ];
+      const e = env(botPr({ commits }));
+      expect(await e.exec(["7", "--execute"])).toBe(0);
+      expect(e.merged()).toBe(true);
+    });
+
+    it.each([
+      [
+        "a human commit pushed onto the branch",
+        [authored("dependabot[bot]"), authored("someone")],
+      ],
+      [
+        "a human commit first",
+        [
+          { oid: "c".repeat(40), authors: [{ login: "someone" }] },
+          authored("dependabot[bot]"),
+        ],
+      ],
+      ["a human co-author", [authored("dependabot[bot]", "someone")]],
+      ["a look-alike login", [authored("dependabot")]],
+      ["a commit with no authors", [{ oid: OID, authors: [] }]],
+      ["a commit with no author list", [{ oid: OID }]],
+      ["an author with no login", [{ oid: OID, authors: [{ name: "x" }] }]],
+    ])("refuses %s", async (_n, commits) => {
+      await refused(
+        env(botPr({ commits })),
+        /not authored by dependabot|no author/,
+      );
+    });
+
+    it.each([
+      ["a missing commit list", undefined, /missing/],
+      ["an empty commit list", [], /missing/],
+      ["a list that is not an array", "dependabot", /missing/],
+      [
+        "a list that does not end at the head commit",
+        [{ oid: "d".repeat(40), authors: [{ login: "dependabot[bot]" }] }],
+        /does not end at the head commit/,
+      ],
+      [
+        "a list of 100 (gh may have truncated it)",
+        Array.from({ length: 99 }, () => ({
+          oid: "c".repeat(40),
+          authors: [{ login: "dependabot[bot]" }],
+        })).concat(authored("dependabot[bot]")),
+        /too many commits/,
+      ],
+    ])("fails closed on %s", async (_n, commits, why) => {
+      await refused(env(botPr({ commits })), why);
+    });
+
+    it("dependabotCommitProblems is pure and reports each case", () => {
+      expect(dependabotCommitProblems(botPr())).toEqual([]);
+      expect(
+        dependabotCommitProblems(botPr({ commits: [authored("x")] })),
+      ).toHaveLength(1);
+      expect(dependabotCommitProblems(botPr({ commits: null }))).toHaveLength(
+        1,
+      );
+    });
+  });
+
+  describe("(b) the lockfile and package.json diff", () => {
+    const patch = (...added) =>
+      [
+        "diff --git a/package-lock.json b/package-lock.json",
+        "--- a/package-lock.json",
+        "+++ b/package-lock.json",
+        "@@ -1 +1 @@",
+        ...added.map((line) => `+${line}`),
+        "",
+      ].join("\n");
+
+    it("asks git for exactly the three-dot patch of the two manifests", async () => {
+      const e = env(botPr());
+      await e.exec(["7"]);
+      const call = e.calls.find(
+        (c) => c.args[0] === "diff" && c.args.includes("package-lock.json"),
+      );
+      expect(call.args).toEqual([
+        "diff",
+        "--no-renames",
+        `origin/main...${OID}`,
+        "--",
+        "package-lock.json",
+        "package.json",
+      ]);
+    });
+
+    it.each([
+      [
+        "a git+ssh URL",
+        '      "resolved": "git+ssh://git@example.invalid/x.git#abc",',
+      ],
+      [
+        "a plain https host",
+        '      "resolved": "https://example.invalid/x.tgz",',
+      ],
+      [
+        "a registry look-alike host",
+        '      "resolved": "https://registry.npmjs.org.example.invalid/x.tgz",',
+      ],
+      [
+        "http, not https",
+        '      "resolved": "http://registry.npmjs.org/x.tgz",',
+      ],
+      ["a file path", '      "resolved": "../evil",'],
+      [
+        "a resolved line git cannot parse",
+        '      "resolved": ["https://registry.npmjs.org/x"],',
+      ],
+    ])("refuses a lockfile that resolves to %s", async (_n, line) => {
+      await refused(
+        env(botPr(), { lockPatch: patch(line) }),
+        /resolves a package outside https:\/\/registry\.npmjs\.org\/|cannot be read/,
+      );
+    });
+
+    it("accepts registry URLs, and ignores removed lines", async () => {
+      const e = env(botPr(), {
+        lockPatch:
+          patch(
+            '      "resolved": "https://registry.npmjs.org/a/-/a-1.0.1.tgz",',
+          ) + '-      "resolved": "git+ssh://old/removed.git",\n',
+      });
+      expect(await e.exec(["7", "--execute"])).toBe(0);
+    });
+
+    it("refuses when the patch cannot be read", async () => {
+      await refused(
+        env(botPr(), { lockPatchCode: 128 }),
+        /could not read the lockfile patch/,
+      );
+    });
+
+    it("lockfilePatchProblems reads added lines only", () => {
+      expect(lockfilePatchProblems(BENIGN_PATCH)).toEqual([]);
+      expect(lockfilePatchProblems("")).toEqual([]);
+      expect(
+        lockfilePatchProblems(patch('"resolved": "https://x.invalid/a"')),
+      ).toHaveLength(1);
+    });
+
+    it.each([
+      ["scripts", { scripts: { ...MANIFEST.scripts, postinstall: "sh x" } }],
+      ["bin", { bin: { x: "./x.js" } }],
+      ["overrides", { overrides: { lodash: "1.0.0" } }],
+      ["engines", { engines: { node: ">=1" } }],
+      ["main", { main: "evil.js" }],
+      ["exports", { exports: { ".": "./evil.js" } }],
+      ["a key not named in the brief (config)", { config: { a: 1 } }],
+    ])("refuses a package.json that changes %s", async (key, change) => {
+      const e = env(botPr(), { mergedManifest: manifestText(change) });
+      await refused(e, /changes keys other than dependencies and version/);
+    });
+
+    it("accepts dependency maps, version, and a reordered file", async () => {
+      const reordered = JSON.stringify(
+        {
+          devDependencies: { eslint: "9.4.0" },
+          dependencies: { lodash: "4.17.21", extra: "1.0.1" },
+          version: "1.0.1",
+          scripts: {
+            "merge-pr": MANIFEST.scripts["merge-pr"],
+            test: MANIFEST.scripts.test,
+          },
+          name: MANIFEST.name,
+        },
+        null,
+        4,
+      );
+      const e = env(botPr(), { mergedManifest: reordered });
+      expect(await e.exec(["7", "--execute"])).toBe(0);
+      expect(e.merged()).toBe(true);
+    });
+
+    it("comparePackageJson compares parsed JSON, not text", () => {
+      expect(
+        comparePackageJson(manifestText(), manifestText()).otherKeys,
+      ).toEqual([]);
+      const changed = comparePackageJson(
+        manifestText(),
+        manifestText({ scripts: { test: "true" }, bin: "x" }),
+      );
+      expect(changed.scriptsChanged).toBe(true);
+      expect(changed.otherKeys.sort()).toEqual(["bin", "scripts"]);
+      expect(comparePackageJson("{", manifestText()).unreadable).toMatch(
+        /main/,
+      );
+      expect(comparePackageJson(manifestText(), "[]").unreadable).toMatch(
+        /merge/,
+      );
+    });
+
+    it("a lane that the test-merge could not inspect is void", () => {
+      const lane = dependabotLane(botPr(), MANIFESTS, [
+        "the manifest changes could not be inspected",
+      ]);
+      expect(lane.eligible).toBe(false);
+      expect(lane.reasons).toContain(
+        "the manifest changes could not be inspected",
+      );
+    });
+  });
+
+  describe("author.is_bot must be exactly true", () => {
+    it.each([
+      ["missing", { login: "dependabot[bot]" }],
+      ["null", { login: "dependabot[bot]", is_bot: null }],
+      ["the string true", { login: "dependabot[bot]", is_bot: "true" }],
+    ])("refuses is_bot %s and says so", async (_n, author) => {
+      await refused(env(botPr({ author })), /not marked as a bot/);
+    });
+
+    it("dependabotLane reports it as a reason", () => {
+      const lane = dependabotLane(
+        botPr({ author: { login: "app/dependabot" } }),
+      );
+      expect(lane.eligible).toBe(false);
+      expect(lane.author).toBe(true);
+    });
+  });
+});
+
+describe("review fixes (P17-65): F2 nested instruction files in the released directories", () => {
+  const names = [
+    "CLAUDE.md",
+    "CLAUDE.local.md",
+    "AGENTS.md",
+    ".mcp.json",
+    ".gitattributes",
+    ".gitmodules",
+    ".npmrc",
+    ".env",
+    ".env.local",
+    ".env.production",
+    "settings.json",
+    "settings.local.json",
+    ".hidden",
+    ".gitkeep",
+  ];
+  const paths = [];
+  for (const dir of [".claude/commands", ".claude/scripts"]) {
+    for (const name of names) {
+      paths.push(`${dir}/${name}`, `${dir}/sub/deeper/${name}`);
+    }
+  }
+  paths.push(
+    ".claude/commands/claude.md",
+    ".claude/scripts/Agents.MD",
+    ".claude/commands/Settings.JSON",
+    ".claude/scripts/.MCP.json",
+    ".claude/scripts/.dotdir/run.sh",
+    ".claude/commands/sub/.hidden/x.md",
+  );
+
+  it.each(paths)("stays restricted: %s", (file) => {
+    expect(isPrefixException(file)).toBe(false);
+    expect(restrictedPatternFor(file)).not.toBeNull();
+    expect(checkFiles([{ path: file }])).toEqual([
+      `touches ${file}: maintainer merges this one`,
+    ]);
+  });
+
+  it("goes through the full flow as a gate 5 failure", async () => {
+    const e = makeEnv({ diff: [".claude/commands/CLAUDE.md"] });
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}5\. +files/);
+    expect(e.merged()).toBe(false);
+  });
+
+  it.each([
+    ".claude/commands/verify-all.md",
+    ".claude/commands/sub/deeper.md",
+    ".claude/scripts/check-merged-prs.sh",
+    ".claude/scripts/sub/helper.mjs",
+    ".claude/scripts/settings-helper.sh",
+    ".claude/commands/claude-notes.md",
+  ])("still released: %s", (file) => {
+    expect(isPrefixException(file)).toBe(true);
+    expect(checkFiles([{ path: file }])).toEqual([]);
+  });
+});
+
+describe("review fixes (P17-65): F3 package.json scripts", () => {
+  const scriptsChanged = manifestText({
+    scripts: { ...MANIFEST.scripts, test: "true" },
+  });
+  const pkgPr = (overrides = {}) =>
+    greenPr({ files: [{ path: "package.json" }], ...overrides });
+  const TEXT = "i approve merging PR 7 with the scripts change";
+
+  it("fails gate 5 when scripts differ from main", async () => {
+    const e = makeEnv({
+      pr: pkgPr(),
+      diff: ["package.json"],
+      mergedManifest: scriptsChanged,
+    });
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toMatch(/FAIL {2}5\. +files/);
+    expect(e.text()).toContain(
+      "package.json scripts changed: maintainer merges this one",
+    );
+    expect(e.merged()).toBe(false);
+  });
+
+  it("--maintainer-approved clears it", async () => {
+    const e = makeEnv({
+      pr: pkgPr(),
+      diff: ["package.json"],
+      mergedManifest: scriptsChanged,
+    });
+    expect(
+      await e.exec(["7", "--execute", "--maintainer-approved", TEXT]),
+    ).toBe(0);
+    expect(e.text()).toContain(
+      "overrode: package.json scripts changed: maintainer merges this one",
+    );
+    expect(e.merged()).toBe(true);
+  });
+
+  it("passes when only dependencies changed, or the scripts are merely reordered", async () => {
+    for (const merged of [
+      manifestText({ dependencies: { lodash: "4.17.21" } }),
+      JSON.stringify({
+        scripts: {
+          "merge-pr": MANIFEST.scripts["merge-pr"],
+          test: MANIFEST.scripts.test,
+        },
+        name: MANIFEST.name,
+        version: MANIFEST.version,
+        dependencies: MANIFEST.dependencies,
+        devDependencies: MANIFEST.devDependencies,
+      }),
+    ]) {
+      const e = makeEnv({
+        pr: pkgPr(),
+        diff: ["package.json"],
+        mergedManifest: merged,
+      });
+      expect(await e.exec(["7", "--execute"])).toBe(0);
+      expect(e.text()).toMatch(/PASS {2}5\. +files/);
+    }
+  });
+
+  it("fails when scripts are removed or added", async () => {
+    for (const merged of [
+      JSON.stringify({ ...MANIFEST, scripts: undefined }),
+      manifestText({ scripts: { ...MANIFEST.scripts, extra: "x" } }),
+    ]) {
+      const e = makeEnv({
+        pr: pkgPr(),
+        diff: ["package.json"],
+        mergedManifest: merged,
+      });
+      expect(await e.exec(["7"])).toBe(1);
+      expect(e.text()).toContain("package.json scripts changed");
+    }
+  });
+
+  it("fails closed when package.json cannot be shown or parsed", async () => {
+    for (const extra of [
+      { showCode: 128 },
+      { mergedManifest: "{ not json" },
+      { baseManifest: "" },
+    ]) {
+      const e = makeEnv({ pr: pkgPr(), diff: ["package.json"], ...extra });
+      expect(await e.exec(["7", "--execute"])).toBe(1);
+      expect(e.text()).toContain("package.json could not be compared");
+      expect(e.merged()).toBe(false);
+    }
+  });
+
+  it("does not look at package.json when the PR does not touch it", async () => {
+    const e = makeEnv();
+    expect(await e.exec(["7"])).toBe(0);
+    expect(e.calls.some((c) => c.args[0] === "show")).toBe(false);
+  });
+
+  it("reads main and the merge result (the index), nothing else", async () => {
+    const e = makeEnv({ pr: pkgPr(), diff: ["package.json"] });
+    await e.exec(["7"]);
+    const shows = e.calls.filter((c) => c.args[0] === "show");
+    expect(shows.map((c) => [c.args.join(" "), c.cwd])).toEqual([
+      ["show origin/main:package.json", "/repo"],
+      ["show :package.json", TMP],
+    ]);
+  });
+});
+
+describe("review fixes (P17-65): F4 approval in the merge commit", () => {
+  const TEXT = "i approve merging PR 7 with the workflow change";
+  const PREFIX =
+    "Maintainer approval (recorded by the conductor, honour system): ";
+  const mergeCall = (e) =>
+    e.calls.find((c) => c.file === "gh" && c.args[1] === "merge");
+  const wf = () => greenPr({ files: [{ path: ".github/workflows/ci.yml" }] });
+
+  it("passes the text to gh pr merge --body", async () => {
+    const e = makeEnv({ pr: wf() });
+    expect(
+      await e.exec(["7", "--execute", "--maintainer-approved", TEXT]),
+    ).toBe(0);
+    const { args } = mergeCall(e);
+    const at = args.indexOf("--body");
+    expect(at).toBeGreaterThan(-1);
+    expect(args[at + 1]).toBe(`${PREFIX}${TEXT}`);
+    expect(args).toContain("--squash");
+    expect(args).toContain("--match-head-commit");
+  });
+
+  it("sanitises and truncates the body text", async () => {
+    const e = makeEnv({ pr: wf() });
+    const long = `ok\x1b[31m\nline two\r\n${"a".repeat(300)}`;
+    await e.exec(["7", "--execute", "--maintainer-approved", long]);
+    const { args } = mergeCall(e);
+    const body = args[args.indexOf("--body") + 1];
+    // eslint-disable-next-line no-control-regex -- asserting they are gone
+    expect(body).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+    expect(body.startsWith(`${PREFIX}ok `)).toBe(true);
+    expect(body.length).toBe(PREFIX.length + 200 + 3);
+  });
+
+  it("writes no --body when the flag is absent", async () => {
+    const e = makeEnv();
+    expect(await e.exec(["7", "--execute"])).toBe(0);
+    expect(mergeCall(e).args).not.toContain("--body");
+  });
+
+  it("does not run gh pr merge in a dry run", async () => {
+    const e = makeEnv({ pr: wf() });
+    await e.exec(["7", "--maintainer-approved", TEXT]);
+    expect(mergeCall(e)).toBeUndefined();
+  });
+
+  it("--help says the text goes into the commit body", async () => {
+    const e = makeEnv();
+    await e.exec(["--help"]);
+    expect(e.text()).toMatch(/commit body/);
   });
 });
 
