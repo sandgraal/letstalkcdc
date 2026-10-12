@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/llms.txt` for language-model crawlers (P17-21).** A plain-text index in
+  the llmstxt.org shape (title, summary, links with descriptions), generated
+  at build time from the same indexable-page rule and series order as
+  `sitemap.xml`, so noindex pages and redirect stubs never appear. It states
+  that the content is CC BY 4.0 and that attribution is required. The host
+  comes from `site.host`, not a literal. A unit test builds the site and
+  checks that every listed URL is a built, indexable page and that the list
+  equals the sitemap's.
 - **Handoff kit for the next agent team (Phase 17).** The plan gains Phase 17:
   the kit, an autopsy split into a part that starts now and a part that waits
   for the 2026-11-06 data snapshot, a no-regret track that needs no audience
