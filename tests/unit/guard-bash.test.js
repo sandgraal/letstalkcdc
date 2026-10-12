@@ -53,6 +53,81 @@ const allowed = (command, cwd) => {
   });
 };
 
+// A real repository for the commands the guard answers by asking git (push
+// looks for .github/ changes; branch operations look for protected files).
+// origin/main is its first commit. Branches: claude/* (touch nothing),
+// claude/evil (edits a hook), claude/gh (adds a workflow), claude/ok (docs).
+const gitIn = (dir, ...args) =>
+  execFileSync(
+    "git",
+    ["-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args],
+    {
+      cwd: dir,
+      stdio: "pipe",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "t",
+        GIT_AUTHOR_EMAIL: "t@example.com",
+        GIT_COMMITTER_NAME: "t",
+        GIT_COMMITTER_EMAIL: "t@example.com",
+      },
+    },
+  );
+const fixtureDirs = [];
+const write = (dir, rel, body) => {
+  fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+  fs.writeFileSync(path.join(dir, rel), body);
+};
+const makeFixture = () => {
+  const dir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "guard-fixture-")),
+  );
+  fixtureDirs.push(dir);
+  gitIn(dir, "init", "-q", "-b", "main");
+  write(dir, "docs/a.md", "a\n");
+  write(dir, ".claude/hooks/guard-bash.mjs", "// guard\n");
+  write(dir, ".claude/settings.json", "{}\n");
+  write(dir, "scripts/merge-pr.mjs", "// merge\n");
+  write(dir, "package.json", '{"name":"x"}\n');
+  gitIn(dir, "add", "-A");
+  gitIn(dir, "commit", "-q", "-m", "init");
+  gitIn(dir, "update-ref", "refs/remotes/origin/main", "HEAD");
+  for (const b of [
+    "claude/x",
+    "claude/_x",
+    "claude/0-9",
+    "claude/a.b",
+    "claude/a-b/c_d.e",
+    "claude/a",
+    "claude/b",
+    "claude/q/b-c.d_e",
+    "claude/fix-main-nav",
+    "claude/p17-1-autonomy-charter",
+    "claude/p17-2-merge-gate",
+  ]) {
+    gitIn(dir, "branch", b);
+  }
+  for (const [branch, file, body] of [
+    ["claude/evil", ".claude/hooks/guard-bash.mjs", "// evil\n"],
+    ["claude/evil-settings", ".claude/settings.json", '{"x":1}\n'],
+    ["claude/gh", ".github/workflows/x.yml", "on: push\n"],
+    ["claude/ok", "docs/a.md", "changed\n"],
+  ]) {
+    gitIn(dir, "switch", "-q", "-c", branch, "main");
+    write(dir, file, body);
+    gitIn(dir, "add", "-A");
+    gitIn(dir, "commit", "-q", "-m", branch);
+    gitIn(dir, "switch", "-q", "main");
+  }
+  gitIn(dir, "worktree", "add", "-q", ".claude/worktrees/y", "-b", "claude/y");
+  return dir;
+};
+const FIXTURE = makeFixture();
+afterAll(() => {
+  for (const d of fixtureDirs) fs.rmSync(d, { recursive: true, force: true });
+});
+
 describe("git push", () => {
   it.each([
     ["main", "git push origin main"],
@@ -159,17 +234,17 @@ describe("git push", () => {
     "git push -u origin claude/p17-1-autonomy-charter",
     "git push origin claude/p17-1-autonomy-charter",
     "git push origin claude/x:claude/x",
-    "git push -u origin claude/a/b-c.d_e",
+    "git push -u origin claude/q/b-c.d_e",
     "git push origin claude/a claude/b",
     'git push "origin" "claude/x"',
     "git push --dry-run origin claude/x",
     "git push -u origin claude/fix-main-nav",
-    "git -C /work/letstalkcdc push -u origin claude/x",
+    "git -C @FIXTURE@ push -u origin claude/x",
     "git push origin claude/x 2>&1 | tail -5",
     "git push origin claude/x # then main",
     "git status && git push origin claude/x",
   ])("allows %s", (command) => {
-    allowed(command);
+    allowed(command.replaceAll("@FIXTURE@", FIXTURE), FIXTURE);
   });
 });
 
@@ -752,7 +827,11 @@ describe("self-protection: .claude/, git hooks and git config are read-only", ()
       "worktree add, relative",
       "git worktree add .claude/worktrees/x -b claude/x origin/main",
     ],
-    ["git -C a worktree", "git -C /x/.claude/worktrees/y push origin claude/y"],
+    [
+      "git -C a worktree",
+      `git -C ${FIXTURE}/.claude/worktrees/y push origin claude/y`,
+      FIXTURE,
+    ],
     ["cd into a worktree", "cd /x/.claude/worktrees/y && npm test"],
     ["bash the merged-PR script", "bash .claude/scripts/check-merged-prs.sh"],
     ["git config --get", "git config --get core.hooksPath"],
@@ -837,7 +916,7 @@ describe("branch names are held to a narrow charset", () => {
     "git push origin claude/p17-1-autonomy-charter",
     "git push -u origin claude/p17-2-merge-gate",
   ])("allows %s", (command) => {
-    allowed(command);
+    allowed(command, FIXTURE);
   });
 });
 
@@ -990,7 +1069,7 @@ describe("pre-approved commands cannot run code or leak files", () => {
     "git fetch origin",
     "git fetch --all --prune",
     "git fetch -p",
-    "git pull --ff-only origin main",
+    "git pull --ff-only",
     "gh pr create --title 'fix: main page' --body 'text with $HOME'",
     "gh pr create --title x --body-file /tmp/pr-body.md",
     'gh pr create --title "fix: main page" --body-file /tmp/pr-body.md',
@@ -1374,5 +1453,555 @@ describe("settings.json wiring", () => {
   it("keeps the SessionStart and Stop hooks", () => {
     expect(settings.hooks.SessionStart).toBeDefined();
     expect(settings.hooks.Stop).toBeDefined();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Third red-team round: the guard's own budget, and the holes it found.
+ * ------------------------------------------------------------------ */
+
+const SPACE_ROOT = "/Volumes/Samsung T9/Websites/letstalkcdc";
+
+describe("the guard has a time budget and caps (a hook timeout is not a deny)", () => {
+  it("denies the 1200-cd command in under 3 seconds", () => {
+    const cds = Array.from({ length: 1200 }, (_, i) => `cd /tmp/d${i}`);
+    const t0 = Date.now();
+    const r = run(`${cds.join("; ")}; git push origin main`);
+    const elapsed = Date.now() - t0;
+    expect(r.status).toBe(2);
+    expect(elapsed).toBeLessThan(3000);
+  });
+
+  it("denies a command over 20000 characters and says to split it", () => {
+    const r = denied(`echo ${"a".repeat(20001)}`);
+    expect(r.stderr).toMatch(/too long for the guard: split it/);
+  });
+
+  it("denies tracking more than 16 directories", () => {
+    const cds = Array.from({ length: 17 }, (_, i) => `cd /tmp/d${i}`);
+    const r = denied(cds.join("; "));
+    expect(r.stderr).toMatch(/more than 16/);
+  });
+
+  it("allows 16 directories", () => {
+    const cds = Array.from({ length: 10 }, (_, i) => `cd /tmp/d${i}`);
+    allowed(`${cds.join("; ")}; ls`);
+  });
+
+  it("a 19 KB benign command with 10 cds still passes quickly", () => {
+    const cds = Array.from({ length: 10 }, (_, i) => `cd /tmp/d${i}`).join(
+      "; ",
+    );
+    const words = Array.from({ length: 1450 }, (_, i) => `file-${i}.txt`);
+    const command = `${cds}; ls ${words.join(" ")}`;
+    expect(command.length).toBeGreaterThan(18500);
+    expect(command.length).toBeLessThan(20000);
+    const t0 = Date.now();
+    allowed(command);
+    expect(Date.now() - t0).toBeLessThan(3000);
+  });
+
+  it("exits 2 with 'guard budget exceeded' when its own budget runs out", () => {
+    const r = spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({
+        tool_name: "Bash",
+        tool_input: { command: "ls -la" },
+        cwd: MAIN_CWD,
+      }),
+      encoding: "utf8",
+      timeout: 8000,
+      env: { ...process.env, GUARD_BASH_BUDGET_MS: "0" },
+    });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/guard budget exceeded/);
+  });
+
+  it("the budget can be lowered but never raised from outside", () => {
+    const r = spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({
+        tool_name: "Bash",
+        tool_input: { command: "ls -la" },
+        cwd: MAIN_CWD,
+      }),
+      encoding: "utf8",
+      timeout: 8000,
+      env: { ...process.env, GUARD_BASH_BUDGET_MS: "999999" },
+    });
+    expect(r.status).toBe(0);
+  });
+});
+
+describe("find cannot delete, write or run anything", () => {
+  it.each([
+    "find . -delete",
+    "find . -name x -delete",
+    "find . -exec echo {} ;",
+    "find . -exec echo {} +",
+    "find . -execdir echo {} ;",
+    "find . -ok echo {} ;",
+    "find . -okdir echo {} ;",
+    "find . -fprint /tmp/out",
+    "find . -fprint0 /tmp/out",
+    "find . -fprintf /tmp/out %p",
+    "find . -fls /tmp/out",
+    "env find . -delete",
+  ])("denies %s", (command) => {
+    denied(command);
+  });
+
+  it.each([
+    "find . -name '*.md' -maxdepth 2",
+    "find .claude -name '*.md'",
+    "find src -type f -name '*.css' | wc -l",
+  ])("allows %s", (command) => {
+    allowed(command);
+  });
+});
+
+describe("paths that contain a space are checked like any other path", () => {
+  it.each([
+    [
+      "git show --output=",
+      `git show --output="${SPACE_ROOT}/.claude/settings.json" HEAD`,
+    ],
+    [
+      "git worktree add --force",
+      `git worktree add --force "${SPACE_ROOT}/.claude/hooks/x" -b claude/y origin/main`,
+    ],
+    [
+      "GIT_TRACE=",
+      `GIT_TRACE="${SPACE_ROOT}/.claude/hooks/guard-bash.mjs" git status`,
+    ],
+    [
+      "git checkout <ref> -- path",
+      `git checkout claude/evil -- "${SPACE_ROOT}/.claude/hooks/guard-bash.mjs"`,
+    ],
+    ["git restore", `git restore "${SPACE_ROOT}/.claude/hooks/guard-bash.mjs"`],
+    [
+      "gh with a file argument",
+      `gh pr create --title x --body-file "${SPACE_ROOT}/.claude/settings.json"`,
+    ],
+    [
+      "env assignment",
+      `env FOO="${SPACE_ROOT}/.claude/settings.json" cp x "${SPACE_ROOT}/.claude/settings.json"`,
+    ],
+  ])("denies %s", (_label, command) => {
+    denied(command);
+  });
+
+  // The agent's cwd is itself a worktree, so a relative reading of the second
+  // half of a split path would land inside the worktree's own .claude.
+  it.each([
+    `git show --output="${SPACE_ROOT}/.claude/settings.json" HEAD`,
+    `git show --output=${SPACE_ROOT.replaceAll(" ", "\\ ")}/.claude/settings.json HEAD`,
+    `git worktree add --force "${SPACE_ROOT}/.claude/hooks/x" -b claude/y origin/main`,
+    `git checkout claude/evil -- "${SPACE_ROOT}/.claude/hooks/guard-bash.mjs"`,
+    `git show -o "${SPACE_ROOT}/.claude/settings.json" HEAD`,
+    `git log --output="${SPACE_ROOT}/.claude/hooks/guard-bash.mjs"`,
+  ])("denies from inside a worktree: %s", (command) => {
+    denied(command, WORKTREE_CWD);
+  });
+
+  it.each([
+    'git commit -m "docs: mention .claude/settings.json"',
+    'git commit -m "mention .claude/hooks and core.hooksPath" -m "second .claude/settings.json"',
+    "git commit --message='touches .claude/settings.json'",
+    'gh pr comment 5 --body "edits .claude/settings.json"',
+    'gh pr create --title "touches .claude/hooks" --body "and .claude/settings.json"',
+    "git add .claude/skills/x/SKILL.md",
+    "cat .claude/rules/css.md",
+    "ls .claude",
+    'echo "cp x .claude/settings.json"',
+    `git add "${SPACE_ROOT}/.claude/worktrees/x/a b.txt"`,
+    `cat "${SPACE_ROOT}/.claude/settings.json"`,
+  ])("allows %s", (command) => {
+    allowed(command);
+  });
+});
+
+describe("git fetch and pull cannot write origin/main by hand", () => {
+  it.each([
+    "git fetch -- . claude/evil:refs/remotes/origin/main",
+    "git fetch . claude/evil:refs/REMOTES/origin/main",
+    "git fetch origin claude/evil:refs/remotes/origin/main",
+    "git fetch origin -- refs/remotes/origin/main",
+    "git fetch origin remotes/origin/main",
+    "git fetch ./somewhere main",
+    "git fetch /tmp/repo",
+    "git fetch .. main",
+    "git fetch origin claude/x:claude/x",
+    "git fetch origin 'refs/heads/*:refs/heads/*'",
+    "git fetch origin +claude/x:claude/x",
+    "git fetch --refmap= origin",
+    "git fetch --refmap='refs/heads/*:refs/x/*' origin",
+    "git pull",
+    "git pull origin main",
+    "git pull --rebase",
+    "git pull --ff-only origin main",
+    "git pull --ff-only --no-rebase",
+    "git pull . claude/evil",
+    "git push . claude/evil:refs/remotes/origin/main",
+    "git push . claude/x",
+  ])("denies %s", (command) => {
+    denied(command);
+  });
+
+  it.each([
+    "git fetch origin",
+    "git fetch origin claude/x",
+    "git fetch origin main",
+    "git fetch --all --prune",
+    "git fetch -p",
+    "git fetch --tags origin",
+    "git pull --ff-only",
+  ])("allows %s", (command) => {
+    allowed(command);
+  });
+});
+
+describe("the merge gate starts only in its exact form", () => {
+  it.each([
+    "npm run merge-pr --prefix /tmp/x -- 5",
+    "npm --prefix /tmp/x run merge-pr -- 5",
+    "npm run merge-pr --script-shell=/tmp/sh -- 5",
+    "npm --userconfig=/tmp/rc run merge-pr",
+    "npm run merge-pr -w foo",
+    "npm run merge-pr --workspace=foo",
+    "npm run merge-pr --ignore-scripts=false",
+    "npm run merge-pr -s -- 5",
+    "npm exec -- node scripts/merge-pr.mjs 5",
+    "npm exec merge-pr",
+    "npx node scripts/merge-pr.mjs 5",
+    "pnpm run merge-pr",
+    "yarn merge-pr",
+    "NODE_OPTIONS=--require=/tmp/x.js node scripts/merge-pr.mjs 5",
+    "npm_config_script_shell=/tmp/sh npm run merge-pr -- 5",
+    "NPM_CONFIG_PREFIX=/tmp/x npm run merge-pr -- 5",
+    "node --import /tmp/x.mjs scripts/merge-pr.mjs 5",
+    "node --require /tmp/x.js scripts/merge-pr.mjs 5",
+    "node --env-file=/tmp/e scripts/merge-pr.mjs 5",
+    "node -- scripts/merge-pr.mjs 5",
+  ])("denies %s", (command) => {
+    denied(command, FIXTURE);
+  });
+
+  it.each(["node scripts/merge-pr.mjs 5 --execute", "npm run merge-pr -- 5"])(
+    "allows %s",
+    (command) => {
+      allowed(command, FIXTURE);
+    },
+  );
+
+  it.each([
+    "echo x > scripts/merge-pr.mjs",
+    "echo x >> package.json",
+    "cp /tmp/x scripts/merge-pr.mjs",
+    "mv /tmp/x package.json",
+    "sed -i s/a/b/ package.json",
+    "tee package.json",
+    "sort -o package.json package.json",
+    `cp /tmp/x ${MAIN_CWD}/package.json`,
+  ])("denies the shell write %s outside a worktree", (command) => {
+    denied(command);
+  });
+
+  it.each([
+    "cat package.json",
+    "jq .scripts package.json",
+    "jq .scripts package.json > /tmp/scripts.json",
+    "cat scripts/merge-pr.mjs",
+    "git diff -- package.json",
+    "git add package.json",
+    "rg merge scripts/merge-pr.mjs",
+    "cat package.json > /tmp/package.json.bak",
+  ])("allows the read %s", (command) => {
+    allowed(command);
+  });
+
+  it("allows writing them inside a worktree, where a branch is edited", () => {
+    allowed("sed -i s/a/b/ package.json", WORKTREE_CWD);
+    allowed("echo x > scripts/merge-pr.mjs", WORKTREE_CWD);
+    allowed(`cp /tmp/x ${MAIN_CWD}/.claude/worktrees/y/package.json`);
+  });
+});
+
+describe("gh write commands: targets, forks and expansions", () => {
+  it.each([
+    "gh pr comment https://github.com/other/repo/pull/5 --body x",
+    "gh pr comment sandgraal/letstalkcdc#5 --body x",
+    "gh pr comment other/repo#5 --body x",
+    "gh pr edit claude/x --title y",
+    "gh pr update-branch claude/x",
+    "gh pr close claude/x",
+    "gh pr reopen https://github.com/other/repo/pull/1",
+    "gh issue close https://github.com/other/repo/issues/1",
+    "gh issue comment other/repo#1 --body x",
+    "gh pr comment 5x --body x",
+    "gh pr create --head owner:claude/x --title x",
+    "gh pr create -H owner:claude/x --title x",
+    "gh pr create --head=owner:claude/x --title x",
+    'K=secret; gh pr comment 5 --body "$K"',
+    'gh pr comment 5 --body "${K}"',
+    "gh pr comment 5 --body $K",
+    "gh pr comment 5 --body ~/x",
+    "gh pr comment 5 --body ~",
+    'gh issue create --title "$T" --body x',
+    "gh issue create --title x --body *.md",
+    "gh pr comment $N --body x",
+    "gh pr close $N",
+    "gh pr update-branch $(gh pr list)",
+    "export GH_REPO; gh pr create --title x",
+    "read GH_REPO <<< other/repo; gh pr create --title x",
+    "declare GH_REPO; gh pr create --title x",
+    "printf -v GH_REPO other/repo; gh pr create --title x",
+  ])("denies %s", (command) => {
+    denied(command);
+  });
+
+  it.each([
+    "gh pr comment 5 --body x",
+    "gh pr comment --body x",
+    "gh pr close 5",
+    "gh pr close",
+    "gh pr reopen 12",
+    "gh issue close 7 --comment done",
+    "gh issue comment 12 --body 'text with $HOME in single quotes'",
+    "gh pr create --head claude/x --title x",
+    "gh pr create -H claude/x --title x",
+    "gh pr edit 5 --title 'new title'",
+    "gh pr update-branch 5",
+    "gh pr comment 5 -F /tmp/b.md",
+    "gh pr view https://github.com/o/r/pull/5",
+  ])("allows %s", (command) => {
+    allowed(command);
+  });
+
+  it("allows a body file under <repo>/.claude/worktrees/<name>/", () => {
+    allowed(
+      `gh issue create --title x --body-file ${FIXTURE}/.claude/worktrees/y/body.md`,
+      FIXTURE,
+    );
+    allowed(
+      `gh pr create --title x --body-file ${FIXTURE}/.claude/worktrees/y/notes/body.md`,
+      FIXTURE,
+    );
+    allowed(
+      "gh pr create --title x --body-file .claude/worktrees/y/body.md",
+      FIXTURE,
+    );
+  });
+
+  it.each([
+    ".claude/settings.json",
+    ".claude/hooks/guard-bash.mjs",
+    ".claude/worktrees/y/.env",
+    ".claude/worktrees/y/.claude/settings.json",
+    ".claude/worktrees/y/id_rsa",
+    ".claude/worktrees/.env",
+    ".claude/worktrees",
+    "x/.claude/worktrees/y/body.md",
+  ])("still denies the body file %s", (rel) => {
+    denied(`gh issue create --title x --body-file ${rel}`, FIXTURE);
+  });
+});
+
+describe("branch operations cannot carry protected files into the primary checkout", () => {
+  it.each([
+    "git switch claude/evil",
+    "git switch claude/evil-settings",
+    "git checkout claude/evil",
+    "git checkout -b claude/new claude/evil",
+    "git switch -c claude/new claude/evil",
+    "git switch --detach claude/evil",
+    "git merge claude/evil",
+    "git merge --no-ff -m msg claude/evil",
+    "git merge claude/ok claude/evil",
+    "git cherry-pick claude/evil",
+    "git cherry-pick main..claude/evil",
+    "git rebase claude/evil",
+    "git rebase --onto claude/evil main",
+    "git rebase -x 'echo hi' main",
+    "git rebase --exec 'echo hi' main",
+    "git switch claude/does-not-exist",
+    "git merge origin/claude/nope",
+    "git checkout claude/evil -- docs/a.md",
+  ])("denies %s", (command) => {
+    denied(command, FIXTURE);
+  });
+
+  it.each([
+    "git switch claude/ok",
+    "git checkout claude/ok",
+    "git checkout -b claude/new",
+    "git checkout -b claude/new claude/ok",
+    "git switch -c claude/new",
+    "git switch -c claude/new origin/main",
+    "git switch main",
+    "git switch origin/main",
+    "git merge origin/main",
+    "git merge main",
+    "git merge claude/ok",
+    "git merge --abort",
+    "git cherry-pick claude/ok",
+    "git rebase main",
+    "git rebase origin/main",
+    "git rebase --continue",
+    "git checkout -- docs/a.md",
+    "git checkout docs/a.md",
+    "git checkout HEAD -- docs/a.md",
+    "git switch claude/x",
+  ])("allows %s", (command) => {
+    allowed(command, FIXTURE);
+  });
+
+  it("treats `git switch -` as the previous branch", () => {
+    const dir = makeFixture();
+    gitIn(dir, "switch", "-q", "claude/evil");
+    gitIn(dir, "switch", "-q", "main");
+    denied("git switch -", dir);
+    denied("git checkout -", dir);
+  });
+
+  it("does not look at the same commands in a worktree", () => {
+    allowed("git switch claude/evil", `${FIXTURE}/.claude/worktrees/y`);
+    allowed("git merge claude/evil", `${FIXTURE}/.claude/worktrees/y`);
+  });
+
+  it("denies stash pop/apply of a stash that changes protected files", () => {
+    const dir = makeFixture();
+    write(dir, ".claude/settings.json", '{"stashed":1}\n');
+    gitIn(dir, "stash", "push", "-q");
+    denied("git stash pop", dir);
+    denied("git stash apply", dir);
+    allowed("git stash list", dir);
+    const docs = makeFixture();
+    write(docs, "docs/a.md", "stashed\n");
+    gitIn(docs, "stash", "push", "-q");
+    allowed("git stash pop", docs);
+  });
+});
+
+describe("a pushed branch may not touch .github/", () => {
+  it.each([
+    "git push origin claude/gh",
+    "git push -u origin claude/gh",
+    "git push origin claude/gh:claude/gh",
+    "git push origin claude/x claude/gh",
+  ])("denies %s", (command) => {
+    const r = denied(command, FIXTURE);
+    expect(r.stderr).toMatch(/push touches \.github\//);
+    expect(r.stderr).toMatch(/the maintainer pushes these/);
+  });
+
+  it("fails closed when the branch or origin/main cannot be compared", () => {
+    denied("git push origin claude/nonexistent", FIXTURE);
+    denied("git push origin claude/x", "/work/does-not-exist");
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), "guard-nogit-"));
+    fixtureDirs.push(bare);
+    denied("git push origin claude/x", bare);
+  });
+
+  it.each([
+    "git push origin claude/ok",
+    "git push -u origin claude/x",
+    "git push --dry-run origin claude/ok",
+  ])("allows %s", (command) => {
+    allowed(command, FIXTURE);
+  });
+});
+
+describe("environment variables that redirect tools are denied", () => {
+  it.each([
+    "GIT_TRACE=/tmp/x git status",
+    "GIT_TRACE2=/tmp/x git status",
+    "GIT_TRACE2_EVENT=/tmp/x git status",
+    "GIT_TRACE_PACKET=/tmp/x git fetch origin",
+    "RIPGREP_CONFIG_PATH=/tmp/rc rg x",
+    "GIT_PAGER=/tmp/p git log",
+    "PAGER=/tmp/p git log",
+    "GIT_EDITOR=/tmp/e git commit",
+    "EDITOR=/tmp/e git rebase main",
+    "VISUAL=/tmp/e git commit",
+    "GIT_SEQUENCE_EDITOR=/tmp/e git rebase main",
+    "GIT_ALLOW_PROTOCOL=ext git fetch origin",
+    "GIT_OBJECT_DIRECTORY=/tmp/o git status",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES=/tmp/o git status",
+    "npm_config_script_shell=/tmp/sh npm test",
+    "NPM_CONFIG_PREFIX=/tmp/x npm test",
+    "NODE_OPTIONS=--require=/tmp/x.js npm test",
+    "BASH_ENV=/tmp/x npm test",
+    "ENV=/tmp/x sh script.sh",
+    "LD_PRELOAD=/tmp/x.so ls",
+    "DYLD_INSERT_LIBRARIES=/tmp/x.dylib ls",
+    "export EDITOR=/tmp/e",
+    "env PAGER=/tmp/p git log",
+    "script -q /dev/null ls",
+    "script -c ls /dev/null",
+    "busybox sh -c ls",
+    "rg --pager=/tmp/p x",
+    "rg --pager /tmp/p x",
+    "git log --pager=/tmp/p",
+    "git --pager=/tmp/p log",
+  ])("denies %s", (command) => {
+    denied(command);
+  });
+
+  it.each([
+    "cp x .cl*/settings.json",
+    "cp x .cla{ude,x}/settings.json",
+    "cp x {.claude,x}/settings.json",
+    "sed -i s/a/b/ .cl?ude/hooks/guard-bash.mjs",
+    "tee .c[l]aude/settings.json",
+    "mv x .*/settings.json",
+    "cp x .g*/hooks/pre-commit",
+    "cp x .git/ho*/pre-commit",
+    "rm .cl*/hooks/guard-bash.mjs",
+  ])("denies the glob write %s", (command) => {
+    denied(command);
+  });
+
+  it.each([
+    "ls .cl*",
+    "cat .cl*/settings.json",
+    "cp x src/*.css",
+    "cp x */foo",
+    "git add src/*.css",
+    "cp x docs/{a,b}.md",
+  ])("allows %s", (command) => {
+    allowed(command);
+  });
+
+  it("allows the glob write inside a worktree", () => {
+    allowed("cp x .cl*/settings.json", WORKTREE_CWD);
+  });
+});
+
+describe("wrongly denied before: read-only linters on .claude/", () => {
+  it.each([
+    "npx eslint .claude/hooks",
+    "npx eslint .claude",
+    "npx eslint --max-warnings 0 .claude/hooks/guard-bash.mjs",
+    "npx prettier --check .claude",
+    "npx prettier --check .claude docs tests",
+    "npx --yes prettier --check .claude",
+  ])("allows %s", (command) => {
+    allowed(command);
+  });
+
+  it.each([
+    "npx eslint --fix .claude/hooks",
+    "npx eslint .claude/hooks --fix",
+    "npx eslint -o .claude/out.txt .",
+    "npx eslint --output-file .claude/out.txt .",
+    "npx prettier --write .claude",
+    "npx prettier .claude -w",
+  ])("still denies %s", (command) => {
+    denied(command);
+  });
+
+  it("keeps the intended denials", () => {
+    denied("cd /tmp/x && rm -rf dist");
+    denied("git clean -fd", FIXTURE);
+    denied("HUSKY=0 git commit -m x");
   });
 });

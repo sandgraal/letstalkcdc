@@ -174,19 +174,21 @@ The charter is held by mechanism where a mechanism can hold it, and the
 table below says which rows that is. Allow rules in `.claude/settings.json`
 say what runs without a prompt; `.claude/hooks/guard-bash.mjs` and
 `.claude/hooks/guard-edit.mjs` (both fail closed) deny dangerous command and
-file-write shapes whatever the prompt says. **The hooks are never the only
-gate**: anything not allow-listed stops at the permission prompt, and the
-maintainer's answer to that prompt is the real control (see
-[Honest limits](#honest-limits)).
+file-write shapes whatever the prompt says. **The hooks are a net for
+accidents and for naive prompt injection. They are not a security
+boundary**, and they are never the only gate: anything not allow-listed stops
+at the permission prompt, and the maintainer's answer to that prompt is the
+real control. [Honest limits](#honest-limits) says exactly what that does
+and does not cover.
 
 ### Tiers
 
-| Tier | What an agent may do                                                                                                                                                                                                                                                                                                                                                                             | Held by                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Local read, edit, commit, branches and worktrees (`git worktree`).                                                                                                                                                                                                                                                                                                                               | **Hook:** denies `reset --hard`, `--no-verify`, `git clean -f` outside a worktree, recursive `rm` outside `.claude/worktrees/<name>` and the OS temp directory. **Allow rules:** what runs without a prompt. **Prompt:** everything not allow-listed.                                                                                                                                                                                                                                                                                                                                                                                         |
-| 1    | `git push` of `claude/*` branches (by explicit name, no force, no delete); `gh pr create \| comment \| update-branch`; `gh issue create \| comment`.                                                                                                                                                                                                                                             | **Hook:** every refspec must be one `claude/*` branch pushed to the same name; `gh` text commands may target only `sandgraal/letstalkcdc`, take no `$(...)` / backticks / `<(...)` in their arguments, no `--rebase`, and read `--body-file` / `-F` / `--template` only from the current worktree or the OS temp directory (never a dotfile, key, credential or env file). **Convention:** which branch and which PR.                                                                                                                                                                                                                         |
-| 2    | Merge, **only** by `node scripts/merge-pr.mjs <n> --execute` (`scripts/merge-pr.mjs`, P17-2). The script merges only if CI is green, the PR body has a `## Review record` with `Verdict: APPROVE \| APPROVE WITH NITS` and `Findings resolved: yes`, the reviewer's report is also pasted as a PR comment, a test-merge against current `main` is clean, and no maintainer-only path is touched. | **Hook:** `gh pr merge` is denied (deny rule and hook), `gh api` writes are denied, and the hook refuses to start the merge script unless `scripts/merge-pr.mjs` and `package.json` are byte-identical to `origin/main`. **The script:** CI, review record, test-merge, paths. **Convention only:** that the _conductor_ is the one who runs it; no hook can tell which role is typing.                                                                                                                                                                                                                                                       |
-| 3    | Maintainer only: `.claude/settings.json`, hooks and agents, rulesets and other GitHub settings, variables, secrets, external accounts, database migrations, the domain, force-push, anything the merge script refuses, and model escalation without a written justification in the PR.                                                                                                           | **Hooks, partly:** `guard-edit.mjs` denies Edit/Write on the settings files, `.claude/hooks/`, `.claude/scripts/`, `.claude/agents/`, `scripts/merge-pr.mjs`, `.git/hooks` and `.git/config`; `guard-bash.mjs` denies shell commands that name those paths for writing, `git config` writes, `git remote add \| set-url`, `gh repo edit`, `gh secret \| variable set`, `gh ruleset`, `gh auth`, force and delete pushes. **The merge script:** refuses PRs that touch maintainer-only paths. **GitHub:** branch protection and the token's own permissions. **Convention only:** migrations, the domain, external accounts, model escalation. |
+| Tier | What an agent may do                                                                                                                                                                                                                                                                                                                                                                             | Held by                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0    | Local read, edit, commit, branches and worktrees (`git worktree`).                                                                                                                                                                                                                                                                                                                               | **Hook:** denies `reset --hard`, `--no-verify`, `git clean -f` outside a worktree, recursive `rm` outside `.claude/worktrees/<name>` and the OS temp directory, and, in the primary checkout, a `switch`, `checkout`, `merge`, `cherry-pick`, `rebase` or `stash pop` that would bring changed hooks, settings, agents, scripts or the merge script in from another ref. **Allow rules:** what runs without a prompt. **Prompt:** everything not allow-listed.                                                                                                                                                                                                                                               |
+| 1    | `git push` of `claude/*` branches (by explicit name, no force, no delete); `gh pr create \| comment \| update-branch`; `gh issue create \| comment`.                                                                                                                                                                                                                                             | **Hook:** every refspec must be one `claude/*` branch pushed to the same name, and the branch's commits (against `origin/main`) must not touch `.github/`; `gh` write commands may target only `sandgraal/letstalkcdc`, a bare PR or issue number (never a URL, `owner/repo#n` or branch name), take no expansion of any kind (`$VAR`, `${...}`, `~`, glob, `$(...)`, backticks, `<(...)`) in their arguments, no `--rebase`, no `--head owner:branch`, and read `--body-file` / `-F` / `--template` only from the current worktree or the OS temp directory (never a dotfile, key, credential or env file). **Convention:** which branch and which PR.                                                      |
+| 2    | Merge, **only** by `node scripts/merge-pr.mjs <n> --execute` (`scripts/merge-pr.mjs`, P17-2). The script merges only if CI is green, the PR body has a `## Review record` with `Verdict: APPROVE \| APPROVE WITH NITS` and `Findings resolved: yes`, the reviewer's report is also pasted as a PR comment, a test-merge against current `main` is clean, and no maintainer-only path is touched. | **Hook:** `gh pr merge` is denied (deny rule and hook), `gh api` writes are denied, and the hook refuses to start the merge script unless it is started in exactly one of two forms (`npm run merge-pr -- <args>` or `node scripts/merge-pr.mjs <args>`, no npm or node option, no `NODE_OPTIONS` / `npm_config_*`) and `scripts/merge-pr.mjs` and `package.json` are byte-identical to `origin/main`. **The script:** CI, review record, test-merge, paths. **Convention only:** that the _conductor_ is the one who runs it; no hook can tell which role is typing.                                                                                                                                        |
+| 3    | Maintainer only: `.claude/settings.json`, hooks and agents, rulesets and other GitHub settings, variables, secrets, external accounts, database migrations, the domain, force-push, anything the merge script refuses, and model escalation without a written justification in the PR.                                                                                                           | **Hooks, partly:** `guard-edit.mjs` denies Edit/Write on the settings files, `.claude/hooks/`, `.claude/scripts/`, `.claude/agents/`, `scripts/merge-pr.mjs`, `package.json`, `package-lock.json`, `.github/`, `.husky/` and the git hooks, config and refs; `guard-bash.mjs` denies shell commands that name those paths for writing, `git config` writes, `git remote add \| set-url`, `gh repo edit`, `gh secret \| variable set`, `gh ruleset`, `gh auth`, force and delete pushes. **The merge script:** refuses PRs that touch maintainer-only paths. **GitHub:** branch protection and the token's own permissions. **Convention only:** migrations, the domain, external accounts, model escalation. |
 
 A PR that touches a maintainer-only path is merged by hand. Tier 3 is a
 list of things agents may not do; where the table above names a hook or the
@@ -218,72 +220,152 @@ audit a merge afterwards from the PR alone.
 
 ### Honest limits
 
-- **The hooks are guardrails, not a sandbox, and never the only gate.**
-  `guard-bash.mjs` is a tokenizer, not a shell. It follows quoting,
-  `&&` / `;` / `|`, `$(...)`, backticks, heredocs, `env` / `sudo` /
-  `timeout` style wrappers, `git -C`, `env -S` / `--split-string`, and
-  `bash -c "..."` (it re-checks the inner string), and it refuses what it
-  cannot see through (a command name built from a variable, an unknown
-  `git push` flag, a shell that reads its script from stdin). It cannot see
-  inside a script already on disk, an alias in a personal `~/.gitconfig`,
-  or a file name assembled at run time. What it cannot see relies on the
-  **permission prompt**, because those commands are not allow-listed:
-  interpreters (`python`, `perl`, `ruby`, `php`), `bash x.sh` for any
-  script but the pre-approved ones, `xargs`, `busybox`, `ssh`,
-  `git rebase --exec`, `git bisect run`, `git submodule foreach`, `make`,
-  `npm install` and `curl`. The maintainer's answer to a prompt is the
-  control there. A hook cannot be stronger than the permissions of the
-  account it runs under.
-- **A personal `~/.claude/settings.json` can widen the allow list.** Project
-  rules are merged with the user's own, so anything the maintainer
-  allow-lists personally (or `--dangerously-skip-permissions`) removes the
-  prompt that the previous point depends on. The hooks still run, but they
-  are then the only gate, and the previous point says how far they see.
+- **What the hooks are.** A net for accidents and for naive prompt
+  injection. They are **not a security boundary**: a determined agent, or
+  an injected instruction written by someone who has read this file, can get
+  past a tokenizer. `guard-bash.mjs` follows quoting, `&&` / `;` / `|`,
+  `$(...)`, backticks, heredocs, `env` / `sudo` / `timeout` style wrappers,
+  `git -C`, `env -S` / `--split-string` and `bash -c "..."` (it re-checks the
+  inner string), and it refuses what it cannot see through (a command name
+  built from a variable, an unknown `git push` flag, a shell that reads its
+  script from stdin). It cannot see inside a script already on disk, an
+  alias in a personal `~/.gitconfig`, or a file name assembled at run time.
+  It is not complete and is not meant to be; each fix round closes the cheap,
+  high-value holes and stops.
+- **"Fail closed" includes the guard's own budget.** A parse error, an
+  exception, a command over 20000 characters ("command too long for the
+  guard: split it"), a command that changes directory in more than 16
+  places, and more than 3 seconds of work ("guard budget exceeded") are all
+  denies (exit 2). The reason: `settings.json` gives each hook 10 seconds,
+  and we **treat** a hook that times out as non-blocking, that is, as an
+  allow (not verified here; the guard is built as if it were true). The
+  guard therefore answers well inside its timeout and refuses when it
+  cannot. Lowering the timeout in `settings.json` is not the fix.
+- **What the prompt covers and what only the hook covers.** Not
+  allow-listed, so these stop at the permission prompt: interpreters
+  (`python`, `perl`, `ruby`, `php`), `bash x.sh` for any script but the
+  pre-approved ones, `xargs`, `ssh`, `git bisect run`,
+  `git submodule foreach`, `make`, `npm install` and `curl`. **Allow-listed,
+  so the hook is the only thing between the agent and them:** `find`
+  (`-delete`, `-exec`, `-execdir`, `-ok`, `-okdir`, `-fprint*`, `-fls` are
+  denied outright; plain `find` is fine), `git switch`, `git checkout -b`,
+  `git pull --ff-only` (a bare `git pull --ff-only` only; any remote or
+  other argument is denied), `git show` / `log` / `diff` (`--output` and
+  `-o` write a file), `git fetch`, `git branch`, `git worktree`, `git add` /
+  `commit` / `push`, `cat`, `rg`, `grep`, `sort`, `jq`, `sha256sum`,
+  `npx prettier` / `eslint` / `vitest` / `playwright`, `npm test`,
+  `npm run build` and the other pre-approved npm and node scripts. A
+  denied-by-hook command that is also allow-listed simply fails; nothing
+  prompts.
+- **Three structural gaps no hook can close.**
+  1. **Code the agent writes runs with full rights.** Anything the agent
+     writes (a test file, a script, a build step, a `package.json` script in
+     a worktree) and then runs through an allow-listed entry point
+     (`npm test`, `npm run build`, `npx vitest`, `node scripts/<x>.mjs`) is
+     not inspected: the hook sees the command line, not the code.
+  2. **Secrets are not protected as data.** `cat`, `rg` and `grep` are
+     allow-listed, so a secret can be copied to a file in the temp directory
+     and posted with `gh ... --body-file <that file>`: two steps, each
+     allowed. `--body-file` refuses dotfiles and key- or env-shaped names,
+     not contents. This route is **not closed**.
+  3. **The last control is the maintainer's permission prompt**, and
+     `~/.claude/settings.json` can widen the allow list (project rules are
+     merged with the user's own) and `--dangerously-skip-permissions`
+     removes the prompt. With either, the hooks are the only gate, and the
+     points above say how far they see.
+- **The real boundaries are GitHub-side, and they are the maintainer's.**
+  Required status checks (P17-3), scoped tokens (a token that cannot do
+  more than the charter allows), workflow triggers, Dependabot and CodeQL,
+  and branch protection / rulesets. Nothing in this repo's hooks replaces
+  them.
+- **A pushed branch can run workflows with the repository's secrets.**
+  Workflows run on push, and `.github/workflows/linkcheck.yml` has
+  `on: push` with no branch filter, so any pushed branch runs it (and any
+  other push-triggered job runs the branch's code, for example the test
+  suite). The hook denies `git push` of a branch whose commits, against
+  `origin/main`, touch `.github/` ("push touches .github/: workflows run on
+  push with repo secrets; the maintainer pushes these"; it also fails
+  closed when git cannot answer), and `guard-edit.mjs` denies Edit/Write on
+  `.github/` in the primary checkout. That stops the obvious route, not a
+  branch whose pushed code is run by a workflow that already exists.
+  **Maintainer item:** restrict workflow triggers (branch filters on
+  `push`, environments with required reviewers for anything that reads
+  secrets).
 - **Self-protection has gaps.** `guard-bash.mjs` denies a command that names
   `.claude/` (outside `.claude/worktrees/`), `.git/hooks`, `.git/config`,
   `.git/refs` or `core.hooksPath` unless it is a read-only form (`cat`,
-  `rg`, `grep`, `ls`, `head`, `tail`, `wc`, `stat`, `git diff | log | show |
-status | ls-files` without `--output`), and it denies any output
-  redirection to such a path, or to a path it cannot read (a variable or
-  glob). It does not see a path built at run time inside an interpreter
-  (`python -c "open('.cl'+'aude/...')"`), a write by a script already on
-  disk, or a branch operation that carries the files in without naming them
-  (`git checkout <branch>`, `merge`, `rebase`, `pull`, `stash pop`).
-  `guard-edit.mjs` covers the Edit, Write, MultiEdit and NotebookEdit tools
-  for: `.claude/settings.json`, `.claude/settings.local.json`, everything
-  under `.claude/hooks/`, `.claude/scripts/` and `.claude/agents/`,
-  `scripts/merge-pr.mjs`, `.git/hooks`, `.git/config`, `.git/refs`,
-  `.git/packed-refs`, and the user-level `~/.claude/settings*.json`. It does
-  **not** cover other `.claude/` files (rules, skills, commands),
-  `CLAUDE.md`, `package.json`, `.github/`, or these docs: a change there is
-  caught by review and by the merge script's path check, not by a hook. The
-  same paths _inside_ `.claude/worktrees/<name>/` are allowed on purpose: a
-  branch written in its own worktree is how a change to a guard reaches the
-  maintainer, who merges it by hand. If a session's project directory is
-  itself a worktree, the guard protects that worktree's `.claude/` and the
-  maintainer makes those edits.
+  `rg`, `grep`, `ls`, `head`, `tail`, `wc`, `stat`, `find` without the write
+  actions, `npx eslint` without `--fix` / `-o`, `npx prettier --check`,
+  `git diff | log | show | status | ls-files` without `--output`). It also
+  denies output redirection to such a path or to one it cannot read (a
+  variable or glob), a glob or brace word that could expand into one
+  (`.cl*`, `.cla{ude,x}`), and shell writes to `scripts/merge-pr.mjs` and
+  `package.json` outside a worktree or the temp directory (reads are fine).
+  Every word of a command is path-checked, spaces or not (this repo's own
+  checkout has a space in its path); only the values of message-like options
+  (`-m`, `--message`, `--body`, `-b`, `--title`, `-t`, `--notes`) and the
+  text given to `echo` / `printf` are skipped. In the **primary checkout**
+  (not under `.claude/worktrees/`) it denies `git switch | checkout |
+merge | cherry-pick | rebase | stash pop` of a ref whose tree differs
+  from `HEAD` in `.claude/settings*.json`, `.claude/hooks`,
+  `.claude/scripts`, `.claude/agents`, `scripts/merge-pr.mjs` or `.git`, or
+  that does not resolve (`main` and `origin/main`, the line the maintainer
+  merges, are exempt). Not covered: a path built at run time inside an
+  interpreter, a write by a script already on disk, `git am` / `git apply`,
+  `npm pkg set` or `npm version` (they edit `package.json` without naming
+  it), and `git checkout`'s path form when the file exists.
+  `guard-edit.mjs` checks every one of `file_path`, `notebook_path` and
+  `path`, and covers `.claude/settings.json`, `.claude/settings.local.json`,
+  everything under `.claude/hooks/`, `.claude/scripts/` and
+  `.claude/agents/`, `scripts/merge-pr.mjs`, `package.json`,
+  `package-lock.json`, `.github/`, `.husky/`, `.git/config`, `.git/HEAD`,
+  `.git/hooks/`, `.git/info/`, `.git/config.worktree`, `.git/worktrees/`,
+  `.git/refs/`, `.git/packed-refs`, and the user level
+  `~/.claude/settings*.json`, `~/.claude/hooks/`, `~/.claude/agents/` and
+  `~/.claude/CLAUDE.md`. With `CLAUDE_PROJECT_DIR` unset it finds the
+  primary checkout through `git rev-parse --git-common-dir`, so a cwd inside
+  a worktree still protects the primary `.claude`; a project directory that
+  is itself a worktree is treated as that primary. It does **not** cover
+  `.claude/rules`, `skills`, `commands`, `CLAUDE.md` or these docs: they are
+  instructions, reviewed in the PR like any other change. The same paths
+  _inside_ `.claude/worktrees/<name>/` are allowed on purpose: a branch
+  written in its own worktree is how a change to a guard reaches the
+  maintainer, who merges it by hand.
+- **`origin/main` is the merge gate's baseline, and the guard protects it
+  only from the usual routes.** `git update-ref`, `git symbolic-ref`, a
+  `git fetch` / `pull` / `push` with a destination, a `.` or path remote, a
+  `--refmap`, or any argument naming `refs/remotes` or `remotes/origin`
+  (matched case-insensitively, after `--` too) are denied; agents run
+  `git fetch origin` or `git fetch origin <branch>`. A maintainer-approved
+  prompt can still move the ref.
 - **Only the conductor merges, by convention.** The merge script and
   `npm run merge-pr` are allow-listed for every role that has Bash, and no
   hook can tell which role is calling. The review record, the independent
   reviewer and the rule that the author never approves are what an audit of
   the PR checks.
 - **The merge script runs from a file an agent can write, so the hook checks
-  it first.** Before it allows `node scripts/merge-pr.mjs ...` or
-  `npm run merge-pr ...`, `guard-bash.mjs` runs `git` and denies unless
+  it first.** It allows exactly `npm run merge-pr -- <args>` and
+  `node scripts/merge-pr.mjs <args>`: no npm flag (`--prefix`,
+  `--script-shell`, `--userconfig`, `--workspace`, `-w` ...), no `npm exec` /
+  `npx` / `pnpm` / `yarn`, no node flag in front of the script, and no
+  `NODE_OPTIONS`, `npm_config_*`, `BASH_ENV` or similar environment. Before
+  it allows either, `guard-bash.mjs` runs `git` and denies unless
   `scripts/merge-pr.mjs` and `package.json` in the working tree are
   byte-identical to `refs/remotes/origin/main` (message: "merge-pr.mjs or
   package.json differs from origin/main: run it from an up-to-date main
   checkout"). It checks nothing when the script is not in the tree at all.
-  Residual limit: this is a check at start, not a seal. It trusts the local
-  `origin/main` ref (a stale ref is a stale comparison; `git update-ref` and
-  fetches into `refs/remotes/` are denied, but a maintainer-approved prompt
-  can still move it), it cannot see a merge started outside the hook
-  (a terminal, a script on disk that calls it, `ssh`), and a file swapped
-  between the check and the start is not seen.
+  Residual limit: this is a check **before** the command, not a seal at
+  execution time, which no hook can give. A chain that edits those files and
+  then starts the merge in one command line is judged before any of it runs
+  (the edit is denied if it names the file; `npm pkg set` is not seen). It
+  trusts the local `origin/main` ref, cannot see a merge started outside
+  the hook (a terminal, a script on disk that calls it, `ssh`), and a file
+  swapped between the check and the start is not seen.
 - **`gh pr update-branch` is limited, not harmless.** The hook denies
-  `--rebase` and any repository other than `sandgraal/letstalkcdc`. It can
-  still merge `main` into any open PR branch of this repository, including
-  another agent's, which pushes a commit to that branch.
+  `--rebase`, any repository other than `sandgraal/letstalkcdc`, and any
+  target but a bare number. It can still merge `main` into any open PR
+  branch of this repository, including another agent's, which pushes a
+  commit to that branch.
 - **The review record is a convention check, not authentication.** The script
   can see that a record and a comment exist and say the right words. It
   cannot know that an independent reviewer produced them; anyone who can
@@ -291,6 +373,25 @@ status | ls-files` without `--output`), and it denies any output
 - **Read once, time of check to time of use.** The script reads the PR once.
   A push, a comment edit or a CI re-run between that read and the merge call
   is not seen.
+- **Denied on purpose, with the way round it.** Relative `rm -rf` after a
+  `cd` (use an absolute path, or `npm run clean`); `git clean -fd` in the
+  primary checkout (do it in a worktree, or `npm run clean`); `HUSKY=0` and
+  `--no-verify` (fix what the hook reports); `gh` text with `$VAR`, `~`, a
+  glob or `$(...)` in its arguments (write the text to a file in the temp
+  directory and pass `--body-file`; a body file may also sit under
+  `<repo>/.claude/worktrees/<name>/`); `find -exec` / `-delete` (use `rg`,
+  `ls` or a script file); `git fetch origin a:b` and `git pull origin main`
+  (fetch plainly, then merge or switch to the ref); `git push` of a branch
+  that edits `.github/` (the maintainer pushes it).
+- **Unverified.** Four things this design assumes and has not confirmed:
+  that a hook timeout is non-blocking (the guard acts as if it were);
+  whether an env-prefixed command such as `FOO=1 git push` matches the
+  allow rule `Bash(git push:*)` the way the bare command does (the hook
+  judges both either way); whether Claude Code reloads `settings.json`
+  mid-session (assume a restart is needed); and what `CLAUDE_PROJECT_DIR`
+  is for an isolated subagent running in a worktree (`guard-edit.mjs`
+  normalises a worktree directory to its primary checkout and falls back to
+  git when it is unset).
 
 ### Working rules
 
@@ -333,9 +434,10 @@ file (missing `node`, a syntax error) denies instead of silently allowing.
 - `guard-agent-model.mjs` (matcher `Agent`): refuses a per-call `model`
   other than Haiku / Sonnet.
 - `guard-edit.mjs` (matcher `Edit|Write|MultiEdit|NotebookEdit`): refuses a
-  write whose resolved absolute path (`..`, symlinks and letter case
-  resolved) is a protected file under the repo root (`CLAUDE_PROJECT_DIR`,
-  else `git rev-parse --show-toplevel`), unless it lies inside
+  write when any of `file_path`, `notebook_path` or `path`, resolved to an
+  absolute path (`..`, symlinks and letter case resolved), is a protected
+  file under the primary checkout (`CLAUDE_PROJECT_DIR`, else found through
+  `git rev-parse --git-common-dir`), unless it lies inside
   `<root>/.claude/worktrees/`. The list is in "Honest limits".
 - `guard-bash.mjs` (matcher `Bash`) denies: `git push` unless every refspec
   is a single `claude/*` branch pushed to the same name (no `+`, force,
@@ -346,21 +448,37 @@ file (missing `node`, a syntax error) denies instead of silently allowing.
   `-f/--file`; `git remote add | set-url | rename | remove | set-head`;
   `git update-ref`; `--git-dir`, `--work-tree`, `--exec-path`;
   `git fetch | pull | ls-remote | clone` with `--upload-pack`, `-u`,
-  `--receive-pack`, `--exec` or an `ext::` URL; `rg --pre`;
+  `--receive-pack`, `--exec`, `--refmap` or an `ext::` URL, and `git fetch`
+  with a `.` or path remote, a `src:dst` refspec or any argument naming
+  `refs/remotes`; `git pull` with anything but `--ff-only`; `--pager`;
+  `rg --pre`; `script`, `busybox`; the `find` actions that delete, write or
+  run a command (`-delete`, `-exec`, `-execdir`, `-ok`, `-okdir`,
+  `-fprint*`, `-fls`);
   `gh pr merge`; `gh api` with any write method or body flag; `gh pr | issue
-create | comment | edit | update-branch` aimed at another repository
-  (`-R`, `--repo`, `GH_REPO`, `GH_HOST`), with a `$(...)`, backtick or
-  process substitution in the arguments (write the body to a file in the
-  temp directory and use `--body-file`), or with a body file outside the
-  current worktree and the OS temp directory or named like a secret;
+create | comment | edit | update-branch | close | reopen` aimed at another
+  repository (`-R`, `--repo`, `GH_REPO`, `GH_HOST`), at a target that is not
+  a bare number, with `--head owner:branch`, with any expansion in the
+  arguments (`$VAR`, `${...}`, `~`, a glob, `$(...)`, a backtick or process
+  substitution: write the body to a file in the temp directory and use
+  `--body-file`), or with a body file outside the current worktree and the
+  OS temp directory or named like a secret; `export` / `read GH_REPO`;
   `gh repo edit|delete`, `gh secret|variable set|delete`, `gh ruleset`;
   inline `node -e` / `-p`; `awk`; recursive `rm` outside
   `.claude/worktrees/<name>` and the OS temp directory; `curl | sh`; shell
-  writes to the protected paths above; starting the merge script from a
-  tree that differs from `origin/main`; and environment overrides such as
-  `GIT_CONFIG_*`, `GIT_DIR`, `GIT_SSH_COMMAND`, `PATH`, `GH_TOKEN`, plus
-  `HUSKY*`, `SKIP`, `HOME`, `XDG_CONFIG_HOME`, `GH_HOST` and a foreign
-  `GH_REPO` when `git` or `gh` is on the command line.
+  writes to the protected paths above (and to `package.json` and
+  `scripts/merge-pr.mjs`); starting the merge script in any form but the two
+  exact ones, or from a tree that differs from `origin/main`; `git push` of
+  a branch that touches `.github/`; branch operations that carry protected
+  files into the primary checkout; and environment overrides such as
+  `GIT_CONFIG_*`, `GIT_DIR`, `GIT_SSH_COMMAND`, `GIT_TRACE*`, `GIT_PAGER`,
+  `GIT_EDITOR`, `GIT_SEQUENCE_EDITOR`, `PAGER`, `EDITOR`, `VISUAL`,
+  `RIPGREP_CONFIG_PATH`, `GIT_ALLOW_PROTOCOL`, `GIT_OBJECT_DIRECTORY`,
+  `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `npm_config_*`, `NODE_OPTIONS`,
+  `BASH_ENV`, `ENV`, `LD_*`, `DYLD_*`, `PATH`, `GH_TOKEN`, plus `HUSKY*`,
+  `SKIP`, `HOME`, `XDG_CONFIG_HOME`, `GH_HOST` and a foreign `GH_REPO` when
+  `git` or `gh` is on the command line. It answers within 3 seconds and
+  denies a command over 20000 characters or with more than 16 directories to
+  track.
 
 **Testing the hooks.** Each hook reads the same JSON Claude Code sends. Feed
 it a candidate command as JSON on stdin; never run the candidate itself:

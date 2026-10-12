@@ -11,10 +11,24 @@
 //   anything under .claude/hooks/, .claude/scripts/ or .claude/agents/
 //   scripts/merge-pr.mjs
 //   .git/hooks/..., .git/config        (what runs on every commit and push)
+//   .git/HEAD, .git/info/, .git/config.worktree, .git/worktrees/
 //   .git/refs/..., .git/packed-refs    (origin/main is the merge gate's base)
+//   .husky/, .github/                  (hooks and workflows run with secrets)
+//   package.json, package-lock.json    (the merge gate runs a package.json script)
 //
-// and, for the same reason, the user-level ~/.claude/settings.json and
-// settings.local.json.
+// and, for the same reason, the user level: ~/.claude/settings*.json,
+// ~/.claude/hooks/, ~/.claude/agents/ and ~/.claude/CLAUDE.md.
+//
+// Every path-like field of the tool call is checked (file_path,
+// notebook_path, path): any one of them being protected is a deny.
+//
+// The repository root is CLAUDE_PROJECT_DIR when set; otherwise the PRIMARY
+// checkout, found through `git rev-parse --git-common-dir`, so a cwd inside a
+// worktree still protects the primary .claude. A root that is itself a
+// worktree is normalised to the primary checkout.
+//
+// .claude/rules, .claude/skills, .claude/commands and CLAUDE.md stay
+// editable: they are instructions, reviewed in the PR like any other change.
 //
 // The same relative paths are ALLOWED inside <root>/.claude/worktrees/: an
 // agent editing a branch in its own worktree is how a change to these files
@@ -86,38 +100,70 @@ function protectedItem(p, roots, home) {
       [`${r}/.claude/settings.json`, ".claude/settings.json"],
       [`${r}/.claude/settings.local.json`, ".claude/settings.local.json"],
       [`${r}/scripts/merge-pr.mjs`, "scripts/merge-pr.mjs"],
+      [`${r}/package.json`, "package.json"],
+      [`${r}/package-lock.json`, "package-lock.json"],
       [`${r}/.git/config`, ".git/config"],
+      [`${r}/.git/head`, ".git/HEAD"],
+      [`${r}/.git/config.worktree`, ".git/config.worktree"],
     ];
     for (const [file, name] of exact) if (q === file) return name;
     for (const dir of ["hooks", "scripts", "agents"]) {
       if (under(q, `${r}/.claude/${dir}`)) return `.claude/${dir}/`;
     }
-    if (under(q, `${r}/.git/hooks`)) return ".git/hooks/";
+    for (const [dir, name] of [
+      [".git/hooks", ".git/hooks/"],
+      [".git/info", ".git/info/"],
+      [".git/worktrees", ".git/worktrees/"],
+      [".husky", ".husky/"],
+      [".github", ".github/"],
+    ]) {
+      if (under(q, `${r}/${dir}`)) return name;
+    }
     if (under(q, `${r}/.git/refs`) || q === `${r}/.git/packed-refs`) {
       return ".git/refs";
     }
   }
   if (home) {
-    const h = lc(home);
-    if (q === `${h}/.claude/settings.json`) return "~/.claude/settings.json";
-    if (q === `${h}/.claude/settings.local.json`) {
-      return "~/.claude/settings.local.json";
+    const base = `${lc(home)}/.claude/`;
+    if (q.startsWith(base)) {
+      const rest = q.slice(base.length);
+      const first = rest.split("/")[0];
+      if (/^settings[^/]*\.json$/.test(rest)) return "~/.claude/settings*.json";
+      if (first === "hooks") return "~/.claude/hooks/";
+      if (first === "agents") return "~/.claude/agents/";
+      if (rest === "claude.md") return "~/.claude/CLAUDE.md";
     }
   }
   return null;
 }
 
-function repoRoot(env, cwd) {
+const WORKTREE_ROOT_RE = /^(.*?)\/\.claude\/worktrees\/[^/]+(\/.*)?$/;
+
+/** The primary checkout for a directory that may be inside a worktree. */
+function toPrimary(dir) {
+  const m = WORKTREE_ROOT_RE.exec(dir);
+  return m ? m[1] || "/" : dir;
+}
+
+function repoRoots(env, cwd) {
   const fromEnv = env.CLAUDE_PROJECT_DIR;
-  if (typeof fromEnv === "string" && fromEnv !== "")
-    return path.resolve(fromEnv);
-  const r = spawnSync("git", ["rev-parse", "--show-toplevel"], {
-    cwd,
-    encoding: "utf8",
-    timeout: 5000,
-  });
-  if (r.error || r.status !== 0 || !r.stdout.trim()) return null;
-  return r.stdout.trim();
+  if (typeof fromEnv === "string" && fromEnv !== "") {
+    return [toPrimary(path.resolve(fromEnv))];
+  }
+  const run = (args) =>
+    spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2500 });
+  const common = run([
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-common-dir",
+  ]);
+  if (!common.error && common.status === 0 && common.stdout.trim()) {
+    const dir = path.resolve(cwd, common.stdout.trim());
+    if (path.basename(dir) === ".git") return [toPrimary(path.dirname(dir))];
+  }
+  const top = run(["rev-parse", "--show-toplevel"]);
+  if (top.error || top.status !== 0 || !top.stdout.trim()) return null;
+  return [toPrimary(top.stdout.trim())];
 }
 
 /**
@@ -137,39 +183,43 @@ export function checkEditCall(input, env = process.env) {
     return { ok: true };
   }
   const ti = input.tool_input;
-  const target =
+  const targets =
     ti && typeof ti === "object"
-      ? [ti.file_path, ti.notebook_path, ti.path].find(
+      ? [ti.file_path, ti.notebook_path, ti.path].filter(
           (v) => typeof v === "string" && v !== "",
         )
-      : undefined;
-  if (typeof target !== "string") {
+      : [];
+  if (targets.length === 0) {
     return deny("Blocked: no file path in the hook input.");
   }
   const cwd = path.resolve(
     typeof input.cwd === "string" && input.cwd ? input.cwd : process.cwd(),
   );
-  const root = repoRoot(env, cwd);
-  if (root === null) {
+  const found = repoRoots(env, cwd);
+  if (found === null) {
     return deny(
       "Blocked: could not determine the repository root (CLAUDE_PROJECT_DIR is unset and git failed).",
     );
   }
-  const roots = [...new Set([path.resolve(root), resolveReal(root)])];
+  const roots = [
+    ...new Set(found.flatMap((r) => [path.resolve(r), resolveReal(r)])),
+  ];
   const home = env.HOME || os.homedir();
   const homes = home
     ? [...new Set([path.resolve(home), resolveReal(home)])]
     : [];
 
-  const lexical = path.resolve(cwd, target);
-  const real = resolveReal(lexical);
-  for (const p of [lexical, real]) {
-    for (const h of homes.length ? homes : [null]) {
-      const hit = protectedItem(p, roots, h);
-      if (hit) {
-        return deny(
-          `Blocked: ${target} resolves to ${p}, which is ${hit}. The guard hooks, agents, scripts and settings are the maintainer's: make the change on a branch in a worktree (${path.join(root, ".claude/worktrees")}/<name>) and let the maintainer merge it. See docs/CONDUCTOR.md.`,
-        );
+  for (const target of targets) {
+    const lexical = path.resolve(cwd, target);
+    const real = resolveReal(lexical);
+    for (const p of [lexical, real]) {
+      for (const h of homes.length ? homes : [null]) {
+        const hit = protectedItem(p, roots, h);
+        if (hit) {
+          return deny(
+            `Blocked: ${target} resolves to ${p}, which is ${hit}. The guard hooks, agents, scripts, settings, workflows and package.json are the maintainer's: make the change on a branch in a worktree (${path.join(roots[0], ".claude/worktrees")}/<name>) and let the maintainer merge it. See docs/CONDUCTOR.md.`,
+          );
+        }
       }
     }
   }

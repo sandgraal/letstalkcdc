@@ -141,6 +141,17 @@ describe("denies writes to the live config", () => {
     [".git/config"],
     [".git/refs/remotes/origin/main"],
     [".git/packed-refs"],
+    [".git/HEAD"],
+    [".git/info/exclude"],
+    [".git/info/attributes"],
+    [".git/config.worktree"],
+    [".git/worktrees/wt1/config.worktree"],
+    [".husky/pre-commit"],
+    [".husky/_/husky.sh"],
+    [".github/workflows/ci.yml"],
+    [".github/dependabot.yml"],
+    ["package.json"],
+    ["package-lock.json"],
   ])("denies Write to %s", (file) => {
     const r = denied("Write", path.join(repo, file));
     expect(r.stderr).toMatch(/maintainer/);
@@ -208,6 +219,116 @@ describe("denies writes to the live config", () => {
     denied("Edit", path.join(home, ".claude/settings.local.json"));
   });
 
+  it("checks every path field of the call, not just the first", () => {
+    const bad = path.join(repo, ".claude/settings.json");
+    const good = path.join(repo, "src/app.js");
+    for (const tool_input of [
+      { file_path: good, path: bad },
+      { file_path: good, notebook_path: bad },
+      { notebook_path: good, path: bad },
+      { path: bad },
+      { file_path: bad, path: good },
+    ]) {
+      const r = runHook(JSON.stringify({ tool_name: "Edit", tool_input }));
+      expect({ tool_input, status: r.status }).toEqual({
+        tool_input,
+        status: 2,
+      });
+    }
+    const ok = runHook(
+      JSON.stringify({
+        tool_name: "Edit",
+        tool_input: { file_path: good, path: good },
+      }),
+    );
+    expect(ok.status).toBe(0);
+  });
+
+  it("denies the user-level hooks, agents, CLAUDE.md and every settings*.json", () => {
+    for (const f of [
+      "settings.json",
+      "settings.local.json",
+      "settings.managed.json",
+      "hooks/x.sh",
+      "hooks/sub/y.sh",
+      "agents/mine.md",
+      "CLAUDE.md",
+    ]) {
+      denied("Write", path.join(home, ".claude", f));
+    }
+    for (const f of ["projects/x/memory.md", "rules/x.md", "settings.txt"]) {
+      allowed("Write", path.join(home, ".claude", f));
+    }
+  });
+
+  it("protects the primary .claude from a cwd inside a worktree when CLAUDE_PROJECT_DIR is unset", () => {
+    const dir = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "guard-edit-wt-")),
+    );
+    try {
+      const git = (...args) =>
+        execFileSync(
+          "git",
+          [
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            ...args,
+          ],
+          {
+            cwd: dir,
+            stdio: "pipe",
+            env: {
+              ...process.env,
+              GIT_AUTHOR_NAME: "t",
+              GIT_AUTHOR_EMAIL: "t@example.com",
+              GIT_COMMITTER_NAME: "t",
+              GIT_COMMITTER_EMAIL: "t@example.com",
+            },
+          },
+        );
+      git("init", "-q", "-b", "main");
+      fs.writeFileSync(path.join(dir, "a.txt"), "a\n");
+      git("add", "-A");
+      git("commit", "-q", "-m", "init");
+      git("worktree", "add", "-q", ".claude/worktrees/w", "-b", "claude/w");
+      const wt = path.join(dir, ".claude/worktrees/w");
+      const go = (file, cwd) =>
+        spawnSync(process.execPath, [hook], {
+          input: JSON.stringify({
+            tool_name: "Write",
+            tool_input: { file_path: file },
+            cwd,
+          }),
+          encoding: "utf8",
+          timeout: 8000,
+          env: { ...process.env, CLAUDE_PROJECT_DIR: "", HOME: home },
+        });
+      // the primary's config is protected, whichever checkout the cwd is in
+      expect(go(path.join(dir, ".claude/settings.json"), wt).status).toBe(2);
+      expect(go(path.join(dir, ".claude/hooks/x.mjs"), dir).status).toBe(2);
+      expect(go(path.join(dir, "package.json"), wt).status).toBe(2);
+      // the worktree's own copy is the branch being written
+      expect(go(path.join(wt, ".claude/settings.json"), wt).status).toBe(0);
+      expect(go(path.join(wt, "package.json"), wt).status).toBe(0);
+      // and CLAUDE_PROJECT_DIR pointing at the worktree does not unprotect it
+      const viaEnv = spawnSync(process.execPath, [hook], {
+        input: JSON.stringify({
+          tool_name: "Write",
+          tool_input: { file_path: path.join(dir, ".claude/settings.json") },
+          cwd: wt,
+        }),
+        encoding: "utf8",
+        timeout: 8000,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: wt, HOME: home },
+      });
+      expect(viaEnv.status).toBe(2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("also protects the root when it is reached through a symlink", () => {
     const via = path.join(outside, "repo-link");
     fs.symlinkSync(repo, via);
@@ -232,7 +353,9 @@ describe("allows everything else, and the same files in a worktree", () => {
     ["a skill", ".claude/skills/x/SKILL.md"],
     ["a slash command", ".claude/commands/x.md"],
     ["another script", "scripts/smoke.mjs"],
-    ["package.json", "package.json"],
+    ["a package.json in a subdirectory", "src/package.json"],
+    ["CLAUDE.md (instructions, reviewed in the PR)", "CLAUDE.md"],
+    ["a lookalike .github file", ".githubx/workflows/ci.yml"],
     ["a lookalike name", ".claude/settings.json.bak"],
     ["a lookalike dir", ".claude/hooks-notes/x.md"],
     ["a lookalike script", "scripts/merge-pr.mjs.bak"],
@@ -255,6 +378,10 @@ describe("allows everything else, and the same files in a worktree", () => {
     [".claude/worktrees/wt1/scripts/merge-pr.mjs"],
     [".claude/worktrees/new-worktree/.claude/hooks/x.mjs"],
     [".claude/worktrees/wt1/src/app.js"],
+    [".claude/worktrees/wt1/package.json"],
+    [".claude/worktrees/wt1/package-lock.json"],
+    [".claude/worktrees/wt1/.github/workflows/ci.yml"],
+    [".claude/worktrees/wt1/.husky/pre-commit"],
     [".claude/worktrees/wt1/fine"],
     [".claude/worktrees/wt1/.claude/../.claude/settings.json"],
   ])("allows %s (a branch being written)", (file) => {
