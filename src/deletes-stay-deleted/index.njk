@@ -71,7 +71,7 @@ scripts:
       <tbody>
         <tr>
           <th scope="row">What it is</th>
-          <td>An ordinary change event with <code>op: "d"</code>, the row as it was (the before image) and the <code>source</code> block.</td>
+          <td>An ordinary change event with <code>op: "d"</code>, the row as it was (the before image) and the <code>source</code> block. On PostgreSQL, with the default replica identity on a table that has a primary key, the before image carries only the key columns; <code>REPLICA IDENTITY FULL</code> adds the rest of the row, and other replica identity settings differ, so check yours. On MySQL, <code>binlog_row_image</code> controls how much of the row is written (<code>FULL</code>, <code>MINIMAL</code>, <code>NOBLOB</code>); the full row needs <code>binlog_row_image=FULL</code>.</td>
           <td>A Kafka record with the row&rsquo;s key and a <code>null</code> value.</td>
           <td>A row in the target table with a deleted flag and the position of the delete.</td>
         </tr>
@@ -286,13 +286,19 @@ SELECT id, email FROM customers WHERE NOT is_deleted;</code></pre>
         </tr>
         <tr>
           <th scope="row">The delete event itself</th>
-          <td>It is the delete event. It holds the before image.</td>
+          <td>It is the delete event. It holds the before image, and what that contains depends on the source. On PostgreSQL, with the default replica identity on a table that has a primary key, that is only the key columns; <code>REPLICA IDENTITY FULL</code> adds the rest of the row, and other replica identity settings differ, so check yours. On MySQL, <code>binlog_row_image</code> controls how much of the row is written (<code>FULL</code>, <code>MINIMAL</code>, <code>NOBLOB</code>); the full row needs <code>binlog_row_image=FULL</code>.</td>
           <td>
             With <code>tombstones.on.delete=false</code> only the delete event
             is emitted, and Debezium&rsquo;s documentation says that Kafka can
             remove all messages for a key only when the last one has a null
-            value. On a compacted topic that leaves the delete event, before
-            image included, as the key&rsquo;s last record.
+            value. On a compacted topic that leaves the delete event, with
+            whatever before image it carries (on PostgreSQL, with the default
+            replica identity on a table that has a primary key, only the key
+            columns, while <code>REPLICA IDENTITY FULL</code> adds the rest of
+            the row and other replica identity settings differ; on MySQL <code>binlog_row_image</code> controls how much
+            of the row is written, and the full row needs
+            <code>binlog_row_image=FULL</code>), as the key&rsquo;s last
+            record.
           </td>
         </tr>
         <tr>

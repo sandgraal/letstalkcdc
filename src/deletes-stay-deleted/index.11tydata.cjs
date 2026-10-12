@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-10-09",
-  dateModified: "2026-10-09",
+  dateModified: "2026-10-11",
   seriesKey: "deletes-stay-deleted",
   heroConfig: {
     title: "Deletes That Stay Deleted",

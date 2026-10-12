@@ -36,7 +36,7 @@ describe("/which-row-wins/ metadata and registration", () => {
 
   it("has dates, a canonical path and a series entry", () => {
     expect(data.datePublished).toBe("2026-10-09");
-    expect(data.dateModified).toBe("2026-10-09");
+    expect(data.dateModified).toBe("2026-10-11");
     expect(fm("canonicalPath")).toBe("/which-row-wins/");
     expect(data.seriesKey).toBe("which-row-wins");
     const entry = series.find((s) => s.key === "which-row-wins");
@@ -214,6 +214,15 @@ describe("/which-row-wins/ links", () => {
     }
     expect(text).toMatch(/Re-insert after Update/);
     expect(text).not.toMatch(/Snapshot Replay/);
+  });
+
+  it("links the delete-retention hand-off to /deletes-stay-deleted/ instead of promising a 'later module' (P17-12)", () => {
+    expect(text).not.toMatch(/later module/);
+    const targets = new Set(internal.map((m) => m[1]));
+    expect(targets.has("/deletes-stay-deleted/")).toBe(true);
+    expect(text).toMatch(
+      /When the marker may finally go is the subject of Deletes That Stay Deleted\s*\./,
+    );
   });
 
   it("internal pages and anchors resolve", () => {

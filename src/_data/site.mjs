@@ -32,6 +32,10 @@ export default {
   host: hostWithPrefix,
   origin: resolvedHost,
   author: "Christopher Ennis",
+  // The primary name (docs/DECISIONS.md, Brand); `title` keeps the old name
+  // until the rename PR. Used in the attribution wording that
+  // LICENSE-CONTENT.md prescribes (see src/llms.txt.11ty.cjs).
+  brand: "Let's Talk CDC",
   copyright:
     "© 2025-2026 Christopher Ennis. A deep dive into the world of Change Data Capture.",
   repository: "sandgraal/letstalkcdc",
