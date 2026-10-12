@@ -35,6 +35,60 @@ const author = (await import("../../src/_data/author.mjs")).default;
 const EMAIL = author.contactEmail;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const WARN_DAYS = 30;
+
+/**
+ * Judge an Expires value against an injectable "now" (ms since epoch).
+ * Returns { problem, warning }: a problem fails the test, a warning is
+ * printed but passes.
+ */
+export function judgeExpires(expires, now = Date.now()) {
+  const ms = Date.parse(expires) - now;
+  if (Number.isNaN(ms))
+    return { problem: `Expires "${expires}" is not a date` };
+  if (ms <= 0)
+    return {
+      problem:
+        `security.txt expired on ${expires}. To renew: edit EXPIRES in ` +
+        "src/security.txt.11ty.cjs to a date about 12 months ahead and " +
+        "re-confirm the contact address.",
+    };
+  if (ms >= 400 * DAY_MS)
+    return {
+      problem: `Expires ${expires} is 400 or more days ahead; RFC 9116 wants at most about a year.`,
+    };
+  if (ms < WARN_DAYS * DAY_MS)
+    return {
+      warning:
+        `security.txt Expires ${expires} is less than ${WARN_DAYS} days away. ` +
+        "Renew soon: edit EXPIRES in src/security.txt.11ty.cjs and re-confirm the contact address.",
+    };
+  return {};
+}
+
+describe("Expires judgement (injectable now)", () => {
+  const NOW = Date.parse("2026-10-12T00:00:00.000Z");
+  const at = (days) => new Date(NOW + days * DAY_MS).toISOString();
+
+  it("fails with exact renewal instructions once the date is in the past", () => {
+    const { problem } = judgeExpires(at(-1), NOW);
+    expect(problem).toContain(
+      "edit EXPIRES in src/security.txt.11ty.cjs to a date about 12 months ahead and re-confirm the contact address",
+    );
+  });
+
+  it("passes but warns, naming the date, inside the last 30 days", () => {
+    const date = at(10);
+    const { problem, warning } = judgeExpires(date, NOW);
+    expect(problem).toBeUndefined();
+    expect(warning).toContain(date);
+  });
+
+  it("is quiet at about a year ahead and fails at 400 days or more", () => {
+    expect(judgeExpires(at(365), NOW)).toEqual({});
+    expect(judgeExpires(at(400), NOW).problem).toMatch(/400 or more days/);
+  });
+});
 
 describe("security.txt and the contact page (built)", () => {
   let out;
@@ -95,10 +149,15 @@ describe("security.txt and the contact page (built)", () => {
       expect(expires).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/,
       );
-      const ms = Date.parse(expires) - Date.now();
-      expect(Number.isNaN(ms)).toBe(false);
-      expect(ms).toBeGreaterThan(0);
-      expect(ms).toBeLessThan(400 * DAY_MS);
+      const { problem, warning } = judgeExpires(expires);
+      expect(problem, problem).toBeUndefined();
+      if (warning) console.warn(warning);
+    });
+
+    it("states the host-root location limit in a comment", () => {
+      expect(sec).toContain(
+        "RFC 9116 scanners look at the host root; this project site serves the\n# file only below its own path.",
+      );
     });
 
     it("has Preferred-Languages: en", () => {
