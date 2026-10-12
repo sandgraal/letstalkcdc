@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Session commands for the agent team (P17-60).** `/team-start`,
+  `/team-end` and `/team-digest` in `.claude/commands/` make a working session
+  start and end the same way: sync with worktrees only, read the handoff,
+  merge ready `claude/*` PRs through `scripts/merge-pr.mjs`, check a Phase 17
+  item is not already merged or in flight, then close with a clean-worktree
+  check, a prune dry run and a dated Open / Blocked / Next block shipped as a
+  `docs(handoff)` PR. The digest runs `growth-writer` first and posts once.
+  `docs/TEAM-CHARTER.md` gains a "Running a session" section. A unit test pins
+  the rules. No site or CSS change.
 - **`/llms.txt` for language-model crawlers (P17-21).** A plain-text index in
   the llmstxt.org shape (title, summary, links with descriptions), generated
   at build time from the same indexable-page rule and series order as
