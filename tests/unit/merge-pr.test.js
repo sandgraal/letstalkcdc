@@ -139,6 +139,7 @@ function makeEnv({
   ghMergeCode = 0,
   ghMergeStderr = "boom",
   postMerge = null,
+  postMergeCode = 0,
   raw = null,
   rawCode = 0,
   tempEntries = null,
@@ -156,7 +157,11 @@ function makeEnv({
     const res = (code, stdout = "", stderr = "") => ({ code, stdout, stderr });
     if (key.startsWith("gh pr view") && key.includes("state,mergedAt,")) {
       if (postMerge === "fail") return res(1, "", "net down");
-      return ok(JSON.stringify(postMerge ?? { state: "OPEN" }));
+      return res(
+        postMergeCode,
+        JSON.stringify(postMerge ?? { state: "OPEN" }),
+        postMergeCode === 0 ? "" : "gh exited non-zero",
+      );
     }
     if (key.startsWith("gh pr view") && key.includes("mergeCommit")) {
       return ok(JSON.stringify({ mergeCommit: { oid: mergeCommit } }));
@@ -1755,11 +1760,12 @@ describe("main flow", () => {
           state: "MERGED",
           mergedAt: "2026-10-12T00:00:00Z",
           mergeCommit: { oid: "c".repeat(40) },
+          headRefOid: OID,
         },
       });
       expect(await env.exec(["7", "--execute"])).toBe(0);
       expect(env.out.join("\n")).toContain(
-        `merged (ccccccc); note: ${LOCAL_BRANCH_MESSAGE}`,
+        `MERGED PR #7 (verified after gh exited non-zero; merge commit ccccccc). gh said: ${LOCAL_BRANCH_MESSAGE}`,
       );
       expect(env.err.join()).not.toMatch(/gh pr merge failed/);
       expect(mergeCalls(env)).toHaveLength(1);
@@ -1795,6 +1801,69 @@ describe("main flow", () => {
         postMerge: { state: "MERGED", mergedAt: "x", mergeCommit: null },
       });
       expect(await env.exec(["7", "--execute"])).toBe(1);
+      expect(mergeCalls(env)).toHaveLength(1);
+    });
+
+    it("exits 1 when OPEN even with a merge commit and the matching head", async () => {
+      const env = makeEnv({
+        ghMergeCode: 1,
+        postMerge: {
+          state: "OPEN",
+          mergedAt: null,
+          mergeCommit: { oid: "c".repeat(40) },
+          headRefOid: OID,
+        },
+      });
+      expect(await env.exec(["7", "--execute"])).toBe(1);
+      expect(env.err.join()).toMatch(/gh pr merge failed/);
+      expect(mergeCalls(env)).toHaveLength(1);
+    });
+
+    it("exits 1 when the re-read exits non-zero, even with valid MERGED JSON", async () => {
+      const env = makeEnv({
+        ghMergeCode: 1,
+        postMergeCode: 1,
+        postMerge: {
+          state: "MERGED",
+          mergedAt: "x",
+          mergeCommit: { oid: "c".repeat(40) },
+          headRefOid: OID,
+        },
+      });
+      expect(await env.exec(["7", "--execute"])).toBe(1);
+      expect(env.err.join()).toMatch(/gh pr merge failed/);
+      expect(mergeCalls(env)).toHaveLength(1);
+    });
+
+    it("exits 1 naming the mismatch when merged at a different head", async () => {
+      const env = makeEnv({
+        ghMergeCode: 1,
+        postMerge: {
+          state: "MERGED",
+          mergedAt: "x",
+          mergeCommit: { oid: "c".repeat(40) },
+          headRefOid: "d".repeat(40),
+        },
+      });
+      expect(await env.exec(["7", "--execute"])).toBe(1);
+      expect(env.err.join()).toContain(
+        `PR is merged at a different head than the one reviewed: ddddddd, expected ${OID.slice(0, 7)}`,
+      );
+      expect(env.out.join("\n")).not.toMatch(/MERGED PR/);
+      expect(mergeCalls(env)).toHaveLength(1);
+    });
+
+    it("exits 1 when MERGED but headRefOid is missing", async () => {
+      const env = makeEnv({
+        ghMergeCode: 1,
+        postMerge: {
+          state: "MERGED",
+          mergedAt: "x",
+          mergeCommit: { oid: "c".repeat(40) },
+        },
+      });
+      expect(await env.exec(["7", "--execute"])).toBe(1);
+      expect(env.err.join()).toMatch(/merged at a different head/);
       expect(mergeCalls(env)).toHaveLength(1);
     });
 

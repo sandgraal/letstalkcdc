@@ -2611,9 +2611,12 @@ these blocks merging the kit or the drill (P17-10).
   - [x] **P17-57a (false failure after merge):** shipped in the PR carrying
         this change. After a non-zero `gh pr merge` (for example "failed to
         delete local branch" while a worktree holds it) the gate re-reads
-        `state,mergedAt,mergeCommit`; MERGED with a merge commit is success
-        (exit 0, gh's message as a note), anything else fails closed (exit 1);
-        the merge is never retried.
+        `state,mergedAt,mergeCommit,headRefOid`; MERGED with a merge commit at
+        the head the gates evaluated is success (exit 0, gh's message
+        included), anything else fails closed (exit 1); the merge is never
+        retried. The leftover local branch is removed by hand: remove the
+        worktree (`scripts/worktree-prune.sh` does this for merged work but
+        leaves branches), then `git branch -D <name>`.
 - [ ] **P17-58 · Make commit-making tests hermetic about git identity.**
       Outcome: every test that creates a commit or merge passes with no git
       identity configured, as on a CI runner. Evidence: macOS guesses an
