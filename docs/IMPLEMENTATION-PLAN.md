@@ -2745,6 +2745,13 @@ items, not silent fixes.
       P17-12, six different pages, with at least two per claim family across
       both batches. Verify: as P17-12. Size: M. Role: `technical-editor`, with
       `reviewer`. Needs: P17-12 (to avoid overlapping pages).
+      Note (2026-10-12): the unambiguous errors from the second sample are
+      fixed on branch `claude/p17-13-errata-fixes` (Oracle SCN tie-break,
+      Cassandra timestamp rationale, `processed_events` same transaction,
+      `ts_ms` as tie-break, `ts_ms` meaning, untested labels, the simulator
+      readout), with five errata entries and tests; the item stays open until
+      the sample itself (six pages with a source per claim) is written up and
+      the maintainer has answered the open questions in the PR.
 - [ ] **P17-14 · Executed SQL (day 6).** Outcome: the executed-versus-not
       table in the brief's section 4 is updated. Accept: at least one of
       Snowflake or BigQuery from `/merge-cookbook/`, plus the T-SQL and MySQL

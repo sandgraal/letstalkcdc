@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import nunjucks from "nunjucks";
+import { PGlite } from "@electric-sql/pglite";
 import errata from "../../src/_data/errata.mjs";
 
 const ROOT = path.resolve(
@@ -207,4 +208,81 @@ describe("/errata/ and the errata data", () => {
       expect(data.dateModified >= "2026-10-09", dir).toBe(true);
     }
   });
+});
+
+describe("/materialization/ Snowflake MERGE (P17-13)", () => {
+  const details = between(
+    materialization,
+    "<summary>Snowflake MERGE</summary>",
+    "</details>",
+  );
+  const merge = codeBlocks(details)[0];
+
+  it("is labelled as not run in Snowflake, with how the guard logic was run", () => {
+    expect(flat(details)).toContain(
+      "Untested: not run in Snowflake (the guard logic was run as PostgreSQL MERGE).",
+    );
+  });
+
+  it("describes ts_ms as a processing time, with the commit time in source.ts_ms", () => {
+    const merged = flat(materialization);
+    expect(merged).toContain(
+      "<code>ts_ms</code> is a millisecond processing time (the commit time is <code>source.ts_ms</code>)",
+    );
+    expect(merged).not.toMatch(/ts_ms<\/code> is a millisecond commit time/);
+  });
+
+  it("the guard logic, run as a PostgreSQL MERGE on PGlite, applies the newest change, ignores replays and keeps the delete marker", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(`
+        CREATE SCHEMA analytics; CREATE SCHEMA staging;
+        CREATE TABLE analytics.orders (
+          order_id bigint PRIMARY KEY, amount numeric, status text,
+          deleted boolean NOT NULL DEFAULT false,
+          source_lsn bigint, processed_ts_ms bigint);
+        CREATE TABLE staging.orders_src (
+          order_id bigint, amount numeric, status text, op text,
+          lsn bigint, ts_ms bigint);
+      `);
+      const stage = async (rows) => {
+        await db.exec("TRUNCATE staging.orders_src");
+        for (const r of rows) {
+          await db.query(
+            "INSERT INTO staging.orders_src VALUES ($1,$2,$3,$4,$5,$6)",
+            r,
+          );
+        }
+      };
+      const row = async () =>
+        (await db.query("SELECT * FROM analytics.orders WHERE order_id = 1"))
+          .rows[0];
+
+      await stage([[1, 10, "new", "c", 100, 5000]]);
+      await db.exec(merge);
+      expect((await row()).status).toBe("new");
+
+      // newer change wins, even with a smaller processing time
+      await stage([[1, 20, "paid", "u", 120, 1]]);
+      await db.exec(merge);
+      expect((await row()).status).toBe("paid");
+
+      // replay of the older change, and of the same change: no-ops
+      await stage([[1, 10, "new", "c", 100, 9999]]);
+      await db.exec(merge);
+      await stage([[1, 99, "other", "u", 120, 9999]]);
+      await db.exec(merge);
+      expect(await row()).toMatchObject({ status: "paid", source_lsn: 120 });
+
+      // a delete is kept as a marker; a replayed older update cannot undo it
+      await stage([[1, null, null, "d", 130, 2]]);
+      await db.exec(merge);
+      expect(await row()).toMatchObject({ deleted: true, source_lsn: 130 });
+      await stage([[1, 20, "paid", "u", 120, 3]]);
+      await db.exec(merge);
+      expect(await row()).toMatchObject({ deleted: true, source_lsn: 130 });
+    } finally {
+      await db.close();
+    }
+  }, 120_000);
 });

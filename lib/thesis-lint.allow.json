@@ -8,7 +8,7 @@
   {
     "file": "src/non-relational/index.njk",
     "textIncludes": "last write wins by cell timestamp",
-    "reason": "States that the recipe 'upsert on the primary key, order by log position' does not port to Cassandra and that what ports instead is Cassandra's own last-write-wins by cell timestamp. That is a statement about a source with no per-key log position, but it still tells the reader to merge on timestamps, which the thesis says never to do for a source that has a log position. An editor must confirm the wording is scoped to sources with no total order per key (the which-row-wins page says the same) or add the polling-source caveat explicitly.",
+    "reason": "States that the recipe 'upsert on the primary key, order by log position' does not port to Cassandra and that what ports instead is Cassandra's own last-write-wins by cell timestamp. The paragraph (reworded in P17-13) now says why it is allowed: it mirrors the source's own conflict rule, the timestamp is a write time assigned by the coordinator or the client and not a log position, clock skew can pick a different winner than real time, and the rule must not be treated as a trusted order elsewhere. It still tells the reader to merge on a timestamp, which the thesis says never to do for a source that has a log position, so an editor must confirm the wording is scoped to sources with no total order per key (the which-row-wins page says the same).",
     "owner": "needs-editor-review"
   },
   {

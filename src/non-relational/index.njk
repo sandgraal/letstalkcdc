@@ -104,10 +104,11 @@ const stream = db.collection('customers').watch([], {
     </p>
     <p>
       The constraint is retention: <strong>24 hours, not configurable</strong>.
-      There is no equivalent of extending log retention while you fix a sink. A
-      consumer outage that outlasts a long weekend is not a backlog to work
-      through — it is a gap, and the only repair is a fresh full scan of the
-      table.
+      This page assumes the stream&rsquo;s retention cannot be extended; check your
+      provider&rsquo;s current options. A consumer outage that outlasts a long
+      weekend is not a backlog to work through — it is a gap, and the repair
+      this page covers is a fresh full scan of the table; check your provider&rsquo;s
+      documentation for other options.
     </p>
     <aside aria-label="Plan for the horizon" class="callout">
       <p>
@@ -151,9 +152,12 @@ const stream = db.collection('customers').watch([], {
       rule: <strong>last write wins by cell timestamp</strong>. Every mutation
       carries per-cell write times, and merging on those reproduces the source&rsquo;s
       semantics, deduplicating the replicas as a side effect. It is the one
-      place on this site where a timestamp is the correct ordering key — because
-      here it is a logical clock the database assigns, not a wall-clock guess
-      like <code>ts_ms</code>.
+      place on this site where a timestamp decides which write wins, and only
+      because it mirrors the source&rsquo;s own conflict rule. That timestamp is
+      a write time assigned by the coordinator or the client, not a log
+      position, so clock skew can pick a different winner than real time
+      would. Reproduce the rule; do not treat it as an order you can trust
+      anywhere else.
     </p>
   </section>
 
@@ -161,8 +165,9 @@ const stream = db.collection('customers').watch([], {
     <h2 id="checklist-title">Before you port a pipeline</h2>
     <ul class="checklist">
       <li>
-        Identify what plays the role of the LSN — resume token, shard sequence
-        number, cell timestamp — and confirm your sink orders on it.
+        Identify what plays the role of the LSN — use the field the source
+        documents as orderable, and check its documentation — and confirm your
+        sink orders on it.
       </li>
       <li>
         Find the retention limit and express it in <em>time you can be down</em>,

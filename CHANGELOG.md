@@ -177,6 +177,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Content corrections from the second accuracy sample (P17-13).** Five
+  pages were wrong, each with a per-page errata entry
+  (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-12.
+  `/oracle-notes/`: the guard and the latest-wins query used the SCN alone
+  (`MAX(source_scn)`), but an Oracle SCN can repeat inside a transaction; they
+  now use a (position, tie-break) pair, the exposed SCN / commit timestamp is
+  for lag metrics only, and the Oracle SQL is labelled not run against an
+  Oracle database. `/non-relational/`: the Cassandra cell timestamp is a write
+  time assigned by the coordinator or the client, not a logical clock, so the
+  page now says it is reproduced only to mirror the source's conflict rule and
+  can be skewed; the LSN-equivalent checklist no longer offers the cell
+  timestamp or a MongoDB resume token; two unverifiable DynamoDB absolutes
+  (retention cannot be extended, a full scan is the only repair) are worded as
+  the page's assumption. `/exactly-once/`: the `processed_events` recipe now
+  says the ID insert and the sink write share one transaction (otherwise a
+  crash between them loses the event), the event-ID pseudocode and MERGEs are
+  stated to dedupe replays only, and two MERGE blocks are labelled untested.
+  `/partitioning/`: "at most, as a secondary tie-break" for `ts_ms` is now
+  "lag metrics only; use the ordinal as the tie-break", the simulator's
+  Ordering guarantee readout says "Per-key, broken for the hot key" once the
+  hot key is salted over several shards (new pure function in
+  `src/assets/js/lib/partitioning-kpi.js`), and the PostgreSQL block is now run
+  on PGlite by a test. `/materialization/`: `ts_ms` is a processing time, the
+  commit time is `source.ts_ms`; the Snowflake MERGE is labelled untested, and
+  its guard logic is run as a PostgreSQL MERGE on PGlite. A new test runs the
+  guard on `/sql-server-mysql-cdc/` on PGlite with the scenarios the page
+  lists. The thesis-lint allowlist reason for the Cassandra sentence is
+  updated. Open questions for the maintainer are listed in the PR.
+
 - **Content corrections from the accuracy sample (P17-12).** Five pages
   were wrong or unguarded, each with a per-page errata entry
   (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-11.
