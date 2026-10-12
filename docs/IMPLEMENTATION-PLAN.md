@@ -2734,8 +2734,7 @@ goes to `css-refactor` with before and after production hashes.
       lists only indexable pages, and a unit test asserts every URL in it
       exists in `_site` and none is `noindex`. Verify: `npx vitest run`,
       `npm run build`, `npm run smoke:core`. Size: S. Role: `implementer`.
-      Needs: none. Shipped in the PR carrying this change (number added when the PR opens:
-      PR_NUMBER_TBD): `src/llms.txt.11ty.cjs`
+      Needs: none. Shipped in the PR carrying this change (the post-merge sweep, P17-59, adds the PR number): `src/llms.txt.11ty.cjs`
       shares the sitemap's `isIndexable` rule and playground entry (exported
       from `src/sitemap.11ty.cjs`) and orders lessons as in
       `src/_data/series.mjs`; the host is `site.host`; the file states CC BY 4.0
