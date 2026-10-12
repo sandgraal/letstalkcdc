@@ -27,6 +27,7 @@ import {
 import {
   PR_FIELDS,
   RECHECK_FIELDS,
+  REGISTRY_PREFIX,
   RESTRICTED_PATTERNS,
   bumpProblem,
   checkAuditTrail,
@@ -40,11 +41,13 @@ import {
   comparePackageJson,
   dependabotCommitProblems,
   dependabotLane,
+  dependencyMapChanges,
   defaultFs,
   defaultRunner,
   installSignalHandlers,
   isPrefixException,
   lockfilePatchProblems,
+  lockfileProblems,
   main,
   parsePrNumber,
   registerCleanup,
@@ -80,6 +83,41 @@ const MANIFEST = {
 };
 const manifestText = (changes = {}) =>
   JSON.stringify({ ...MANIFEST, ...changes }, null, 2);
+// A base manifest with several dependencies, for the Dependabot lane tests,
+// and the merge result a bump of the named packages would produce.
+const LANE_MANIFEST = {
+  ...MANIFEST,
+  dependencies: {
+    lodash: "4.17.20",
+    x: "1.0.0",
+    a: "1.0.0",
+    b: "1.0.0",
+    c: "1.0.0",
+  },
+  devDependencies: { eslint: "9.1.0", prettier: "3.0.0" },
+};
+const laneBase = () => JSON.stringify(LANE_MANIFEST, null, 2);
+const laneMerged = (bump = [], changes = {}) => {
+  const manifest = structuredClone(LANE_MANIFEST);
+  for (const name of bump) {
+    for (const map of ["dependencies", "devDependencies"]) {
+      if (name in manifest[map]) {
+        manifest[map][name] = manifest[map][name].replace(/\d+$/, (digits) =>
+          String(Number(digits) + 1),
+        );
+      }
+    }
+  }
+  return JSON.stringify({ ...manifest, ...changes }, null, 2);
+};
+// The packages a Dependabot PR's title (or group body) names.
+const namedBy = (pr) => {
+  const single = /bump\s+(\S+)\s+from/i.exec(pr.title ?? "");
+  if (single) return [single[1]];
+  return [...String(pr.body ?? "").matchAll(/^Updates `([^`\n]+)` from/gm)].map(
+    (m) => m[1],
+  );
+};
 const BENIGN_PATCH = [
   "diff --git a/package-lock.json b/package-lock.json",
   "--- a/package-lock.json",
@@ -189,6 +227,8 @@ function makeEnv({
   baseManifest = manifestText(),
   mergedManifest = manifestText({ dependencies: { lodash: "4.17.21" } }),
   showCode = 0,
+  mergedLock = lockText(LOCK_REGISTRY),
+  lockShowCode = 0,
 } = {}) {
   const calls = [];
   const out = [];
@@ -218,6 +258,9 @@ function makeEnv({
     }
     if (key === "git show :package.json") {
       return res(showCode, mergedManifest, "show broke");
+    }
+    if (key === "git show :package-lock.json") {
+      return res(lockShowCode, mergedLock, "lock show broke");
     }
     if (
       file === "git" &&
@@ -1608,6 +1651,19 @@ describe("gate 5 against real git (no stubs)", () => {
       );
       put(seed, "package-lock.json", `${lockText(LOCK_EVIL)}\n`);
     });
+    branch("root-escaped-lock", () => {
+      put(
+        seed,
+        "package.json",
+        `${manifestText({ dependencies: { lodash: "4.17.21" } })}\n`,
+      );
+      // The key is spelled \u0072esolved, so no line says "resolved".
+      put(
+        seed,
+        "package-lock.json",
+        `{"lockfileVersion":3,"packages":{"node_modules/lodash":{"version":"4.17.21","\\u0072esolved":"${LOCK_EVIL}"}}}\n`,
+      );
+    });
     branch("root-engines", () => {
       put(
         seed,
@@ -1785,6 +1841,24 @@ describe("gate 5 against real git (no stubs)", () => {
       expect(code).toBe(1);
       expect(text).toContain("dependabot lane refused:");
       expect(text).toContain("outside https://registry.npmjs.org/");
+      expect(text).toMatch(/FAIL {2}4\. +record/);
+    }, 30_000);
+
+    it("refuses a git resolution hidden behind a JSON-escaped key", async () => {
+      const { code, text } = await lane("root-escaped-lock");
+      expect(code).toBe(1);
+      expect(text).toContain("dependabot lane refused:");
+      expect(text).toContain("resolves outside https://registry.npmjs.org/");
+      expect(text).toContain("contains a backslash");
+      expect(text).toMatch(/FAIL {2}4\. +record/);
+    }, 30_000);
+
+    it("refuses a bump of a package the title does not name", async () => {
+      const { code, text } = await lane("root-manifest", {
+        title: "chore(deps): Bump eslint from 9.1.0 to 9.4.0",
+      });
+      expect(code).toBe(1);
+      expect(text).toContain('does not name: "lodash"');
       expect(text).toMatch(/FAIL {2}4\. +record/);
     }, 30_000);
 
@@ -2184,7 +2258,13 @@ describe("Dependabot lane", () => {
       ...overrides,
     });
   const env = (pr, extra = {}) =>
-    makeEnv({ pr, diff: ["package.json", "package-lock.json"], ...extra });
+    makeEnv({
+      pr,
+      diff: ["package.json", "package-lock.json"],
+      baseManifest: laneBase(),
+      mergedManifest: laneMerged(namedBy(pr)),
+      ...extra,
+    });
 
   it("reads the author and the title from gh", () => {
     expect(PR_FIELDS.split(",")).toEqual(
@@ -2218,12 +2298,15 @@ describe("Dependabot lane", () => {
     expect(await e.exec(["7"])).toBe(0);
   });
 
-  it("works for a lockfile-only change", async () => {
+  it("refuses a lockfile-only change: nothing ties it to the named package", async () => {
     const e = makeEnv({
       pr: botPr({ files: [{ path: "package-lock.json" }] }),
       diff: ["package-lock.json"],
     });
-    expect(await e.exec(["7", "--execute"])).toBe(0);
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toContain("dependabot lane refused:");
+    expect(e.text()).toContain("changes no dependency version");
+    expect(e.merged()).toBe(false);
   });
 
   it.each([
@@ -2517,6 +2600,14 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
           authored("dependabot[bot]"),
         ],
       ],
+      [
+        "a foreign author on a middle commit, the last being dependabot",
+        [
+          { oid: "c".repeat(40), authors: [{ login: "dependabot[bot]" }] },
+          { oid: "d".repeat(40), authors: [{ login: "someone" }] },
+          authored("dependabot[bot]"),
+        ],
+      ],
       ["a human co-author", [authored("dependabot[bot]", "someone")]],
       ["a look-alike login", [authored("dependabot")]],
       ["a commit with no authors", [{ oid: OID, authors: [] }]],
@@ -2539,6 +2630,14 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
         /does not end at the head commit/,
       ],
       [
+        "a list whose last commit is dependabot's but not the head",
+        [
+          authored("dependabot[bot]"),
+          { oid: "d".repeat(40), authors: [{ login: "dependabot[bot]" }] },
+        ],
+        /does not end at the head commit/,
+      ],
+      [
         "a list of 100 (gh may have truncated it)",
         Array.from({ length: 99 }, () => ({
           oid: "c".repeat(40),
@@ -2548,6 +2647,53 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
       ],
     ])("fails closed on %s", async (_n, commits, why) => {
       await refused(env(botPr({ commits })), why);
+    });
+
+    it("fails closed when the PR data has no head commit to match", async () => {
+      await refused(
+        env(botPr({ headRefOid: undefined })),
+        /does not end at the head commit|looks unsafe or is missing/,
+      );
+    });
+
+    it("dependabotCommitProblems checks the head commit and an empty list on its own", () => {
+      const bots = (...oids) =>
+        oids.map((oid) => ({ oid, authors: [{ login: "dependabot[bot]" }] }));
+      const head = "e".repeat(40);
+      const other = "f".repeat(40);
+      expect(
+        dependabotCommitProblems({
+          headRefOid: head,
+          commits: bots(other, head),
+        }),
+      ).toEqual([]);
+      expect(
+        dependabotCommitProblems({
+          headRefOid: head,
+          commits: bots(head, other),
+        }),
+      ).toEqual([expect.stringMatching(/does not end at the head commit/)]);
+      expect(
+        dependabotCommitProblems({
+          headRefOid: undefined,
+          commits: bots(head),
+        }),
+      ).toEqual([expect.stringMatching(/does not end at the head commit/)]);
+      expect(
+        dependabotCommitProblems({ headRefOid: head, commits: [] }),
+      ).toEqual(["commit authors are missing from the PR data"]);
+      expect(
+        dependabotCommitProblems({
+          headRefOid: head,
+          commits: [
+            ...bots(other),
+            { oid: other, authors: [{ login: "someone" }] },
+            ...bots(head),
+          ],
+        }),
+      ).toEqual([
+        expect.stringMatching(/not authored by dependabot \("someone"\)/),
+      ]);
     });
 
     it("dependabotCommitProblems is pure and reports each case", () => {
@@ -2588,41 +2734,12 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
       ]);
     });
 
-    it.each([
-      [
-        "a git+ssh URL",
-        '      "resolved": "git+ssh://git@example.invalid/x.git#abc",',
-      ],
-      [
-        "a plain https host",
-        '      "resolved": "https://example.invalid/x.tgz",',
-      ],
-      [
-        "a registry look-alike host",
-        '      "resolved": "https://registry.npmjs.org.example.invalid/x.tgz",',
-      ],
-      [
-        "http, not https",
-        '      "resolved": "http://registry.npmjs.org/x.tgz",',
-      ],
-      ["a file path", '      "resolved": "../evil",'],
-      [
-        "a resolved line git cannot parse",
-        '      "resolved": ["https://registry.npmjs.org/x"],',
-      ],
-    ])("refuses a lockfile that resolves to %s", async (_n, line) => {
-      await refused(
-        env(botPr(), { lockPatch: patch(line) }),
-        /resolves a package outside https:\/\/registry\.npmjs\.org\/|cannot be read/,
-      );
-    });
-
-    it("accepts registry URLs, and ignores removed lines", async () => {
+    it("accepts a registry-only lockfile, and ignores removed lines", async () => {
       const e = env(botPr(), {
         lockPatch:
           patch(
             '      "resolved": "https://registry.npmjs.org/a/-/a-1.0.1.tgz",',
-          ) + '-      "resolved": "git+ssh://old/removed.git",\n',
+          ) + '-      "resolved": "git+ssh:\\u002f\\u002fold/removed.git",\n',
       });
       expect(await e.exec(["7", "--execute"])).toBe(0);
     });
@@ -2634,12 +2751,15 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
       );
     });
 
-    it("lockfilePatchProblems reads added lines only", () => {
+    it("lockfilePatchProblems flags a backslash on an added line only", () => {
       expect(lockfilePatchProblems(BENIGN_PATCH)).toEqual([]);
       expect(lockfilePatchProblems("")).toEqual([]);
       expect(
-        lockfilePatchProblems(patch('"resolved": "https://x.invalid/a"')),
+        lockfilePatchProblems(patch('"\\u0072esolved": "x"')),
       ).toHaveLength(1);
+      expect(lockfilePatchProblems('-  "a": "\\u0072"\n')).toEqual([]);
+      // The "+++" file header is not an added line.
+      expect(lockfilePatchProblems("+++ b/package-lock.json\n")).toEqual([]);
     });
 
     it.each([
@@ -2655,11 +2775,11 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
       await refused(e, /changes keys other than dependencies and version/);
     });
 
-    it("accepts dependency maps, version, and a reordered file", async () => {
+    it("accepts a bumped named package, a version change, and a reordered file", async () => {
       const reordered = JSON.stringify(
         {
-          devDependencies: { eslint: "9.4.0" },
-          dependencies: { lodash: "4.17.21", extra: "1.0.1" },
+          devDependencies: MANIFEST.devDependencies,
+          dependencies: { lodash: "^4.17.21" },
           version: "1.0.1",
           scripts: {
             "merge-pr": MANIFEST.scripts["merge-pr"],
@@ -2719,6 +2839,533 @@ describe("review fixes (P17-65): F1 Dependabot lane content", () => {
       );
       expect(lane.eligible).toBe(false);
       expect(lane.author).toBe(true);
+    });
+  });
+});
+
+describe("review fixes round 2 (P17-65): G1 the lockfile is parsed, G2 the named packages", () => {
+  const bot = { login: "dependabot[bot]", is_bot: true };
+  const MANIFESTS = [{ path: "package.json" }, { path: "package-lock.json" }];
+  const botPr = (overrides = {}) =>
+    greenPr({
+      author: bot,
+      title: "chore(deps): Bump lodash from 4.17.20 to 4.17.21",
+      body: "Bumps lodash.",
+      comments: [],
+      files: MANIFESTS,
+      commits: [{ oid: OID, authors: [{ login: "dependabot[bot]" }] }],
+      ...overrides,
+    });
+  const env = (pr, extra = {}) =>
+    makeEnv({
+      pr,
+      diff: ["package.json", "package-lock.json"],
+      baseManifest: laneBase(),
+      mergedManifest: laneMerged(namedBy(pr)),
+      ...extra,
+    });
+  const refused = async (e, why) => {
+    expect(await e.exec(["7", "--execute"])).toBe(1);
+    expect(e.text()).toContain("dependabot lane refused:");
+    expect(e.text()).toMatch(why);
+    expect(e.text()).toMatch(/FAIL {2}4\. +record/);
+    expect(e.text()).toMatch(/FAIL {2}4b\. +audit/);
+    expect(e.merged()).toBe(false);
+  };
+
+  const REG = "https://registry.npmjs.org/x/-/x-1.0.0.tgz";
+  const lock = (packages, extra = {}) =>
+    JSON.stringify({
+      lockfileVersion: 3,
+      packages: { "": { name: "x", version: "1.0.0" }, ...packages },
+      ...extra,
+    });
+  const entry = (extra) =>
+    lock({ "node_modules/x": { version: "1.0.0", resolved: REG, ...extra } });
+  const OUTSIDE = /resolves outside https:\/\/registry\.npmjs\.org\//;
+
+  describe("G1 lockfileProblems", () => {
+    it("accepts registry entries, a root with no resolved, and a v2 tree", () => {
+      expect(lockfileProblems(entry({}))).toEqual([]);
+      expect(lockfileProblems(lock({}))).toEqual([]);
+      expect(
+        lockfileProblems(
+          entry({
+            dependencies: { y: "^1.2.3", z: "~2.0.0 || >=3" },
+            optionalDependencies: { o: "1.x" },
+            peerDependencies: { p: "latest" },
+            devDependencies: { d: "*" },
+          }),
+        ),
+      ).toEqual([]);
+      expect(
+        lockfileProblems(
+          JSON.stringify({
+            lockfileVersion: 2,
+            packages: { "": {}, "node_modules/x": { version: "1.0.0" } },
+            dependencies: {
+              x: {
+                version: "1.0.0",
+                resolved: REG,
+                requires: { y: "^1.0.0" },
+                dependencies: { y: { version: "1.0.1", resolved: REG } },
+              },
+            },
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("sees through a JSON-escaped key (the old line grep did not)", () => {
+      const escaped =
+        '{"lockfileVersion":3,"packages":{"node_modules/x":{"version":"1.0.0","\\u0072esolved":"git+ssh://git@example.invalid/x.git"}}}';
+      expect(escaped).not.toContain('"resolved"');
+      expect(lockfileProblems(escaped)).toEqual([
+        expect.stringMatching(OUTSIDE),
+      ]);
+    });
+
+    it.each([
+      ["a git+ssh URL", { resolved: "git+ssh://git@example.invalid/x.git#a" }],
+      ["a file: path", { resolved: "file:../x" }],
+      ["a bare path", { resolved: "../evil" }],
+      ["another https host", { resolved: "https://example.invalid/x.tgz" }],
+      [
+        "a registry look-alike host",
+        { resolved: "https://registry.npmjs.org.example.invalid/x.tgz" },
+      ],
+      ["http, not https", { resolved: "http://registry.npmjs.org/x.tgz" }],
+      [
+        "a second URL after the registry prefix",
+        { resolved: `${REGISTRY_PREFIX}x?u=https://evil.invalid/x.tgz` },
+      ],
+      ["a backslash", { resolved: `${REGISTRY_PREFIX}x\\y.tgz` }],
+      ["a list", { resolved: [REG] }],
+      ["a number", { resolved: 5 }],
+      ["null", { resolved: null }],
+    ])("refuses resolved: %s", (_n, change) => {
+      expect(lockfileProblems(entry(change))).toEqual([
+        expect.stringMatching(OUTSIDE),
+      ]);
+    });
+
+    it("refuses a link, however it resolves", () => {
+      expect(lockfileProblems(entry({ link: true }))).toEqual([
+        expect.stringMatching(/link: true/),
+      ]);
+      expect(
+        lockfileProblems(
+          lock({ "node_modules/w": { resolved: "workspace/w", link: true } }),
+        ),
+      ).toEqual([
+        expect.stringMatching(/link: true/),
+        expect.stringMatching(OUTSIDE),
+      ]);
+    });
+
+    it.each([
+      ["file:", "file:../x"],
+      ["git+https:", "git+https://github.com/a/b.git"],
+      ["git:", "git://github.com/a/b.git"],
+      ["github:", "github:a/b"],
+      ["http:", "http://example.invalid/x.tgz"],
+      ["npm:", "npm:evil@1.0.0"],
+      ["a scheme separator", "1.0.0://x"],
+      ["a number", 1],
+    ])("refuses a version that is %s", (_n, version) => {
+      expect(lockfileProblems(entry({ version }))).toEqual([
+        expect.stringMatching(/version that is not a registry version/),
+      ]);
+    });
+
+    it.each([
+      "dependencies",
+      "optionalDependencies",
+      "peerDependencies",
+      "devDependencies",
+    ])("refuses a bad spec in %s", (map) => {
+      for (const spec of [
+        "npm:evil@1.0.0",
+        "git+https://github.com/a/b.git",
+        "git+ssh://git@example.invalid/b.git",
+        "github:a/b",
+        "file:../y",
+        "http://example.invalid/y.tgz",
+        "owner/repo",
+        "../y",
+        7,
+      ]) {
+        expect(
+          lockfileProblems(entry({ [map]: { y: spec } })),
+          `${map} ${spec}`,
+        ).toHaveLength(1);
+      }
+    });
+
+    it("refuses a bad spec in requires, and anything nested in a v2 tree", () => {
+      const v2 = (tree) =>
+        JSON.stringify({
+          lockfileVersion: 2,
+          packages: { "": {} },
+          dependencies: tree,
+        });
+      expect(
+        lockfileProblems(
+          v2({
+            x: { version: "1.0.0", resolved: REG, requires: { y: "npm:e@1" } },
+          }),
+        ),
+      ).toHaveLength(1);
+      expect(
+        lockfileProblems(
+          v2({
+            x: {
+              version: "1.0.0",
+              resolved: REG,
+              dependencies: {
+                y: { version: "1.0.0", resolved: "git+ssh://e/y.git" },
+              },
+            },
+          }),
+        ),
+      ).toEqual([expect.stringMatching(OUTSIDE)]);
+      expect(
+        lockfileProblems(v2({ x: { version: "file:../x" } })),
+      ).toHaveLength(1);
+      expect(lockfileProblems(v2([]))).toHaveLength(1);
+    });
+
+    it.each([
+      [
+        "lockfileVersion 1",
+        JSON.stringify({ lockfileVersion: 1, dependencies: {} }),
+      ],
+      [
+        "lockfileVersion 4",
+        JSON.stringify({ lockfileVersion: 4, packages: {} }),
+      ],
+      [
+        "a string lockfileVersion",
+        JSON.stringify({ lockfileVersion: "3", packages: {} }),
+      ],
+      ["no lockfileVersion", JSON.stringify({ packages: {} })],
+      ["text that is not JSON", "{ not json"],
+      ["empty text", ""],
+      ["a JSON array", "[]"],
+      ["JSON null", "null"],
+      ["a lockfile with no packages", JSON.stringify({ lockfileVersion: 3 })],
+      [
+        "packages as a list",
+        JSON.stringify({ lockfileVersion: 3, packages: [] }),
+      ],
+    ])("fails closed on %s", (_n, text) => {
+      expect(lockfileProblems(text).length).toBeGreaterThan(0);
+    });
+
+    it("caps what it reports at five", () => {
+      const packages = {};
+      for (let i = 0; i < 20; i += 1) {
+        packages[`node_modules/p${i}`] = { resolved: `file:../p${i}` };
+      }
+      expect(lockfileProblems(lock(packages))).toHaveLength(5);
+    });
+  });
+
+  describe("G1 through the whole flow", () => {
+    it("refuses an escaped-key git resolution even when the patch looks clean", async () => {
+      const escaped = `{"lockfileVersion":3,"packages":{"node_modules/lodash":{"version":"4.17.21","\\u0072esolved":"git+ssh://git@example.invalid/lodash.git"}}}`;
+      await refused(env(botPr(), { mergedLock: escaped }), OUTSIDE);
+    });
+
+    it.each([
+      ["file:", { resolved: "file:../x" }],
+      ["a link", { link: true }],
+      ["a git version", { version: "git+ssh://e/x.git" }],
+      ["an npm: spec", { dependencies: { y: "npm:evil@1.0.0" } }],
+    ])("refuses a merged lockfile with %s", async (_n, change) => {
+      await refused(
+        env(botPr(), { mergedLock: entry(change) }),
+        /packages\["node_modules\/x"\]/,
+      );
+    });
+
+    it("refuses a lockfile that does not parse", async () => {
+      await refused(
+        env(botPr(), { mergedLock: "{ not json" }),
+        /package-lock\.json is not valid JSON/,
+      );
+    });
+
+    it("refuses a lockfileVersion 1 lockfile", async () => {
+      await refused(
+        env(botPr(), {
+          mergedLock: JSON.stringify({ lockfileVersion: 1, dependencies: {} }),
+        }),
+        /lockfileVersion is 1, not 2 or 3/,
+      );
+    });
+
+    it("refuses when the merged lockfile cannot be shown", async () => {
+      await refused(
+        env(botPr(), { lockShowCode: 128 }),
+        /could not read package-lock\.json after the merge/,
+      );
+    });
+
+    it("reads the lockfile from the merge result (the index), in the test worktree", async () => {
+      const e = env(botPr());
+      await e.exec(["7"]);
+      const show = e.calls.find(
+        (c) => c.args.join(" ") === "show :package-lock.json",
+      );
+      expect(show.cwd).toBe(TMP);
+    });
+
+    it("refuses an added line with a backslash even when the lockfile parses clean", async () => {
+      await refused(
+        env(botPr(), {
+          lockPatch: [
+            "diff --git a/package-lock.json b/package-lock.json",
+            "--- a/package-lock.json",
+            "+++ b/package-lock.json",
+            "@@ -1 +1 @@",
+            '+      "\\u0072esolved": "https://registry.npmjs.org/x.tgz",',
+            "",
+          ].join("\n"),
+        }),
+        /contains a backslash/,
+      );
+    });
+  });
+
+  describe("G2 dependencyMapChanges", () => {
+    const text = (changes) =>
+      JSON.stringify({
+        name: "x",
+        dependencies: { a: "1.0.0", b: "^1.0.0" },
+        devDependencies: { d: "2.0.0" },
+        optionalDependencies: { o: "~3.0.0" },
+        peerDependencies: { p: "^4.0.0" },
+        ...changes,
+      });
+
+    it("reports nothing for identical files, and the changed names otherwise", () => {
+      expect(dependencyMapChanges(text(), text())).toEqual({
+        problems: [],
+        changed: [],
+      });
+      expect(
+        dependencyMapChanges(
+          text(),
+          text({
+            dependencies: { a: "1.0.1", b: "^1.0.0" },
+            devDependencies: { d: "~2.1.0" },
+            peerDependencies: { p: "^4.0.1" },
+          }),
+        ),
+      ).toEqual({ problems: [], changed: ["a", "d", "p"] });
+    });
+
+    it.each([
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+      "peerDependencies",
+    ])("refuses an added, removed or renamed key in %s", (map) => {
+      const from = JSON.parse(text())[map];
+      const [name] = Object.keys(from);
+      for (const to of [
+        { ...from, extra: "1.0.0" },
+        {},
+        { [`${name}-renamed`]: from[name] },
+      ]) {
+        const result = dependencyMapChanges(text(), text({ [map]: to }));
+        expect(result.problems, JSON.stringify(to)).toEqual([
+          expect.stringMatching(new RegExp(`${map} adds or removes`)),
+        ]);
+      }
+    });
+
+    it("refuses a package moved from one map to another", () => {
+      const result = dependencyMapChanges(
+        text(),
+        text({
+          dependencies: { b: "^1.0.0" },
+          devDependencies: { d: "2.0.0", a: "1.0.0" },
+        }),
+      );
+      expect(result.problems).toHaveLength(2);
+    });
+
+    it("accepts [^~]major.minor.patch and nothing else as a changed value", () => {
+      for (const ok of ["1.0.1", "^1.0.1", "~1.0.1"]) {
+        expect(
+          dependencyMapChanges(
+            text(),
+            text({ dependencies: { a: ok, b: "^1.0.0" } }),
+          ).problems,
+          ok,
+        ).toEqual([]);
+      }
+      for (const bad of [
+        "npm:evil@1.0.1",
+        "git+https://github.com/a/b.git",
+        "git+ssh://git@example.invalid/b.git",
+        "github:a/b",
+        "file:../x",
+        "https://example.invalid/x.tgz",
+        "http://example.invalid/x.tgz",
+        "latest",
+        "next",
+        ">=1.0.1",
+        "^1.0.0 || ^2.0.0",
+        "1.x",
+        "*",
+        "",
+        "^1.0.1-beta.1",
+        "~1.0",
+        "^1.0.1 ",
+        "v1.0.1",
+        "^^1.0.1",
+        5,
+        null,
+        { a: 1 },
+      ]) {
+        const result = dependencyMapChanges(
+          text(),
+          text({ dependencies: { a: bad, b: "^1.0.0" } }),
+        );
+        expect(result.problems, JSON.stringify(bad)).toHaveLength(1);
+        expect(result.problems[0]).toContain("package.json dependencies.a");
+        expect(result.changed).toEqual(["a"]);
+      }
+    });
+
+    it("only judges values that changed", () => {
+      const odd = { dependencies: { a: "latest", b: "^1.0.0" } };
+      expect(dependencyMapChanges(text(odd), text(odd)).problems).toEqual([]);
+    });
+
+    it("fails closed on unreadable input and on a map that is not an object", () => {
+      expect(dependencyMapChanges("{", text()).problems).toHaveLength(1);
+      expect(dependencyMapChanges(text(), "[]").problems).toHaveLength(1);
+      expect(
+        dependencyMapChanges(text(), text({ dependencies: ["a"] })).problems,
+      ).toEqual([expect.stringMatching(/dependencies is not an object/)]);
+    });
+  });
+
+  describe("G2 through the whole flow", () => {
+    const merged = (deps) =>
+      JSON.stringify({ ...LANE_MANIFEST, ...deps }, null, 2);
+
+    it("refuses a changed package that the title does not name", async () => {
+      await refused(
+        env(botPr(), { mergedManifest: laneMerged(["lodash", "eslint"]) }),
+        /does not name: "eslint"/,
+      );
+    });
+
+    it("compares names exactly", async () => {
+      await refused(
+        env(botPr({ title: "Bump Lodash from 4.17.20 to 4.17.21" }), {
+          mergedManifest: laneMerged(["lodash"]),
+        }),
+        /does not name: "lodash"/,
+      );
+    });
+
+    it("refuses a PR whose package.json changes no dependency version", async () => {
+      await refused(
+        env(botPr(), { mergedManifest: laneMerged([], { version: "1.0.1" }) }),
+        /changes no dependency version/,
+      );
+    });
+
+    it("refuses an added dependency, even one with a plain version", async () => {
+      await refused(
+        env(botPr(), {
+          mergedManifest: merged({
+            dependencies: {
+              ...LANE_MANIFEST.dependencies,
+              lodash: "4.17.21",
+              evil: "1.0.0",
+            },
+          }),
+        }),
+        /dependencies adds or removes packages/,
+      );
+    });
+
+    it("refuses a removed or renamed dependency", async () => {
+      const { x, ...rest } = LANE_MANIFEST.dependencies;
+      expect(x).toBe("1.0.0");
+      for (const dependencies of [
+        { ...rest, lodash: "4.17.21" },
+        { ...rest, lodash: "4.17.21", "x-renamed": "1.0.0" },
+      ]) {
+        await refused(
+          env(botPr(), { mergedManifest: merged({ dependencies }) }),
+          /adds or removes packages/,
+        );
+      }
+    });
+
+    it.each([
+      ["an npm: alias", "npm:evil@4.17.21"],
+      ["a git URL", "git+https://github.com/a/lodash.git"],
+      ["a file: path", "file:../lodash"],
+      ["a tarball URL", "https://example.invalid/lodash.tgz"],
+      ["a tag", "latest"],
+      ["a range with ||", "^4.17.21 || ^5.0.0"],
+    ])("refuses the named package set to %s", async (_n, value) => {
+      await refused(
+        env(botPr(), {
+          mergedManifest: merged({
+            dependencies: { ...LANE_MANIFEST.dependencies, lodash: value },
+          }),
+        }),
+        /not a plain \[\^~\]major\.minor\.patch/,
+      );
+    });
+
+    it("accepts a caret or tilde range on the named package", async () => {
+      for (const value of ["^4.17.21", "~4.17.21"]) {
+        const e = env(botPr(), {
+          mergedManifest: merged({
+            dependencies: { ...LANE_MANIFEST.dependencies, lodash: value },
+          }),
+        });
+        expect(await e.exec(["7", "--execute"]), value).toBe(0);
+      }
+    });
+
+    it("lets a group PR change a subset of the packages its body names", async () => {
+      const body = [
+        "Bumps the npm-minor-patch group with 2 updates in the / directory.",
+        "Updates `eslint` from 9.1.0 to 9.4.0",
+        "Updates `prettier` from 3.0.0 to 3.0.3",
+      ].join("\n");
+      const title =
+        "chore(deps): Bump the npm-minor-patch group with 2 updates";
+      const subset = env(botPr({ title, body }), {
+        mergedManifest: laneMerged(["eslint"]),
+      });
+      expect(await subset.exec(["7", "--execute"])).toBe(0);
+      await refused(
+        env(botPr({ title, body }), {
+          mergedManifest: laneMerged(["eslint", "lodash"]),
+        }),
+        /does not name: "lodash"/,
+      );
+    });
+
+    it("dependabotLane applies the check only when it is given the changed names", () => {
+      const pr = botPr();
+      expect(dependabotLane(pr, MANIFESTS, [], null).eligible).toBe(true);
+      expect(dependabotLane(pr, MANIFESTS, [], ["lodash"]).eligible).toBe(true);
+      expect(dependabotLane(pr, MANIFESTS, [], []).eligible).toBe(false);
+      expect(dependabotLane(pr, MANIFESTS, [], ["other"]).eligible).toBe(false);
     });
   });
 });
@@ -2883,6 +3530,7 @@ describe("review fixes (P17-65): F3 package.json scripts", () => {
     await e.exec(["7"]);
     const shows = e.calls.filter((c) => c.args[0] === "show");
     expect(shows.map((c) => [c.args.join(" "), c.cwd])).toEqual([
+      ["show :package-lock.json", TMP],
       ["show origin/main:package.json", "/repo"],
       ["show :package.json", TMP],
     ]);
@@ -2920,6 +3568,42 @@ describe("review fixes (P17-65): F4 approval in the merge commit", () => {
     expect(body).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
     expect(body.startsWith(`${PREFIX}ok `)).toBe(true);
     expect(body.length).toBe(PREFIX.length + 200 + 3);
+  });
+
+  it("writes no --body when the flag is given but nothing was overridden", async () => {
+    const e = makeEnv();
+    expect(
+      await e.exec(["7", "--execute", "--maintainer-approved", TEXT]),
+    ).toBe(0);
+    expect(mergeCall(e).args).not.toContain("--body");
+    expect(e.text()).toContain("nothing was overridden");
+    expect(e.text()).not.toContain("overrode:");
+  });
+
+  it("the record is the whole body, written once, when gate 5 was overridden", async () => {
+    const e = makeEnv({ pr: wf() });
+    await e.exec(["7", "--execute", "--maintainer-approved", TEXT]);
+    const { args } = mergeCall(e);
+    expect(args.filter((a) => a === "--body")).toHaveLength(1);
+    expect(args.filter((a) => a.startsWith(PREFIX))).toEqual([
+      `${PREFIX}${TEXT}`,
+    ]);
+    expect(e.text()).not.toContain("nothing was overridden");
+  });
+
+  it("writes the body when the override was needed only after the test-merge", async () => {
+    const e = makeEnv({
+      pr: greenPr({ files: [{ path: "package.json" }] }),
+      diff: ["package.json"],
+      mergedManifest: manifestText({
+        scripts: { ...MANIFEST.scripts, test: "true" },
+      }),
+    });
+    expect(
+      await e.exec(["7", "--execute", "--maintainer-approved", TEXT]),
+    ).toBe(0);
+    const { args } = mergeCall(e);
+    expect(args[args.indexOf("--body") + 1]).toBe(`${PREFIX}${TEXT}`);
   });
 
   it("writes no --body when the flag is absent", async () => {

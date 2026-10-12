@@ -127,9 +127,12 @@
 // bypasses nothing else. It is an HONOUR-SYSTEM record, not authentication: the
 // script cannot tell whether the maintainer really said it. The conductor may
 // pass it only after the maintainer's own chat message says to merge that PR.
-// The text (control characters removed, 200 characters) is also written into
-// the squash-merge commit body after "Maintainer approval (recorded by the
-// conductor, honour system): " so the record outlives the terminal output.
+// When (and only when) it actually overrode a gate 5 failure, the text
+// (control characters removed, 200 characters) is also written into the
+// squash-merge commit body after "Maintainer approval (recorded by the
+// conductor, honour system): " so the record outlives the terminal output. The
+// script passes no other body, so this record is the whole body (`--body`
+// replaces gh's default message); with nothing overridden no body is passed.
 // There is no other override, and never --admin, --auto or --rebase.
 //
 // Dependabot lane (same decision): a PR whose author (read from
@@ -145,18 +148,30 @@
 //   - every commit on the PR (`gh pr view --json commits`) must be authored by
 //     dependabot[bot] / app/dependabot; a missing, empty or 100-commit list, or
 //     one that does not end at the head commit, is refused;
-//   - in `git diff --no-renames origin/main...<head> -- package-lock.json
-//     package.json` every added "resolved" line must start with
-//     https://registry.npmjs.org/ (an unreadable one is refused);
+//   - the lockfile of the merge result (`git show :package-lock.json`), parsed
+//     as JSON, must be lockfileVersion 2 or 3 and every entry in `packages`
+//     and `dependencies` (recursively) must have a `resolved` that starts with
+//     https://registry.npmjs.org/ (an entry with none, such as the root, is
+//     fine), no `link: true`, and no version or dependency spec that is a
+//     file:, git, github:, http: or npm: spec or contains `://` or a `/`; a
+//     lockfile that does not parse is refused. No added line of the patch
+//     (`git diff --no-renames origin/main...<head> -- package-lock.json
+//     package.json`) may contain a backslash;
 //   - package.json, parsed, may differ from main only in version,
 //     dependencies, devDependencies, optionalDependencies and
 //     peerDependencies; scripts, bin, overrides, engines, main, exports and
-//     every other key must be deep-equal;
+//     every other key must be deep-equal. In those four maps the key sets must
+//     be identical (nothing added, removed or renamed), every changed value
+//     must be a plain [^~]major.minor.patch, and the packages whose value
+//     changed must be a non-empty subset of the packages the PR title (or a
+//     group PR's body) names;
 //   - the manifests must actually have been inspected (fail closed).
 // What this does NOT do: it does not verify that a published package version is
-// benign, and it cannot prove a commit's author is really Dependabot (a commit
-// author is a claim in the commit). Checks, the test-merge and the reviewer
-// of the dependency itself remain the controls.
+// benign (a compromised release served from the real registry passes, and so
+// does a malicious package that is a legitimate-looking bump of a named
+// dependency), and it cannot prove a commit's author is really Dependabot (a
+// commit author is a claim in the commit). Checks, the test-merge and the
+// reviewer of the dependency itself remain the controls.
 //
 // The gate functions below are pure (parsed JSON in, failure list out). All
 // process, git and filesystem access goes through injected dependencies so the
@@ -804,10 +819,11 @@ export function dependabotCommitProblems(pr) {
 }
 
 /**
- * Checks the `package-lock.json` / `package.json` patch (`git diff
- * origin/main...<head> -- package-lock.json package.json`): every added line
- * that sets `"resolved"` must point at the npm registry. Any added line that
- * mentions `"resolved"` in a form this cannot read is a problem too.
+ * Raw-text check of the `package-lock.json` / `package.json` patch (`git diff
+ * --no-renames origin/main...<head> -- package-lock.json package.json`): no
+ * added line may contain a backslash. The real check of where packages come
+ * from is `lockfileProblems`, which parses the JSON; this stays because a JSON
+ * escape (`"resolved"`) is invisible to a reader of the patch.
  */
 export function lockfilePatchProblems(patch) {
   const problems = [];
@@ -816,19 +832,197 @@ export function lockfilePatchProblems(patch) {
     if (/^\+\+\+ (?:b\/package(?:-lock)?\.json|\/dev\/null)$/.test(line)) {
       continue;
     }
-    if (!/"resolved"/.test(line)) continue;
-    const match = /^\+\s*"resolved":\s*"([^"\\]*)",?\s*$/.exec(line);
-    if (!match) {
+    if (line.includes("\\")) {
       problems.push(
-        `an added "resolved" line cannot be read: ${line.slice(0, 120)}`,
-      );
-    } else if (!match[1].startsWith(REGISTRY_PREFIX)) {
-      problems.push(
-        `the lockfile resolves a package outside ${REGISTRY_PREFIX}: ${match[1].slice(0, 120)}`,
+        `an added line of the lockfile patch contains a backslash: ${line.slice(0, 120)}`,
       );
     }
   }
   return [...new Set(problems)].slice(0, 5);
+}
+
+const LOCK_DEPENDENCY_MAPS = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+  "requires",
+];
+// A version or spec that is not a registry semver: file:, git..., github:,
+// http: and npm: specs, and anything with a scheme separator.
+const SUSPECT_SPEC = /^(?:file:|git|github:|http:|npm:)|:\/\//i;
+
+function lockSpecProblem(spec) {
+  if (typeof spec !== "string") return "is not a string";
+  if (SUSPECT_SPEC.test(spec)) return "is a file, git, URL or alias spec";
+  // semver ranges and tags never contain a slash; `owner/repo` and `../x` do
+  if (spec.includes("/")) return "is a path or owner/repo spec";
+  return null;
+}
+
+/**
+ * Checks a parsed lockfile entry (a `packages` value, or a v1-style
+ * `dependencies` value, which nests). `where` names it in a problem.
+ */
+function lockEntryProblems(where, entry, problems, depth = 0) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    problems.push(`${where} is not an object`);
+    return;
+  }
+  if (depth > 64) {
+    problems.push(`${where} nests too deeply`);
+    return;
+  }
+  if (entry.link === true) problems.push(`${where} is a link (link: true)`);
+  if (entry.resolved !== undefined) {
+    const resolved = entry.resolved;
+    if (
+      typeof resolved !== "string" ||
+      !resolved.startsWith(REGISTRY_PREFIX) ||
+      resolved.slice(REGISTRY_PREFIX.length).includes("://") ||
+      resolved.includes("\\")
+    ) {
+      problems.push(
+        `${where} resolves outside ${REGISTRY_PREFIX}: ${JSON.stringify(resolved)?.slice(0, 100)}`,
+      );
+    }
+  }
+  if (entry.version !== undefined) {
+    const version = entry.version;
+    if (typeof version !== "string" || SUSPECT_SPEC.test(version)) {
+      problems.push(
+        `${where} has a version that is not a registry version: ${JSON.stringify(version)?.slice(0, 100)}`,
+      );
+    }
+  }
+  for (const key of LOCK_DEPENDENCY_MAPS) {
+    const map = entry[key];
+    if (map === undefined) continue;
+    if (!map || typeof map !== "object" || Array.isArray(map)) {
+      problems.push(`${where} ${key} is not an object`);
+      continue;
+    }
+    for (const [name, value] of Object.entries(map)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        // The v1 `dependencies` tree: each value is itself an entry.
+        lockEntryProblems(`${where} > ${name}`, value, problems, depth + 1);
+      } else {
+        const why = lockSpecProblem(value);
+        if (why) {
+          problems.push(
+            `${where} ${key}.${name} ${why}: ${JSON.stringify(value)?.slice(0, 100)}`,
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Parses the lockfile of the merge result and refuses anything that could
+ * fetch code from somewhere other than the npm registry. Fails closed: text
+ * that does not parse, or a lockfileVersion other than 2 or 3, is a problem.
+ * An entry with no `resolved` (the workspace root `""`) is fine.
+ */
+export function lockfileProblems(text) {
+  let lock;
+  try {
+    lock = JSON.parse(String(text ?? ""));
+  } catch {
+    return ["package-lock.json is not valid JSON after the merge"];
+  }
+  if (!lock || typeof lock !== "object" || Array.isArray(lock)) {
+    return ["package-lock.json is not a JSON object"];
+  }
+  if (lock.lockfileVersion !== 2 && lock.lockfileVersion !== 3) {
+    return [
+      `package-lock.json lockfileVersion is ${JSON.stringify(lock.lockfileVersion)}, not 2 or 3`,
+    ];
+  }
+  const problems = [];
+  const packages = lock.packages;
+  if (!packages || typeof packages !== "object" || Array.isArray(packages)) {
+    problems.push("package-lock.json has no packages object");
+  } else {
+    for (const [key, entry] of Object.entries(packages)) {
+      lockEntryProblems(`packages[${JSON.stringify(key)}]`, entry, problems);
+    }
+  }
+  if (lock.dependencies !== undefined) {
+    const tree = lock.dependencies;
+    if (!tree || typeof tree !== "object" || Array.isArray(tree)) {
+      problems.push("package-lock.json dependencies is not an object");
+    } else {
+      for (const [name, entry] of Object.entries(tree)) {
+        lockEntryProblems(
+          `dependencies[${JSON.stringify(name)}]`,
+          entry,
+          problems,
+        );
+      }
+    }
+  }
+  return [...new Set(problems)].slice(0, 5);
+}
+
+export const DEPENDENCY_MAPS = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+];
+// What a changed dependency value in package.json must look like: no tag, URL,
+// alias, path, range with `||` or comparator.
+export const PLAIN_DEPENDENCY_VERSION = /^[\^~]?\d+\.\d+\.\d+$/;
+
+/**
+ * Compares the four dependency maps of package.json on main and in the merge
+ * result. Returns `{ problems, changed }`: `changed` is the sorted package
+ * names whose value differs; `problems` lists every key added, removed or
+ * renamed, and every changed value that is not a plain [^~]major.minor.patch.
+ * Unreadable input is a problem (fail closed).
+ */
+export function dependencyMapChanges(baseText, headText) {
+  const base = parseManifest(baseText);
+  const head = parseManifest(headText);
+  if (!base || !head) {
+    return {
+      problems: ["package.json could not be read to compare dependencies"],
+      changed: [],
+    };
+  }
+  const problems = [];
+  const changed = new Set();
+  const isMap = (value) =>
+    value && typeof value === "object" && !Array.isArray(value);
+  for (const map of DEPENDENCY_MAPS) {
+    const from = base[map] ?? {};
+    const to = head[map] ?? {};
+    if (!isMap(from) || !isMap(to)) {
+      problems.push(`package.json ${map} is not an object`);
+      continue;
+    }
+    const added = Object.keys(to).filter((name) => !(name in from));
+    const removed = Object.keys(from).filter((name) => !(name in to));
+    if (added.length > 0 || removed.length > 0) {
+      problems.push(
+        `package.json ${map} adds or removes packages (+${added.slice(0, 3).join(",") || "none"} -${removed.slice(0, 3).join(",") || "none"})`,
+      );
+    }
+    for (const name of Object.keys(to)) {
+      if (!(name in from) || from[name] === to[name]) continue;
+      changed.add(name);
+      if (
+        typeof to[name] !== "string" ||
+        !PLAIN_DEPENDENCY_VERSION.test(to[name])
+      ) {
+        problems.push(
+          `package.json ${map}.${name} is ${JSON.stringify(to[name])?.slice(0, 60)}, not a plain [^~]major.minor.patch version`,
+        );
+      }
+    }
+  }
+  return { problems: [...new Set(problems)], changed: [...changed].sort() };
 }
 
 function parseManifest(text) {
@@ -882,8 +1076,16 @@ export function comparePackageJson(baseText, headText) {
  * `extraReasons` are content problems found by the test-merge (lockfile URLs,
  * package.json keys); any of them voids the lane. Every commit must be
  * authored by Dependabot, and `author.is_bot` must be exactly true.
+ * `changedPackages`, when given (the package names whose value changed in the
+ * package.json dependency maps), must be non-empty and a subset of the
+ * packages the title (or a group PR's body) names.
  */
-export function dependabotLane(pr, changedFiles = null, extraReasons = []) {
+export function dependabotLane(
+  pr,
+  changedFiles = null,
+  extraReasons = [],
+  changedPackages = null,
+) {
   const login = pr.author?.login;
   if (!DEPENDABOT_LOGINS.has(login) || pr.author?.is_bot === false) {
     return { author: false, eligible: false, reasons: [], summary: "" };
@@ -925,6 +1127,22 @@ export function dependabotLane(pr, changedFiles = null, extraReasons = []) {
   for (const { name, from, to } of bumps) {
     const problem = bumpProblem(name, from, to);
     if (problem) reasons.push(problem);
+  }
+  if (changedPackages) {
+    const named = new Set(bumps.map((bump) => bump.name));
+    const unnamed = changedPackages.filter((name) => !named.has(name));
+    if (changedPackages.length === 0) {
+      reasons.push(
+        "package.json changes no dependency version, so nothing ties the PR to the package it names",
+      );
+    } else if (unnamed.length > 0) {
+      reasons.push(
+        `package.json changes packages the PR does not name: ${unnamed
+          .slice(0, 5)
+          .map((name) => JSON.stringify(name))
+          .join(", ")}`,
+      );
+    }
   }
 
   const paths = (list) =>
@@ -1326,6 +1544,18 @@ async function inspectManifests({ git, worktree, head, changed, result, run }) {
     } else {
       result.laneProblems.push(...lockfilePatchProblems(patch.stdout));
     }
+    // The lockfile that would land: `:package-lock.json` is the index of the
+    // test-merge. Parsed, never grepped.
+    const lock = await run("git", ["show", ":package-lock.json"], {
+      cwd: worktree,
+    });
+    if (lock.code !== 0) {
+      result.laneProblems.push(
+        `could not read package-lock.json after the merge: ${tail(lock.stderr, 2)}`,
+      );
+    } else {
+      result.laneProblems.push(...lockfileProblems(lock.stdout));
+    }
   }
   if (changed.has("package.json")) {
     const base = await git(["show", `origin/${BASE_BRANCH}:package.json`]);
@@ -1333,6 +1563,17 @@ async function inspectManifests({ git, worktree, head, changed, result, run }) {
     const merged = await run("git", ["show", ":package.json"], {
       cwd: worktree,
     });
+    const dependencies =
+      base.code === 0 && merged.code === 0
+        ? dependencyMapChanges(base.stdout, merged.stdout)
+        : {
+            problems: [
+              "git could not show package.json to compare dependencies",
+            ],
+            changed: [],
+          };
+    result.laneProblems.push(...dependencies.problems);
+    result.changedDependencies = dependencies.changed;
     const compared =
       base.code === 0 && merged.code === 0
         ? comparePackageJson(base.stdout, merged.stdout)
@@ -1377,6 +1618,8 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
     // whether the manifests were inspected at all (fail closed when not).
     laneProblems: [],
     manifestsInspected: false,
+    // Package names whose value changed in the package.json dependency maps.
+    changedDependencies: [],
   };
   const head = pr.headRefOid;
 
@@ -1598,8 +1841,8 @@ export const USAGE = [
   "squash-merges (and deletes the branch) only when every gate passes.",
   "",
   '--maintainer-approved "<text>" (10+ characters) turns a gate 5 failure into a',
-  "PASS with a visible note quoting <text>, and <text> goes into the squash-merge",
-  "commit body. It bypasses no other gate. It is an",
+  "PASS with a visible note quoting <text>, and when it overrode something <text>",
+  "is the whole squash-merge commit body. It bypasses no other gate. It is an",
   "honour-system record, not authentication: pass it only after the",
   "maintainer's own chat message says to merge this PR.",
   "",
@@ -1630,10 +1873,12 @@ export const USAGE = [
   "              gates 4 and 4b. Majors, pre-releases, unparseable versions and",
   "              groups whose body cannot be checked are refused with the",
   "              reason. Also required: every commit authored by dependabot,",
-  "              lockfile `resolved` URLs only on https://registry.npmjs.org/,",
-  "              and package.json changed only in version and the four",
-  "              dependency maps. It does not verify a published package is",
-  "              benign",
+  "              a parsed lockfile (version 2 or 3) whose every entry resolves",
+  "              on https://registry.npmjs.org/ with no link, file, git or URL",
+  "              spec and no backslash on an added line, and package.json",
+  "              changed only in version and the four dependency maps (same",
+  "              keys, plain [^~]x.y.z values, only packages the title names).",
+  "              It does not verify a published package is benign",
   "  6  merge    clean test-merge onto origin/main (also removes merge-pr-* temp",
   "              dirs older than 24 h; updates origin/main and",
   "              origin/<branch> remote-tracking refs); npm test, with a",
@@ -1783,6 +2028,7 @@ export async function main(argv, deps = {}) {
         result.manifestsInspected
           ? result.laneProblems
           : ["the manifest changes could not be inspected"],
+        result.manifestsInspected ? result.changedDependencies : null,
       );
       if (!lane.eligible) {
         const full = evaluateStaticGates(pr, { lane });
@@ -1800,6 +2046,9 @@ export async function main(argv, deps = {}) {
   const failed = gates.filter((gate) => gate.failures.length > 0);
   out(`merge-pr: PR #${number} (${execute ? "execute" : "dry run"})`);
   if (approval) out(`maintainer-approved: ${approval}`);
+  if (approval && overridden.length === 0) {
+    out("maintainer-approved: nothing was overridden, so it is not recorded.");
+  }
   out(formatGateTable(gates));
 
   if (failed.length > 0) {
@@ -1853,7 +2102,9 @@ export async function main(argv, deps = {}) {
     );
   }
 
-  // A durable record of the approval in the squash-merge commit body.
+  // A durable record of the approval in the squash-merge commit body, only
+  // when it actually overrode something. This script passes no other body, so
+  // the record is the whole body (`--body` replaces gh's default message).
   const mergeArgs = [
     "pr",
     "merge",
@@ -1863,7 +2114,9 @@ export async function main(argv, deps = {}) {
     "--match-head-commit",
     pr.headRefOid,
   ];
-  if (approval) mergeArgs.push("--body", `${APPROVAL_BODY_PREFIX}${approval}`);
+  if (approval && overridden.length > 0) {
+    mergeArgs.push("--body", `${APPROVAL_BODY_PREFIX}${approval}`);
+  }
   const merge = await run("gh", mergeArgs, { cwd: root });
   if (merge.code !== 0) {
     err(

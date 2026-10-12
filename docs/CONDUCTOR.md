@@ -253,7 +253,12 @@ test` if the head is behind.
   message says to merge that PR, and quotes that message as the text. The
   same text (control characters removed, 200 characters) is written into the
   squash-merge commit body after "Maintainer approval (recorded by the
-  conductor, honour system): ", so the record outlives the terminal.
+  conductor, honour system): ", so the record outlives the terminal, but
+  **only when it actually overrode a gate 5 failure**. With nothing to
+  override the script says so and passes no `--body`. The script passes no
+  other body, so when the record is written it is the **whole** squash body
+  (`gh pr merge --body` replaces the default message built from the commits);
+  it is not appended to anything.
 - **Dependabot lane.** A PR whose author (read with `gh pr view --json
 author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
   whose title is `Bump <pkg> from <a> to <b>` (or `Bump the <group> group
@@ -265,21 +270,52 @@ author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
   reason. Checks, mergeability and the test-merge still apply. GitHub Actions
   bumps (they touch `.github/`) and `playground/` bumps stay refused without
   `--maintainer-approved`, and with it they still need a review record.
-  The lane is also void, with a `dependabot lane refused:` note and gates 4
-  and 4b applying in full, unless all of these hold (each fails closed):
-  `author.is_bot` is exactly `true`; **every commit** on the PR (`gh pr view
---json commits`) is authored by `dependabot[bot]` / `app/dependabot` (a
-  missing, empty or 100-commit list, or one that does not end at the head
-  commit, is refused); every `"resolved"` line added to `package-lock.json`
-  starts with `https://registry.npmjs.org/`; and `package.json`, parsed,
-  differs from `main` only in `version`, `dependencies`, `devDependencies`,
-  `optionalDependencies` and `peerDependencies` (so `scripts`, `bin`,
-  `overrides`, `engines`, `main`, `exports` and any other key must be
-  unchanged). Honest limits: this does **not** verify that a published
-  package version is benign (a compromised release from the real registry
-  passes; CI, the test-merge and the maintainer's own dependency habits are
-  the controls there), and a commit's author is a claim stored in the commit,
-  not a signature.
+  The lane is also void, with a `dependabot lane refused: <reason>` note and
+  gates 4 and 4b applying in full, unless all of these hold (each fails
+  closed):
+  - `author.is_bot` is exactly `true`, and **every commit** on the PR (from
+    `gh pr view --json commits`) is authored by `dependabot[bot]` /
+    `app/dependabot` (a missing, empty or 100-commit list, or one that does not
+    end at the head commit, is refused).
+  - **The lockfile is parsed, not grepped.** `package-lock.json` as it would
+    land (`git show :package-lock.json` in the test-merge) must be valid JSON
+    with `lockfileVersion` 2 or 3. Every entry of `packages` (and of the v1
+    `dependencies` tree, recursively) must have a `resolved` that starts with
+    `https://registry.npmjs.org/` and contains no second `://`, no
+    `link: true`, no `version` and no dependency spec (`dependencies`,
+    `devDependencies`, `optionalDependencies`, `peerDependencies`,
+    `requires`) that begins with `file:`, `git`, `github:`, `http:` or `npm:`,
+    contains `://`, or contains a `/` (an `owner/repo` or path spec). An entry
+    with no `resolved` (the root `""`) is fine. Because it reads the parsed
+    values, a JSON-escaped key (`"\u0072esolved"`) cannot hide a git
+    resolution. As a second, raw-text check, any **added** line of the
+    lockfile and `package.json` patch that contains a backslash refuses the
+    lane. This reads the whole resulting lockfile, so an existing git, file or
+    `npm:` alias entry anywhere in it would refuse every Dependabot PR until
+    removed (none exist today).
+  - **`package.json` is tied to the packages the PR names.** Parsed, it may
+    differ from `main` only in `version` and the four dependency maps
+    (`dependencies`, `devDependencies`, `optionalDependencies`,
+    `peerDependencies`); `scripts`, `bin`, `overrides`, `engines`, `main`,
+    `exports` and every other key must be unchanged. In the four maps the
+    **key sets must be identical** (no package added, removed, renamed or
+    moved between maps), every **changed value** must match
+    `^[\^~]?\d+\.\d+\.\d+$` (so no `npm:` alias, git, `file:` or URL spec,
+    tag, or range with `||`), and the set of packages whose value changed must
+    be **non-empty and a subset** of the packages named by the PR title, or,
+    for a group PR, by the "Updates `pkg` from X to Y" lines in the body.
+    Consequence: a lockfile-only change (no `package.json` change, as for a
+    transitive dependency) is refused, because nothing ties it to the named
+    package; the maintainer or `--maintainer-approved` handles those.
+
+  Honest limits: none of this verifies that a published package version is
+  benign. A **compromised release served from the real registry passes**, and
+  so does a **malicious package that is a legitimate-looking bump of a
+  dependency the PR names**: the lane checks where code comes from and that the
+  PR changes what it says it changes, not what the code does. CI, the
+  test-merge and the maintainer's own dependency habits are the controls
+  there. A commit's author is a claim stored in the commit, not a signature.
+
 - **Pushing `.github/`.** `guard-bash.mjs` no longer denies a `git push` of a
   `claude/*` branch because its commits touch `.github/`. Every other push
   rule stands: one `claude/*` branch by explicit name, same name on both

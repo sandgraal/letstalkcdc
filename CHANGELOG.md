@@ -25,9 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in `docs/DECISIONS.md`.
 - **Hardening of those exceptions after an independent review (P17-65).** The
   Dependabot lane now also requires every commit to be authored by Dependabot,
-  `author.is_bot` to be exactly true, every added lockfile `"resolved"` URL to
-  start with `https://registry.npmjs.org/`, and `package.json` to differ from
-  `main` only in `version` and the four dependency maps. Inside
+  `author.is_bot` to be exactly true, the lockfile to resolve only from
+  `https://registry.npmjs.org/` (tightened again below), and `package.json` to
+  differ from `main` only in `version` and the four dependency maps. Inside
   `.claude/commands/` and `.claude/scripts/`, `CLAUDE.md`, `AGENTS.md`,
   `.mcp.json`, `.gitattributes`, `.gitmodules`, `.npmrc`, `.env*`,
   `settings*.json` and any dotfile stay maintainer-only. A changed
@@ -35,6 +35,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also written into the squash-merge commit body. `docs/CONDUCTOR.md` states
   the limits, including that `.claude/scripts/check-merged-prs.sh` runs from
   the Stop and SessionStart hooks.
+- **Second review of the merge-script exceptions (P17-65).** The Dependabot
+  lane now parses the merge result's `package-lock.json` as JSON (lockfileVersion
+  2 or 3; every `resolved` on the npm registry, no `link`, no file, git, URL or
+  `npm:` version or spec) instead of grepping for the word `resolved`, which a
+  JSON-escaped key evaded, and refuses any added patch line with a backslash.
+  `package.json` dependency maps must keep identical key sets, changed values
+  must be plain `[^~]x.y.z`, and the changed packages must be a non-empty
+  subset of those the PR title or group body names (a lockfile-only PR is now
+  refused). `--maintainer-approved` writes its record into the squash body only
+  when it overrode gate 5, and as the whole body. `docs/CONDUCTOR.md` states
+  that a compromised registry release or a malicious bump of a named package
+  still passes.
 - **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
   per RFC 9116 (`Contact` mailto the maintainer's designated public address,
   `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and
