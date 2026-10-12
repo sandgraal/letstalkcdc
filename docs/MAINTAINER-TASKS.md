@@ -200,8 +200,8 @@ nothing at `8e748fc`). That does not prove that Codacy never runs it.
    `.codacy/cli.sh` in a pull request and runs the build check. You merge the PR.
 3. If something does run it, stop. Whether to disable the integration or keep the
    file is your decision.
-4. Also decide `.github/instructions/codacy.instructions.md`. It tells agents to
-   run `codacy_cli_analyze`. P15-52 does not cover it; see "Open decisions".
+4. Nothing to decide about the Codacy agent instruction file: it was retired in
+   #432. Only the dashboard check for `.codacy/cli.sh` remains for you.
 
 **Done when:** the dashboard check is recorded on P15-52, and the file is removed
 or the decision to keep it is recorded.
@@ -422,8 +422,9 @@ repository itself. Each needs your answer before work on it starts.
 - **Third-party scripts.** Mermaid and Chart.js load from `cdn.jsdelivr.net`.
   Mermaid uses a floating major version and there is no integrity hash. Pin and
   vendor them, or accept the CDN dependency.
-- **Codacy instruction file.** `.github/instructions/codacy.instructions.md` tells
-  agents to run `codacy_cli_analyze`. Keep it or remove it after task 5.
+- **Codacy instruction file.** Settled: the retired Codacy instruction file was
+  removed in #432, so there is nothing to decide. What remains is the dashboard
+  check for `.codacy/cli.sh` in task 5.
 
 ## What the team will never do without you
 
