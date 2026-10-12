@@ -94,7 +94,7 @@ const stream = db.collection('customers').watch([], {
   </section>
 
   <section id="dynamodb" aria-labelledby="dynamodb-title">
-    <h2 id="dynamodb-title">DynamoDB Streams: a hard 24-hour horizon</h2>
+    <h2 id="dynamodb-title">DynamoDB Streams: a short, fixed-looking retention horizon (24 hours as documented when this page was written; check yours)</h2>
     <p>
       DynamoDB Streams gives you before and after images directly — set the view
       type to <code>NEW_AND_OLD_IMAGES</code> and the envelope is essentially
@@ -103,8 +103,8 @@ const stream = db.collection('customers').watch([], {
       actually need.
     </p>
     <p>
-      The constraint is retention: <strong>24 hours, not configurable</strong>.
-      This page assumes the stream&rsquo;s retention cannot be extended; check your
+      The constraint is retention: <strong>24 hours</strong> as documented when
+      this page was written. This page assumes the stream&rsquo;s retention cannot be extended; check your
       provider&rsquo;s current options. A consumer outage that outlasts a long
       weekend is not a backlog to work through — it is a gap, and the repair
       this page covers is a fresh full scan of the table; check your provider&rsquo;s
@@ -115,7 +115,7 @@ const stream = db.collection('customers').watch([], {
         <strong>Design implication:</strong> alert on consumer lag against the
         24-hour horizon, not against a comfortable threshold. On a relational
         source, lag costs you freshness. Here, lag past the horizon costs you
-        <em>data</em>, and the recovery path is a table scan.
+        <em>data</em>, and the recovery path this page covers is a table scan.
       </p>
     </aside>
   </section>
@@ -150,10 +150,13 @@ const stream = db.collection('customers').watch([], {
       So the usual sink recipe — upsert on the primary key, order by log
       position — does not port. What ports instead is Cassandra&rsquo;s own conflict
       rule: <strong>last write wins by cell timestamp</strong>. Every mutation
-      carries per-cell write times, and merging on those reproduces the source&rsquo;s
-      semantics, deduplicating the replicas as a side effect. It is the one
-      place on this site where a timestamp decides which write wins, and only
-      because it mirrors the source&rsquo;s own conflict rule. That timestamp is
+      carries per-cell write times, and merging on those can reproduce the
+      source&rsquo;s winner, but only if you also reproduce its rule for equal
+      timestamps; this page does not state that rule: check the source&rsquo;s
+      documentation. Merging also deduplicates the replicas as a side effect. It
+      is the one place this site endorses merging on the source&rsquo;s own
+      timestamp (other pages show timestamp-ordered sinks only as what to
+      avoid), and only because it mirrors the source&rsquo;s own conflict rule. That timestamp is
       a write time assigned by the coordinator or the client, not a log
       position, so clock skew can pick a different winner than real time
       would. Reproduce the rule; do not treat it as an order you can trust

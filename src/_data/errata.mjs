@@ -210,7 +210,7 @@ export default [
   },
   {
     id: "oracle-scn-tie-break-2026-10-12",
-    urls: ["/oracle-notes/"],
+    urls: ["/oracle-notes/", "/quickstarts/quickstart-oracle/"],
     title: "Corrected: an Oracle SCN alone is not a safe guard",
     dateModified: "2026-10-12",
     body: `<p>The first-aid list said to guard the sink on the source log
@@ -223,7 +223,11 @@ export default [
         your own within-transaction ordinal (verify the ordering semantics
         for your Debezium version). The SCN and commit timestamp the page
         asks you to expose are for lag metrics only, never for ordering.
-        The Oracle SQL on the page is now labelled as not run against an
+        The tie-break is a single orderable column: if you use both
+        <code>rs_id</code> and <code>ssn</code>, compare them as separate
+        columns (<code>rs_id</code> is a string) and do not concatenate them
+        as text. The Oracle quickstart's acceptance line said latest-wins by
+        SCN alone and now says (SCN, tie-break). The Oracle SQL on the page is now labelled as not run against an
         Oracle database.</p>`,
   },
   {
@@ -244,7 +248,13 @@ export default [
         documentation. Two absolutes about DynamoDB Streams (retention
         cannot be extended, a full scan is the only repair) could not be
         verified and are now worded as this page's assumption, with a pointer
-        to your provider's documentation.</p>`,
+        to your provider's documentation; the DynamoDB heading, callout and
+        the 24-hour figure now say it is the retention as documented when the
+        page was written. The Cassandra paragraph also said that merging on
+        cell timestamps reproduces the source's semantics: it can reproduce
+        the winner only if you also reproduce the source's rule for equal
+        timestamps, which this page does not state, so check the source's
+        documentation.</p>`,
   },
   {
     id: "dedup-table-same-transaction-2026-10-12",
@@ -260,7 +270,14 @@ export default [
         two event-ID <code>MERGE</code> examples, that they remove replays
         only: the sink still needs the upsert ordered by source log position.
         The Snowflake-style and BigQuery statements are labelled as not
-        run.</p>`,
+        run. The page also described the event-ID statements as skipping an
+        event they have already seen; they leave the table unchanged when the
+        event comes again, by re-applying the same payload. The
+        deduplication table needs a primary key or unique constraint on the
+        event ID in the same transactional store as the sink; in PostgreSQL a
+        unique violation aborts the transaction, so use
+        <code>INSERT ... ON CONFLICT DO NOTHING</code> and check the row
+        count.</p>`,
   },
   {
     id: "partitioning-ts-ms-tie-break-2026-10-12",
@@ -276,7 +293,8 @@ export default [
         whatever the settings; when the hot key is split over several
         shards it now says that per-key order is broken for the hot key. The
         PostgreSQL example is now stated as run on PGlite, and the BigQuery
-        example as not run.</p>`,
+        example as not run. The static line under the readout no longer
+        says "per-key only", which the readout can contradict.</p>`,
   },
   {
     id: "materialization-ts-ms-meaning-2026-10-12",

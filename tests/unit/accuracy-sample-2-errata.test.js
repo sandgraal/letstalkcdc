@@ -64,7 +64,11 @@ describe("/oracle-notes/: guard on (position, tie-break), not the SCN alone", ()
 
   it("first aid guards on the (position, tie-break) pair and links the pattern", () => {
     expect(prose).toMatch(
-      /guarded on the \(position, tie-break\) pair: the source log position \(SCN\) plus a tie-break such as rs_id and ssn, because the SCN can repeat across changes in one transaction/,
+      /guarded on the \(position, tie-break\) pair: the source log position \(SCN\) plus a single orderable tie-break column; if you use both rs_id and ssn, compare them as separate columns \( ?rs_id is a string\), as the merge cookbook note explains: do not concatenate them as text\. The tie-break is needed because the SCN can repeat across changes in one transaction/,
+    );
+    expect(oracle).toContain("{{ '/merge-cookbook/' | url }}");
+    expect(read("src/merge-cookbook/index.njk").includes("canonicalPath")).toBe(
+      true,
     );
     expect(oracle).toContain("{{ '/partitioning/' | url }}#recon");
     expect(partitioning).toMatch(/<h2 id="recon">/);
@@ -79,6 +83,19 @@ describe("/oracle-notes/: guard on (position, tie-break), not the SCN alone", ()
       /ROW_NUMBER\(\) OVER \(PARTITION BY business_id\s+ORDER BY source_scn DESC, tie_break DESC\)/,
     );
     expect(latestWins).not.toMatch(/MAX\(source_scn\)/);
+  });
+
+  it("says how the tie-break is built in the latest-wins note too, and never concatenates rs_id and ssn", () => {
+    const note = text(
+      /<h3>Duplicate \/ Latest-wins Checks \(sink\)<\/h3>([\s\S]*?)<pre>/.exec(
+        oracle,
+      )[1],
+    );
+    expect(note).toMatch(
+      /stands for a single orderable column; if you use both rs_id and ssn, compare them as separate columns \( ?rs_id is a string\), as the merge cookbook note explains: do not concatenate them as text/,
+    );
+    expect(latestWins).toMatch(/never rs_id and ssn concatenated as text/);
+    expect(latestWins).not.toMatch(/tie_break = rs_id\/ssn/);
   });
 
   it("exposes SCN / commit timestamp for lag metrics only, never for ordering", () => {
@@ -104,10 +121,29 @@ describe("/oracle-notes/: guard on (position, tie-break), not the SCN alone", ()
 
   it("is recorded in errata (link-free), and the page is re-dated", () => {
     const e = entry("oracle-scn-tie-break-2026-10-12");
-    expect(e.urls).toEqual(["/oracle-notes/"]);
+    expect(e.urls).toEqual([
+      "/oracle-notes/",
+      "/quickstarts/quickstart-oracle/",
+    ]);
     expect(e.body).not.toMatch(/href=/);
     expect(e.body).toMatch(/tie-break/);
+    expect(flat(e.body)).toMatch(/do not concatenate them as text/);
     expect(oracle).toMatch(/^dateModified: "2026-10-12"$/m);
+  });
+
+  it("the Oracle quickstart acceptance line says (SCN, tie-break), not SCN alone, and is re-dated", () => {
+    const q = read("src/quickstart/quickstart-oracle/index.njk");
+    const line = text(/<li>Latest-wins per key by[\s\S]*?<\/li>/.exec(q)[0]);
+    expect(line).toBe(
+      "Latest-wins per key by (SCN, tie-break) (log position plus its tie-break; see Oracle notes), not a commit timestamp.",
+    );
+    expect(q).toContain("{{ '/oracle-notes/' | url }}");
+    expect(q).not.toMatch(/Latest-wins per key by SCN \(log position\)/);
+    expect(
+      require(
+        path.join(ROOT, "src/quickstart/quickstart-oracle/index.11tydata.cjs"),
+      ).dateModified,
+    ).toBe("2026-10-12");
   });
 });
 
@@ -139,6 +175,39 @@ describe("/non-relational/: the Cassandra timestamp and the checklist", () => {
     );
   });
 
+  it("scopes the Cassandra timestamp claim: equal-timestamp rule not stated, and not 'the one place where a timestamp decides'", () => {
+    expect(prose).toMatch(
+      /merging on those can reproduce the source's winner, but only if you also reproduce its rule for equal timestamps; this page does not state that rule: check the source's documentation/,
+    );
+    expect(prose).not.toMatch(/reproduces the source's semantics/);
+    expect(prose).toMatch(
+      /the one place this site endorses merging on the source's own timestamp \(other pages show timestamp-ordered sinks only as what to avoid\)/,
+    );
+    expect(prose).not.toMatch(
+      /the one place on this site where a timestamp decides which write wins/,
+    );
+  });
+
+  it("DynamoDB: no heading, callout, checklist or assistant answer calls the 24 hours fixed or not configurable", () => {
+    expect(prose).toContain(
+      "DynamoDB Streams: a short, fixed-looking retention horizon (24 hours as documented when this page was written; check yours)",
+    );
+    expect(prose).not.toMatch(/not configurable/);
+    expect(prose).not.toMatch(/a hard 24-hour horizon/);
+    expect(prose).toContain(
+      "the recovery path this page covers is a table scan",
+    );
+    const ya = read("src/data/assistant.yml");
+    const at = ya.indexOf("DynamoDB Streams provides");
+    expect(at).toBeGreaterThan(-1);
+    const answer = flat(ya.slice(at, at + 400));
+    expect(answer).toContain(
+      "retention is 24 hours as documented when written; check your provider's current options",
+    );
+    expect(answer).not.toMatch(/fixed\s+24 hours/);
+    expect(ya).not.toMatch(/preview: A hard 24-hour horizon/);
+  });
+
   it("softens the unverifiable DynamoDB absolutes without adding replacements", () => {
     expect(prose).not.toMatch(/the only repair/);
     expect(prose).not.toMatch(/There is no equivalent of extending/);
@@ -164,10 +233,32 @@ describe("/non-relational/: the Cassandra timestamp and the checklist", () => {
     const e = entry("cassandra-timestamp-rationale-2026-10-12");
     expect(e.urls).toEqual(["/non-relational/"]);
     expect(e.body).not.toMatch(/href=/);
+    expect(flat(e.body)).toMatch(/equal timestamps/);
     expect(
       require(path.join(ROOT, "src/non-relational/index.11tydata.cjs"))
         .dateModified,
     ).toBe("2026-10-12");
+  });
+});
+
+describe("residue in the assistant knowledge base and the styleguide", () => {
+  const ya = read("src/data/assistant.yml");
+
+  it("the assistant no longer calls ts_ms a commit time or a tie-break", () => {
+    expect(flat(ya)).toContain(
+      "which is a millisecond processing time (the commit time is source.ts_ms) and can tie for the same key",
+    );
+    expect(ya).not.toMatch(/only a millisecond commit time/);
+    expect(ya).toContain(
+      "preview: Order by log position, with the ordinal as the tie-break; keep ts_ms for lag metrics only.",
+    );
+    expect(ya).not.toMatch(/ts_ms only as a tie-break/);
+  });
+
+  it("the styleguide errata sample says ts_ms is for lag only", () => {
+    const sg = text(read("src/styleguide/index.njk"));
+    expect(sg).toContain("with ts_ms for lag only");
+    expect(sg).not.toMatch(/ts_ms only as a tie-break/);
   });
 });
 
@@ -195,6 +286,46 @@ describe("/exactly-once/: the event-ID recipes dedupe replays only", () => {
     expect(at).toBeLessThan(exactlyOnce.indexOf("MERGE INTO dw.orders"));
   });
 
+  it("the processed_events recipe needs a unique key on the event ID in the sink's store, and says to use ON CONFLICT DO NOTHING", () => {
+    expect(prose).toMatch(
+      /This needs a primary key or unique constraint on the event ID, in the same transactional store as the sink\. In PostgreSQL a unique violation aborts the transaction, so use INSERT\.\.\. ON CONFLICT DO NOTHING and check the row count/,
+    );
+  });
+
+  it("says the event-ID MERGEs leave the table unchanged on a replay, not that they 'skip' the event", () => {
+    expect(prose).toMatch(
+      /leave the table unchanged when they see an event again \(they re-apply the same payload\)/,
+    );
+    expect(prose).not.toMatch(/skip an event they have already seen/);
+  });
+
+  it("PostgreSQL: a unique violation aborts the transaction; ON CONFLICT DO NOTHING does not (run on PGlite)", async () => {
+    const db = new PGlite();
+    await db.exec(
+      "CREATE TABLE processed_events (event_id text PRIMARY KEY); INSERT INTO processed_events VALUES ('e1');",
+    );
+    await db.exec("BEGIN");
+    await expect(
+      db.exec("INSERT INTO processed_events VALUES ('e1')"),
+    ).rejects.toThrow(/duplicate key|unique/i);
+    await expect(db.exec("SELECT 1")).rejects.toThrow(
+      /current transaction is aborted/i,
+    );
+    await db.exec("ROLLBACK");
+
+    await db.exec("BEGIN");
+    const r = await db.query(
+      "INSERT INTO processed_events VALUES ('e1') ON CONFLICT DO NOTHING",
+    );
+    expect(r.affectedRows).toBe(0);
+    const r2 = await db.query(
+      "INSERT INTO processed_events VALUES ('e2') ON CONFLICT DO NOTHING",
+    );
+    expect(r2.affectedRows).toBe(1);
+    await db.exec("COMMIT");
+    await db.close();
+  }, 120000);
+
   it("labels the Snowflake-style and BigQuery MERGE blocks untested", () => {
     for (const heading of [
       "Warehouse MERGE (Snowflake-style)",
@@ -211,6 +342,7 @@ describe("/exactly-once/: the event-ID recipes dedupe replays only", () => {
     const e = entry("dedup-table-same-transaction-2026-10-12");
     expect(e.urls).toEqual(["/exactly-once/"]);
     expect(flat(e.body)).toMatch(/same transaction/);
+    expect(flat(e.body)).toMatch(/ON CONFLICT DO NOTHING/);
     expect(e.body).not.toMatch(/href=/);
     expect(
       require(path.join(ROOT, "src/exactly-once/index.11tydata.cjs"))
@@ -227,6 +359,14 @@ describe("/partitioning/: ts_ms is not a tie-break", () => {
       "Keep ts_ms for lag metrics only; use the ordinal as the tie-break.",
     );
     expect(prose).not.toMatch(/at most, as a secondary tie-break/);
+  });
+
+  it("the static KPI sub-line under the ordering readout is neutral, so it cannot contradict the dynamic readout", () => {
+    const kpi = /<h3>Ordering guarantee<\/h3>([\s\S]*?)<\/div>\s*<\/div>/.exec(
+      partitioning,
+    )[1];
+    expect(text(kpi)).toContain("Global order is not guaranteed.");
+    expect(text(kpi)).not.toMatch(/per-key only/i);
   });
 
   it("agrees with /materialization/, which keeps ts_ms out of ordering", () => {

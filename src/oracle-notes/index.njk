@@ -135,9 +135,12 @@ ORDER BY bytes DESC FETCH FIRST 20 ROWS ONLY;</code></pre>
               <em>Duplicates after restarts:</em> switch the sink to
               <strong>idempotent</strong> <code>MERGE/UPSERT</code> keyed by a
               primary key and guarded on the (position, tie-break) pair: the
-              source log position (SCN) plus a tie-break such as
-              <code>rs_id</code> and <code>ssn</code>, because the SCN can
-              repeat across changes in one transaction (see
+              source log position (SCN) plus a single orderable tie-break column;
+              if you use both <code>rs_id</code> and <code>ssn</code>, compare
+              them as separate columns (<code>rs_id</code> is a string), as the
+              <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> note
+              explains: do not concatenate them as text. The tie-break is needed
+              because the SCN can repeat across changes in one transaction (see
               <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>);
               then replay last N events.
             </li>
@@ -181,7 +184,11 @@ ORDER BY bytes DESC FETCH FIRST 20 ROWS ONLY;</code></pre>
             <strong>Untested: not run against an Oracle database.</strong>
             The latest-wins query ranks by the (position, tie-break) pair, not
             by the SCN alone; <code>tie_break</code> stands for
-            <code>rs_id</code> and <code>ssn</code> or your own
+            a single orderable column; if you use both <code>rs_id</code> and
+            <code>ssn</code>, compare them as separate columns
+            (<code>rs_id</code> is a string), as the
+            <a href="{{ '/merge-cookbook/' | url }}">merge cookbook</a> note
+            explains: do not concatenate them as text. It can also be your own
             within-transaction ordinal (verify the ordering semantics for your
             Debezium version).
           </p>
@@ -189,7 +196,8 @@ ORDER BY bytes DESC FETCH FIRST 20 ROWS ONLY;</code></pre>
 SELECT COUNT(*) AS rows, COUNT(DISTINCT pk) AS distinct_keys FROM target;
 
 -- latest-wins per key by (position, tie-break), never by SCN alone
--- (replace names; tie_break = rs_id/ssn or your own ordinal)
+-- (replace names; tie_break = one orderable column, e.g. your own ordinal;
+-- never rs_id and ssn concatenated as text)
 SELECT business_id, source_scn AS last_scn, tie_break AS last_tie_break, events
 FROM (
   SELECT business_id, source_scn, tie_break,

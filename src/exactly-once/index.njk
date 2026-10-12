@@ -231,6 +231,11 @@ eleventyComputed:
                 <strong>same transaction</strong>: if the ID is recorded and the
                 process crashes before the sink write, the replayed event is
                 skipped as a duplicate and the change is lost permanently.
+                This needs a primary key or unique constraint on the event ID,
+                in the same transactional store as the sink. In PostgreSQL a
+                unique violation aborts the transaction, so use
+                <code>INSERT ... ON CONFLICT DO NOTHING</code> and check the row
+                count.
               </li>
               <li>
                 <strong>Staging + MERGE:</strong> Land events into a staging table keyed by
@@ -270,8 +275,9 @@ for (event of stream) {
           <strong>These dedupe replays only.</strong> Keyed on the primary key
           alone, <code>upsert_into_sink(event.key, event.payload)</code> lets a
           late, older change overwrite a newer row, and the two event-ID
-          <code>MERGE</code> statements below skip an event they have already
-          seen but do nothing about order. The sink still needs the
+          <code>MERGE</code> statements below leave the table unchanged when they
+          see an event again (they re-apply the same payload) but do nothing
+          about order. The sink still needs the
           position-ordered upsert (apply a change only if its source log
           position is greater than the one stored, as the per-hop table above
           says; see

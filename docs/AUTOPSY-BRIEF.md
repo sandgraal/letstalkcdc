@@ -300,6 +300,8 @@ The content is the product. Everything else on this list exists to protect it.
 | Cloud labs (AWS DMS, Fivetran, GoldenGate, Matillion, Snowflake)                                        | **No**. Vendor products; accuracy corrections from SME review (#308)                    | Plan Phase 4 note                                                                                               |
 | Pages with SQL examples elsewhere (`/materialization/`, `/snapshotting/`, `/which-row-wins/`)           | Mostly text-pinned (`sink-examples-guard.test.js`), not run                             | P15-23                                                                                                          |
 
+Update 2026-10-12: `/sql-server-mysql-cdc/`, `/partitioning/`, `/materialization/` now have PGlite-run tests; see `docs/autopsy-log-2026-10.md`.
+
 ### Known corrections (what the site has already admitted)
 
 `src/_data/errata.mjs` renders a callout on the affected pages; `/errata/` is

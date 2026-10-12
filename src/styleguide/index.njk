@@ -131,7 +131,7 @@ eleventyExcludeFromCollections: true
           </div>
           <details class="errata">
             <summary><span class="badge" aria-hidden="true">!</span> Known errata for this page (1)</summary>
-            <p><b>Corrected:</b> dedup ordering uses the source log position (LSN/SCN) as the primary sort, with <code class="inl">ts_ms</code> only as a tie-break &mdash; it isn't unique per key.</p>
+            <p><b>Corrected:</b> dedup ordering uses the source log position (LSN/SCN) as the primary sort, with <code class="inl">ts_ms</code> for lag only &mdash; it isn't unique per key.</p>
           </details>
           <table class="ops" aria-label="CDC operation codes">
             <thead><tr><th>op</th><th>means</th><th>carries</th></tr></thead>

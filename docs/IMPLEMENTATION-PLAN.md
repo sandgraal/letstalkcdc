@@ -2773,7 +2773,9 @@ items, not silent fixes.
       `ts_ms` as tie-break, `ts_ms` meaning, untested labels, the simulator
       readout), with five errata entries and tests; the item stays open until
       the sample itself (six pages with a source per claim) is written up and
-      the maintainer has answered the open questions in the PR.
+      the maintainer has answered the open questions in the PR. Review nits
+      applied the same day (Cassandra claim scoped, DynamoDB wording, residue
+      in the assistant, quickstart and style guide).
 - [ ] **P17-14 · Executed SQL (day 6).** Outcome: the executed-versus-not
       table in the brief's section 4 is updated. Accept: at least one of
       Snowflake or BigQuery from `/merge-cookbook/`, plus the T-SQL and MySQL
