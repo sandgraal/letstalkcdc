@@ -24,6 +24,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in review (#449).
   `docs/AUTOPSY-BRIEF.md` now names the autopsy's next-phase draft Phase 18.
   No site or CSS change.
+- **Learning loop for the agent team (P17-61).** Models do not learn between
+  sessions, so the repo does: `docs/LESSONS.md` is an append-only ledger of
+  mistakes, each with its root cause and the test, lint, hook or doc that now
+  stops it (eight entries seeded from the kit's own PRs); the Definition of
+  Done requires a regression artifact for any bug, finding, CI failure or
+  process mistake; the Autonomy charter gains a "Self-improvement boundary"
+  (agents add checks freely, only the maintainer weakens a guardrail); the
+  team charter gains a "Retro" step; and `tests/unit/ratchet.test.js` with
+  `.claude/ratchet-baseline.json` fails if the number of unit test files,
+  test cases, thesis-lint rules, guard cases or hooks shrinks. Touches
+  `.claude/**`, so the maintainer merges it. The `/team-end` and `/team-start`
+  edits wait for the commands PR (P17-62). No site or CSS change.
 - **Playground labs linked from the lessons (P16-26).** The playground
   gains a `redeliver` operation that re-sends a delivered change with its
   original log position, guard modes for the log lane's destination (none,
