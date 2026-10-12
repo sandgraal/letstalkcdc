@@ -2618,9 +2618,10 @@ these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
       from commands, replacing the addendum; the P17 box statuses are ticked
       with PR numbers; a doc-facts test still passes. Verify:
       `npm run verify-all`, then re-run the cold-start drill (a fresh scout,
-      repo only, the 12 questions recorded in the PR #449 description or this
-      item) against real `main`: pass = 12 of 12 answered and zero
-      contradictions reported. Size: S. Role: `scribe`, then `reviewer`. Needs:
+      repo only, the 12 questions, the answer key, the pass rule and the run
+      log are in `docs/COLD-START-DRILL.md` (added by #449)) against real
+      `main`: pass = 12 of 12 answered and zero contradictions reported. Size:
+      S. Role: `scribe`, then `reviewer`. Needs:
       #444, #445, #446, #447, #448 and #449 merged.
       _Status: not started._
 
