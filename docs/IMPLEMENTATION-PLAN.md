@@ -2489,7 +2489,7 @@ CSP; dependency majors one per PR; a data snapshot due 2026-11-06.
       notes file. Size: M. Role: `conductor` runs it; `reviewer` reads the
       notes. Needs: P17-1, P17-2, P17-4, P17-5, P17-6 and P17-8 merged, and
       P17-55 and P17-56 decided.
-      _Status 2026-10-11: not started._
+      _Status 2026-10-11: Drill run 2026-10-11 against a preview with the kit PRs merged (thesis lint left out for a package.json conflict): a fresh Haiku scout answered 12 of 12 orientation questions correctly from the repo alone, and reported five contradictions (work queue still Phase 13 in CLAUDE.md/CONDUCTOR.md/new-module skill; MAINTAINER-TASKS.md saying merging is the maintainer's and that no digest exists and that 2026-10-23 appears nowhere else; content.md saying there is no lint:thesis; stale STATE-OF-PROJECT facts; AUTOPSY-BRIEF too heavy as a first read). Part 1 fixes are in PR #449. Stays open until the post-merge sweep (P17-59) is done and the drill is re-run against real main with no contradictions._
 
 ### Handoff kit follow-ups
 
@@ -2602,6 +2602,26 @@ these blocks merging the kit; P17-10 waits for P17-55 and P17-56.
       ```
 
       Size: S. Role: `implementer`. Needs: none.
+      _Status: not started._
+
+- [ ] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
+      document describes the kit as pending after it has merged. Accept
+      (testable): `docs/MAINTAINER-TASKS.md` says agents merge only through
+      `scripts/merge-pr.mjs` (the charter's Tier 2), that the digest is
+      produced by the weekly-digest skill, and drops the "2026-10-23 appears
+      nowhere else" and "not on main yet" wording; `.claude/rules/content.md`
+      describes `npm run lint:thesis`; the "where each file lives until merged"
+      table and the Phase 17 pointer in `docs/TEAM-CHARTER.md` say "merged";
+      `docs/CONDUCTOR.md`'s loop and Phase 13 queue wording (the loop step still
+      says "work the Phase 13 queue in order") point at Phase 17;
+      `docs/STATE-OF-PROJECT.md` gets a new dated snapshot with numbers taken
+      from commands, replacing the addendum; the P17 box statuses are ticked
+      with PR numbers; a doc-facts test still passes. Verify:
+      `npm run verify-all`, then re-run the cold-start drill (a fresh scout,
+      repo only, the 12 questions recorded in the PR #449 description or this
+      item) against real `main`: pass = 12 of 12 answered and zero
+      contradictions reported. Size: S. Role: `scribe`, then `reviewer`. Needs:
+      #444, #445, #446, #447, #448 and #449 merged.
       _Status: not started._
 
 ### Autopsy, in two parts
