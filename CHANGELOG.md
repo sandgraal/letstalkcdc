@@ -29,18 +29,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the kit, an autopsy split into a part that starts now and a part that waits
   for the 2026-11-06 data snapshot, a no-regret track that needs no audience
   data, a data-gated menu (41 items beyond the kit, all Size S or M) and six
-  follow-ups from the kit's reviews. Shipped: a decisions log
-  (`docs/DECISIONS.md`), PR and issue templates, Dependabot with majors in
+  follow-ups from the kit's reviews. All kit items have shipped: a decisions
+  log (`docs/DECISIONS.md`), PR and issue templates, Dependabot with majors in
   separate PRs and a worktree prune (#430); a maintainer guide
   (`docs/MAINTAINER-TASKS.md`, #431); a shorter `CLAUDE.md` with path-scoped
   rules and skills, correcting its "branch-protected" and "Vite 7" claims,
-  and a fix to the merge watcher (#432). In review: a thesis lint over the
-  site's copy (#444), a gated merge script (#445), an autonomy charter with
-  guard hooks and permissions (#446) and a team charter with two new roles and
-  a weekly-digest skill (#447, stacked on #446); cold-start drill run; fixes
-  in review (#449).
-  `docs/AUTOPSY-BRIEF.md` now names the autopsy's next-phase draft Phase 18.
-  No site or CSS change.
+  and a fix to the merge watcher (#432, #443); a thesis lint over the site's
+  copy (`npm run lint:thesis`, #444), a gated merge script
+  (`scripts/merge-pr.mjs`, #445), an autonomy charter with guard hooks and
+  permissions (#446), a team charter with two new roles and a weekly-digest
+  skill (#447), Phase 17 in the plan (#448) and the cold-start fixes with
+  `docs/COLD-START-DRILL.md` (#449). The post-merge sweep (P17-59) is in
+  review: it brings the maintainer guide, team charter, content rules, loop
+  and state snapshot in line with what merged, and records the maintainer's
+  answers of 2026-10-11 in `docs/DECISIONS.md` (no stronger model for now, a
+  public contact address, a vendor-disclosure policy whose wording awaits
+  approval, the merge preference, content review, the first two weeks). Next:
+  the maintainer adds required status checks to the `default` ruleset
+  (P17-3), the cold-start drill is re-run, and the autopsy (part A) and the
+  no-regret track start. `docs/AUTOPSY-BRIEF.md` now names the autopsy's
+  next-phase draft Phase 18. No site or CSS change.
 - **Playground labs linked from the lessons (P16-26).** The playground
   gains a `redeliver` operation that re-sends a delivered change with its
   original log position, guard modes for the log lane's destination (none,

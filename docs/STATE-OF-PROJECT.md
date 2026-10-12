@@ -1,4 +1,100 @@
-# State of the project — 2026-10-09
+# State of the project — 2026-10-11
+
+A dated snapshot, written after the handoff kit (Phase 17) merged. Every number
+below came from a command run on 2026-10-11 in a worktree of `main` at
+**`05f7e7d`** (`05f7e7de0bf99f333c46fef1a38d0bae0ab78454`, "docs(agents): team
+charter, technical-editor and growth-writer roles, weekly digest skill (P17-6)",
+#447); the command is next to each number. GitHub timestamps and merge dates
+are UTC, so a merge the maintainer saw on 2026-10-11 local time can read
+2026-10-12 here. Anything not re-measured is marked
+**unknown** or points at the previous snapshot below, which stays as it was. The
+running checklist is [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
+
+## TL;DR
+
+- The handoff kit is on `main`: 12 commits since the previous snapshot's
+  `bd5a2a4` (`git log --oneline bd5a2a4..origin/main | wc -l`). Phase 17 items
+  P17-1, P17-2, P17-4, P17-5, P17-6, P17-7, P17-8 and P17-9 are shipped.
+- 36 modules (`series.mjs`), 3,454 unit tests in 66 files (3,453 pass and 1 is skipped until `_site/` exists).
+- 10 PRs are open, all Dependabot bumps (#433 to #442). The team has none open;
+  the post-merge sweep (P17-59) shipped in the sweep PR.
+- `main` has no required status checks yet (ruleset state below). Turning them
+  on is the first maintainer task today.
+- The maintainer answered the three charter questions on 2026-10-11; see
+  [`DECISIONS.md`](DECISIONS.md).
+
+## Measured
+
+| What                             | Value                                                                              | Command                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Unit tests                       | 3,453 passed, 1 skipped (3,454), 66 files, 66 s; 3,454 passed after a build exists | `npm test -- --testTimeout=120000`                                                  |
+| Modules                          | 36                                                                                 | `node -e 'import("./src/_data/series.mjs").then(m=>console.log(m.default.length))'` |
+| HTML files in `_site/`           | 87                                                                                 | `npm run build`, then `find _site -name '*.html' \| wc -l`                          |
+| Sitemap entries (local build)    | 56                                                                                 | `grep -c '<loc>' _site/sitemap.xml`                                                 |
+| Open plan boxes on `main`        | 64                                                                                 | `git show origin/main:docs/IMPLEMENTATION-PLAN.md \| grep -c '^ *- \[ \]'`          |
+| Open plan boxes with this sweep  | 59 (157 ticked)                                                                    | `grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`; `grep -c '^ *- \[x\]' ...`      |
+| Guard and gate tests, by file    | `guard-bash` 961, `guard-edit` 103, `merge-pr` 326                                 | `npx vitest run tests/unit/<file> --reporter=verbose`, counting test lines          |
+| Thesis lint, roster, docs, prune | `thesis-lint` 276, `agent-roster` 27, `doc-facts` 27, `worktree-prune` 13          | same command                                                                        |
+| Merged since the last snapshot   | #428, #429, #430, #431, #432, #443, #444, #445, #446, #447, #448, #449             | `gh pr list --state merged -L 15`                                                   |
+| Open PRs                         | 10: #433 to #442, all `chore(deps)` Dependabot                                     | `gh pr list --state open`                                                           |
+| Ruleset `default` rules          | `deletion, non_fast_forward, code_scanning, code_quality, pull_request`            | `gh api repos/sandgraal/letstalkcdc/rulesets/16512225 --jq '[.rules[].type]'`       |
+| Required status checks           | **None yet** (to be added by the maintainer, task 2)                               | same command; no `required_status_checks` rule                                      |
+
+## CI state of `main`
+
+`gh run list --branch main -L 8` and
+`gh run list --workflow=ci.yml --branch main -L 3`, read at the time of writing:
+
+- `ci.yml` for `05f7e7d` and `0cab634` was still **in progress**; their final
+  result is **unknown** at the time of writing. Check with
+  `gh run list --workflow=ci.yml --branch main -L 5`.
+- `ci.yml` for `fc9ebad`, `54c4647` and `48d8834` completed with success.
+- For `05f7e7d`: Fortify, Link check, Deploy and CodeQL completed with success.
+  The Deploy run for `0cab634` shows cancelled, which is a newer push replacing
+  it, not a failure.
+
+## Phase 17 status
+
+| Item                                                   | State                                                                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| P17-1 charter and guard hooks                          | Shipped (#446). Residual hardening is P17-55 and P17-56, not started                                                                          |
+| P17-2 merge script                                     | Shipped (#445)                                                                                                                                |
+| P17-3 required status checks                           | Not started; maintainer task 2 in [`MAINTAINER-TASKS.md`](MAINTAINER-TASKS.md)                                                                |
+| P17-4, P17-5, P17-8 lean `CLAUDE.md`, decisions, guide | Shipped (#432 with #443; #430; #431)                                                                                                          |
+| P17-6 team charter, two roles, digest skill            | Shipped (#447)                                                                                                                                |
+| P17-7 thesis lint                                      | Shipped (#444). Follow-ups P17-52 and P17-53 not started                                                                                      |
+| P17-9 Phase 17 in the plan                             | Shipped (#448)                                                                                                                                |
+| P17-10 cold-start drill                                | Open: three runs passed 12 of 12 (five contradictions each); fixes in #449 and the sweep PR; closes after a confirmation drill on real `main` |
+| P17-59 post-merge sweep                                | Shipped in the sweep PR; drill runs 1 to 3 recorded in `docs/COLD-START-DRILL.md`                                                             |
+
+## Decisions recorded 2026-10-11
+
+In [`DECISIONS.md`](DECISIONS.md): no stronger model for now (the
+`sme-reviewer` role stays disabled); a public contact address; a
+vendor-disclosure policy (the wording is pending the maintainer's approval, and
+no vendor-comparison content until it is published); the team merges as much as
+it confidently can through the gate and asks in the chat otherwise;
+content review (the maintainer reads the pages the weekly digest flags, plus
+one outside practitioner for the new CDC modules); and the first two weeks
+(autopsy part A with the no-regret track, readout after 2026-11-06). Still
+pending: the domain name (due 2026-10-23) and approval of the disclosure
+wording.
+
+## Not re-measured today
+
+Unknown or unchanged from the previous snapshot unless stated: Playwright
+counts, playground unit and e2e counts, Lighthouse values, `npm audit`
+results, the live sitemap count, Supabase row counts, GoatCounter and Search
+Console data, and the production CSS hash (the current value is in
+`.claude/css-baseline.sha256`; check with `npm run check:css-baseline`). The
+`git diff --stat bd5a2a4..origin/main -- src` prints nothing, so no site
+content, template or CSS source changed since the previous snapshot (two
+playground documentation files did). The sections below are the 2026-10-09
+snapshot, kept as it was.
+
+---
+
+# Previous snapshot (historical): 2026-10-09
 
 > **Addendum 2026-10-11:** (a) the production CSS baseline hash now lives in
 > `.claude/css-baseline.sha256` (check with `npm run check:css-baseline`), not
