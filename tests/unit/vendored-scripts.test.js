@@ -168,11 +168,20 @@ describe("built vendor files and integrity hashes", () => {
     }
   });
 
+  it("does not publish the Chart.js source entry (its bare import cannot run in a browser)", () => {
+    expect(existsSync(path.join(out, "assets", "js", "vendor"))).toBe(false);
+    expect(existsSync(path.join(out, "vendor-entry"))).toBe(false);
+    const leaked = walk(out)
+      .map((f) => path.relative(out, f).split(path.sep).join("/"))
+      .filter((rel) => /(^|\/)vendor\/chart\.js$|vendor-entry/.test(rel));
+    expect(leaked).toEqual([]);
+  });
+
   it("builds Chart.js as a hashed Vite chunk with nothing fetched from a CDN", () => {
     const manifest = JSON.parse(
       readFileSync(path.join(viteOut, ".vite", "manifest.json"), "utf8"),
     );
-    const entry = manifest["src/assets/js/vendor/chart.js"];
+    const entry = manifest["src/vendor-entry/chart.js"];
     expect(entry?.file).toMatch(/^js\/chart-vendor\.[\w-]+\.js$/);
     const code = readFileSync(path.join(viteOut, entry.file), "utf8");
     expect(code.length).toBeGreaterThan(100_000);
@@ -183,7 +192,7 @@ describe("built vendor files and integrity hashes", () => {
     expect(code).toMatch(/export\s*\{[^}]*\bregisterables\b/);
     // The initial bundles must not pull Chart.js in.
     expect(manifest["src/assets/js/app.js"].imports ?? []).not.toContain(
-      "src/assets/js/vendor/chart.js",
+      "src/vendor-entry/chart.js",
     );
   });
 
@@ -212,6 +221,7 @@ describe("built vendor files and integrity hashes", () => {
     expect(sandbox).toContain('setAttribute("integrity"');
     expect(helper).toContain("cdc-vendor-");
     expect(dashboard).toContain("cdc-vendor-chart");
+    expect(dashboard).toContain("charts need `npm run build:js` once");
     expect(dashboard).not.toMatch(/import\(\s*["']https?:/);
   });
 });

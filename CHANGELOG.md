@@ -157,6 +157,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now names jsDelivr only for the Playground's Supabase library. A unit test
   checks the hashed files, every integrity value and that no CDN host appears
   in `src/` or the built site, apart from the privacy page.
+  The Chart.js Vite entry lives in `src/vendor-entry/` so the unrunnable
+  source file is not published. In `npm run dev` without a Vite build the
+  charts stay off and the console warning says to run `npm run build:js` once
+  (`docs/DEVELOPMENT.md`). An end-to-end test serves Mermaid with one byte
+  changed and checks that the browser refuses it.
 
 - **`/intro/` Lighthouse performance floor ratcheted from 0.82 to 0.84.**
   Set from ten CI `lighthouse` jobs after the render-blocking stylesheet fix

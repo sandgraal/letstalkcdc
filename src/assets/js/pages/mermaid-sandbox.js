@@ -35,7 +35,13 @@ const loadScript = (src, integrity) =>
 const initMermaid = async () => {
   if (!window.mermaid) {
     const mermaidScript = getMermaidScript();
-    if (!mermaidScript) return;
+    if (!mermaidScript) {
+      console.warn(
+        "Mermaid.js failed to load:",
+        new Error("Mermaid script location not found"),
+      );
+      return;
+    }
     await loadScript(mermaidScript.src, mermaidScript.integrity);
   }
   const mermaid = window.mermaid;

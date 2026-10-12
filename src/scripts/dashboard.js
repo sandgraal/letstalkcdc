@@ -135,10 +135,14 @@ const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
   renderLogEntry(normalized);
 };
 
-// Chart.js is vendored (P17-23): src/assets/js/vendor/chart.js is built by Vite
+// Chart.js is vendored (P17-23): src/vendor-entry/chart.js is built by Vite
 // into a hashed chunk, and the page template publishes its URL in
 // <meta name="cdc-vendor-chart">. Dynamic import() cannot carry SRI, which is
-// why this is a same-origin file rather than a CDN URL.
+// why this is a same-origin file rather than a CDN URL. Without a Vite build
+// (a fresh `npm run dev`) that URL does not exist, so the warning says how to
+// make it (docs/DEVELOPMENT.md).
+const CHART_BUILD_HINT = "charts need `npm run build:js` once";
+
 const getChartModuleUrl = () => {
   const content = doc
     ?.querySelector('meta[name="cdc-vendor-chart"]')
@@ -150,12 +154,17 @@ const loadChartModule = async () => {
   if (chartModulePromise) return chartModulePromise;
   const url = getChartModuleUrl();
   if (!url) {
-    console.warn("CDC Dashboard: Chart.js location not found");
+    console.warn(
+      `CDC Dashboard: Chart.js location not found (${CHART_BUILD_HINT})`,
+    );
     chartModulePromise = Promise.resolve(null);
     return chartModulePromise;
   }
   chartModulePromise = import(url).catch((error) => {
-    console.warn("CDC Dashboard: Failed to load Chart.js", error);
+    console.warn(
+      `CDC Dashboard: Failed to load Chart.js (${CHART_BUILD_HINT})`,
+      error,
+    );
     return null;
   });
   return chartModulePromise;

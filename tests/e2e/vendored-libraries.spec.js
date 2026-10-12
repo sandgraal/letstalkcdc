@@ -64,4 +64,46 @@ test.describe("vendored libraries", () => {
     expect((await chunk).status()).toBe(200);
     expect(foreign).toEqual([]);
   });
+
+  test("a Mermaid file altered by one byte is refused, and the page stays usable", async ({
+    page,
+  }) => {
+    const warnings = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "warning") warnings.push(msg.text());
+    });
+    let served = 0;
+    await page.route(
+      /\/assets\/vendor\/mermaid\.[0-9a-f]{12}\.min\.js$/,
+      async (route) => {
+        const response = await route.fetch();
+        const body = Buffer.from(await response.body());
+        // Flip one byte in the middle; the length stays the same.
+        body[Math.floor(body.length / 2)] ^= 0x01;
+        served += 1;
+        await route.fulfill({ response, body });
+      },
+    );
+
+    await page.goto("/overview/");
+
+    await expect
+      .poll(() => warnings.join("\n"), { timeout: 30_000 })
+      .toMatch(/Mermaid\.js failed to load/);
+    expect(served).toBeGreaterThan(0);
+    expect(await page.evaluate(() => typeof window.mermaid)).toBe("undefined");
+    await expect(page.locator(".mermaid svg")).toHaveCount(0);
+    await expect(page.locator(".diagram-loading")).toHaveCount(0);
+
+    // The page still works: the theme toggle responds to a click.
+    const toggle = page
+      .getByRole("button", { name: /toggle dark mode/i })
+      .first();
+    await expect(toggle).toBeVisible();
+    const before = await page.locator("html").getAttribute("data-theme");
+    await toggle.click();
+    await expect
+      .poll(() => page.locator("html").getAttribute("data-theme"))
+      .not.toBe(before);
+  });
 });

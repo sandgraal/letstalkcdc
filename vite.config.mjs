@@ -34,7 +34,7 @@ export default defineConfig({
         "video-embed": resolve("src/assets/js/video-embed.js"),
         // Chart.js, lazily imported by src/scripts/dashboard.js (P17-23). Not
         // referenced by any <script> tag, so it stays out of the initial JS.
-        "chart-vendor": resolve("src/assets/js/vendor/chart.js"),
+        "chart-vendor": resolve("src/vendor-entry/chart.js"),
       },
       output: {
         entryFileNames: "js/[name].[hash].js",
