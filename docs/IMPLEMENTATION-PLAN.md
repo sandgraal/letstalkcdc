@@ -2608,6 +2608,12 @@ these blocks merging the kit or the drill (P17-10).
       for part (b). Size: M. Role: `reviewer` writes the design, `implementer`
       does part (b). Needs: #445 merged; P17-1 merged for the path list.
       _Status: not started._
+  - [x] **P17-57a (false failure after merge):** shipped in the PR carrying
+        this change. After a non-zero `gh pr merge` (for example "failed to
+        delete local branch" while a worktree holds it) the gate re-reads
+        `state,mergedAt,mergeCommit`; MERGED with a merge commit is success
+        (exit 0, gh's message as a note), anything else fails closed (exit 1);
+        the merge is never retried.
 - [ ] **P17-58 · Make commit-making tests hermetic about git identity.**
       Outcome: every test that creates a commit or merge passes with no git
       identity configured, as on a CI runner. Evidence: macOS guesses an

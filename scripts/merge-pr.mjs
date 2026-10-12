@@ -109,6 +109,16 @@
 // rule (it also does not take effect as that directory). Comments are assumed
 // to be capped at 100 by `gh pr view --json comments`; 100 or more is refused.
 //
+// Branch cleanup. `--delete-branch` deletes the REMOTE branch, which is the
+// part that matters. gh also tries to delete the LOCAL branch and fails when a
+// git worktree still holds it ("failed to delete local branch"), exiting
+// non-zero although GitHub has merged. So after any non-zero `gh pr merge` this
+// script re-reads the PR (`state,mergedAt,mergeCommit`): MERGED with a merge
+// commit is reported as success with gh's message as a note (exit 0); anything
+// else, including a failed re-read, is a failure (exit 1). The merge is never
+// retried. A worktree-held local branch is left in place; run
+// `bash scripts/worktree-prune.sh` to clean such leftovers.
+//
 // There is deliberately no override flag, and never --admin, --auto or --rebase.
 //
 // The gate functions below are pure (parsed JSON in, failure list out). All
@@ -1130,6 +1140,26 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
   return result;
 }
 
+// After a non-zero `gh pr merge`: the merge commit oid if GitHub says the PR is
+// MERGED, otherwise null (still open, unreadable, malformed: all fail closed).
+async function mergedCommitOf(number, run, cwd) {
+  try {
+    const res = await run(
+      "gh",
+      ["pr", "view", String(number), "--json", "state,mergedAt,mergeCommit"],
+      { cwd },
+    );
+    if (res.code !== 0) return null;
+    const view = JSON.parse(res.stdout);
+    const oid = view?.mergeCommit?.oid;
+    return view?.state === "MERGED" && typeof oid === "string" && oid
+      ? oid
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPr(number, run, cwd, fields = PR_FIELDS) {
   const res = await run(
     "gh",
@@ -1318,9 +1348,16 @@ export async function main(argv, deps = {}) {
     { cwd: root },
   );
   if (merge.code !== 0) {
-    err(
-      `merge-pr: gh pr merge failed: ${tail(merge.stderr || merge.stdout, 5)}`,
-    );
+    const message = tail(merge.stderr || merge.stdout, 5);
+    // gh can merge on GitHub and still exit non-zero, e.g. "failed to delete
+    // local branch" when a worktree holds it. Do not trust the exit code: ask
+    // GitHub. Never retry the merge itself. Fail closed on any doubt.
+    const oid = await mergedCommitOf(number, run, root);
+    if (oid) {
+      out(`merged (${oid.slice(0, 7)}); note: ${message}`);
+      return 0;
+    }
+    err(`merge-pr: gh pr merge failed: ${message}`);
     return 1;
   }
   out(`MERGED PR #${number} (squash, branch deleted).`);

@@ -158,6 +158,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The merge gate no longer reports a false failure after a successful
+  merge (P17-57a).** `gh pr merge --delete-branch` exits non-zero ("failed to
+  delete local branch") when a worktree still holds the local branch, even
+  though GitHub has merged. After any non-zero exit the gate now re-reads
+  `state,mergedAt,mergeCommit`: MERGED with a merge commit prints
+  `merged (<short sha>); note: <gh's message>` and exits 0; anything else,
+  including a failed re-read, still exits 1. The merge is never retried. Stub
+  tests cover merged, still open, re-read failure and the unchanged success
+  path, each asserting one `gh pr merge` call. A worktree-held local branch is
+  left in place; `bash scripts/worktree-prune.sh` cleans it. No site change.
 - **Content corrections from the accuracy sample (P17-12).** Five pages
   were wrong or unguarded, each with a per-page errata entry
   (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-11.
