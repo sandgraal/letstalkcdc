@@ -2774,6 +2774,19 @@ these blocks merging the kit or the drill (P17-10).
       `docs/CONDUCTOR.md` (Merge-script exceptions) and `docs/DECISIONS.md`
       record it. Touches the merge script, its tests, a hook and
       `docs/CONDUCTOR.md`, so the maintainer merges it by hand.
+- [x] **P17-66 · Make the merge script's paperwork gates advisory
+      (maintainer-approved 2026-10-13).** Gates 4 (review record), 4b (audit
+      comment) and 5 (maintainer-only files) print as `WARN` ("N warnings")
+      and no longer refuse; gates 1, 2, 3 and 6 still do; `--strict`
+      restores the old behaviour for all gates; `--maintainer-approved` is
+      accepted and does nothing without `--strict`. `guard-bash.mjs` stops
+      denying commands that merely name `scripts/merge-pr.mjs` or its test;
+      starting the script, `gh pr merge`, pushes to `main`, force pushes and
+      the secret and hook-write rules are unchanged. Tests in
+      `tests/unit/merge-pr.test.js` (the older refusal tests run under
+      `--strict`) and `tests/unit/guard-bash.test.js`; `docs/CONDUCTOR.md`
+      (Merge policy) and `docs/DECISIONS.md` (quote) record it. Accept: the
+      full unit suite passes and the ratchet floors are unchanged.
 - [x] **P17-67 · Changelog fragments (maintainer, 2026-10-13).** PRs add one file `changelog.d/<topic>.md` and never edit `CHANGELOG.md`; `scripts/changelog-compile.mjs` (`npm run changelog:compile`, `--check`, `--dry-run`) folds them into `[Unreleased]`; proved by `tests/unit/changelog-compile.test.js`. Touches `CLAUDE.md`, `.claude/` and `.github/`, so the maintainer merges it by hand.
 
 ### Autopsy, in two parts
