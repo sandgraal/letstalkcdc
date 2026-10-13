@@ -1,0 +1,152 @@
+---
+layout: base.njk
+title: "Accessibility Statement"
+description: "The accessibility standard this site aims for, what is checked automatically, what is not, known gaps, and how to report a barrier. No conformance is claimed."
+canonicalPath: "/accessibility/"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero({
+  title: "Accessibility statement",
+  description: "<p>What this site aims for, what is measured, what has not been tested, and how to tell us about a barrier. It does not claim that the site is accessible or conformant.</p>",
+  align: "center",
+  skillLevel: "About"
+}) | safe }}
+
+<p class="prose">Last updated: <time datetime="{{ dateModified }}">{{ dateModified }}</time></p>
+
+<section class="prose" aria-labelledby="target">
+  <h2 id="target">The standard we aim for</h2>
+  <p>
+    The target is
+    <a href="https://www.w3.org/TR/WCAG22/" rel="noopener">WCAG 2.2</a>
+    level AA. It is a target, not a result: <strong>this site does not
+    claim to conform to WCAG 2.2 AA</strong>, or to any other level, and
+    no one has audited it against the full standard.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="measured">
+  <h2 id="measured">What is checked automatically</h2>
+  <p>
+    Three automated checks run in continuous integration on the built site.
+    Each is limited, and the limits are listed with it.
+  </p>
+  <ul>
+    <li>
+      <strong>Colour contrast, in both themes.</strong> The
+      <a href="https://github.com/dequelabs/axe-core" rel="noopener">axe-core</a>
+      <code>color-contrast</code> rule runs in the light theme and in the
+      dark theme on every page in the sitemap, plus the unlisted dashboard,
+      style guide, Mermaid sandbox and newsletter pages. It also runs on
+      the Change Feed Playground in several states (onboarding, feed after
+      seeding, compare, and the three guided labs), in both themes. The
+      list of excused elements is empty. Text drawn over a gradient is
+      something axe cannot score; for the large gradient headlines the
+      project measured the ratios separately, once, with a script.
+    </li>
+    <li>
+      <strong>A wider axe rule set on six pages.</strong> The home page,
+      overview, introduction, quickstarts, tooling and troubleshooting are
+      checked against axe's WCAG 2.0 and 2.1 A and AA rules. Only
+      violations that axe rates critical or serious fail the build. On four
+      of those pages some rules are deliberately filtered out as known
+      issues (see below). Diagrams drawn by Mermaid are excluded.
+    </li>
+    <li>
+      <strong>pa11y with the WCAG 2 AA ruleset</strong> on eight built
+      pages, a separate engine from axe.
+    </li>
+  </ul>
+  <p>
+    <strong>What automated checks cannot catch.</strong> Tools like these
+    find only a minority of accessibility problems. They cannot tell
+    whether alt text or link text makes sense, whether the reading order
+    and focus order are sensible, whether a diagram or an interactive
+    demo can be understood or operated without a mouse or without sight,
+    or whether the content is clear. The axe rule sets used are tagged for
+    WCAG 2.0 and 2.1, not for the criteria that are new in 2.2, so those
+    are not checked automatically. The only keyboard test in the suite
+    checks that the theme toggle can take focus.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="not-tested">
+  <h2 id="not-tested">What has not been done</h2>
+  <p>
+    <strong>Testing with assistive technology has not yet been done.</strong>
+    No one has recorded a pass with a screen reader, a switch device or
+    voice control, and there is no recorded keyboard-only or 200 percent
+    zoom review. A test with real assistive technology on the home page,
+    the introduction, a module page, the playground and the assistant
+    panel is planned but has not happened. No disabled users have been
+    consulted.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="limits">
+  <h2 id="limits">Known limitations</h2>
+  <ul>
+    <li>
+      <strong>Filtered rules on four pages.</strong> The automated suite
+      ignores some axe rules there because the issues pre-date the check:
+      <code>/intro/</code> (<code>aria-prohibited-attr</code>,
+      <code>svg-img-alt</code>, <code>label</code>,
+      <code>aria-allowed-attr</code>), <code>/quickstarts/</code>
+      (<code>label</code>, <code>link-name</code>,
+      <code>aria-allowed-attr</code>), <code>/tooling/</code>
+      (<code>aria-allowed-attr</code>) and <code>/troubleshooting/</code>
+      (<code>label</code>). These may be real barriers, for example a
+      form field without a label or a link without a name, and they are
+      not fixed.
+    </li>
+    <li>
+      <strong>Interactive demos and diagrams.</strong> The event demo, the
+      Change Feed Playground and the Mermaid diagrams are checked for
+      colour contrast at most. Whether they can be operated by keyboard,
+      or understood with a screen reader, has not been tested, and the
+      assistant panel has no automated accessibility check beyond the
+      page-level ones. Treat them as likely to have barriers.
+    </li>
+    <li>
+      <strong>Third-party content.</strong> Some pages load libraries or
+      embeds from other hosts, described on the
+      <a href="{{ '/privacy/' | url }}">privacy page</a>. Their
+      accessibility is outside this project's control.
+    </li>
+  </ul>
+</section>
+
+<section class="prose" aria-labelledby="feedback">
+  <h2 id="feedback">Report a barrier</h2>
+  <p>
+    If something on the site is hard or impossible to use, please say what
+    page, what you were trying to do, and what got in the way. Your
+    assistive technology and browser help if you want to share them.
+  </p>
+  <ul>
+    <li>
+      Write to the maintainer at the public address on the
+      <a href="{{ '/contact/' | url }}#general">contact page</a>.
+    </li>
+    <li>
+      Or open a public issue with the
+      <a href="https://github.com/{{ site.repository }}/issues/new?template=bug.yml">bug form</a>
+      on GitHub. Issues are public, so do not put anything private in one.
+    </li>
+  </ul>
+  <p>
+    This is a one-person project, so there is no promised reply time and
+    no promised fix date.
+  </p>
+</section>
+
+<section class="prose" aria-labelledby="ai-assisted">
+  <h2 id="ai-assisted">How this statement was written</h2>
+  <p>
+    This page was drafted with AI assistance from the repository's test
+    scripts and records. It has not been reviewed by the maintainer or by
+    an accessibility specialist. If it is wrong, tell us and it will be
+    corrected.
+  </p>
+</section>
