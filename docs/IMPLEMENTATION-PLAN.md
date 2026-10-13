@@ -2676,7 +2676,14 @@ these blocks merging the kit or the drill (P17-10).
       `npx vitest run tests/unit/team-commands.test.js tests/unit/doc-facts.test.js tests/unit/ratchet.test.js`,
       `npm run verify-all`. Size: S. Role: `implementer`, then `reviewer`.
       Needs: P17-60 merged for (a); (c) waits for P17-59.
-      _Status: not started._
+      _Status 2026-10-12: (a) [x] and (b) [x] done in one commit: the Retro step in
+      `/team-end`, the open-lessons line in `/team-start`, both pinned in
+      `tests/unit/team-commands.test.js`; the watcher directive in
+      `.claude/scripts/check-merged-prs.sh` now says to run `/team-start`,
+      pinned in `tests/unit/check-merged-prs.test.js`; L-016 in
+      `docs/LESSONS.md` closes L-014. (c) the scheduled drift-check workflow
+      stays open: it needs the maintainer. The box stays unticked until (c)
+      is done. This change touches `.claude/**`, so the maintainer merges it._
 
 - [ ] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
 - [x] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no

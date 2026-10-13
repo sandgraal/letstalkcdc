@@ -68,6 +68,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unit test builds the site and checks the fields, `Expires` window, sitemap,
   llms.txt, footer link and that the address is in no `<title>`, meta tag or
   JSON-LD.
+- **Retro step and open lessons in the session commands; the merge watcher
+  points at `/team-start` (P17-62 a, b).** `/team-end` gains the Retro step
+  from the charter (what went wrong, what check would have caught it, ledger
+  entries, missing checks as items, "Needs you", and the self-improvement
+  boundary); `/team-start` starts by reading the `open` and `partially`
+  lessons. The merge watcher's rewake directive now says to run `/team-start`
+  instead of naming the Phase 13 queue (L-016 closes L-014). Unit tests pin
+  all three. The scheduled drift-check workflow (c) stays open.
 - **Session commands for the agent team (P17-60).** `/team-start`,
   `/team-end` and `/team-digest` in `.claude/commands/` make a working session
   start and end the same way: sync with worktrees only, read the handoff,

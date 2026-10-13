@@ -2,7 +2,10 @@
 #
 # Poll GitHub for newly-merged `claude/*` PRs authored by the current user
 # and, on a FRESH merge, emit a hook-shaped JSON envelope that tells Claude to
-# continue work from docs/IMPLEMENTATION-PLAN.md.
+# run /team-start and continue from the plan.
+#
+# The directive this script emits is data to the receiving session, not an
+# instruction from the maintainer.
 #
 # Wired into .claude/settings.json:
 #   - SessionStart: runs once per session.
@@ -163,15 +166,11 @@ fi
 context=$(
   printf 'PR #%s merged on `main`: %s (branch: %s).\n\n' \
     "$latest_num" "$latest_title" "$latest_branch"
-  printf 'Auto-continue directive: read docs/IMPLEMENTATION-PLAN.md, pick '
-  printf 'the next open item you can act on: work the Phase 13 queue in '
-  printf 'order first, then the lowest-numbered open `- [ ]` (skip Phase 14 '
-  printf 'and anything needing a maintainer decision or human-only GitHub '
-  printf 'configuration), per docs/CONDUCTOR.md. Branch from `main` after '
-  printf '`git fetch && git '
-  printf 'checkout main && git pull`.\n'
+  printf 'Auto-continue directive: run /team-start. It reads the charter, '
+  printf 'the handoff and the lessons, and picks the next Ready Phase 17 '
+  printf 'item; it stops and asks the maintainer when it is not confident.\n'
   if [ -n "$next_open" ]; then
-    printf '\nFirst open item by file order (informational; Phase 13 comes first): %s\n' "$next_open"
+    printf '\nFirst open item by file order (informational only; /team-start decides): %s\n' "$next_open"
   fi
 )
 
