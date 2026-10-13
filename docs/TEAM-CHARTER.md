@@ -161,7 +161,8 @@ Use-when notes:
   in [`CONDUCTOR.md`](CONDUCTOR.md). Reviews and the Definition of Done are
   what catch a violation.
 - **Small PRs, one plan item each.** Short-lived `claude/<short-name>`
-  branches. The checkbox flips in the PR that closes the item.
+  branches. The PR that closes the item adds a `plan.d/` fragment
+  (`action: done`); the conductor applies it with `npm run plan:apply`.
 - **WIP limit: the conductor keeps at most 3 of its own PRs open.** At 3,
   stop opening new ones: wait for CI, run the review, merge through
   `node scripts/merge-pr.mjs <n> --execute` (a PR on a maintainer-only path
@@ -196,6 +197,8 @@ On top of the Definition of Done in `CONDUCTOR.md`:
       names its version.
 - [ ] **Changelog fragment** (`changelog.d/<topic>.md`, never an edit to
       `CHANGELOG.md`) for anything a reader or contributor would notice.
+- [ ] **Plan fragment** (`plan.d/<item-id>-<topic>.md`, never an edit to
+      `docs/IMPLEMENTATION-PLAN.md`) that closes or updates the plan item.
 
 ## Weekly digest
 
@@ -316,7 +319,9 @@ pass required; `CHANGELOG.md` is not a restricted path). The note lists:
 
 The same commit runs `npm run changelog:compile` to fold the
 `changelog.d/` fragments into `[Unreleased]` (see `changelog.d/README.md`);
-feature PRs never edit `CHANGELOG.md`.
+feature PRs never edit `CHANGELOG.md`. It also runs `npm run plan:apply` to
+apply the `plan.d/` fragments to `docs/IMPLEMENTATION-PLAN.md` (see
+`plan.d/README.md`); feature PRs never edit the plan.
 
 Plan items are not edited by the note. Only when something is blocked, add a
 pointer in the plan item to the handoff block, not a copy of it.

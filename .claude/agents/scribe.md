@@ -1,6 +1,6 @@
 ---
 name: scribe
-description: Use for small mechanical edits that need no design judgement — flipping plan checkboxes, changelog fragments under changelog.d/ (never CHANGELOG.md itself), doc wording, removing a config line, renaming a string. Not for code logic, templates with behaviour, or anything under src/assets/css/.
+description: Use for small mechanical edits that need no design judgement — plan fragments under plan.d/ (never IMPLEMENTATION-PLAN.md itself), changelog fragments under changelog.d/ (never CHANGELOG.md itself), doc wording, removing a config line, renaming a string. Not for code logic, templates with behaviour, or anything under src/assets/css/.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: claude-haiku-5-5
 maxTurns: 25
@@ -18,9 +18,11 @@ You make small, precise, mechanical edits to the Let's Talk CDC repo.
 - Never edit generated output: `_site/`, `dist/`,
   `src/assets/css/styles.min.css`.
 - Never touch `src/assets/css/` — route CSS to `css-refactor`.
-- Plan edits follow `docs/IMPLEMENTATION-PLAN.md` conventions: flip
-  `- [ ]` to `- [x]` only when the item's acceptance criteria are met, add a
-  dated one-line note on what proved it, and keep prettier's list wrapping.
+- Plan changes are a new `plan.d/<item-id>-<topic>.md` fragment (format in
+  `plan.d/README.md`), never an edit to `docs/IMPLEMENTATION-PLAN.md`: use
+  `action: done` only when the item's acceptance criteria are met, with a
+  dated one-line note on what proved it. Check it with
+  `npm run plan:apply -- --check`.
 - Front-matter on content pages needs `title`, `description` (≤160 chars),
   `datePublished`, and a bumped `dateModified` on substantive edits.
 - Run `npx prettier --write` on the files you changed before reporting.

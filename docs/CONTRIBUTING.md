@@ -31,6 +31,10 @@ npm run test         # unit tests
   `changelog.d/<topic>.md` instead (format in `changelog.d/README.md`; check it
   with `npm run changelog:compile -- --check`). The maintainer folds fragments
   into the changelog.
+- Do not edit `docs/IMPLEMENTATION-PLAN.md` in a PR either. To close or update
+  a plan item, add one new file `plan.d/<item-id>-<topic>.md` (format in
+  `plan.d/README.md`; check it with `npm run plan:apply -- --check`). The
+  maintainer applies fragments to the plan.
 - Match the surrounding code style. Prettier and ESLint run via `npm run lint`.
 - For new content modules, follow **[docs/adding-modules.md](./adding-modules.md)**.
 - For visual changes, attach before/after screenshots in light and dark mode.

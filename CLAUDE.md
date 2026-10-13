@@ -32,9 +32,9 @@ authoritative; this is its order:
 4. [`docs/DECISIONS.md`](docs/DECISIONS.md), then
    [`docs/MAINTAINER-TASKS.md`](docs/MAINTAINER-TASKS.md).
 5. `docs/IMPLEMENTATION-PLAN.md`, the authoritative checklist: find your item,
-   do the work, flip `- [ ]` to `- [x]` in the same commit. The queue is Phase 17
-   (start at its "Start here" list), then older agent boxes; Phase 14 is the
-   maintainer's. New work: lowest fitting phase, or a new Phase heading.
+   do the work, add a `plan.d/` fragment in the same PR (the conductor runs
+   `npm run plan:apply`). Queue: Phase 17 ("Start here"), then older agent
+   boxes; Phase 14 is the maintainer's. New work: lowest fitting phase or a new one.
 
 ## Commands
 
