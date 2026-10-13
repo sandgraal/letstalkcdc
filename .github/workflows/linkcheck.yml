@@ -46,10 +46,16 @@ jobs:
           # resolve against --root-dir (_site), which puts them at
           # _site/letstalkcdc/x; this pattern strips the prefix again so they
           # land on _site/x. With no prefix it matches _site/ and maps it to
-          # itself, which is harmless.
+          # itself, which is harmless. The bare prefix (`{{ '/' | url }}`
+          # rendered as `/letstalkcdc`, no trailing slash) resolves to
+          # _site/letstalkcdc, which does not exist, so a second pattern,
+          # anchored at the end, maps exactly that to the site root _site/.
+          # With an empty prefix it is `^file://<ws>/_site$`, mapped to
+          # _site/ as well, so it is harmless there too.
           ws="$(printf '%s' "$WORKSPACE" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
           pfx="$(printf '%s' "$prefix" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
           echo "rootdir-pattern=^file://${ws}/_site${pfx}/" >> "$GITHUB_OUTPUT"
+          echo "rootdir-bare-pattern=^file://${ws}/_site${pfx}\$" >> "$GITHUB_OUTPUT"
           # This repository's own github.com URLs: owner/name come from the
           # run (github.repository), so a rename needs no edit here.
           repo="$(printf '%s' "$REPOSITORY" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
@@ -157,6 +163,7 @@ jobs:
             --max-concurrency 8
             --accept '100..=103,200..=299,429,503,504'
             --max-retries 5 --retry-wait-time 10
+            --remap '${{ steps.own-site.outputs.rootdir-bare-pattern }} file://${{ github.workspace }}/_site/'
             --remap '${{ steps.own-site.outputs.rootdir-pattern }} file://${{ github.workspace }}/_site/'
             --remap '${{ steps.own-site.outputs.pattern }} file://${{ github.workspace }}/_site/'
             --remap '${{ steps.own-site.outputs.repo-files }} file://${{ github.workspace }}/'

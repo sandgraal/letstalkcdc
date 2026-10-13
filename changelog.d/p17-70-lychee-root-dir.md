@@ -9,4 +9,5 @@ root-relative link ... provide a root dir", while the previously pinned lychee
 0.16 rejects `--root-dir` as an unknown argument. `linkcheck.yml` now passes
 `--root-dir <workspace>/_site` and a first `--remap` that strips the public
 path prefix from the resolved `file://` URL, so `/letstalkcdc/x` lands on
-`_site/x`. No exclusion or `--accept` flag changed.
+`_site/x`. A remap placed before it sends the bare prefix `/letstalkcdc`
+(no trailing slash) to the site root `_site/`. No exclusion or `--accept` flag changed.
