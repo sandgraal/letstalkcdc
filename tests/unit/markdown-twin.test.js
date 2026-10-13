@@ -112,6 +112,31 @@ describe("htmlToMarkdown", () => {
     expect(out).toBe("Kept");
   });
 
+  it("keeps a callout aside as a blockquote, with errata title, paragraphs and list items", () => {
+    const out = md(
+      '<aside class="errata-callout"><details><summary>Known errata (1)</summary><ul><li><p><strong>Corrected: SCN alone</strong></p><div><p>Not run against Oracle.</p><ul><li>use a tie-break</li></ul></div></li></ul></details></aside>',
+    );
+    expect(out).toContain("> **Known errata (1)**");
+    expect(out).toContain("Corrected: SCN alone");
+    expect(out).toContain("Not run against Oracle.");
+    expect(out).toContain("use a tie-break");
+    for (const line of out.split("\n")) expect(line.startsWith(">")).toBe(true);
+  });
+
+  it("keeps a plain callout aside but drops navigation asides", () => {
+    const out = md(
+      '<aside class="callout"><p>Tested on PostgreSQL only.</p></aside><aside class="page-meta"><p>By Someone</p></aside><aside class="discussion-callout"><p>Join the discussion</p></aside>',
+    );
+    expect(out).toBe("> Tested on PostgreSQL only.");
+  });
+
+  it("pads inline code that starts or ends with a backtick", () => {
+    expect(md("<p><code>`a</code> <code>b`</code> <code>c`d</code></p>")).toBe(
+      "`` `a `` `` b` `` ``c`d``",
+    );
+    expect(md("<p><code>x</code></p>")).toBe("`x`");
+  });
+
   it("returns an empty string for empty input", () => {
     expect(md("")).toBe("");
     expect(htmlToMarkdown(undefined)).toBe("");
@@ -384,6 +409,27 @@ describe("built Markdown twins", () => {
     expect(
       mdParts(read("merge-cookbook/index.md")).code.length,
     ).toBeGreaterThan(5);
+  });
+
+  it("carries the errata callout into the twin of every page that has errata", async () => {
+    const { default: errata } = await import("../../src/_data/errata.mjs");
+    const pages = new Set(errata.flatMap((e) => e.urls));
+    expect(pages.size).toBeGreaterThan(5);
+    for (const url of pages) {
+      const md = read(`${url.slice(1)}index.md`);
+      expect(md, url).toContain("**Known errata for this page (");
+      for (const e of errata.filter((x) => x.urls.includes(url)))
+        expect(md, `${url} ${e.id}`).toContain(e.title);
+    }
+  });
+
+  it("puts the Oracle SCN correction and the not-run label in the /oracle-notes/ twin", () => {
+    const md = read("oracle-notes/index.md");
+    expect(md).toContain("Corrected: an Oracle SCN alone is not a safe guard");
+    expect(md).toMatch(
+      /Oracle SQL on the page is now labelled as not run against an\s+(?:> )?Oracle database/,
+    );
+    expect(md).toContain(`(${BASE}/errata/)`);
   });
 
   it("makes links in a twin absolute under the host and prefix", () => {

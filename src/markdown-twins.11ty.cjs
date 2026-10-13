@@ -31,13 +31,16 @@ module.exports = class {
     };
   }
 
-  render({ twin, site }) {
+  render({ twin, site, errata }) {
     return renderTwin({
       title: twin.data?.title || twin.data?.heroConfig?.title,
       description: twin.data?.description,
       url: twin.url,
       bodyHtml: twin.templateContent,
       site,
+      errata: (Array.isArray(errata) ? errata : []).filter(
+        (e) => Array.isArray(e?.urls) && e.urls.includes(twin.url),
+      ),
     });
   }
 };
