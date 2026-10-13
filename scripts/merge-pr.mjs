@@ -64,8 +64,21 @@
 //               docs/CONDUCTOR.md, docs/TEAM-CHARTER.md, docs/DECISIONS.md,
 //               .husky/**, .vscode/**, .devcontainer/**, the test/lint/
 //               lighthouse configs, this script and its tests, supabase/**,
-//               CNAME, LICENSE*, and the npm manifests and lockfiles. Anything
-//               that steers agents or the pipeline is merged by a human.
+//               CNAME, LICENSE*, and the playground's npm manifest and lockfile.
+//               Released to agents on 2026-10-12: the root package.json and
+//               package-lock.json, and regular files under .claude/commands/
+//               and .claude/scripts/ (a symlink or submodule there is refused).
+//               Inside those two directories CLAUDE.md, CLAUDE.local.md,
+//               AGENTS.md, .mcp.json, .gitattributes, .gitmodules, .npmrc,
+//               .env*, settings.json, settings.local.json and any dotfile or
+//               dot-directory (any depth, case-insensitive) stay restricted.
+//               package.json defines the `merge-pr` and `test` scripts this gate
+//               trusts, so a PR whose package.json `scripts` object (parsed
+//               JSON, origin/main vs the merge result) differs fails gate 5
+//               ("package.json scripts changed"), as does a package.json git
+//               cannot show or parse; --maintainer-approved clears it.
+//               Anything that steers agents or the pipeline is merged by a
+//               human.
 //   6  merge    head merges cleanly onto current origin/main in a temporary
 //               worktree; if head is behind main, `npm test` must also pass there
 //               in a scrubbed environment (see Limits). At the start, stale
@@ -109,6 +122,57 @@
 // rule (it also does not take effect as that directory). Comments are assumed
 // to be capped at 100 by `gh pr view --json comments`; 100 or more is refused.
 //
+// The one override is `--maintainer-approved "<text>"` (2026-10-12, see
+// docs/DECISIONS.md): it turns a gate 5 FAIL into a PASS with a visible note and
+// bypasses nothing else. It is an HONOUR-SYSTEM record, not authentication: the
+// script cannot tell whether the maintainer really said it. The conductor may
+// pass it only after the maintainer's own chat message says to merge that PR.
+// When (and only when) it actually overrode a gate 5 failure, the text
+// (control characters removed, 200 characters) is also written into the
+// squash-merge commit body after "Maintainer approval (recorded by the
+// conductor, honour system): " so the record outlives the terminal output. The
+// script passes no other body, so this record is the whole body (`--body`
+// replaces gh's default message); with nothing overridden no body is passed.
+// There is no other override, and never --admin, --auto or --rebase.
+//
+// Dependabot lane (same decision): a PR whose author (read from
+// `gh pr view --json author`, never the title alone) is Dependabot, whose title
+// is `Bump <pkg> from <a> to <b>` or `Bump the <group> group ...` with every
+// per-package bump listed in the body, whose bumps are all patch or minor
+// (plain major.minor.patch), and whose changed files are only the root
+// package.json and package-lock.json, is exempt from gates 4 and 4b. Gates
+// 1, 2, 3, 5 and 6 still apply; so does everything for GitHub Actions bumps
+// (they touch .github/). Any failure below voids the lane with a
+// `dependabot lane refused:` note and gates 4 and 4b then apply in full:
+//   - author.is_bot must be exactly true (missing is refused);
+//   - every commit on the PR (`gh pr view --json commits`) must be authored by
+//     dependabot[bot] / app/dependabot; a missing, empty or 100-commit list, or
+//     one that does not end at the head commit, is refused;
+//   - the lockfile of the merge result (`git show :package-lock.json`), parsed
+//     as JSON, must be lockfileVersion 2 or 3 and every entry in `packages`
+//     and `dependencies` (recursively) must have a `resolved` that starts with
+//     https://registry.npmjs.org/ (an entry with none, such as the root, is
+//     fine), no `link: true`, and no version or dependency spec that is a
+//     file:, git, github:, http: or npm: spec or contains `://` or a `/`; a
+//     lockfile that does not parse is refused. No added line of the patch
+//     (`git diff --no-renames origin/main...<head> -- package-lock.json
+//     package.json`) may contain a backslash;
+//   - package.json, parsed, may differ from main only in version,
+//     dependencies, devDependencies, optionalDependencies and
+//     peerDependencies; scripts, bin, overrides, engines, main, exports and
+//     every other key must be deep-equal. In those four maps the key sets must
+//     be identical (nothing added, removed or renamed), every changed value
+//     must be a plain [^~]major.minor.patch, and the packages whose value
+//     changed must be a non-empty subset of the packages the PR title (or a
+//     group PR's body) names;
+//   - the manifests must actually have been inspected (fail closed).
+// What this does NOT do: it does not verify that a published package version is
+// benign (a compromised release served from the real registry passes, and so
+// does a malicious package that is a legitimate-looking bump of a named
+// dependency), and it cannot prove a commit's author is really Dependabot (a
+// commit author is a claim in the commit). Checks, the test-merge and the
+// reviewer of the dependency itself remain the controls.
+//
 // Branch cleanup. `--delete-branch` deletes the REMOTE branch, which is the
 // part that matters. gh also tries to delete the LOCAL branch and fails when a
 // git worktree still holds it ("failed to delete local branch"), exiting
@@ -122,8 +186,6 @@
 // this for merged work, but it leaves branches) and then delete the leftover
 // local branch by hand with `git branch -D <name>`.
 //
-// There is deliberately no override flag, and never --admin, --auto or --rebase.
-//
 // The gate functions below are pure (parsed JSON in, failure list out). All
 // process, git and filesystem access goes through injected dependencies so the
 // tests need no network.
@@ -133,9 +195,12 @@ import { lstat, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 export const PR_FIELDS = [
   "number",
+  "title",
+  "author",
   "state",
   "isDraft",
   "baseRefName",
@@ -147,6 +212,7 @@ export const PR_FIELDS = [
   "files",
   "body",
   "comments",
+  "commits",
   "mergeStateStatus",
 ].join(",");
 
@@ -206,8 +272,6 @@ export const RESTRICTED_PATTERNS = [
   "supabase/**",
   "CNAME",
   "LICENSE*",
-  "package.json",
-  "package-lock.json",
   "playground/package.json",
   "playground/package-lock.json",
 ];
@@ -216,6 +280,64 @@ export const RESTRICTED_PATTERNS = [
 // change the baseline hash. Matched against the raw path, so a case variant or
 // a Unicode look-alike is not excused.
 export const RESTRICTED_EXCEPTIONS = [".claude/css-baseline.sha256"];
+
+// Directories under .claude/** that the maintainer released to agents
+// (2026-10-12, docs/DECISIONS.md): slash commands and helper scripts. Same
+// rules as the exact exceptions: matched against the raw, case-sensitive path
+// (so `.Claude/commands/x` and `.claude/commands/../settings.json` are not
+// excused), and gate 6 refuses a symlink or submodule at such a path. Unlike
+// the css-baseline exception, a script may be executable (100755) and a file
+// may be deleted. `.claude/hooks/`, settings, agents, rules and skills stay
+// restricted.
+export const RESTRICTED_EXCEPTION_PREFIXES = [
+  ".claude/commands/",
+  ".claude/scripts/",
+];
+
+// Inside the released directories these still steer agents, git or the
+// package manager, so they stay maintainer-only (F2, 2026-10-12 review).
+// Compared on the lower-cased name of every path segment below the prefix.
+const RELEASED_DIR_DENY_NAMES = new Set([
+  "claude.md",
+  "claude.local.md",
+  "agents.md",
+  ".mcp.json",
+  ".gitattributes",
+  ".gitmodules",
+  ".npmrc",
+  "settings.json",
+  "settings.local.json",
+]);
+
+/** True for a name that stays restricted inside a released directory. */
+function isDeniedInReleasedDir(segment) {
+  const name = segment.toLowerCase();
+  // Any dotfile or dot-directory (this covers .env*, .mcp.json, .npmrc ...).
+  return name.startsWith(".") || RELEASED_DIR_DENY_NAMES.has(name);
+}
+
+/**
+ * True for a path under one of RESTRICTED_EXCEPTION_PREFIXES, spelled plainly,
+ * and not an instruction or config file: CLAUDE.md, CLAUDE.local.md, AGENTS.md,
+ * .mcp.json, .gitattributes, .gitmodules, .npmrc, .env*, settings.json,
+ * settings.local.json or any dotfile (at any depth, case-insensitive) stay
+ * restricted.
+ */
+export function isPrefixException(file) {
+  if (typeof file !== "string") return false;
+  const prefix = RESTRICTED_EXCEPTION_PREFIXES.find((p) => file.startsWith(p));
+  if (!prefix || file.length === prefix.length) return false;
+  if (normalizePath(file) !== file) return false;
+  const segments = file.slice(prefix.length).split("/");
+  return !segments.some(
+    (seg) =>
+      seg === "" || seg === "." || seg === ".." || isDeniedInReleasedDir(seg),
+  );
+}
+
+function isException(file) {
+  return RESTRICTED_EXCEPTIONS.includes(file) || isPrefixException(file);
+}
 
 function globToRegExp(glob) {
   let source = "";
@@ -588,7 +710,7 @@ export function checkAuditTrail(pr) {
 
 /** Returns the maintainer-only pattern a path matches, or null. */
 export function restrictedPatternFor(file) {
-  if (RESTRICTED_EXCEPTIONS.includes(file)) return null;
+  if (isException(file)) return null;
   const normalized = normalizePath(file);
   const hit = RESTRICTED_MATCHERS.find(({ regex }) => regex.test(normalized));
   return hit ? hit.pattern : null;
@@ -614,8 +736,555 @@ export function checkFiles(files) {
   return [...new Set(failures)];
 }
 
+// ---------------------------------------------------------------------------
+// Dependabot lane
+// ---------------------------------------------------------------------------
+
+// The maintainer approved this lane in chat on 2026-10-12 (docs/DECISIONS.md).
+// `gh pr view --json author` reports the bot as "app/dependabot"; the REST API
+// spells it "dependabot[bot]". Neither string can be a human login (a login
+// has no `/` or brackets), so an exact match is a real author check.
+const DEPENDABOT_LOGINS = new Set(["dependabot[bot]", "app/dependabot"]);
+export const DEPENDABOT_FILES = ["package.json", "package-lock.json"];
+// `gh pr view --json commits` returns at most the first 100 commits.
+export const COMMIT_CAP = 100;
+// The only registry a lockfile `"resolved"` URL may point at on this lane.
+export const REGISTRY_PREFIX = "https://registry.npmjs.org/";
+// The only package.json keys a Dependabot PR may change. Everything else
+// (scripts, bin, overrides, engines, main, exports, config ...) must be
+// deep-equal to main, so a bump cannot smuggle in an install script or a
+// changed entry point.
+export const DEPENDABOT_MANIFEST_KEYS = new Set([
+  "version",
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+]);
+
+const SEMVER = /^v?(\d+)\.(\d+)\.(\d+)$/;
+const BUMP_TITLE =
+  /^(?:[a-z]+(?:\([^)]*\))?!?:[ \t]*)?bump[ \t]+(\S+)[ \t]+from[ \t]+(\S+)[ \t]+to[ \t]+(\S+)(?:[ \t]+in[ \t]+.+)?$/i;
+const GROUP_TITLE =
+  /^(?:[a-z]+(?:\([^)]*\))?!?:[ \t]*)?bump[ \t]+the[ \t]+\S+[ \t]+group\b/i;
+// "Updates `pkg` from 1.2.3 to 1.2.4" in a Dependabot group PR body.
+const BODY_UPDATE = /^Updates `([^`\n]+)` from (\S+) to (\S+?)\.?[ \t]*$/gm;
+
+/**
+ * Compares two versions. Returns null when the bump is a patch or minor
+ * increase, otherwise the reason it is not acceptable.
+ */
+export function bumpProblem(name, from, to) {
+  const a = SEMVER.exec(from);
+  const b = SEMVER.exec(to);
+  if (!a || !b) {
+    return `${name} ${from} -> ${to}: not a plain major.minor.patch version (pre-release or unparseable)`;
+  }
+  const [, aMajor, aMinor, aPatch] = a.map(Number);
+  const [, bMajor, bMinor, bPatch] = b.map(Number);
+  if (aMajor !== bMajor) {
+    return `${name} ${from} -> ${to}: a major version change`;
+  }
+  const up = bMinor > aMinor || (bMinor === aMinor && bPatch > aPatch);
+  if (!up) return `${name} ${from} -> ${to}: not an increase`;
+  return null;
+}
+
+/**
+ * Every commit on the PR must be authored by Dependabot (the PR author alone
+ * proves nothing about commits pushed onto the branch afterwards). Fails
+ * closed: a missing, empty or possibly truncated list, or a list that does not
+ * end at the head commit, is a problem.
+ */
+export function dependabotCommitProblems(pr) {
+  const commits = pr.commits;
+  if (!Array.isArray(commits) || commits.length === 0) {
+    return ["commit authors are missing from the PR data"];
+  }
+  if (commits.length >= COMMIT_CAP) {
+    return [
+      `too many commits to check authors (${commits.length}; gh may return only the first ${COMMIT_CAP})`,
+    ];
+  }
+  if (!pr.headRefOid || commits.at(-1)?.oid !== pr.headRefOid) {
+    return [
+      "the commit list does not end at the head commit (stale or truncated)",
+    ];
+  }
+  const others = new Set();
+  for (const commit of commits) {
+    const authors = commit?.authors;
+    if (!Array.isArray(authors) || authors.length === 0) {
+      others.add("(no author)");
+      continue;
+    }
+    for (const author of authors) {
+      if (!DEPENDABOT_LOGINS.has(author?.login)) {
+        others.add(JSON.stringify(String(author?.login ?? "(no login)")));
+      }
+    }
+  }
+  return others.size === 0
+    ? []
+    : [
+        `a commit on the PR is not authored by dependabot (${[...others].slice(0, 5).join(", ")})`,
+      ];
+}
+
+/**
+ * Raw-text check of the `package-lock.json` / `package.json` patch (`git diff
+ * --no-renames origin/main...<head> -- package-lock.json package.json`): no
+ * added line may contain a backslash. The real check of where packages come
+ * from is `lockfileProblems`, which parses the JSON; this stays because a JSON
+ * escape (`"resolved"`) is invisible to a reader of the patch.
+ */
+export function lockfilePatchProblems(patch) {
+  const problems = [];
+  for (const line of String(patch ?? "").split("\n")) {
+    if (!line.startsWith("+")) continue;
+    if (/^\+\+\+ (?:b\/package(?:-lock)?\.json|\/dev\/null)$/.test(line)) {
+      continue;
+    }
+    if (line.includes("\\")) {
+      problems.push(
+        `an added line of the lockfile patch contains a backslash: ${line.slice(0, 120)}`,
+      );
+    }
+  }
+  return [...new Set(problems)].slice(0, 5);
+}
+
+const LOCK_DEPENDENCY_MAPS = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+  "requires",
+];
+// Allowlists, not denylists: a non-root entry's `version` must be a plain
+// registry version, and a dependency or `requires` spec must be a semver range
+// or a dist-tag word. Everything else (links, aliases, gist:/file:/workspace:/
+// git specs, tarball names, owner/repo) is refused by not matching.
+const LOCK_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const SPEC_CHARS = /^[0-9A-Za-z.\-+^~<>=| *xX]+$/;
+// One whitespace-separated piece of a range: a comparator, a (partial)
+// version or wildcard, or the `-` of a hyphen range.
+const SPEC_TOKEN =
+  /^(?:-|[<>=^~]+|[<>=^~]*v?(?:\d+|[xX*])(?:\.(?:\d+|[xX*]))*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
+// A dist-tag such as `latest`: npm records it in a lock entry's dependency
+// maps, and it resolves through the registry. It has no `:`, `/`, `@` or `\`.
+const SPEC_TAG = /^[A-Za-z][A-Za-z0-9._-]*$/;
+// A bare file name is a tag by shape, so archive names are refused by suffix.
+const ARCHIVE_SUFFIX = /\.(?:tgz|tar|tar\.gz)$/i;
+
+function isSemverRange(spec) {
+  if (!SPEC_CHARS.test(spec)) return false;
+  return spec.split("||").every((alternative) => {
+    const tokens = alternative.split(/ +/).filter(Boolean);
+    return tokens.length > 0 && tokens.every((t) => SPEC_TOKEN.test(t));
+  });
+}
+
+function lockSpecProblem(spec) {
+  if (typeof spec !== "string") return "is not a string";
+  if (isSemverRange(spec)) return null;
+  if (SPEC_TAG.test(spec) && !ARCHIVE_SUFFIX.test(spec)) return null;
+  return "is not a semver range or a dist-tag";
+}
+
+/**
+ * Checks a parsed lockfile entry (a `packages` value, or a v1-style
+ * `dependencies` value, which nests). `where` names it in a problem.
+ */
+function lockEntryProblems(where, entry, problems, depth = 0, root = false) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    problems.push(`${where} is not an object`);
+    return;
+  }
+  if (depth > 64) {
+    problems.push(`${where} nests too deeply`);
+    return;
+  }
+  if (entry.link === true) problems.push(`${where} is a link (link: true)`);
+  if (entry.resolved !== undefined) {
+    const resolved = entry.resolved;
+    if (
+      typeof resolved !== "string" ||
+      !resolved.startsWith(REGISTRY_PREFIX) ||
+      resolved.slice(REGISTRY_PREFIX.length).includes("://") ||
+      resolved.includes("\\")
+    ) {
+      problems.push(
+        `${where} resolves outside ${REGISTRY_PREFIX}: ${JSON.stringify(resolved)?.slice(0, 100)}`,
+      );
+    }
+  }
+  if (entry.version !== undefined && !root) {
+    const version = entry.version;
+    if (typeof version !== "string" || !LOCK_VERSION.test(version)) {
+      problems.push(
+        `${where} has a version that is not a registry version: ${JSON.stringify(version)?.slice(0, 100)}`,
+      );
+    }
+  }
+  for (const key of LOCK_DEPENDENCY_MAPS) {
+    const map = entry[key];
+    if (map === undefined) continue;
+    if (!map || typeof map !== "object" || Array.isArray(map)) {
+      problems.push(`${where} ${key} is not an object`);
+      continue;
+    }
+    for (const [name, value] of Object.entries(map)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        // The v1 `dependencies` tree: each value is itself an entry.
+        lockEntryProblems(`${where} > ${name}`, value, problems, depth + 1);
+      } else {
+        const why = lockSpecProblem(value);
+        if (why) {
+          problems.push(
+            `${where} ${key}.${name} ${why}: ${JSON.stringify(value)?.slice(0, 100)}`,
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Parses the lockfile of the merge result and refuses anything that could
+ * fetch code from somewhere other than the npm registry. Fails closed: text
+ * that does not parse, or a lockfileVersion other than 2 or 3, is a problem.
+ * An entry with no `resolved` (the workspace root `""`) is fine.
+ */
+export function lockfileProblems(text) {
+  let lock;
+  try {
+    lock = JSON.parse(String(text ?? ""));
+  } catch {
+    return ["package-lock.json is not valid JSON after the merge"];
+  }
+  if (!lock || typeof lock !== "object" || Array.isArray(lock)) {
+    return ["package-lock.json is not a JSON object"];
+  }
+  if (lock.lockfileVersion !== 2 && lock.lockfileVersion !== 3) {
+    return [
+      `package-lock.json lockfileVersion is ${JSON.stringify(lock.lockfileVersion)}, not 2 or 3`,
+    ];
+  }
+  const problems = [];
+  const packages = lock.packages;
+  if (!packages || typeof packages !== "object" || Array.isArray(packages)) {
+    problems.push("package-lock.json has no packages object");
+  } else {
+    for (const [key, entry] of Object.entries(packages)) {
+      lockEntryProblems(
+        `packages[${JSON.stringify(key)}]`,
+        entry,
+        problems,
+        0,
+        key === "",
+      );
+    }
+  }
+  if (lock.dependencies !== undefined) {
+    const tree = lock.dependencies;
+    if (!tree || typeof tree !== "object" || Array.isArray(tree)) {
+      problems.push("package-lock.json dependencies is not an object");
+    } else {
+      for (const [name, entry] of Object.entries(tree)) {
+        lockEntryProblems(
+          `dependencies[${JSON.stringify(name)}]`,
+          entry,
+          problems,
+        );
+      }
+    }
+  }
+  return [...new Set(problems)].slice(0, 5);
+}
+
+export const DEPENDENCY_MAPS = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+];
+// What a changed dependency value in package.json must look like: no tag, URL,
+// alias, path, range with `||` or comparator.
+export const PLAIN_DEPENDENCY_VERSION = /^[\^~]?\d+\.\d+\.\d+$/;
+
+/**
+ * Compares the four dependency maps of package.json on main and in the merge
+ * result. Returns `{ problems, changed }`: `changed` is the list (sorted by
+ * name) of `{ name, from, to }` for every package whose value differs, with
+ * the raw values; `problems` lists every key added, removed or
+ * renamed, and every changed value that is not a plain [^~]major.minor.patch.
+ * Unreadable input is a problem (fail closed).
+ */
+export function dependencyMapChanges(baseText, headText) {
+  const base = parseManifest(baseText);
+  const head = parseManifest(headText);
+  if (!base || !head) {
+    return {
+      problems: ["package.json could not be read to compare dependencies"],
+      changed: [],
+    };
+  }
+  const problems = [];
+  const changed = [];
+  const isMap = (value) =>
+    value && typeof value === "object" && !Array.isArray(value);
+  for (const map of DEPENDENCY_MAPS) {
+    const from = base[map] ?? {};
+    const to = head[map] ?? {};
+    if (!isMap(from) || !isMap(to)) {
+      problems.push(`package.json ${map} is not an object`);
+      continue;
+    }
+    // Own keys only: `in` would find `constructor` or `toString` on the
+    // prototype and let a package of that name be added unnoticed.
+    const added = Object.keys(to).filter((name) => !Object.hasOwn(from, name));
+    const removed = Object.keys(from).filter(
+      (name) => !Object.hasOwn(to, name),
+    );
+    if (added.length > 0 || removed.length > 0) {
+      problems.push(
+        `package.json ${map} adds or removes packages (+${added.slice(0, 3).join(",") || "none"} -${removed.slice(0, 3).join(",") || "none"})`,
+      );
+    }
+    for (const name of Object.keys(to)) {
+      if (!Object.hasOwn(from, name) || from[name] === to[name]) continue;
+      changed.push({ name, from: from[name], to: to[name] });
+      if (
+        typeof to[name] !== "string" ||
+        !PLAIN_DEPENDENCY_VERSION.test(to[name])
+      ) {
+        problems.push(
+          `package.json ${map}.${name} is ${JSON.stringify(to[name])?.slice(0, 60)}, not a plain [^~]major.minor.patch version`,
+        );
+      }
+    }
+  }
+  changed.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { problems: [...new Set(problems)], changed };
+}
+
+function parseManifest(text) {
+  try {
+    const value = JSON.parse(text);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Compares package.json on main and in the merge result (parsed JSON, so key
+ * order and whitespace do not matter). Returns
+ * `{ unreadable, scriptsChanged, otherKeys }`: `unreadable` is a message when
+ * either side is missing or not a JSON object, `scriptsChanged` is whether
+ * `scripts` differs, `otherKeys` lists every changed top-level key outside
+ * DEPENDABOT_MANIFEST_KEYS (so it includes `scripts`).
+ */
+export function comparePackageJson(baseText, headText) {
+  const base = parseManifest(baseText);
+  const head = parseManifest(headText);
+  if (!base || !head) {
+    return {
+      unreadable: `package.json is ${base ? "missing or not valid JSON after the merge" : "not valid JSON on main"}`,
+      scriptsChanged: true,
+      otherKeys: ["(unreadable)"],
+    };
+  }
+  const keys = new Set([...Object.keys(base), ...Object.keys(head)]);
+  const otherKeys = [...keys].filter(
+    (key) =>
+      !DEPENDABOT_MANIFEST_KEYS.has(key) &&
+      !isDeepStrictEqual(base[key], head[key]),
+  );
+  return {
+    unreadable: null,
+    scriptsChanged: !isDeepStrictEqual(base.scripts, head.scripts),
+    otherKeys,
+  };
+}
+
+const MANIFEST_VERSION = /^[\^~]?(\d+)\.(\d+)\.(\d+)$/;
+
+/**
+ * One changed package.json dependency (`{ name, from, to }`, the raw values)
+ * against what the PR names. The new value, without a leading ^ or ~, must be
+ * strictly greater than the old one, and must equal the `to` version the title
+ * (or the group body's "Updates `pkg` from X to Y" line) gives for it. Returns
+ * the reason it is not, or null. A package the PR does not name is reported
+ * elsewhere; only the direction is checked for it.
+ */
+function changeProblem({ name, from, to }, bumps) {
+  const label = `package.json ${JSON.stringify(name)} ${JSON.stringify(from)?.slice(0, 40)} -> ${JSON.stringify(to)?.slice(0, 40)}`;
+  const parts = (value) => {
+    const m = MANIFEST_VERSION.exec(typeof value === "string" ? value : "");
+    return m ? m.slice(1).map(BigInt) : null;
+  };
+  const before = parts(from);
+  const after = parts(to);
+  if (!before || !after) {
+    return `${label}: not comparable as plain [^~]major.minor.patch versions`;
+  }
+  const order = before.findIndex((n, i) => n !== after[i]);
+  if (order === -1 || after[order] < before[order]) {
+    return `${label}: not an increase`;
+  }
+  const wanted = bumps.filter((bump) => bump.name === name);
+  const target = String(to).replace(/^[\^~]/, "");
+  // package.json cannot carry a `v` (PLAIN_DEPENDENCY_VERSION), a title may.
+  const wrong = wanted.find(
+    (bump) => bump.to.replace(/^[\^~]?v?/, "") !== target,
+  );
+  if (wrong) {
+    return `${label}: the PR names ${wrong.to}, not ${target}`;
+  }
+  return null;
+}
+
+/**
+ * Decides whether a PR may use the Dependabot lane, which is exempt from gates
+ * 4 and 4b only. Returns `{ author, eligible, reasons, summary }`: `author` is
+ * whether the PR was opened by Dependabot (so a refusal is worth explaining),
+ * `reasons` why it is not eligible. `changedFiles`, when given (git's own list
+ * after the test-merge), must also be only the two root manifests.
+ * `extraReasons` are content problems found by the test-merge (lockfile URLs,
+ * package.json keys); any of them voids the lane. Every commit must be
+ * authored by Dependabot, and `author.is_bot` must be exactly true.
+ * `changedPackages`, when given (`{ name, from, to }` for each package whose
+ * value changed in the package.json dependency maps, from
+ * `dependencyMapChanges`), must be non-empty, a subset of the packages the
+ * title (or a group PR's body) names, and each must go up to exactly the
+ * version the PR names.
+ */
+export function dependabotLane(
+  pr,
+  changedFiles = null,
+  extraReasons = [],
+  changedPackages = null,
+) {
+  const login = pr.author?.login;
+  if (!DEPENDABOT_LOGINS.has(login) || pr.author?.is_bot === false) {
+    return { author: false, eligible: false, reasons: [], summary: "" };
+  }
+  const reasons = [...dependabotCommitProblems(pr), ...extraReasons];
+  if (pr.author?.is_bot !== true) {
+    reasons.push("the PR author is not marked as a bot (is_bot is not true)");
+  }
+  const title = String(pr.title ?? "").trim();
+  const bumps = [];
+
+  const single = BUMP_TITLE.exec(title);
+  if (single) {
+    bumps.push({ name: single[1], from: single[2], to: single[3] });
+  } else if (GROUP_TITLE.test(title)) {
+    const body = String(pr.body ?? "");
+    for (const m of body.matchAll(BODY_UPDATE)) {
+      bumps.push({ name: m[1], from: m[2], to: m[3] });
+    }
+    const declared = /\bwith (\d+) updates?\b/i.exec(title)?.[1];
+    if (bumps.length === 0) {
+      reasons.push(
+        'group PR: no "Updates `pkg` from X to Y" lines in the body to verify',
+      );
+    } else if (declared === undefined) {
+      reasons.push(
+        "group PR: the title does not say how many updates it has, so the body cannot be checked for completeness",
+      );
+    } else if (Number(declared) !== bumps.length) {
+      reasons.push(
+        `group PR: the title says ${declared} updates but the body lists ${bumps.length}`,
+      );
+    }
+  } else {
+    reasons.push(
+      'title is not "Bump <pkg> from <a> to <b>" or "Bump the <group> group ..."',
+    );
+  }
+  for (const { name, from, to } of bumps) {
+    const problem = bumpProblem(name, from, to);
+    if (problem) reasons.push(problem);
+  }
+  if (changedPackages) {
+    const named = new Set(bumps.map((bump) => bump.name));
+    const unnamed = [
+      ...new Set(
+        changedPackages
+          .map((change) => change.name)
+          .filter((n) => !named.has(n)),
+      ),
+    ];
+    if (changedPackages.length === 0) {
+      reasons.push(
+        "package.json changes no dependency version, so nothing ties the PR to the package it names",
+      );
+    } else if (unnamed.length > 0) {
+      reasons.push(
+        `package.json changes packages the PR does not name: ${unnamed
+          .slice(0, 5)
+          .map((name) => JSON.stringify(name))
+          .join(", ")}`,
+      );
+    }
+    for (const change of changedPackages) {
+      const problem = changeProblem(change, bumps);
+      if (problem) reasons.push(problem);
+    }
+  }
+
+  const paths = (list) =>
+    (list ?? []).map((f) => (typeof f === "string" ? f : f?.path));
+  const listed = paths(pr.files);
+  const all = changedFiles ? [...listed, ...paths(changedFiles)] : listed;
+  if (listed.length === 0) reasons.push("no changed files listed");
+  const stray = [...new Set(all)].filter(
+    (file) => !DEPENDABOT_FILES.includes(file),
+  );
+  if (stray.length > 0) {
+    reasons.push(
+      `touches files other than package.json / package-lock.json: ${stray
+        .slice(0, 5)
+        .map((f) => JSON.stringify(f))
+        .join(", ")}${stray.length > 5 ? ", ..." : ""}`,
+    );
+  }
+
+  const summary = bumps
+    .map(({ name, from, to }) => `${name} ${from} -> ${to}`)
+    .join(", ");
+  return { author: true, eligible: reasons.length === 0, reasons, summary };
+}
+
+export const APPROVAL_MIN_LENGTH = 10;
+export const APPROVAL_MAX_DISPLAY = 200;
+export const APPROVAL_BODY_PREFIX =
+  "Maintainer approval (recorded by the conductor, honour system): ";
+
+/** Replaces control characters (C0, DEL, C1) with spaces and trims. */
+export function cleanApprovalText(text) {
+  return (
+    String(text ?? "")
+      // eslint-disable-next-line no-control-regex -- the point is to remove them
+      .replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
+      .trim()
+  );
+}
+
 /** Gates 1-5 (including 4b), the ones that need only the parsed `gh pr view` JSON. */
-export function evaluateStaticGates(pr) {
+export function evaluateStaticGates(pr, options = {}) {
+  const lane = options.lane ?? dependabotLane(pr);
+  const laneNote = (what) =>
+    `dependabot lane: ${what} not required (${lane.summary})`;
+  const laneRefusal =
+    lane.author && !lane.eligible
+      ? [`dependabot lane refused: ${lane.reasons.join("; ")}`]
+      : [];
   return [
     {
       id: "state",
@@ -639,13 +1308,15 @@ export function evaluateStaticGates(pr) {
       id: "record",
       num: "4",
       label: "review record approves",
-      failures: checkReviewRecord(pr),
+      failures: lane.eligible ? [] : checkReviewRecord(pr),
+      notes: lane.eligible ? [laneNote("review record")] : laneRefusal,
     },
     {
       id: "audit",
       num: "4b",
       label: "reviewer report pasted as a comment",
-      failures: checkAuditTrail(pr),
+      failures: lane.eligible ? [] : checkAuditTrail(pr),
+      notes: lane.eligible ? [laneNote("audit comment")] : [],
     },
     {
       id: "files",
@@ -909,13 +1580,16 @@ export async function cleanStaleTemp({ run, fs, cwd, now = Date.now() }) {
 }
 
 /**
- * Checks `git diff --raw -z` output for the exceptions: each excepted path must
- * be a regular file, mode 100644 on both sides (000000 before, for a new file).
- * A symlink (120000) or an executable (100755) is refused.
+ * Checks `git diff --raw -z` output for the exceptions. An exact exception (the
+ * css-baseline) must be a regular file, mode 100644 on both sides (000000
+ * before, for a new file); a symlink (120000) or an executable (100755) is
+ * refused. A path under RESTRICTED_EXCEPTION_PREFIXES may also be executable or
+ * deleted (000000 after), but a symlink or a submodule (160000) is refused.
  */
 export function checkExceptionModes(rawStdout) {
   const failures = [];
   const tokens = String(rawStdout ?? "").split("\0");
+  const regular = new Set(["100644", "100755"]);
   for (let i = 0; i < tokens.length - 1; i += 1) {
     const meta = tokens[i].match(
       /^:(\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]\d*$/,
@@ -923,18 +1597,101 @@ export function checkExceptionModes(rawStdout) {
     if (!meta) continue;
     const file = tokens[i + 1];
     i += 1;
-    if (!RESTRICTED_EXCEPTIONS.includes(file)) continue;
+    const exact = RESTRICTED_EXCEPTIONS.includes(file);
+    if (!exact && !isPrefixException(file)) continue;
     const [, oldMode, newMode] = meta;
-    if (
-      (oldMode !== "100644" && oldMode !== "000000") ||
-      newMode !== "100644"
-    ) {
+    const bad = exact
+      ? (oldMode !== "100644" && oldMode !== "000000") || newMode !== "100644"
+      : (oldMode !== "000000" && !regular.has(oldMode)) ||
+        (newMode !== "000000" && !regular.has(newMode));
+    if (bad) {
       failures.push(
-        `touches ${file} as a non-regular file (mode ${oldMode} -> ${newMode}; need 100644): maintainer merges this one`,
+        `touches ${file} as a non-regular file (mode ${oldMode} -> ${newMode}; need ${exact ? "100644" : "a regular file"}): maintainer merges this one`,
       );
     }
   }
   return failures;
+}
+
+/**
+ * Looks at what a PR does to package.json and package-lock.json, using git
+ * (never the PR's own claims). Fills `result.fileFailures` (gate 5: package.json
+ * `scripts` changed, or could not be compared) and `result.laneProblems`
+ * (Dependabot lane: lockfile URLs, package.json keys). Fail closed: any git or
+ * parse failure is a problem, and `manifestsInspected` is set only at the end.
+ */
+async function inspectManifests({ git, worktree, head, changed, result, run }) {
+  if (changed.has("package-lock.json") || changed.has("package.json")) {
+    const patch = await git([
+      "diff",
+      "--no-renames",
+      `origin/${BASE_BRANCH}...${head}`,
+      "--",
+      "package-lock.json",
+      "package.json",
+    ]);
+    if (patch.code !== 0) {
+      result.laneProblems.push(
+        `could not read the lockfile patch: ${tail(patch.stderr, 2)}`,
+      );
+    } else {
+      result.laneProblems.push(...lockfilePatchProblems(patch.stdout));
+    }
+    // The lockfile that would land: `:package-lock.json` is the index of the
+    // test-merge. Parsed, never grepped.
+    const lock = await run("git", ["show", ":package-lock.json"], {
+      cwd: worktree,
+    });
+    if (lock.code !== 0) {
+      result.laneProblems.push(
+        `could not read package-lock.json after the merge: ${tail(lock.stderr, 2)}`,
+      );
+    } else {
+      result.laneProblems.push(...lockfileProblems(lock.stdout));
+    }
+  }
+  if (changed.has("package.json")) {
+    const base = await git(["show", `origin/${BASE_BRANCH}:package.json`]);
+    // `:package.json` is the index of the test-merge, i.e. what would land.
+    const merged = await run("git", ["show", ":package.json"], {
+      cwd: worktree,
+    });
+    const dependencies =
+      base.code === 0 && merged.code === 0
+        ? dependencyMapChanges(base.stdout, merged.stdout)
+        : {
+            problems: [
+              "git could not show package.json to compare dependencies",
+            ],
+            changed: [],
+          };
+    result.laneProblems.push(...dependencies.problems);
+    result.changedDependencies = dependencies.changed;
+    const compared =
+      base.code === 0 && merged.code === 0
+        ? comparePackageJson(base.stdout, merged.stdout)
+        : {
+            unreadable:
+              "git could not show package.json on main or after the merge",
+            scriptsChanged: true,
+            otherKeys: ["(unreadable)"],
+          };
+    if (compared.unreadable) {
+      result.fileFailures.push(
+        `package.json could not be compared (${compared.unreadable}): maintainer merges this one`,
+      );
+    } else if (compared.scriptsChanged) {
+      result.fileFailures.push(
+        "package.json scripts changed: maintainer merges this one",
+      );
+    }
+    if (compared.otherKeys.length > 0) {
+      result.laneProblems.push(
+        `package.json changes keys other than dependencies and version: ${compared.otherKeys.join(", ")}`,
+      );
+    }
+  }
+  result.manifestsInspected = true;
 }
 
 /**
@@ -950,6 +1707,12 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
     notes: [],
     changedFiles: [],
     fileFailures: [],
+    // Content problems that void the Dependabot lane (never gate 5), and
+    // whether the manifests were inspected at all (fail closed when not).
+    laneProblems: [],
+    manifestsInspected: false,
+    // Package names whose value changed in the package.json dependency maps.
+    changedDependencies: [],
   };
   const head = pr.headRefOid;
 
@@ -1078,7 +1841,7 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
 
     // The css-baseline exception covers a regular file only: a symlink to
     // .claude/settings.json has the same path.
-    const excepted = RESTRICTED_EXCEPTIONS.filter((file) => changed.has(file));
+    const excepted = [...changed].filter(isException);
     if (excepted.length > 0) {
       const raw = await run(
         "git",
@@ -1103,6 +1866,8 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
       }
       result.fileFailures.push(...checkExceptionModes(raw.stdout));
     }
+
+    await inspectManifests({ git, worktree, head, changed, result, run });
 
     if (behind) {
       if (!runTests) {
@@ -1195,11 +1960,17 @@ async function fetchPr(number, run, cwd, fields = PR_FIELDS) {
 }
 
 export const USAGE = [
-  "usage: node scripts/merge-pr.mjs <pr-number> [--execute]",
+  'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--maintainer-approved "<text>"]',
   "       node scripts/merge-pr.mjs --help",
   "",
   "Dry run by default: evaluates every gate and prints a table. --execute",
   "squash-merges (and deletes the branch) only when every gate passes.",
+  "",
+  '--maintainer-approved "<text>" (10+ characters) turns a gate 5 failure into a',
+  "PASS with a visible note quoting <text>, and when it overrode something <text>",
+  "is the whole squash-merge commit body. It bypasses no other gate. It is an",
+  "honour-system record, not authentication: pass it only after the",
+  "maintainer's own chat message says to merge this PR.",
   "",
   "  1  state    open, not a draft, base main",
   "  2  checks   every check on the head commit green",
@@ -1214,9 +1985,26 @@ export const USAGE = [
   "              a block, a quoted block too (a quoted approval counts for",
   "              nothing). 100+ comments are refused. Author comments count",
   "  5  files    no maintainer-only file (agent instructions at any depth,",
-  "              .claude/** except css-baseline.sha256 as a regular file,",
-  "              .vscode, .devcontainer, CI, manifests...) and no path with a",
-  "              control character; checked against gh and against git",
+  "              .claude/** except css-baseline.sha256 and regular files under",
+  "              .claude/commands/ and .claude/scripts/ (but CLAUDE.md, AGENTS.md,",
+  "              .mcp.json, .npmrc, .gitattributes, .gitmodules, .env*,",
+  "              settings*.json and any dotfile stay restricted there), .vscode,",
+  "              .devcontainer, CI...) and no path with a control character;",
+  "              checked against gh and against git. The root package.json and",
+  "              package-lock.json are no longer on the list, but a changed",
+  "              package.json `scripts` object fails gate 5",
+  "  4/4b Dependabot lane: a PR by dependabot[bot] (author is read, not the",
+  "              title; is_bot must be true) bumping packages patch/minor,",
+  "              touching only the root package.json / package-lock.json, skips",
+  "              gates 4 and 4b. Majors, pre-releases, unparseable versions and",
+  "              groups whose body cannot be checked are refused with the",
+  "              reason. Also required: every commit authored by dependabot,",
+  "              a parsed lockfile (version 2 or 3) whose every entry resolves",
+  "              on https://registry.npmjs.org/ with no link, file, git or URL",
+  "              spec and no backslash on an added line, and package.json",
+  "              changed only in version and the four dependency maps (same",
+  "              keys, plain [^~]x.y.z values, only packages the title names).",
+  "              It does not verify a published package is benign",
   "  6  merge    clean test-merge onto origin/main (also removes merge-pr-* temp",
   "              dirs older than 24 h; updates origin/main and",
   "              origin/<branch> remote-tracking refs); npm test, with a",
@@ -1224,7 +2012,8 @@ export const USAGE = [
   "              still runs here; the scrub is a mitigation, not a sandbox",
   "",
   `NOTE: ${SELF_ATTESTATION_NOTE}`,
-  "There is no override flag; --admin, --auto and --rebase are never used.",
+  "The only override is --maintainer-approved, for gate 5; --admin, --auto and",
+  "--rebase are never used.",
 ].join("\n");
 
 /**
@@ -1243,16 +2032,62 @@ export async function main(argv, deps = {}) {
     return 0;
   }
 
-  const flags = argv.filter((arg) => arg.startsWith("-"));
-  const positional = argv.filter((arg) => !arg.startsWith("-"));
-  const unknown = flags.filter((flag) => flag !== "--execute");
-  const execute = flags.includes("--execute");
+  let execute = false;
+  let approvalRaw = null;
+  const unknown = [];
+  const positional = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--execute") {
+      execute = true;
+    } else if (
+      arg === "--maintainer-approved" ||
+      arg.startsWith("--maintainer-approved=")
+    ) {
+      let value = null;
+      if (arg === "--maintainer-approved") {
+        // The value is the next argument; one that looks like a flag is a
+        // missing value, not a reason.
+        const next = argv[i + 1];
+        if (next !== undefined && !next.startsWith("-")) {
+          value = next;
+          i += 1;
+        }
+      } else {
+        value = arg.slice("--maintainer-approved=".length);
+      }
+      if (approvalRaw !== null || value === null) unknown.push(arg);
+      else approvalRaw = value;
+    } else if (arg.startsWith("-")) {
+      unknown.push(arg);
+    } else {
+      positional.push(arg);
+    }
+  }
 
   const number = positional.length === 1 ? parsePrNumber(positional[0]) : null;
   if (number === null || unknown.length > 0) {
-    err("usage: node scripts/merge-pr.mjs <pr-number> [--execute]");
-    err("<pr-number> must be a positive integer; --execute is the only flag.");
+    err(
+      'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--maintainer-approved "<text>"]',
+    );
+    err(
+      "<pr-number> must be a positive integer; --execute and --maintainer-approved <text> are the only flags (each at most once).",
+    );
     return 2;
+  }
+  let approval = null;
+  if (approvalRaw !== null) {
+    const cleaned = cleanApprovalText(approvalRaw);
+    if (cleaned.length < APPROVAL_MIN_LENGTH) {
+      err(
+        `usage: --maintainer-approved needs the maintainer's words, at least ${APPROVAL_MIN_LENGTH} characters after trimming and removing control characters.`,
+      );
+      return 2;
+    }
+    approval =
+      cleaned.length > APPROVAL_MAX_DISPLAY
+        ? `${cleaned.slice(0, APPROVAL_MAX_DISPLAY)}...`
+        : cleaned;
   }
 
   let pr;
@@ -1267,7 +2102,26 @@ export async function main(argv, deps = {}) {
     return 1;
   }
 
-  const gates = evaluateStaticGates(pr);
+  let lane = dependabotLane(pr);
+  const gates = evaluateStaticGates(pr, { lane });
+
+  // --maintainer-approved turns a gate 5 failure into a visible note and
+  // nothing else. It is applied again after gate 6, which can add file failures.
+  const overridden = [];
+  const applyApproval = () => {
+    const filesGate = gates.find((gate) => gate.id === "files");
+    if (!approval || !filesGate) return;
+    overridden.push(...filesGate.failures);
+    filesGate.failures = [];
+    filesGate.notes =
+      overridden.length > 0
+        ? [
+            `maintainer-approved: ${approval}`,
+            ...overridden.map((failure) => `overrode: ${failure}`),
+          ]
+        : [];
+  };
+  applyApproval();
 
   // Gate 6 needs a real, open PR to fetch; otherwise it is reported as skipped.
   const mergeGate = {
@@ -1283,12 +2137,32 @@ export async function main(argv, deps = {}) {
     mergeGate.failures = result.failures;
     mergeGate.notes = result.notes;
     const filesGate = gates.find((gate) => gate.id === "files");
-    const known = new Set(filesGate.failures);
+    const known = new Set([...filesGate.failures, ...overridden]);
     for (const failure of [
       ...checkFiles(result.changedFiles),
       ...result.fileFailures,
     ]) {
       if (!known.has(failure)) filesGate.failures.push(failure);
+    }
+    applyApproval();
+    // The file list from the test-merge must also be only the two manifests;
+    // if not, the Dependabot lane is void and gates 4 and 4b apply in full.
+    if (lane.eligible) {
+      lane = dependabotLane(
+        pr,
+        result.changedFiles,
+        result.manifestsInspected
+          ? result.laneProblems
+          : ["the manifest changes could not be inspected"],
+        result.manifestsInspected ? result.changedDependencies : null,
+      );
+      if (!lane.eligible) {
+        const full = evaluateStaticGates(pr, { lane });
+        for (const id of ["record", "audit"]) {
+          const at = gates.findIndex((gate) => gate.id === id);
+          gates[at] = full.find((gate) => gate.id === id);
+        }
+      }
     }
   } else {
     mergeGate.failures.push("not tested: PR is not open");
@@ -1297,6 +2171,10 @@ export async function main(argv, deps = {}) {
 
   const failed = gates.filter((gate) => gate.failures.length > 0);
   out(`merge-pr: PR #${number} (${execute ? "execute" : "dry run"})`);
+  if (approval) out(`maintainer-approved: ${approval}`);
+  if (approval && overridden.length === 0) {
+    out("maintainer-approved: nothing was overridden, so it is not recorded.");
+  }
   out(formatGateTable(gates));
 
   if (failed.length > 0) {
@@ -1350,19 +2228,22 @@ export async function main(argv, deps = {}) {
     );
   }
 
-  const merge = await run(
-    "gh",
-    [
-      "pr",
-      "merge",
-      String(number),
-      "--squash",
-      "--delete-branch",
-      "--match-head-commit",
-      pr.headRefOid,
-    ],
-    { cwd: root },
-  );
+  // A durable record of the approval in the squash-merge commit body, only
+  // when it actually overrode something. This script passes no other body, so
+  // the record is the whole body (`--body` replaces gh's default message).
+  const mergeArgs = [
+    "pr",
+    "merge",
+    String(number),
+    "--squash",
+    "--delete-branch",
+    "--match-head-commit",
+    pr.headRefOid,
+  ];
+  if (approval && overridden.length > 0) {
+    mergeArgs.push("--body", `${APPROVAL_BODY_PREFIX}${approval}`);
+  }
+  const merge = await run("gh", mergeArgs, { cwd: root });
   if (merge.code !== 0) {
     const message = tail(merge.stderr || merge.stdout, 5);
     // gh can merge on GitHub and still exit non-zero, e.g. "failed to delete
@@ -1373,6 +2254,7 @@ export async function main(argv, deps = {}) {
       out(
         `MERGED PR #${number} (verified after gh exited non-zero; merge commit ${merged.oid.slice(0, 7)}). gh said: ${message}`,
       );
+      if (approval) out(`maintainer-approved: ${approval}`);
       return 0;
     }
     if (merged) {
@@ -1387,6 +2269,7 @@ export async function main(argv, deps = {}) {
     return 1;
   }
   out(`MERGED PR #${number} (squash, branch deleted).`);
+  if (approval) out(`maintainer-approved: ${approval}`);
 
   try {
     const view = await run(

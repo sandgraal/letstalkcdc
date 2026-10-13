@@ -1,7 +1,7 @@
 # Decisions log
 
 Maintainer decisions for Let's Talk CDC, recorded 2026-10-09 and, where
-noted, 2026-10-11. One short entry each: what was decided, why in one line, and where it stands. This
+noted, 2026-10-11 and 2026-10-12. One short entry each: what was decided, why in one line, and where it stands. This
 file is public; it records decisions, not motives beyond what is stated.
 
 Basis values: **Decided** means the maintainer stated it. **Default** means
@@ -271,6 +271,31 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   needs the 2026-11-06 snapshot.
 - **Status:** Decided; see Phase 17 in
   [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+- **Basis:** Decided.
+
+## 2026-10-12 answers
+
+### Relax four merge and push guardrails (2026-10-12)
+
+- **Decision:** After the maintainer wrote "lets reduce gates and hooks if we
+  need to, ask me fior permissions you need", the assistant proposed four
+  changes and the maintainer answered "i approve all". (1) The merge script's
+  maintainer-only list drops the root `package.json`, `package-lock.json`,
+  `.claude/commands/**` and `.claude/scripts/**` (the rest, including
+  `.github/**`, `.claude/hooks/**`, settings, agents, the merge script and its
+  tests, and every secrets path, stays). (2) A new flag
+  `--maintainer-approved "<text>"` turns a gate 5 failure into a visible note
+  and bypasses no other gate; it is an honour-system record, and the conductor
+  passes it only after the maintainer's own chat message says to merge that
+  PR. (3) A Dependabot lane: a patch or minor bump by `dependabot[bot]` that
+  touches only the root `package.json` / `package-lock.json` skips gates 4 and
+  4b; majors, pre-releases, unparseable versions, Actions bumps and extra
+  files stay refused. (4) `guard-bash.mjs` allows a `git push` of a
+  `claude/*` branch that touches `.github/`; every other push deny stays.
+- **Why:** More PRs can be merged without a round trip; the changes are small
+  and the remaining gates still hold. The cost, accepted: a workflow change on
+  a pushed branch can run with secrets before the maintainer reads it.
+- **Status:** Decided; shipped as P17-65. `guard-edit.mjs` is unchanged.
 - **Basis:** Decided.
 
 ---
