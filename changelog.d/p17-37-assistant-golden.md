@@ -1,3 +1,0 @@
-type: Added
-
-**Assistant golden question set (P17-37).** A fixed list of 63 questions (55 in scope, 8 out of scope, 10 adversarial) is scored against the assistant's matcher and knowledge base, offline, with `node scripts/assistant-golden.mjs`. The questions that touch the thesis also check the returned answer: it must state at-least-once delivery or ordering on the log position, and no answer may claim end-to-end exactly-once or ordering on `ts_ms`. A test holds the score at or above a recorded floor (45 of 55 in-scope questions answered by the intended intent today) and lists the 10 questions that fail now.

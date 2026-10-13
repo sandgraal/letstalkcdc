@@ -35,7 +35,8 @@ maintainer. A PR that is ready is merged only by
 the review record and CI are in order, the PR's head is a `claude/*` branch
 of this repository by the team's account, and you are confident (else stop
 and ask, as in `/team-start` step 3). A PR that touches a restricted (Tier 3)
-path is handed to the maintainer, as in `/team-start` step 3. Everything else
+path gets a WARN from the script (`--strict` refuses); read the diff, and ask
+the maintainer if unsure, as in `/team-start` step 3. Everything else
 stays open and is listed.
 
 ### 3. Dry-run the worktree prune

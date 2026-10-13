@@ -7,8 +7,9 @@ paths:
 
 # Workflow rules
 
-- The maintainer merges changes to `.github/` (workflows, CODEOWNERS). An
-  agent may propose them in a PR but never merges one; see `docs/CONDUCTOR.md`.
+- An agent may push a `claude/*` branch that changes `.github/` (workflows,
+  CODEOWNERS) and open the PR. The merge script WARNs on that path (`--strict`
+  refuses it); read the diff first, and see `docs/CONDUCTOR.md`.
 - **Never add secrets**, tokens or keys to a workflow or to any file. Use
   `${{ secrets.NAME }}` for something that must stay private, and repository
   variables (`vars.NAME`) for public values such as `SITE_HOST`,
@@ -19,8 +20,8 @@ paths:
 - Install with `npm ci`, never `npm install`.
 - Do not weaken a gate (remove a job, add `continue-on-error`, loosen a
   threshold) to turn CI green. Fix the cause or report it.
-- `main` has no required status checks (see `CLAUDE.md`); CI is advisory
-  until the maintainer changes the ruleset, so say plainly what CI showed.
+- The `default` ruleset requires seven checks (see `CLAUDE.md`); `lychee` and
+  `lighthouse` are not required, so say plainly what they showed.
 - Workflows: `ci.yml`, `deploy.yml`, `linkcheck.yml`, `fortify.yml` and three
   `playground-*.yml`. Lighthouse floors live in `lighthouse-ci.config.json`,
   not in the workflow. CodeQL is repository settings (default setup), not a file.

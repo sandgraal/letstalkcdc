@@ -1,3 +1,0 @@
-type: Added
-
-**Content-Security-Policy (P17-24).** Every page now carries a `<meta http-equiv="Content-Security-Policy">`: scripts only from the site itself plus a SHA-256 hash for each inline script (no `unsafe-inline`, no `unsafe-eval`), and only the exact third-party origins in use (YouTube no-cookie player and thumbnails; Supabase, GoatCounter and Buttondown when configured). Page stylesheets that swapped in through an inline `onload=` handler now use `data-deferred-style`. Styles still allow `unsafe-inline`. A meta tag cannot set `frame-ancestors` or report violations; see `docs/HOSTING.md`.
