@@ -1,0 +1,65 @@
+name: Labs verify
+
+# P17-25. Runs the docker-compose sandbox lab (compose.yaml, sandbox/) on a
+# GitHub-hosted runner and fails when it does not come up or when its
+# documented checks fail, so the lab claims on the pages stay true.
+#
+# Not a required check and not tied to pull requests: it runs on demand and
+# weekly, on free runner minutes only (public repository, standard runner).
+# No secrets. The logic lives in scripts/labs-verify.mjs (unit-tested in
+# tests/unit/labs-verify.test.js); this file only calls it.
+#
+# Covered: the Postgres path of compose.yaml (zookeeper, kafka, connect,
+# postgres, kcat). Not covered, on purpose: the MySQL path and Kafka UI (the
+# first run decides whether to add them), playground/ compose files (own
+# workflows) and the cloud labs under /cloud-labs/ (AWS DMS, Fivetran,
+# GoldenGate, Matillion, Snowflake need vendor accounts and credentials).
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays 05:17 UTC; an off-the-hour minute avoids the top-of-hour queue.
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labs-verify
+  cancel-in-progress: false
+
+jobs:
+  postgres-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Record runner and tool versions
+        run: |
+          echo "ImageOS=${ImageOS:-} ImageVersion=${ImageVersion:-}"
+          docker version
+          docker compose version
+
+      - name: Run the lab and its checks
+        timeout-minutes: 20
+        run: node scripts/labs-verify.mjs --lab postgres-sandbox --logs labs-verify-logs
+
+      - name: Tear down (in case the script was killed)
+        if: ${{ always() }}
+        run: docker compose down -v --remove-orphans
+
+      - name: Upload logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: labs-verify-logs
+          path: labs-verify-logs/
+          retention-days: 14
+          if-no-files-found: warn
