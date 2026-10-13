@@ -46,7 +46,7 @@ secrets and decisions stay yours (Tier 3).
 | #   | Task                                                                              | Why                                                                      | Time                            | When                                 | Needs                                   |
 | --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------- | ------------------------------------ | --------------------------------------- |
 | 1   | [ ] Merge the restricted-path PRs the team prepares (now: P17-59)                 | The merge script refuses these paths, so only you can merge them         | 5 min each                      | Now, first                           | Merge rights; the open PR               |
-| 2   | [ ] Require CI checks on the `default` ruleset (P17-3)                            | A red CI run does not block a merge today                                | 10 min                          | Today, before the next merge batch   | Repository admin                        |
+| 2   | [x] Require CI checks on the `default` ruleset (P17-3)                            | Done 2026-10-13: seven checks required                                   | 10 min                          | Today, before the next merge batch   | Repository admin                        |
 | 3   | [ ] Repository settings: description, topics, social preview, alerts, Discussions | Discoverability, security alerts, community threads                      | 15 min                          | This week                            | Repository admin                        |
 | 4   | [ ] File the upstream Debezium docs issue (P15-39)                                | Debezium's docs name a setting PostgreSQL does not present as a slot cap | 10 min                          | When you are ready; the draft exists | A GitHub account                        |
 | 5   | [ ] Confirm nothing runs `.codacy/cli.sh`, then remove it (P15-52)                | Removes a launcher that nothing is known to use                          | 5 min                           | This week                            | Codacy dashboard access                 |
@@ -73,8 +73,9 @@ shipped in the sweep PR) is one such PR; it edits `docs/CONDUCTOR.md`,
 1. Run `gh pr list --state open` and find the PR by its title.
 2. Read the PR description and the **Files changed** tab. Check that the
    restricted paths changed are the ones the description says.
-3. Check CI with `gh pr checks <number>` or the Checks tab. The ruleset does not
-   block a red run until task 2 is done, so until then you are the check.
+3. Check CI with `gh pr checks <number>` or the Checks tab. The ruleset blocks a
+   red required check (task 2, done 2026-10-13); `lychee` and `lighthouse` are
+   not required, so read those yourself.
 4. On the PR page, choose **Squash and merge**, then confirm. Squash is the
    pattern on `main`: commit subjects end in `(#NNN)`.
 5. Run `git switch main && git pull`.
@@ -84,8 +85,11 @@ shipped in the sweep PR) is one such PR; it edits `docs/CONDUCTOR.md`,
 ### 2. Require CI checks on the `default` ruleset (P17-3)
 
 **Why.** The `default` ruleset (ID `16512225`) has the rules `deletion`,
-`non_fast_forward`, `code_scanning`, `code_quality` and `pull_request`. It has no
-required status checks, so a red CI run does not block a merge. Four `unit-tests`
+`non_fast_forward`, `code_scanning`, `code_quality` and `pull_request`. Before
+2026-10-13 it had no required status checks, so a red CI run did not block a
+merge. Done 2026-10-13: it now requires the seven checks below, with "up to
+date" off (`strict_required_status_checks_policy: false`); `lychee` and
+`lighthouse` are deliberately not required. Four `unit-tests`
 runs on `main` failed on 2026-10-09 (`docs/AUTOPSY-BRIEF.md` section 7). The merge
 script checks the gate for agents; this makes GitHub enforce it for everyone.
 
