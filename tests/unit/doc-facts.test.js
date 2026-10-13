@@ -246,3 +246,39 @@ describe("rules and skills frontmatter", () => {
     },
   );
 });
+
+/**
+ * Time-relative wording (L-004, P17-62 c). "Not on main yet" is true only
+ * while it is written; within hours it is a lie. State timeless facts instead.
+ * The two allowlisted files hold dated history: the plan's dated status notes
+ * and the append-only ledger, which quotes the phrases it describes.
+ */
+export const TIME_RELATIVE =
+  /not on `?main`? yet|until (this|the|its) PR (merges|is merged|lands)|until it merges|once this PR (merges|lands)|not merged yet|waiting for (its|the|this) PR/i;
+const TIME_RELATIVE_ALLOWED = new Set([
+  "docs/IMPLEMENTATION-PLAN.md",
+  "docs/LESSONS.md",
+]);
+
+describe("time-relative wording", () => {
+  it("detects the phrases and ignores timeless wording", () => {
+    expect(TIME_RELATIVE.test("The file is not on main yet.")).toBe(true);
+    expect(TIME_RELATIVE.test("Stays open until this PR merges")).toBe(true);
+    expect(TIME_RELATIVE.test("The merge gate refuses a red PR.")).toBe(false);
+  });
+
+  it("is absent from tracked Markdown outside the allowlist", () => {
+    const offenders = [...trackedFiles()]
+      .filter(
+        (f) =>
+          f.endsWith(".md") &&
+          !f.startsWith("docs/archive/") &&
+          !f.startsWith("node_modules/") &&
+          f !== "CHANGELOG.md" &&
+          !TIME_RELATIVE_ALLOWED.has(f) &&
+          fs.existsSync(path.join(root, f)),
+      )
+      .filter((f) => TIME_RELATIVE.test(read(f)));
+    expect(offenders).toEqual([]);
+  });
+});
