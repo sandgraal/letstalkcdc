@@ -99,9 +99,12 @@ canonicalPath: "/methodology/"
 <section class="prose" aria-labelledby="freshness">
   <h2 id="freshness">Freshness signals</h2>
   <p>
-    Every module page renders a "Last reviewed" stamp in its
+    Every module page renders a "Last updated" stamp in its
     footer aside, derived from the page's <code>dateModified</code>
-    front-matter. When the date and the page diverge enough that
+    front-matter. It records the last substantive edit, not a human
+    review. A "Technically reviewed by" line appears only on a page
+    whose front matter names both a reviewer and a review date, and
+    on no other. When the date and the page diverge enough that
     a reader should know something changed, the stamp gets
     bumped in the same commit. The
     <a href="{{ '/feed.xml' | url }}">RSS feed</a> sorts by
