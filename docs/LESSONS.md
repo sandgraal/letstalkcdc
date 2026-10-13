@@ -241,10 +241,12 @@ Entries whose source is 'conductor session record' were observed by the conducto
   non-zero when a worktree still holds the local branch.
 - Root cause: the branch-deletion step fails while a worktree holds the branch,
   and that non-zero exit is read as a failed merge.
-- Prevented by: none yet. After any non-zero exit from the merge call, verify
-  with `gh pr view <n> --json state`; the fix is tracked in P17-57 of
-  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
-- Status: open
+- Prevented by: `scripts/merge-pr.mjs` (P17-57a) re-reads the PR after any
+  non-zero `gh pr merge` and succeeds only when it is MERGED with a merge
+  commit and its head equals the head the gates evaluated; any other state, a
+  failed re-read or a different head exits 1, and the merge is never retried.
+  Cases, including one per guard, are in `tests/unit/merge-pr.test.js`.
+- Status: prevented
 
 ### L-014 The merge watcher's rewake message still points at the Phase 13 queue
 
