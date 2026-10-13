@@ -2903,7 +2903,7 @@ goes to `css-refactor` with before and after production hashes.
       sample pages. Verify: `npx vitest run`, `npm run build`,
       `npm run smoke:core`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: P17-21 (the index links to the copies).
-- [ ] **P17-23 · Vendor Mermaid and Chart.js with SRI.** Outcome: the site
+- [x] **P17-23 · Vendor Mermaid and Chart.js with SRI.** Outcome: the site
       stops loading these two libraries from a third-party CDN. Accept: both
       are served from the site's own `/assets/` from pinned npm versions
       through the Vite build (the loaders in
@@ -2916,6 +2916,12 @@ goes to `css-refactor` with before and after production hashes.
       `npm run smoke:perf`, and `rg -n "jsdelivr|unpkg|cdnjs" src` with each
       remaining hit explained. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
+      _Status 2026-10-12: shipped in the PR carrying this change. Mermaid is
+      copied at build time to `/assets/vendor/mermaid.<hash>.min.js` and
+      loaded with `integrity`; Chart.js is a hashed Vite chunk. The one
+      remaining `rg` hit is `src/privacy/index.njk`, which must keep naming
+      jsDelivr because the Change Feed Playground still loads its Supabase
+      library from there (vendoring that is a separate item)._
 - [ ] **P17-24 · Meta Content-Security-Policy.** Outcome: a CSP is actually
       served (the `.htaccess` check in `scripts/smoke.mjs` never ran, and
       GitHub Pages cannot set headers, so this is a `<meta>` policy). Accept:

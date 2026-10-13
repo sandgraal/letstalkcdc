@@ -30,7 +30,14 @@ be unstyled.
 
 In dev there is no Vite manifest, so the `viteAsset` filter falls back to the
 unhashed source paths. Run `npm run build` once for a production-shaped
-`_site/`. The Docker sandbox's Kafka UI also listens on port 8080, so stop one
+`_site/`.
+
+Charts need `npm run build:js` once. Chart.js is a Vite-built chunk with no
+unhashed fallback, so on a fresh checkout `npm run dev` shows no charts (the
+dashboard loader logs a console warning saying so). Run `npm run build:js`, then
+restart `npm run dev`. From then on the dev server serves the bundled, hashed
+JS from `dist/` instead of the live sources, so after editing `src/assets/js/`
+run `npm run build:js` again, or delete `dist/` to go back to live sources. The Docker sandbox's Kafka UI also listens on port 8080, so stop one
 before starting the other.
 
 ## The bar before you push

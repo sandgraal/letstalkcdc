@@ -217,10 +217,10 @@ canonicalPath: "/privacy/"
   <p>
     Some features load things from other companies, which can behave
     differently. If you click play on an embedded YouTube video, YouTube's
-    player loads and may set its own cookies. Mermaid and Chart.js come
-    from jsDelivr, which can see your IP address. The Change Feed
-    Playground loads its Supabase library from jsDelivr and contacts
-    Supabase when it opens. Details are under "Third-party requests".
+    player loads and may set its own cookies. The Change Feed
+    Playground loads its Supabase library from jsDelivr, which can see your
+    IP address, and contacts Supabase when it opens. Details are under
+    "Third-party requests".
   </p>
 </section>
 
@@ -298,9 +298,8 @@ canonicalPath: "/privacy/"
     </li>
     {% endif %}
     <li>
-      <strong>cdn.jsdelivr.net</strong> (the jsDelivr CDN): the Mermaid
-      library on pages that draw diagrams, the Chart.js library on pages
-      that show progress charts, and the Supabase browser library on the
+      <strong>cdn.jsdelivr.net</strong> (the jsDelivr CDN): the Supabase
+      browser library on the
       <a href="{{ '/playground/' | url }}">Change Feed Playground</a>.
     </li>
     <li>
