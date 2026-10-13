@@ -91,7 +91,11 @@
 //               human.
 //   6  merge    head merges cleanly onto current origin/main in a temporary
 //               worktree; if head is behind main, `npm test` must also pass there
-//               in a scrubbed environment (see Limits). At the start, stale
+//               in a scrubbed environment (see Limits), except that when gate 5
+//               has a failure or warning (or the merge result touches a
+//               maintainer-only path) the PR's own tests are NOT run locally
+//               ("tests not run locally: PR touches maintainer-only files; CI
+//               is the check"); the clean-merge check still runs. At the start, stale
 //               merge-pr-* and merge-pr-home-* temp dirs older than 24 h (left
 //               by a SIGKILL) are removed and `git worktree prune` is run;
 //               anything younger is never touched (another run may own it)
@@ -1705,9 +1709,14 @@ async function inspectManifests({ git, worktree, head, changed, result, run }) {
  * worktree. Never touches the caller's checkout. The worktree is always
  * removed, including on SIGINT/SIGTERM. `runTests` is false when earlier
  * gates already failed, to avoid a slow test run for a PR that will be
- * refused anyway.
+ * refused anyway. `restrictedFiles` is true when gate 5 already has a failure
+ * or warning; the local `npm test` is then skipped too, as it is when the
+ * merge result itself touches a maintainer-only file.
  */
-export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
+export async function testMerge(
+  pr,
+  { run, fs, cwd, runTests = true, restrictedFiles = false },
+) {
   const result = {
     failures: [],
     notes: [],
@@ -1876,7 +1885,19 @@ export async function testMerge(pr, { run, fs, cwd, runTests = true }) {
     await inspectManifests({ git, worktree, head, changed, result, run });
 
     if (behind) {
-      if (!runTests) {
+      // A PR that touches maintainer-only files (hooks, agent instructions,
+      // package.json scripts) must not get its own `npm test` run on this
+      // machine, whether gate 5 only warns or refuses: the clean-merge check
+      // above still ran, and CI is the check.
+      const restricted =
+        restrictedFiles ||
+        result.fileFailures.length > 0 ||
+        checkFiles([...changed]).length > 0;
+      if (restricted) {
+        result.notes.push(
+          "tests not run locally: PR touches maintainer-only files; CI is the check",
+        );
+      } else if (!runTests) {
         result.notes.push("npm test skipped: other gates already failed");
       } else {
         await fs.symlink(
@@ -2118,11 +2139,21 @@ export async function main(argv, deps = {}) {
     notes: [],
   };
   if (pr.state === "OPEN") {
+    const filesGate = gates.find((gate) => gate.id === "files");
     const others = gates.some(refuses);
-    const result = await testMerge(pr, { run, fs, cwd, runTests: !others });
+    // Gate 5 counts here even when it is only advisory or was overridden:
+    // the PR's own tests never run on this machine for restricted paths.
+    const restrictedFiles =
+      filesGate.failures.length > 0 || overridden.length > 0;
+    const result = await testMerge(pr, {
+      run,
+      fs,
+      cwd,
+      runTests: !others,
+      restrictedFiles,
+    });
     mergeGate.failures = result.failures;
     mergeGate.notes = result.notes;
-    const filesGate = gates.find((gate) => gate.id === "files");
     const known = new Set([...filesGate.failures, ...overridden]);
     for (const failure of [
       ...checkFiles(result.changedFiles),

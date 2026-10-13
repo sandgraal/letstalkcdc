@@ -1753,6 +1753,52 @@ describe("the merge gate starts only in its exact form", () => {
       denied("npx merge-pr", tampered);
     });
 
+    // The deny is by substring (any npm-family word that mentions merge-pr);
+    // only the allowlist above gets through. Each of these starts, or can
+    // start, the script, so each is denied from a modified checkout.
+    it.each([
+      "npm run -- merge-pr 5 --execute",
+      'npx -c "node scripts/merge-pr.mjs 5 --execute"',
+      'npm exec -- sh -c "node scripts/merge-pr.mjs 5"',
+      'npx sh -c "npm run merge-pr -- 5"',
+      "S=merge-pr; npm run $S",
+      'S=merge-pr; npm run "$S" -- 5',
+      'bash -c "node scripts/merge-pr.mjs 1"',
+      "env node scripts/merge-pr.mjs 1",
+      "echo 5 | xargs node scripts/merge-pr.mjs",
+      "echo merge-pr | xargs npm run",
+      "echo merge-pr | xargs -n1 npm run",
+      "xargs npm run merge-pr < /dev/null",
+      "xargs -a /dev/null npx sh -c merge-pr",
+      "pnpm run merge-pr",
+      "yarn merge-pr",
+      "npx prettier node scripts/merge-pr.mjs",
+      "npx prettier --call=x scripts/merge-pr.mjs",
+      "npx vitest run scripts/merge-pr.mjs sh",
+      "npx prettier 'scripts/merge-pr.mjs; node scripts/merge-pr.mjs'",
+      "npx prettier --write scripts/merge-pr.mjs $(node scripts/merge-pr.mjs 5)",
+      "npx prettier --write scripts/merge-pr.mjs `node scripts/merge-pr.mjs 5`",
+      "npm run format --script-shell=/tmp/sh -- scripts/merge-pr.mjs",
+      "npm run --prefix /tmp/x format -- scripts/merge-pr.mjs",
+      "npm run build -- scripts/merge-pr.mjs",
+      "npx --package=evil prettier scripts/merge-pr.mjs",
+      "npx evil-tool scripts/merge-pr.mjs",
+    ])("denies %s from a modified checkout", (command) => {
+      denied(command, tampered);
+    });
+
+    it("allows the allowlisted tools whose arguments name the script, on one line with other commands", () => {
+      allowed(
+        "npx prettier --write scripts/merge-pr.mjs && git status",
+        tampered,
+      );
+      allowed("npm run format:check -- scripts/merge-pr.mjs", tampered);
+      allowed("npm run lint:fix -- scripts/merge-pr.mjs", tampered);
+      allowed("npx --yes prettier --check scripts/merge-pr.mjs", tampered);
+      allowed("npm exec -- vitest run tests/unit/merge-pr.test.js", tampered);
+      allowed("git diff scripts/merge-pr.mjs && npm test", tampered);
+    });
+
     it("still denies gh pr merge, which is only for the script", () => {
       denied("gh pr merge 5 --squash", tampered);
     });

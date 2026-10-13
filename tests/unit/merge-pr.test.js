@@ -1904,6 +1904,84 @@ describe("gate 5 against real git (no stubs)", () => {
   }, 30_000);
 });
 
+// P17-66 review (M1): a PR that touches maintainer-only files never has its
+// own `npm test` run on the conductor's machine, whether gate 5 refuses or
+// only warns. The clean-merge check still runs.
+const NOT_RUN =
+  "tests not run locally: PR touches maintainer-only files; CI is the check";
+
+describe("gate 6: no local npm test on maintainer-only paths", () => {
+  const behind = { ancestorCode: 1, testCode: 0 };
+  const pkgScripts = manifestText({
+    scripts: { ...MANIFEST.scripts, test: "true" },
+  });
+  const restricted = {
+    "a workflow file in the gh file list": {
+      pr: greenPr({ files: [{ path: ".github/workflows/ci.yml" }] }),
+      diff: [".github/workflows/ci.yml"],
+    },
+    "a hook file in the gh file list": {
+      pr: greenPr({ files: [{ path: ".claude/hooks/guard-bash.mjs" }] }),
+      diff: [".claude/hooks/guard-bash.mjs"],
+    },
+    "a hook file only the merge result shows": {
+      pr: greenPr(),
+      mergeDiff: [".claude/hooks/guard-bash.mjs"],
+    },
+    "a package.json scripts change": {
+      pr: greenPr({ files: [{ path: "package.json" }] }),
+      diff: ["package.json"],
+      mergedManifest: pkgScripts,
+    },
+  };
+
+  describe.each(Object.entries(restricted))("%s", (_name, setup) => {
+    it("advisory (default): warns, skips npm test, still test-merges", async () => {
+      const env = makeEnv({ ...behind, ...setup });
+      expect(await env.execDefault(["7"])).toBe(0);
+      expect(env.calls.some((c) => c.file === "npm")).toBe(false);
+      expect(env.calls.some((c) => c.args.includes("merge"))).toBe(true);
+      expect(env.text()).toContain(NOT_RUN);
+    });
+
+    it("--strict: refuses and skips npm test", async () => {
+      const env = makeEnv({ ...behind, ...setup });
+      expect(await env.execDefault(["7", "--strict"])).toBe(1);
+      expect(env.calls.some((c) => c.file === "npm")).toBe(false);
+      expect(env.text()).toContain(NOT_RUN);
+    });
+  });
+
+  it("a conflict on a restricted-path PR is still refused (the merge check is not skipped)", async () => {
+    const env = makeEnv({
+      ...behind,
+      mergeCode: 1,
+      ...restricted["a workflow file in the gh file list"],
+    });
+    expect(await env.execDefault(["7"])).toBe(1);
+    expect(env.text()).toMatch(/does not merge cleanly/);
+    expect(env.calls.some((c) => c.file === "npm")).toBe(false);
+  });
+
+  it("an unrestricted PR that is behind still has npm test run", async () => {
+    const env = makeEnv({ ...behind, pr: greenPr(), diff: ["docs/a.md"] });
+    expect(await env.execDefault(["7"])).toBe(0);
+    expect(env.calls.some((c) => c.file === "npm")).toBe(true);
+    expect(env.text()).not.toContain(NOT_RUN);
+  });
+
+  it("an unrestricted PR whose tests fail is still refused", async () => {
+    const env = makeEnv({
+      ancestorCode: 1,
+      testCode: 1,
+      pr: greenPr(),
+      diff: ["docs/a.md"],
+    });
+    expect(await env.execDefault(["7"])).toBe(1);
+    expect(env.text()).toMatch(/npm test fails on the merged result/);
+  });
+});
+
 describe("gate 6: test-merge", () => {
   it("refuses a merge conflict and still cleans up the worktree", async () => {
     const env = makeEnv({ mergeCode: 1 });
@@ -2392,10 +2470,12 @@ describe("--maintainer-approved", () => {
     expect(env.text()).toContain("overrode: touches .github/workflows/ci.yml");
   });
 
-  it("still runs npm test on a branch that is behind (gate 5 no longer blocks it)", async () => {
+  it("does not run npm test on a restricted-path PR that is behind, but still test-merges it", async () => {
     const env = makeEnv({ pr: workflowPr(), ancestorCode: 1 });
     expect(await env.exec(["7", FLAG, TEXT])).toBe(0);
-    expect(env.calls.some((c) => c.file === "npm")).toBe(true);
+    expect(env.calls.some((c) => c.file === "npm")).toBe(false);
+    expect(env.calls.some((c) => c.args.includes("merge"))).toBe(true);
+    expect(env.text()).toContain(NOT_RUN);
   });
 
   it("truncates to 200 characters and strips control characters", async () => {
