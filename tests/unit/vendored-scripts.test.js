@@ -199,9 +199,21 @@ describe("built vendor files and integrity hashes", () => {
   it("has no public CDN in any built file except the privacy page", () => {
     const hits = walk(out)
       .map((f) => path.relative(out, f).split(path.sep).join("/"))
-      .filter((rel) => rel !== "privacy/index.html")
+      .filter(
+        (rel) => rel !== "privacy/index.html" && rel !== "privacy/index.md",
+      )
       .filter((rel) => CDN.test(readFileSync(path.join(out, rel), "latin1")));
     expect(hits).toEqual([]);
+  });
+
+  it("only the privacy page's own Markdown twin repeats its CDN wording", () => {
+    // privacy/index.md (P17-22) is the privacy page as Markdown, so it names
+    // the same CDN; nothing else but the page itself may.
+    const hits = walk(out)
+      .map((f) => path.relative(out, f).split(path.sep).join("/"))
+      .filter((rel) => rel.endsWith(".md"))
+      .filter((rel) => CDN.test(readFileSync(path.join(out, rel), "latin1")));
+    expect(hits).toEqual(["privacy/index.md"]);
   });
 
   it("makes the loaders read the local meta tags, not a URL", () => {

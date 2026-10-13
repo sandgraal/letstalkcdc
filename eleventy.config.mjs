@@ -1,9 +1,14 @@
 import fs from "fs";
 import path from "path";
+import { createRequire } from "module";
 import { getPathPrefix } from "./lib/path-prefix.mjs";
 import { parseAssistantYaml } from "./lib/assistant-yaml.mjs";
 import { renderHeadExtra } from "./lib/render-head-extra.mjs";
 import { getMermaidAsset } from "./lib/vendor-assets.mjs";
+
+const require = createRequire(import.meta.url);
+const { isIndexable } = require("./src/sitemap.11ty.cjs");
+const { twinPath } = require("./lib/markdown-twin.cjs");
 
 // ---------------------------------------------------------------------------
 // Vite manifest helpers — resolve hashed asset paths in production builds.
@@ -284,6 +289,22 @@ export default function (eleventyConfig) {
 
     return `<img ${renderedAttributes}>`;
   });
+
+  // Root-relative URL (no path prefix) of a page's Markdown twin, or "" when
+  // the page is not indexable (P17-22). Same rule as src/markdown-twins.11ty.cjs.
+  eleventyConfig.addNunjucksFilter(
+    "markdownTwin",
+    (page, tags, excludeFromSitemap) => {
+      if (!page) return "";
+      const item = {
+        url: page.url,
+        inputPath: page.inputPath || "",
+        fileSlug: page.fileSlug,
+        data: { tags, eleventyExcludeFromSitemap: excludeFromSitemap },
+      };
+      return isIndexable(item) ? twinPath(page.url) || "" : "";
+    },
+  );
 
   eleventyConfig.addNunjucksFilter("startsWith", (value, prefix) => {
     if (typeof value !== "string") return false;

@@ -294,6 +294,42 @@ if (existsSync(sampleModulePath)) {
   }
 }
 
+// Markdown twins (P17-22): a sample of pages has an index.md beside its HTML,
+// linked from it, carrying the page title and no template syntax or markup.
+for (const dir of ["intro", "merge-cookbook", "is-cdc-exactly-once"]) {
+  const htmlFile = join(outputDir, dir, "index.html");
+  const mdFile = join(outputDir, dir, "index.md");
+  if (!existsSync(htmlFile)) continue;
+  if (!existsSync(mdFile)) {
+    failures.push(`${dir}/index.md (Markdown twin) is missing.`);
+    continue;
+  }
+  const html = readFileSync(htmlFile, "utf8");
+  const md = readFileSync(mdFile, "utf8");
+  if (
+    !/<link rel="alternate" type="text\/markdown" href="[^"]*index\.md">/.test(
+      html,
+    )
+  ) {
+    failures.push(`${dir}/index.html does not link to its Markdown twin.`);
+  }
+  const title = html
+    .match(/<title>([\s\S]*?)<\/title>/)?.[1]
+    .replace(/ \| [^|]+$/, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;/g, "'")
+    .trim();
+  if (title && !md.includes(title)) {
+    failures.push(
+      `${dir}/index.md does not contain the page title "${title}".`,
+    );
+  }
+  const prose = md.replace(/^(`{3,}).*?^\1\s*$/gms, "");
+  if (/\{\{|\{%|<script\b|<nav\b/.test(prose)) {
+    failures.push(`${dir}/index.md contains template syntax or markup.`);
+  }
+}
+
 const htaccessPath = join(root, ".htaccess");
 if (existsSync(htaccessPath)) {
   try {
