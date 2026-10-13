@@ -237,6 +237,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The merge gate no longer reports a false failure after a successful
+  merge (P17-57a).** `gh pr merge --delete-branch` exits non-zero ("failed to
+  delete local branch") when a worktree still holds the local branch, even
+  though GitHub has merged. After any non-zero exit the gate now re-reads
+  `state,mergedAt,mergeCommit,headRefOid`: MERGED with a merge commit at the
+  same head the gates evaluated prints `MERGED PR #N (verified after gh exited
+non-zero; merge commit <short sha>). gh said: <message>` and exits 0;
+  anything else, including a failed re-read or a PR merged at a different
+  head, still exits 1. The merge is never retried. Stub tests cover merged,
+  still open (even with a merge commit), a re-read that exits non-zero, a
+  different or missing head, and the unchanged success path, each asserting
+  one `gh pr merge` call. A worktree-held local branch is left in place:
+  remove the worktree (`bash scripts/worktree-prune.sh` does this for merged
+  work but leaves branches), then delete the branch with `git branch -D
+<name>`. No site change.
+
 - **Link check no longer fails on transient 429/503/504 from external hosts
   (P17-63).** `linkcheck.yml` passes `--accept '100..=103,200..=299,429,503,504'`:
   github.com pages of other projects answered `[503]` to runner IPs in a
