@@ -37,8 +37,9 @@ canonicalPath: "/accessibility/"
       <strong>Colour contrast, in both themes.</strong> The
       <a href="https://github.com/dequelabs/axe-core" rel="noopener">axe-core</a>
       <code>color-contrast</code> rule runs in the light theme and in the
-      dark theme on every page in the sitemap, plus the unlisted dashboard,
-      style guide, Mermaid sandbox and newsletter pages. It also runs on
+      dark theme on every page in the sitemap, plus four pages that are not in
+      the sitemap in a default build: the dashboard, style guide, Mermaid
+      sandbox and newsletter pages. It also runs on
       the Change Feed Playground in several states (onboarding, feed after
       seeding, compare, and the three guided labs), in both themes. The
       list of excused elements is empty. Text drawn over a gradient is
@@ -55,7 +56,8 @@ canonicalPath: "/accessibility/"
     </li>
     <li>
       <strong>pa11y with the WCAG 2 AA ruleset</strong> on eight built
-      pages, a separate engine from axe.
+      pages in the CI accessibility job (pa11y-ci), a separate engine from
+      axe.
     </li>
   </ul>
   <p>
