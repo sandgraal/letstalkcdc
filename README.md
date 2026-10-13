@@ -51,7 +51,7 @@ Take it in this order if you are new to CDC:
 6. [Failure Drills](https://sandgraal.github.io/letstalkcdc/troubleshooting/failure-drills/): break it on purpose and recover.
 
 <details>
-<summary>All 36 modules, by stage</summary>
+<summary>All 37 modules, by stage</summary>
 
 | Module                                                                                                         | Level        | What it covers                                                     |
 | -------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ |
@@ -97,6 +97,7 @@ Take it in this order if you are new to CDC:
 | [Debezium Event Decoder](https://sandgraal.github.io/letstalkcdc/debezium-decoder/)                            | Intermediate | Before/after diffs and MERGE-ready SQL                             |
 | [DLQ Triage Assistant](https://sandgraal.github.io/letstalkcdc/dlq-triage/)                                    | Advanced     | Commands and playbooks for re-driving DLQ events                   |
 | [Nuances & Errata](https://sandgraal.github.io/letstalkcdc/errata/)                                            | Advanced     | Corrections and sharp edges                                        |
+| [Guided Paths](https://sandgraal.github.io/letstalkcdc/path/)                                                  | Beginner     | Three routes through the lessons, with local progress              |
 
 The [merge cookbook](https://sandgraal.github.io/letstalkcdc/merge-cookbook/) is a reference page with sink MERGE templates. It sits alongside the modules and is not counted among them.
 

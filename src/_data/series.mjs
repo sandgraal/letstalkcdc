@@ -1,7 +1,7 @@
 export default [
   {
     key: "intro",
-    related: ["event-envelope", "snapshotting", "use-cases"],
+    related: ["event-envelope", "snapshotting", "use-cases", "path"],
     title: "Interactive Introduction to CDC",
     description:
       "An interactive dashboard covering core concepts, methods, architectures, and the tooling ecosystem.",
@@ -392,5 +392,18 @@ export default [
     ctaLabel: "See nuances",
     tags: [{ label: "Extras", variant: "tag-extras" }],
     skillLevel: "Advanced",
+  },
+  {
+    key: "path",
+    related: ["intro", "use-cases", "errata"],
+    title: "Guided Paths",
+    description:
+      "Three routes through the lessons for newcomers, operators and architects, with your progress kept in this browser only.",
+    href: "path/",
+    ctaLabel: "Pick a Path",
+    // A menu, not a lesson: no "Mark as Complete", not in the progress total.
+    excludeFromProgress: true,
+    tags: [{ label: "Extras", variant: "tag-extras" }],
+    skillLevel: "Beginner",
   },
 ];

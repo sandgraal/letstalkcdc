@@ -1,0 +1,57 @@
+---
+layout: base.njk
+title: "Guided Paths"
+description: "Three routes through the CDC lessons for newcomers, operators and architects. Your progress is kept in this browser only; nothing is sent anywhere."
+canonicalPath: "/path/"
+skillLevel: "Beginner"
+eleventyComputed:
+  head_extra: |
+    <link rel="stylesheet" href="{{ '/assets/css/pages/path.css' | url }}">
+scripts:
+  - "/assets/js/pages/path.js"
+---
+{% import "components/ui.njk" as ui %}
+
+{{ ui.hero(heroConfig) | safe }}
+
+<section class="content-section" aria-labelledby="path-intro-title">
+  <h2 id="path-intro-title">How the paths work</h2>
+  <p class="lede">
+    Pick the track closest to your job and follow its lessons in order. Every
+    track holds to the same thesis: delivery is at-least-once, so correctness
+    lives in an idempotent sink keyed on the primary key and ordered by source
+    log position (LSN, SCN or GTID), and no end-to-end exactly-once is claimed.
+  </p>
+  <p>
+    Lessons you open or mark complete are remembered in this browser only.
+    The list below works without JavaScript; with it, finished steps are
+    labelled. The text on this site is AI-assisted. See the
+    <a href="{{ '/methodology/' | url }}">methodology</a> for how claims are
+    checked. Prefer to browse freely? Use the
+    <a href="{{ '/overview/' | url }}">series overview</a>.
+  </p>
+</section>
+
+{% for track in paths %}
+<section class="content-section" id="{{ track.key }}" aria-labelledby="{{ track.key }}-title" data-path-track data-track-key="{{ track.key }}">
+  <h2 id="{{ track.key }}-title">{{ track.title }}</h2>
+  <p><strong>{{ track.audience }}</strong> {{ track.summary }}</p>
+  {% if track.steps | length %}
+  <p role="status" data-path-progress data-total="{{ track.steps | length }}">
+    {{ track.steps | length }} {{ "step" if track.steps | length == 1 else "steps" }}.
+  </p>
+  <ol class="path-steps" aria-label="{{ track.title }} track, in order">
+    {% for step in track.steps %}
+    <li data-path-step data-series-key="{{ step.key }}">
+      <a href="{{ ('/' ~ step.href) | url }}">{{ step.title }}</a>
+      <span data-path-status></span>
+      <br>
+      <span>{{ step.reason }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>This route is still being written. In the meantime, start with the <a href="{{ '/intro/' | url }}">introduction</a> or browse the <a href="{{ '/overview/' | url }}">series overview</a>.</p>
+  {% endif %}
+</section>
+{% endfor %}

@@ -8,6 +8,7 @@ import {
   getOverallProgress,
   getEarnedBadges,
   isModuleCompleted,
+  isExcludedFromProgress,
 } from "./local-progress.js";
 
 /**
@@ -122,6 +123,9 @@ function showBadgesNotification() {
 function addCompletionButton() {
   const journeySlug = document.body.dataset.journeySlug;
   if (!journeySlug) return;
+
+  // Hub pages (series.mjs excludeFromProgress) are menus, not lessons
+  if (isExcludedFromProgress(window.CDC_MODULES, journeySlug)) return;
 
   // Don't add if already completed
   if (isModuleCompleted(journeySlug)) return;
