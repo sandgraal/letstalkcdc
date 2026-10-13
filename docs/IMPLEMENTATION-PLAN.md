@@ -2693,6 +2693,24 @@ these blocks merging the kit or the drill (P17-10).
       in `docs/COLD-START-DRILL.md`. P17-10 closes after a confirmation drill
       on real `main`._
 
+- [x] **P17-63 · Stop transient 429/503/504 from external hosts failing the
+      link check.** Outcome: the `lychee` job no longer fails a PR because a
+      healthy external host shed load, and still fails a real broken link.
+      Evidence: in the 2026-10-11 and 2026-10-12 CI runs `lychee` failed on
+      `[503] ... Network error: Service Unavailable` for github.com blob URLs
+      of other projects (debezium, confluent schema-registry,
+      memiiso/debezium-server-iceberg), a different URL each run, and passed
+      on re-run; lychee does not retry a 5xx, so retry settings do not help.
+      Accept: `linkcheck.yml` passes `--accept '100..=103,200..=299,429,503,504'`
+      (the default range repeated, plus the three transient statuses); 404,
+      410, 403, 500, 502, DNS and TLS errors still fail; the trade-off is
+      written in `docs/DEVELOPMENT.md` and the workflow comments. Verify:
+      `npx prettier --check .`, `npm run lint`, `npm test`; the flag cannot be
+      run locally (no lychee), so the first CI run of the PR must show the
+      job parsing it and ending green. Size: S. Role: `implementer`. Needs:
+      none. Touches `.github/**`, so the maintainer merges it.
+      _Status 2026-10-12: shipped in the PR carrying this change; awaiting CI
+      validation of the flag._
 - [x] **P17-60 · Session commands: `/team-start`, `/team-end`, `/team-digest`.**
       Outcome: a working session of the agent team starts and ends the same
       way every time. Accept: `.claude/commands/team-start.md`, `team-end.md`

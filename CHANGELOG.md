@@ -237,6 +237,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Link check no longer fails on transient 429/503/504 from external hosts
+  (P17-63).** `linkcheck.yml` passes `--accept '100..=103,200..=299,429,503,504'`:
+  github.com pages of other projects answered `[503]` to runner IPs in a
+  different place each run and passed on re-run, and lychee does not retry a
+  5xx. 404, 410, 403, 500, 502, DNS and TLS errors still fail. A host that stays
+  down shows its status in the verbose log but does not fail the job.
+
 - **Content corrections from the second accuracy sample (P17-13).** Five
   pages were wrong, each with a per-page errata entry
   (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-12.

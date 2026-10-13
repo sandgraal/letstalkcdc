@@ -66,7 +66,9 @@ jobs:
           # LICENSE-CONTENT.md from every page, so one URL was requested ~45
           # times at once under lychee's default of 128 concurrent requests,
           # and many PR runs do this at the same moment from shared runner
-          # IPs. Fixed at the source, not by accepting 503:
+          # IPs. Fixed at the source first (the remaps and the concurrency
+          # limit below), then --accept covers what is left (see the last
+          # paragraph):
           # --remap points this site's own URLs at the files in this
           # checkout, so they are checked locally instead of over the
           # network. https://<host>/<prefix>/ -> _site/ means a page's
@@ -112,10 +114,25 @@ jobs:
           # lychee does NOT retry a 5xx response (checked against the 0.16.1
           # this action bundles: one request, no wait), so retries were never
           # a fix for a 503; the settings above are.
+          # --accept (P17-63): the ~13 distinct external github.com URLs that
+          # are still requested (other projects' blob/tree pages: debezium,
+          # confluent, memiiso/...) answered [503] Service Unavailable on
+          # runner IPs in some runs and a different URL each time, and passed
+          # on re-run. A retry does not help (no 5xx retry), and ignoring
+          # them one by one never ends. So 429, 503 and 504 count as success:
+          # the transient statuses of a healthy host that is shedding load.
+          # The list REPLACES lychee's default, so the default
+          # (100..=103,200..=299) is repeated. Everything else still fails:
+          # 404, 410, 403, 500, 502, DNS and TLS errors, timeouts, and a
+          # missing local file after the remaps. Trade-off: a page that is
+          # down for a long time with one of these three statuses is not
+          # caught here either; it shows in the verbose log with its status
+          # code, and a manual lychee run finds it.
           args: >-
             --no-progress --verbose --exclude-loopback
             --exclude '^https://www\.youtube-nocookie\.com/embed/'
             --max-concurrency 8
+            --accept '100..=103,200..=299,429,503,504'
             --max-retries 5 --retry-wait-time 10
             --remap '${{ steps.own-site.outputs.pattern }} file://${{ github.workspace }}/_site/'
             --remap '${{ steps.own-site.outputs.repo-files }} file://${{ github.workspace }}/'
