@@ -60,6 +60,13 @@ jobs:
           # URL returns 200 in a browser (checked with a browser User-Agent).
           # The video is still real; thumbnails and every other link are
           # still checked.
+          # --exclude '^https://docs\.opensearch\.org/latest/' (P17-69): from
+          # CI runners the host redirects these pages to /latest/404.html,
+          # which redirects to itself ("Too many redirects"). The two URLs
+          # linked from src/non-kafka-cdc/ return 200 from a normal client
+          # (curl -L, 5 redirects, verified 2026-10-13), so the links are
+          # valid and the loop is runner-specific. Only /latest/ is excluded,
+          # not the whole host.
           #
           # Request bursts (the cause of the [503] Service Unavailable runs on
           # github.com/<this repo>/blob/main/...): the page footer links
@@ -131,6 +138,7 @@ jobs:
           args: >-
             --no-progress --verbose --exclude-loopback
             --exclude '^https://www\.youtube-nocookie\.com/embed/'
+            --exclude '^https://docs\.opensearch\.org/latest/'
             --max-concurrency 8
             --accept '100..=103,200..=299,429,503,504'
             --max-retries 5 --retry-wait-time 10
