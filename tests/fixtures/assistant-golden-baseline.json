@@ -1,0 +1,7 @@
+{
+  "note": "Floors for tests/unit/assistant-golden.test.js. They move only upward: raise them in the same PR that fixes a known failure. Measured 2026-10-13 against src/data/assistant.yml.",
+  "minTotal": 63,
+  "minPassed": 53,
+  "minInScopePassed": 45,
+  "minOutOfScopeRefused": 8
+}
