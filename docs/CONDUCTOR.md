@@ -193,17 +193,152 @@ and does not cover.
 
 ### Tiers
 
-| Tier | What an agent may do                                                                                                                                                                                                                                                                                                                                                                             | Held by                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0    | Local read, edit, commit, branches and worktrees (`git worktree`).                                                                                                                                                                                                                                                                                                                               | **Hook:** denies `reset --hard`, `--no-verify`, `git clean -f` outside a worktree, recursive `rm` outside `.claude/worktrees/<name>` and the OS temp directory, and, in the primary checkout, a `switch`, `checkout`, `merge`, `cherry-pick`, `rebase` or `stash pop` that would bring changed hooks, settings, agents, scripts or the merge script in from another ref. **Allow rules:** what runs without a prompt. **Prompt:** everything not allow-listed.                                                                                                                                                                                                                                               |
-| 1    | `git push` of `claude/*` branches (by explicit name, no force, no delete); `gh pr create \| comment \| update-branch`; `gh issue create \| comment`.                                                                                                                                                                                                                                             | **Hook:** every refspec must be one `claude/*` branch pushed to the same name, and the branch's commits (against `origin/main`) must not touch `.github/`; `gh` write commands may target only `sandgraal/letstalkcdc`, a bare PR or issue number (never a URL, `owner/repo#n` or branch name), take no expansion of any kind (`$VAR`, `${...}`, `~`, glob, `$(...)`, backticks, `<(...)`) in their arguments, no `--rebase`, no `--head owner:branch`, and read `--body-file` / `-F` / `--template` only from the current worktree or the OS temp directory (never a dotfile, key, credential or env file). **Convention:** which branch and which PR.                                                      |
-| 2    | Merge, **only** by `node scripts/merge-pr.mjs <n> --execute` (`scripts/merge-pr.mjs`, P17-2). The script merges only if CI is green, the PR body has a `## Review record` with `Verdict: APPROVE \| APPROVE WITH NITS` and `Findings resolved: yes`, the reviewer's report is also pasted as a PR comment, a test-merge against current `main` is clean, and no maintainer-only path is touched. | **Hook:** `gh pr merge` is denied (deny rule and hook), `gh api` writes are denied, and the hook refuses to start the merge script unless it is started in exactly one of two forms (`npm run merge-pr -- <args>` or `node scripts/merge-pr.mjs <args>`, no npm or node option, no `NODE_OPTIONS` / `npm_config_*`) and `scripts/merge-pr.mjs` and `package.json` are byte-identical to `origin/main`. **The script:** CI, review record, test-merge, paths. **Convention only:** that the _conductor_ is the one who runs it; no hook can tell which role is typing.                                                                                                                                        |
-| 3    | Maintainer only: `.claude/settings.json`, hooks and agents, rulesets and other GitHub settings, variables, secrets, external accounts, database migrations, the domain, force-push, anything the merge script refuses, and model escalation without a written justification in the PR.                                                                                                           | **Hooks, partly:** `guard-edit.mjs` denies Edit/Write on the settings files, `.claude/hooks/`, `.claude/scripts/`, `.claude/agents/`, `scripts/merge-pr.mjs`, `package.json`, `package-lock.json`, `.github/`, `.husky/` and the git hooks, config and refs; `guard-bash.mjs` denies shell commands that name those paths for writing, `git config` writes, `git remote add \| set-url`, `gh repo edit`, `gh secret \| variable set`, `gh ruleset`, `gh auth`, force and delete pushes. **The merge script:** refuses PRs that touch maintainer-only paths. **GitHub:** branch protection and the token's own permissions. **Convention only:** migrations, the domain, external accounts, model escalation. |
+| Tier | What an agent may do                                                                                                                                                                                                                                                                                                                                                                                                                                       | Held by                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0    | Local read, edit, commit, branches and worktrees (`git worktree`).                                                                                                                                                                                                                                                                                                                                                                                         | **Hook:** denies `reset --hard`, `--no-verify`, `git clean -f` outside a worktree, recursive `rm` outside `.claude/worktrees/<name>` and the OS temp directory, and, in the primary checkout, a `switch`, `checkout`, `merge`, `cherry-pick`, `rebase` or `stash pop` that would bring changed hooks, settings, agents, scripts or the merge script in from another ref. **Allow rules:** what runs without a prompt. **Prompt:** everything not allow-listed.                                                                                                                                                                                                                                               |
+| 1    | `git push` of `claude/*` branches (by explicit name, no force, no delete); `gh pr create \| comment \| update-branch`; `gh issue create \| comment`.                                                                                                                                                                                                                                                                                                       | **Hook:** every refspec must be one `claude/*` branch pushed to the same name (a `.github/` change on such a branch may be pushed since 2026-10-12; merging it is still the maintainer's); `gh` write commands may target only `sandgraal/letstalkcdc`, a bare PR or issue number (never a URL, `owner/repo#n` or branch name), take no expansion of any kind (`$VAR`, `${...}`, `~`, glob, `$(...)`, backticks, `<(...)`) in their arguments, no `--rebase`, no `--head owner:branch`, and read `--body-file` / `-F` / `--template` only from the current worktree or the OS temp directory (never a dotfile, key, credential or env file). **Convention:** which branch and which PR.                      |
+| 2    | Merge, **only** by `node scripts/merge-pr.mjs <n> --execute` (`scripts/merge-pr.mjs`, P17-2). The script merges only if CI is green, the PR body has a `## Review record` with `Verdict: APPROVE \| APPROVE WITH NITS` and `Findings resolved: yes`, the reviewer's report is also pasted as a PR comment, a test-merge against current `main` is clean, and no maintainer-only path is touched (see [Merge-script exceptions](#merge-script-exceptions)). | **Hook:** `gh pr merge` is denied (deny rule and hook), `gh api` writes are denied, and the hook refuses to start the merge script unless it is started in exactly one of two forms (`npm run merge-pr -- <args>` or `node scripts/merge-pr.mjs <args>`, no npm or node option, no `NODE_OPTIONS` / `npm_config_*`) and `scripts/merge-pr.mjs` and `package.json` are byte-identical to `origin/main`. **The script:** CI, review record, test-merge, paths. **Convention only:** that the _conductor_ is the one who runs it; no hook can tell which role is typing.                                                                                                                                        |
+| 3    | Maintainer only: `.claude/settings.json`, hooks and agents, rulesets and other GitHub settings, variables, secrets, external accounts, database migrations, the domain, force-push, anything the merge script refuses, and model escalation without a written justification in the PR.                                                                                                                                                                     | **Hooks, partly:** `guard-edit.mjs` denies Edit/Write on the settings files, `.claude/hooks/`, `.claude/scripts/`, `.claude/agents/`, `scripts/merge-pr.mjs`, `package.json`, `package-lock.json`, `.github/`, `.husky/` and the git hooks, config and refs; `guard-bash.mjs` denies shell commands that name those paths for writing, `git config` writes, `git remote add \| set-url`, `gh repo edit`, `gh secret \| variable set`, `gh ruleset`, `gh auth`, force and delete pushes. **The merge script:** refuses PRs that touch maintainer-only paths. **GitHub:** branch protection and the token's own permissions. **Convention only:** migrations, the domain, external accounts, model escalation. |
 
-A PR that touches a maintainer-only path is merged by hand. Tier 3 is a
-list of things agents may not do; where the table above names a hook or the
-script, that stops the usual routes, and where it says "convention only",
-nothing mechanical does.
+A PR that touches a maintainer-only path is merged by hand (unless the
+maintainer says otherwise in chat, below). Tier 3 is a list of things agents
+may not do; where the table above names a hook or the script, that stops the
+usual routes, and where it says "convention only", nothing mechanical does.
+
+#### Merge-script exceptions
+
+The maintainer approved these in chat on 2026-10-12 (see
+[`DECISIONS.md`](DECISIONS.md)). They are the only ways round gate 4, 4b or 5.
+
+The gates, in order: 1 state (open, not a draft, base `main`); 2 checks (every
+check green); 3 review (no `CHANGES_REQUESTED`); 4 review record in the PR
+body; 4b the reviewer's report pasted as a PR comment; 5 files (no
+maintainer-only path); 6 a clean test-merge onto `origin/main`, with `npm
+test` if the head is behind.
+
+- **Released paths.** Gate 5 no longer refuses the root `package.json` and
+  `package-lock.json`, or regular files under `.claude/commands/` and
+  `.claude/scripts/` (a symlink or submodule there is refused). Still the
+  maintainer's: `.github/**`, `scripts/merge-pr.mjs`,
+  `tests/unit/merge-pr*.test.js`, the rest of `.claude/**` (hooks, settings,
+  agents, rules, skills, the ratchet baseline), `playground/package*.json`,
+  this file, `TEAM-CHARTER.md`, `DECISIONS.md`, supabase, and the other
+  secrets and config paths the script lists. `guard-edit.mjs` is unchanged,
+  so an agent still cannot Edit/Write `package.json`, `package-lock.json` or
+  `.claude/scripts/` outside a worktree. Two rules narrow the release, and one warning:
+  - **Deny list inside the two `.claude` directories.** A file whose name
+    (any depth, case-insensitive) is `CLAUDE.md`, `CLAUDE.local.md`,
+    `AGENTS.md`, `.mcp.json`, `.gitattributes`, `.gitmodules`, `.npmrc`,
+    `.env*`, `settings.json` or `settings.local.json`, or any dotfile or
+    dot-directory, is still maintainer-only there (a nested `CLAUDE.md` would
+    steer agents; a nested `.gitattributes` or `.npmrc` would steer git or
+    npm).
+  - **`package.json` scripts.** `package.json` defines the `merge-pr` and
+    `test` scripts this gate and the guard hook trust, so a PR whose
+    `package.json` `scripts` object (parsed JSON, `origin/main` against the
+    merge result) differs fails gate 5 with "package.json scripts changed:
+    maintainer merges this one". A `package.json` git cannot show or parse
+    fails the same way. `--maintainer-approved` clears it.
+  - **Warning.** `.claude/scripts/check-merged-prs.sh` runs from the Stop and
+    SessionStart hooks, so a merged edit to it executes on the maintainer's
+    machine the next time a session starts or stops. Read any PR that touches
+    it as code that will run there.
+- **`--maintainer-approved "<text>"`.** Turns a gate 5 failure into a PASS
+  with a visible note (`maintainer-approved: <text>`, control characters
+  stripped, shown to 200 characters). The text must be at least 10
+  characters after trimming, else exit 2. It bypasses **no other gate**
+  (gates 1 to 4b and 6 still apply), and a dry run stays a dry run. It is an
+  honour-system record, not authentication: the script cannot tell who typed
+  it. The conductor passes it **only** after the maintainer's own chat
+  message says to merge that PR, and quotes that message as the text. The
+  same text (control characters removed, 200 characters) is written into the
+  squash-merge commit body after "Maintainer approval (recorded by the
+  conductor, honour system): ", so the record outlives the terminal, but
+  **only when it actually overrode a gate 5 failure**. With nothing to
+  override the script says so and passes no `--body`. The script passes no
+  other body, so when the record is written it is the **whole** squash body
+  (`gh pr merge --body` replaces the default message built from the commits);
+  it is not appended to anything.
+- **Dependabot lane.** A PR whose author (read with `gh pr view --json
+author`, not the title) is `dependabot[bot]` (`gh` prints `app/dependabot`),
+  whose title is `Bump <pkg> from <a> to <b>` (or `Bump the <group> group
+...` when the body lists every update as an "Updates pkg from X to Y" line and
+  the count matches the title), whose bumps are all patch or minor plain
+  `major.minor.patch` versions, and whose changed files, by `gh` and by git,
+  are only the root `package.json` and/or `package-lock.json`, skips gates 4
+  and 4b. A major, a pre-release or an unparseable version is refused with the
+  reason. Checks, mergeability and the test-merge still apply. GitHub Actions
+  bumps (they touch `.github/`) and `playground/` bumps stay refused without
+  `--maintainer-approved`, and with it they still need a review record.
+  The lane is also void, with a `dependabot lane refused: <reason>` note and
+  gates 4 and 4b applying in full, unless all of these hold (each fails
+  closed):
+  - `author.is_bot` is exactly `true`, and **every commit** on the PR (from
+    `gh pr view --json commits`) is authored by `dependabot[bot]` /
+    `app/dependabot` (a missing, empty or 100-commit list, or one that does not
+    end at the head commit, is refused).
+  - **The lockfile is parsed, not grepped.** `package-lock.json` as it would
+    land (`git show :package-lock.json` in the test-merge) must be valid JSON
+    with `lockfileVersion` 2 or 3. Every entry of `packages` (and of the v1
+    `dependencies` tree, recursively) must have a `resolved` that starts with
+    `https://registry.npmjs.org/` and contains no second `://`, no
+    `link: true`, and these are **allowlists**: every non-root `version` must
+    be a plain semver (never a tag), and every dependency spec
+    (`dependencies`, `devDependencies`, `optionalDependencies`,
+    `peerDependencies`, `requires`) must be a semver range or a dist-tag
+    word (`^[A-Za-z][A-Za-z0-9._-]*$`, not ending in `.tgz`, `.tar` or
+    `.tar.gz`). Anything else is refused by not matching: `gist:`, `file:`,
+    `workspace:`, `git+https:`, `github:`, `npm:` aliases, URLs, `owner/repo`,
+    a name with `@`, `:`, `/` or a backslash, a tarball name. A tag is allowed
+    in a lock entry's specs because npm records one there (the real lockfile
+    has `latest` under `node_modules/@paulirish/trace_engine`) and a tag
+    resolves through the registry; it does not fetch from anywhere else. What
+    pins the source is the `resolved` registry-prefix check above, not the
+    spec. The root entry `""` has no `resolved` and its `version` is not
+    checked. Because it reads the parsed values, a JSON-escaped key (`"\u0072esolved"`) cannot hide a git
+    resolution. As a second, raw-text check, any **added** line of the
+    lockfile and `package.json` patch that contains a backslash refuses the
+    lane. This reads the whole resulting lockfile, so an existing entry that
+    fails these rules would refuse every Dependabot PR until removed
+    (`package-lock.json` and `playground/package-lock.json` both pass today).
+  - **`package.json` is tied to the packages the PR names.** Parsed, it may
+    differ from `main` only in `version` and the four dependency maps
+    (`dependencies`, `devDependencies`, `optionalDependencies`,
+    `peerDependencies`); `scripts`, `bin`, `overrides`, `engines`, `main`,
+    `exports` and every other key must be unchanged. In the four maps the
+    **key sets must be identical** (no package added, removed, renamed or
+    moved between maps), every **changed value** must match
+    `^[\^~]?\d+\.\d+\.\d+$` (so no `npm:` alias, git, `file:` or URL spec,
+    tag, or range with `||`; tags are refused here even though a lock entry
+    may hold one), and the set of packages whose value changed must be
+    **non-empty and a subset** of the packages named by the PR title, or, for
+    a group PR, by the "Updates `pkg` from X to Y" lines in the body. Keys are
+    compared as the manifest's own keys (`Object.hasOwn`), so a new package
+    named `constructor` or `toString` is seen as added. Each changed value,
+    with a leading `^` or `~` stripped, must be **strictly greater** than the
+    old one (major.minor.patch) and **equal** to the `to` version the title, or
+    that package's own line of the group body, names (a leading `v` in the
+    title is ignored); a downgrade or an unrelated value voids the lane.
+    Consequence: a lockfile-only change (no `package.json` change, as for a
+    transitive dependency) is refused, because nothing ties it to the named
+    package; the maintainer or `--maintainer-approved` handles those.
+
+  Honest limits: none of this verifies that a published package version is
+  benign. A **compromised release served from the real registry passes**, and
+  so does a **malicious package that is a legitimate-looking bump of a
+  dependency the PR names**: the lane checks where code comes from and that the
+  PR changes what it says it changes, not what the code does. CI, the
+  test-merge and the maintainer's own dependency habits are the controls
+  there. A commit's author is a claim stored in the commit, not a signature.
+
+- **Pushing `.github/`.** `guard-bash.mjs` no longer denies a `git push` of a
+  `claude/*` branch because its commits touch `.github/`. Every other push
+  rule stands: one `claude/*` branch by explicit name, same name on both
+  sides, no main or master, no force or `+`, no delete, nothing built from a
+  variable or glob, a plain remote, and a directory the hook can resolve. A
+  workflow change on a pushed branch can run with the repository's secrets
+  (below); that risk is now accepted by the maintainer and guarded by the
+  merge gate, not by the push.
 
 ### Stop and ask the maintainer
 
@@ -292,12 +427,12 @@ audit a merge afterwards from the PR alone.
   Workflows run on push, and `.github/workflows/linkcheck.yml` has
   `on: push` with no branch filter, so any pushed branch runs it (and any
   other push-triggered job runs the branch's code, for example the test
-  suite). The hook denies `git push` of a branch whose commits, against
-  `origin/main`, touch `.github/` ("push touches .github/: workflows run on
-  push with repo secrets; the maintainer pushes these"; it also fails
-  closed when git cannot answer), and `guard-edit.mjs` denies Edit/Write on
-  `.github/` in the primary checkout. That stops the obvious route, not a
-  branch whose pushed code is run by a workflow that already exists.
+  suite). Since 2026-10-12 the hook **allows** `git push` of a `claude/*`
+  branch that edits `.github/` (the maintainer's decision, `DECISIONS.md`),
+  so a pushed branch can now change a workflow that runs with secrets before
+  anyone reads it. `guard-edit.mjs` still denies Edit/Write on `.github/`
+  in the primary checkout, and `scripts/merge-pr.mjs` still refuses to merge
+  such a PR (gate 5), but neither stops the run on push.
   **Maintainer item:** restrict workflow triggers (branch filters on
   `push`, environments with required reviewers for anything that reads
   secrets).
@@ -338,9 +473,10 @@ merge | cherry-pick | rebase | stash pop` of a ref whose tree differs
   is itself a worktree is treated as that primary. It does **not** cover
   `.claude/rules`, `skills`, `commands`, `CLAUDE.md` or these docs: they are
   instructions, so an agent can edit them in a worktree. That is not the
-  merge rule: `scripts/merge-pr.mjs` refuses **all** of `.claude/**` (except
-  `.claude/css-baseline.sha256`), so a change to a rule, skill, command or
-  agent is always merged by the maintainer by hand (Tier 3). The same paths
+  merge rule: `scripts/merge-pr.mjs` refuses all of `.claude/**` except
+  `.claude/css-baseline.sha256` and regular files under `.claude/commands/`
+  and `.claude/scripts/` (released 2026-10-12), so a change to a rule, skill
+  or agent is always merged by the maintainer by hand (Tier 3). The same paths
   _inside_ `.claude/worktrees/<name>/` are allowed on purpose: a branch
   written in its own worktree is how a change to a guard reaches the
   maintainer, who merges it by hand.
@@ -394,8 +530,7 @@ merge | cherry-pick | rebase | stash pop` of a ref whose tree differs
   directory and pass `--body-file`; a body file may also sit under
   `<repo>/.claude/worktrees/<name>/`); `find -exec` / `-delete` (use `rg`,
   `ls` or a script file); `git fetch origin a:b` and `git pull origin main`
-  (fetch plainly, then merge or switch to the ref); `git push` of a branch
-  that edits `.github/` (the maintainer pushes it).
+  (fetch plainly, then merge or switch to the ref).
 - **Unverified.** Four things this design assumes and has not confirmed:
   that a hook timeout is non-blocking (the guard acts as if it were);
   whether an env-prefixed command such as `FOO=1 git push` matches the
@@ -421,8 +556,9 @@ easier. A mistake is only closed by a mechanism (see [`LESSONS.md`](LESSONS.md))
   baseline (`.claude/ratchet-baseline.json`). A failing ratchet is fixed by
   restoring what was removed, never by editing the baseline. What holds this:
   `scripts/merge-pr.mjs` refuses any PR that touches `.claude/**` (hooks,
-  settings, agents, the ratchet baseline; only the CSS baseline hash file is
-  excepted) or this file, so the maintainer
+  settings, agents, rules, skills, the ratchet baseline; only the CSS
+  baseline hash file and regular files under `.claude/commands/` and
+  `.claude/scripts/` are excepted) or this file, so the maintainer
   merges those by hand. A deleted or weakened test elsewhere is held only by
   the ratchet's counts, the reviewer and this rule.
 - **Keep `CLAUDE.md` small.** Lessons live in the ledger. Only a rule that
@@ -507,7 +643,7 @@ create | comment | edit | update-branch | close | reopen` aimed at another
   writes to the protected paths above (and to `package.json` and
   `scripts/merge-pr.mjs`); starting the merge script in any form but the two
   exact ones, or from a tree that differs from `origin/main`; `git push` of
-  a branch that touches `.github/`; branch operations that carry protected
+  a non-`claude/*` branch; branch operations that carry protected
   files into the primary checkout; and environment overrides such as
   `GIT_CONFIG_*`, `GIT_DIR`, `GIT_SSH_COMMAND`, `GIT_TRACE*`, `GIT_PAGER`,
   `GIT_EDITOR`, `GIT_SEQUENCE_EDITOR`, `PAGER`, `EDITOR`, `VISUAL`,

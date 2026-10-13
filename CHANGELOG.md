@@ -8,6 +8,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Four merge and push guardrails relaxed, as the maintainer approved in
+  chat on 2026-10-12 (P17-65).** (1) `scripts/merge-pr.mjs` no longer lists
+  the root `package.json`, `package-lock.json`, `.claude/commands/**` or
+  `.claude/scripts/**` as maintainer-only (a symlink or submodule under the
+  two `.claude` directories is still refused). (2) New
+  `--maintainer-approved "<text>"` (10 or more characters) turns a gate 5
+  failure into a visible note and bypasses no other gate; it is an
+  honour-system record, not authentication. (3) A Dependabot lane: a patch or
+  minor bump by `dependabot[bot]` that changes only the root manifests skips
+  the review record and the audit comment; majors, pre-releases, unparseable
+  versions, groups whose body cannot be checked, Actions bumps and extra files
+  are refused with the reason. (4) `guard-bash.mjs` allows a `git push` of a
+  `claude/*` branch that touches `.github/`; every other push rule stands.
+  `docs/CONDUCTOR.md` has a "Merge-script exceptions" section; the decision is
+  in `docs/DECISIONS.md`.
+- **Hardening of those exceptions after an independent review (P17-65).** The
+  Dependabot lane now also requires every commit to be authored by Dependabot,
+  `author.is_bot` to be exactly true, the lockfile to resolve only from
+  `https://registry.npmjs.org/` (tightened again below), and `package.json` to
+  differ from `main` only in `version` and the four dependency maps. Inside
+  `.claude/commands/` and `.claude/scripts/`, `CLAUDE.md`, `AGENTS.md`,
+  `.mcp.json`, `.gitattributes`, `.gitmodules`, `.npmrc`, `.env*`,
+  `settings*.json` and any dotfile stay maintainer-only. A changed
+  `package.json` `scripts` object fails gate 5. `--maintainer-approved` text is
+  also written into the squash-merge commit body. `docs/CONDUCTOR.md` states
+  the limits, including that `.claude/scripts/check-merged-prs.sh` runs from
+  the Stop and SessionStart hooks.
+- **Second review of the merge-script exceptions (P17-65).** The Dependabot
+  lane now parses the merge result's `package-lock.json` as JSON (lockfileVersion
+  2 or 3; every `resolved` on the npm registry, no `link`, no file, git, URL or
+  `npm:` version or spec) instead of grepping for the word `resolved`, which a
+  JSON-escaped key evaded, and refuses any added patch line with a backslash.
+  `package.json` dependency maps must keep identical key sets, changed values
+  must be plain `[^~]x.y.z`, and the changed packages must be a non-empty
+  subset of those the PR title or group body names (a lockfile-only PR is now
+  refused). `--maintainer-approved` writes its record into the squash body only
+  when it overrode gate 5, and as the whole body. `docs/CONDUCTOR.md` states
+  that a compromised registry release or a malicious bump of a named package
+  still passes.
+- **Third review of the Dependabot lane (P17-65).** Lockfile versions and
+  dependency specs are now allowlists (plain semver for `version`; a semver
+  range or a dist-tag word for specs, which the real lockfile contains), so
+  `gist:`, `workspace:`, tarball names and the like are refused. Added and
+  removed `package.json` dependency keys are compared as own keys. Each changed
+  value must be higher than before and equal to the version the title (or the
+  package's line of the group body) names.
 - **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
   per RFC 9116 (`Contact` mailto the maintainer's designated public address,
   `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and
