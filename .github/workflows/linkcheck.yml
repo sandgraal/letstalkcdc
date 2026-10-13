@@ -31,6 +31,7 @@ jobs:
           SITE_HOST: ${{ vars.SITE_HOST || 'https://sandgraal.github.io' }}
           ELEVENTY_PATH_PREFIX: ${{ vars.ELEVENTY_PATH_PREFIX || '/letstalkcdc' }}
           REPOSITORY: ${{ github.repository }}
+          WORKSPACE: ${{ github.workspace }}
         run: |
           # Same host + prefix the build used, as an anchored regex for
           # lychee's --remap (a root-served site has an empty prefix). The
@@ -41,12 +42,20 @@ jobs:
           if [ -n "$prefix" ]; then prefix="/${prefix}"; fi
           pattern="^$(printf '%s' "${host}${prefix}" | sed 's/[][\.*^$+?(){}|]/\\&/g')(/|\$)"
           echo "pattern=${pattern}" >> "$GITHUB_OUTPUT"
+          # Root-relative links in the built HTML (href="/letstalkcdc/x")
+          # resolve against --root-dir (_site), which puts them at
+          # _site/letstalkcdc/x; this pattern strips the prefix again so they
+          # land on _site/x. With no prefix it matches _site/ and maps it to
+          # itself, which is harmless.
+          ws="$(printf '%s' "$WORKSPACE" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+          pfx="$(printf '%s' "$prefix" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+          echo "rootdir-pattern=^file://${ws}/_site${pfx}/" >> "$GITHUB_OUTPUT"
           # This repository's own github.com URLs: owner/name come from the
           # run (github.repository), so a rename needs no edit here.
           repo="$(printf '%s' "$REPOSITORY" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
           echo "repo-files=^https://github\.com/${repo}/(blob|tree|edit)/main/" >> "$GITHUB_OUTPUT"
           echo "repo-root=^https://github\.com/${repo}/?\$" >> "$GITHUB_OUTPUT"
-      - uses: lycheeverse/lychee-action@v2.0.2
+      - uses: lycheeverse/lychee-action@v2.9.0
         env:
           # Authenticated requests to github.com avoid the rate-limited 404s
           # that show up under unauthenticated CI runs.
@@ -135,13 +144,20 @@ jobs:
           # down for a long time with one of these three statuses is not
           # caught here either; it shows in the verbose log with its status
           # code, and a manual lychee run finds it.
+          # --root-dir (P17-70): newer lychee refuses root-relative links in
+          # local files without a root dir ("Cannot resolve root-relative
+          # link"). It is set to the built site, and the first --remap below
+          # strips the public path prefix from the resolved file:// URL.
+          # lychee 0.16 (lychee-action 2.0.2) rejects --root-dir, so this needs
+          # lychee-action 2.9.0 or later.
           args: >-
-            --no-progress --verbose --exclude-loopback
+            --no-progress --root-dir '${{ github.workspace }}/_site' --verbose --exclude-loopback
             --exclude '^https://www\.youtube-nocookie\.com/embed/'
             --exclude '^https://docs\.opensearch\.org/latest/'
             --max-concurrency 8
             --accept '100..=103,200..=299,429,503,504'
             --max-retries 5 --retry-wait-time 10
+            --remap '${{ steps.own-site.outputs.rootdir-pattern }} file://${{ github.workspace }}/_site/'
             --remap '${{ steps.own-site.outputs.pattern }} file://${{ github.workspace }}/_site/'
             --remap '${{ steps.own-site.outputs.repo-files }} file://${{ github.workspace }}/'
             --remap '${{ steps.own-site.outputs.repo-root }} file://${{ github.workspace }}/'
