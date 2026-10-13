@@ -40,8 +40,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The feedback origin must equal tests/e2e/helpers/supabase-e2e.js: the
+      # page CSP's connect-src is built from SUPABASE_URL, as in deploy.yml,
+      # and the e2e assistant spec mocks this origin. A unit test checks they
+      # match.
       - name: Build site
         run: npm run build
+        env:
+          SUPABASE_URL: https://feedback-test.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_e2e
 
       - name: Upload site artifact
         uses: actions/upload-artifact@v7

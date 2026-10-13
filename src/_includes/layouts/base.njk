@@ -2,6 +2,11 @@
 <html lang="en" data-path-prefix="{{ '/' | url }}">
   <head>
     <meta charset="utf-8">
+    {# P17-24: Content-Security-Policy. The placeholder is replaced by the
+       "csp" transform in eleventy.config.mjs (lib/csp.mjs) after render, so
+       inline-script hashes match the final HTML. Keep this the first tag
+       after charset: a policy only governs what follows it. #}
+    <meta http-equiv="Content-Security-Policy" content="__CDC_CSP__">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {# One description for the meta tag, the cards and the JSON-LD: front
        matter first, then the hero copy (stripped of its <p> wrapper), then
@@ -550,6 +555,7 @@
             Built with <a href="https://www.11ty.dev/" target="_blank" rel="noopener">Eleventy</a> • Open Source Educational Project
             • <a href="https://github.com/{{ site.repository }}/blob/main/LICENSE-CONTENT.md" target="_blank" rel="noopener">Content: CC BY 4.0 · Code: MIT</a>
             • <a href="{{ '/privacy/' | url }}">Privacy</a>
+            • <a href="{{ '/accessibility/' | url }}">Accessibility</a>
             {% if page.inputPath %} •
               <a href="https://github.com/{{ site.repository }}/edit/main/{{ page.inputPath | replace('./', '') }}" target="_blank" rel="noopener" class="footer-edit-link">Edit this page on GitHub</a>
             {% endif %}
@@ -557,7 +563,7 @@
         </div>
       </div>
     </footer>
-    <link rel="preload" href="{{ '/css/assistant.css' | url }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="{{ '/css/assistant.css' | url }}" as="style" data-deferred-style>
     <noscript><link rel="stylesheet" href="{{ '/css/assistant.css' | url }}"></noscript>
     <button id="askBtn" type="button" aria-label="Ask the CDC Assistant" aria-expanded="false" aria-controls="askPanel">💬</button>
     <div id="askPanel" hidden role="complementary" aria-label="CDC Assistant chat"></div>

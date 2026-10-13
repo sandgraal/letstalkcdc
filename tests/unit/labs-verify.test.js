@@ -105,6 +105,11 @@ describe("labs-verify decisions", () => {
     expect(evaluateChangeEvents(undefined).ok).toBe(false);
   });
 
+  it("accepts schema-wrapped events (the image ignores the schemas-off env)", () => {
+    const wrap = (e) => ({ schema: { type: "struct" }, payload: e });
+    expect(evaluateChangeEvents([...snapshot, update].map(wrap)).ok).toBe(true);
+  });
+
   it("a snapshot read (op r) at the updated weight is not the update", () => {
     const rows = [
       { ...snapshot[0], after: { id: 1, weight: 3.0 } },

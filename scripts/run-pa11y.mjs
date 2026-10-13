@@ -15,6 +15,7 @@ const targets = [
   { label: "Multi-Tenancy", url: toUrl("multi-tenancy", "index.html") },
   { label: "Use Cases", url: toUrl("use-cases", "index.html") },
   { label: "Partitioning", url: toUrl("partitioning", "index.html") },
+  { label: "Accessibility", url: toUrl("accessibility", "index.html") },
 ];
 
 const chromeLaunchConfig = {
