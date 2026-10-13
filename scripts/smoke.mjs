@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { extname, join, relative, resolve } from "node:path";
+import { checkPageCsp } from "../lib/csp.mjs";
 
 const SMOKE_ENTITIES = { amp: "&", "#39": "'", quot: '"', lt: "<", gt: ">" };
 
@@ -331,20 +332,28 @@ for (const dir of ["intro", "merge-cookbook", "is-cdc-exactly-once"]) {
   }
 }
 
-const htaccessPath = join(root, ".htaccess");
-if (existsSync(htaccessPath)) {
-  try {
-    const htaccess = readFileSync(htaccessPath, "utf8");
-    if (!/Content-Security-Policy/.test(htaccess)) {
-      failures.push("CSP header missing from .htaccess.");
+// The real CSP mechanism (P17-24): GitHub Pages cannot send headers, so every
+// built page carries a <meta http-equiv="Content-Security-Policy"> with a hash
+// for each inline script (lib/csp.mjs). The old .htaccess check never ran
+// (there is no .htaccess) and is gone.
+{
+  const htmlFiles = [];
+  const walkHtml = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) walkHtml(full);
+      else if (entry.name.endsWith(".html")) htmlFiles.push(full);
     }
-    if (/unsafe-inline/.test(htaccess)) {
-      failures.push(
-        "CSP still includes unsafe-inline; expected hashed allowances instead.",
-      );
+  };
+  walkHtml(outputDir);
+  for (const file of htmlFiles) {
+    const rel = relative(outputDir, file);
+    // The Search Console verification file is served verbatim (no scripts).
+    if (/^google[0-9a-f]+\.html$/.test(rel)) continue;
+    for (const problem of checkPageCsp(readFileSync(file, "utf8"))) {
+      failures.push(`${rel}: Content-Security-Policy: ${problem}.`);
     }
-  } catch (error) {
-    failures.push(`Failed to read .htaccess: ${error.message}`);
   }
 }
 

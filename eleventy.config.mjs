@@ -5,6 +5,10 @@ import { getPathPrefix } from "./lib/path-prefix.mjs";
 import { parseAssistantYaml } from "./lib/assistant-yaml.mjs";
 import { renderHeadExtra } from "./lib/render-head-extra.mjs";
 import { getMermaidAsset } from "./lib/vendor-assets.mjs";
+import { applyCsp } from "./lib/csp.mjs";
+import supabaseData from "./src/_data/supabase.mjs";
+import analyticsData from "./src/_data/analytics.mjs";
+import newsletterData from "./src/_data/newsletter.mjs";
 
 const require = createRequire(import.meta.url);
 const { isIndexable } = require("./src/sitemap.11ty.cjs");
@@ -185,6 +189,17 @@ export default function (eleventyConfig) {
 
   // Ensure download assets (YAML manifests, scripts, dashboards, etc.) are copied verbatim.
   eleventyConfig.addPassthroughCopy({ "src/resources": "downloads" });
+
+  // P17-24: fill in the Content-Security-Policy <meta> (placeholder in
+  // base.njk) once the page is rendered, so inline-script hashes are exact.
+  eleventyConfig.addTransform("csp", function (content) {
+    if (!(this.page?.outputPath || "").endsWith(".html")) return content;
+    return applyCsp(content, {
+      supabaseUrl: supabaseData.url,
+      goatcounterCode: analyticsData.goatcounterCode,
+      newsletter: newsletterData.enabled,
+    });
+  });
 
   eleventyConfig.on("eleventy.after", () => {
     const inputPath = path.join("src", "data", "assistant.yml");
