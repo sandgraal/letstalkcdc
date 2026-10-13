@@ -20,20 +20,20 @@ const template = readFileSync(
   "utf8",
 );
 
-function slice(startMarker, endMarker) {
+function slice(startMarker, endMarker, inclusive = true) {
   const start = template.indexOf(startMarker);
   expect(start, `${startMarker} not found`).toBeGreaterThan(-1);
-  return template.slice(
-    start,
-    template.indexOf(endMarker, start) + endMarker.length,
-  );
+  const end = template.indexOf(endMarker, start);
+  expect(end, `${endMarker} not found`).toBeGreaterThan(start);
+  return template.slice(start, inclusive ? end + endMarker.length : end);
 }
 
 // The normalisation block (hasReview) sits between the date normalisation
 // and `isArticle`; the page-meta and JSON-LD fragments read its result.
 const normalise = slice(
   "{% if reviewedOn.toISOString %}",
-  "{% set hasReview = reviewedBy and reviewedOn %}",
+  "{% set isArticle",
+  false,
 );
 const jsonLdFragment = slice(
   '<script type="application/ld+json">',
@@ -97,6 +97,23 @@ describe("review provenance line", () => {
 
   it("shows nothing with only reviewedOn", () => {
     expect(meta({ reviewedOn: "2026-03-04" })).not.toContain(LINE);
+  });
+
+  it.each([
+    ["not a date but long", "not a date but long"],
+    ["empty-ish text", "soon"],
+  ])("shows nothing when reviewedOn is not a date (%s)", (_n, v) => {
+    const html = meta({ reviewedBy: "Ada Lovelace", reviewedOn: v });
+    expect(html).not.toContain(LINE);
+    expect(jsonLd({ reviewedBy: "Ada Lovelace", reviewedOn: v })).toBeTruthy();
+    expect(
+      JSON.stringify(jsonLd({ reviewedBy: "Ada Lovelace", reviewedOn: v })),
+    ).not.toContain("lastReviewed");
+  });
+
+  it("accepts any YYYY-MM-DD shape (no calendar validation)", () => {
+    const html = meta({ reviewedBy: "Ada Lovelace", reviewedOn: "2026-13-45" });
+    expect(html).toContain(LINE);
   });
 
   it("escapes the reviewer name", () => {
