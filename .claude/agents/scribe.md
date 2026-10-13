@@ -1,6 +1,6 @@
 ---
 name: scribe
-description: Use for small mechanical edits that need no design judgement — flipping plan checkboxes, CHANGELOG entries, doc wording, removing a config line, renaming a string. Not for code logic, templates with behaviour, or anything under src/assets/css/.
+description: Use for small mechanical edits that need no design judgement — flipping plan checkboxes, changelog fragments under changelog.d/ (never CHANGELOG.md itself), doc wording, removing a config line, renaming a string. Not for code logic, templates with behaviour, or anything under src/assets/css/.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: claude-haiku-5-5
 maxTurns: 25

@@ -2740,6 +2740,7 @@ these blocks merging the kit or the drill (P17-10).
       `docs/CONDUCTOR.md` (Merge-script exceptions) and `docs/DECISIONS.md`
       record it. Touches the merge script, its tests, a hook and
       `docs/CONDUCTOR.md`, so the maintainer merges it by hand.
+- [x] **P17-67 · Changelog fragments (maintainer, 2026-10-13).** PRs add one file `changelog.d/<topic>.md` and never edit `CHANGELOG.md`; `scripts/changelog-compile.mjs` (`npm run changelog:compile`, `--check`, `--dry-run`) folds them into `[Unreleased]`; proved by `tests/unit/changelog-compile.test.js`. Touches `CLAUDE.md`, `.claude/` and `.github/`, so the maintainer merges it by hand.
 
 ### Autopsy, in two parts
 

@@ -31,8 +31,8 @@ protocol; this is the short version you keep in mind.
 5. **Verify** with `verifier` (haiku) after every change set; send
    anything touching logic, templates or CSS to `reviewer` (sonnet) as well.
 6. **Close** the loop: the item's checkbox flips in the same commit that
-   finishes it, `CHANGELOG.md` `[Unreleased]` is updated when users or
-   contributors would notice, then commit. Push the `claude/*` branch and
+   finishes it, a `changelog.d/<topic>.md` fragment is added when users or
+   contributors would notice (never edit `CHANGELOG.md` in a PR), then commit. Push the `claude/*` branch and
    open the PR (Tier 1 of the Autonomy charter in `docs/CONDUCTOR.md`).
 7. **Merge only through the script**: after an independent `reviewer`
    approves, its full report is a PR comment, and its findings are fixed, run
@@ -44,7 +44,7 @@ protocol; this is the short version you keep in mind.
 | ---------------------------------------------------------------- | ------------------ | ------ |
 | Search, inventory, "where is X", read-only measurement           | `scout`            | haiku  |
 | Run `verify-all` / smoke / tests, report pass-fail               | `verifier`         | haiku  |
-| Plan checkboxes, CHANGELOG, docs, config tweaks, one-line edits  | `scribe`           | haiku  |
+| Plan checkboxes, changelog fragments, docs, config, one-liners   | `scribe`           | haiku  |
 | Code, templates, tests, workflows, dependency changes            | `implementer`      | sonnet |
 | Independent review of a diff                                     | `reviewer`         | sonnet |
 | Anything under `src/assets/css/`                                 | `css-refactor`     | sonnet |

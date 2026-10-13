@@ -1,6 +1,6 @@
 ## What changed
 
-<!-- File or area -> why. Counts, not adjectives. -->
+<!-- File or area -> why. Counts, not adjectives. Changelog: add a changelog.d/<topic>.md fragment; do not edit CHANGELOG.md. -->
 
 ## Why
 

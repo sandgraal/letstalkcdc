@@ -128,7 +128,7 @@ change never reviews it.
 | ----------------------------------------------------------- | ------------------ | ------ |
 | Find, inventory, measure, "where is X"                      | `scout`            | haiku  |
 | Run `verify-all`, smoke, e2e, report pass or fail           | `verifier`         | haiku  |
-| Checkbox, CHANGELOG line, doc wording, one-line config      | `scribe`           | haiku  |
+| Checkbox, changelog fragment, doc wording, one-line config  | `scribe`           | haiku  |
 | Code, templates, tests, workflows, dependencies, new pages  | `implementer`      | sonnet |
 | Independent review of any diff (correctness, anti-patterns) | `reviewer`         | sonnet |
 | Anything under `src/assets/css/`                            | `css-refactor`     | sonnet |
@@ -193,8 +193,8 @@ On top of the Definition of Done in `CONDUCTOR.md`:
 - [ ] **Labels stay true.** Unexecuted SQL is labelled untested, illustrative
       scenarios are labelled illustrative, and a version-specific claim
       names its version.
-- [ ] **CHANGELOG `[Unreleased]` entry** for anything a reader or
-      contributor would notice.
+- [ ] **Changelog fragment** (`changelog.d/<topic>.md`, never an edit to
+      `CHANGELOG.md`) for anything a reader or contributor would notice.
 
 ## Weekly digest
 
@@ -312,6 +312,10 @@ pass required; `CHANGELOG.md` is not a restricted path). The note lists:
 - **Open**: PRs awaiting CI or review, branches with unmerged work.
 - **Blocked**: what is waiting on whom, with the date it was raised.
 - **Next**: the one item the next session should start with, and why.
+
+The same commit runs `npm run changelog:compile` to fold the
+`changelog.d/` fragments into `[Unreleased]` (see `changelog.d/README.md`);
+feature PRs never edit `CHANGELOG.md`.
 
 Plan items are not edited by the note. Only when something is blocked, add a
 pointer in the plan item to the handoff block, not a copy of it.

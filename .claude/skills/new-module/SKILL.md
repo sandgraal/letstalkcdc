@@ -36,4 +36,4 @@ Content rules (thesis, errata, dates) are in `.claude/rules/content.md`.
    `src/data/assistant.yml` with a golden-question test; add glossary terms in
    `src/_data/glossary.mjs`.
 9. **Verify.** `npm run verify-all` and `npm run smoke:core`.
-10. **Close out.** Flip the plan box, add a `CHANGELOG.md` `[Unreleased]` line.
+10. **Close out.** Flip the plan box, add a `changelog.d/<topic>.md` fragment (never edit `CHANGELOG.md`).

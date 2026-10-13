@@ -65,7 +65,7 @@ violation.
 | `conductor`        | sonnet | read, Bash, spawn roles | picks work, briefs roles, integrates, ships PRs | edit files via Bash, `gh pr merge`, Tier 3     |
 | `scout`            | haiku  | read, Bash              | find, inventory, measure, report                | modify anything                                |
 | `verifier`         | haiku  | read, Bash              | run checks, report pass / fail verbatim         | fix failures                                   |
-| `scribe`           | haiku  | read, edit, Bash        | checkboxes, changelog, docs, one-line config    | logic, CSS, anything needing judgement         |
+| `scribe`           | haiku  | read, edit, Bash        | checkboxes, changelog fragments, docs, config   | logic, CSS, anything needing judgement         |
 | `implementer`      | sonnet | read, edit, Bash        | code, templates, tests, workflows, deps         | CSS under `src/assets/css/`                    |
 | `reviewer`         | sonnet | read, Bash              | independent review of a diff                    | fix what it finds                              |
 | `css-refactor`     | sonnet | read, edit, Bash        | all CSS, with byte-identity proof               | claim "identical" without both hashes          |
@@ -89,8 +89,8 @@ teaches CDC needs a `technical-editor` report as well as the `reviewer`'s.
 4. **Brief** the role (template below).
 5. **Verify** with `verifier`; **review** with `reviewer` for anything that
    changes logic, templates or CSS.
-6. **Close**: flip the plan checkbox and update `CHANGELOG.md` in the same
-   commit as the work. Then push the branch and open a PR into
+6. **Close**: flip the plan checkbox and add a fragment file under
+   `changelog.d/` (never edit `CHANGELOG.md`) in the same commit as the work. Then push the branch and open a PR into
    `main` (Tier 1).
 7. **Review, then merge through the script (Tier 2).** An independent
    `reviewer` reports on the diff. Paste its full report as a PR comment
@@ -166,8 +166,8 @@ An item is done only when all of these hold:
       or a one-line reason why none is possible, and a
       [`LESSONS.md`](LESSONS.md) entry when the lesson is not already covered.
 - [ ] The plan checkbox is flipped, with a one-line note of what proved it.
-- [ ] `CHANGELOG.md` `[Unreleased]` is updated if a reader or contributor
-      would notice.
+- [ ] A `changelog.d/<topic>.md` fragment is added if a reader or contributor
+      would notice. `CHANGELOG.md` itself is not edited in the PR.
 - [ ] The PR description states what changed, how it was verified, and what
       was deliberately left out.
 
@@ -572,7 +572,9 @@ easier. A mistake is only closed by a mechanism (see [`LESSONS.md`](LESSONS.md))
   (`git worktree add .claude/worktrees/<name> -b claude/<name> origin/main`);
   clean up with `bash scripts/worktree-prune.sh`.
 - **The repo is the memory.** At the end of a session append what changed and
-  what is next to `CHANGELOG.md` `[Unreleased]` and to the item in
+  what is next to the "Latest handoff" block in `CHANGELOG.md`
+  `[Unreleased]` (the conductor's one direct edit; feature PRs add a
+  `changelog.d/` fragment instead) and to the item in
   `IMPLEMENTATION-PLAN.md`. Never rely on local memory files, chat
   history or the state of a worktree: the next session starts from `git log`,
   the plan and the changelog.
