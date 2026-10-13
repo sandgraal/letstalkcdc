@@ -230,6 +230,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Required status checks on the `default` ruleset (P17-3).** `main` now requires `build`, `lint`, `unit-tests`, `e2e-tests`, `a11y-tests`, `smoke-tests` and `security-audit` (branches need not be up to date); `lychee` and `lighthouse` are not required, and `CLAUDE.md` and the maintainer tasks say so.
+- **Changelog fragments, so a PR never edits `CHANGELOG.md` (P17-67).** Add one
+  new file under `changelog.d/` (optional first line
+  `type: Added|Changed|Fixed|Removed|Security|Docs`, then the entry text)
+  instead of editing `CHANGELOG.md`; the conductor folds the fragments into
+  `## [Unreleased]` with `npm run changelog:compile` in one commit (`--check`
+  validates, `--dry-run` previews). `changelog.d/README.md` states the rule;
+  `CLAUDE.md`, `docs/CONDUCTOR.md`, `docs/TEAM-CHARTER.md`, the skills, agents
+  and `/team-end` now say "add a fragment". A unit test fails the suite if a
+  fragment is malformed. The "Latest handoff" block remains the one direct edit
+  to `CHANGELOG.md`, made by the conductor.
+- **Plan fragments, so a PR never edits `docs/IMPLEMENTATION-PLAN.md`
+  (P17-68).** Add one new file `plan.d/<item-id>-<topic>.md` per plan item
+  instead (`item: P17-NN`, `action: done | status | add`, then the text);
+  `done` flips the box and appends a note, `status` adds a sub-bullet, `add`
+  appends a new checkbox to a phase or section. The conductor applies the
+  fragments with `npm run plan:apply` (`--check` validates against the real plan,
+  `--dry-run` previews), next to the changelog fold in `/team-end`.
+  `plan.d/README.md` states the rule; `CLAUDE.md`, `docs/CONDUCTOR.md`,
+  `docs/TEAM-CHARTER.md`, `docs/CONTRIBUTING.md`, the skills, agents,
+  `/team-end` and the PR template now say "add a fragment". A unit test fails
+  the suite if a fragment is malformed or names an unknown item.
 - **Mermaid and Chart.js are self-hosted with Subresource Integrity
   (P17-23).** Both libraries are pinned dev dependencies (`mermaid` 11.17.2,
   `chart.js` 4.4.4) and no longer load from `cdn.jsdelivr.net`. Mermaid is
@@ -276,6 +298,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CI keeps `_site/.well-known` between jobs (P17-64, L-015).** The `build` job's
+  `actions/upload-artifact` step now sets `include-hidden-files: true`, so the
+  smoke job sees `/.well-known/security.txt` again. The temporary CI skip in
+  `scripts/smoke.mjs` and `lib/smoke-security-txt.mjs` is removed: a missing
+  file fails the smoke check everywhere.
+- **Link check no longer fails on docs.opensearch.org (P17-69).** From CI runners
+  `docs.opensearch.org/latest/` pages redirect in a loop ("Too many redirects"
+  via `/latest/404.html`) although both URLs linked from `src/non-kafka-cdc/`
+  return 200 from a normal client (verified 2026-10-13). `linkcheck.yml` now
+  passes lychee `--exclude '^https://docs\.opensearch\.org/latest/'`, narrower
+  than excluding the host.
+- **Link check works with newer lychee (P17-70).** `lycheeverse/lychee-action`
+  is bumped from 2.0.2 to 2.9.0 together with the fix it needs, because the two
+  cannot land separately. lychee 0.2x (the version in lychee-action 2.9.0) fails
+  every root-relative link in the built HTML, such as
+  `/letstalkcdc/assets/css/pages/not-found.css`, with "Cannot resolve
+  root-relative link ... provide a root dir", while the previously pinned lychee
+  0.16 rejects `--root-dir` as an unknown argument. `linkcheck.yml` now passes
+  `--root-dir <workspace>/_site` and a first `--remap` that strips the public
+  path prefix from the resolved `file://` URL, so `/letstalkcdc/x` lands on
+  `_site/x`. A remap placed before it sends the bare prefix `/letstalkcdc`
+  (no trailing slash) to the site root `_site/`. No exclusion or `--accept` flag changed.
 - **The merge gate no longer reports a false failure after a successful
   merge (P17-57a).** `gh pr merge --delete-branch` exits non-zero ("failed to
   delete local branch") when a worktree still holds the local branch, even

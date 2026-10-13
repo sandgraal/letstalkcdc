@@ -14,6 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { hermeticGitEnv } from "./helpers/git-env.js";
 import { pathToFileURL } from "node:url";
 import {
   afterAll,
@@ -4419,7 +4420,12 @@ describe("lifecycle", () => {
           "commit.gpgsign=false",
           ...args,
         ],
-        { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+        {
+          cwd: dir,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+          env: hermeticGitEnv(),
+        },
       );
 
     beforeAll(() => {

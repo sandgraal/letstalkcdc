@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { hermeticGitEnv } from "./helpers/git-env.js";
 
 /**
  * scripts/worktree-prune.sh must be safe by default: the dry run lists only
@@ -12,15 +13,12 @@ import path from "node:path";
 
 const script = path.resolve(__dirname, "../../scripts/worktree-prune.sh");
 
-const env = {
-  ...process.env,
-  GIT_CONFIG_GLOBAL: "/dev/null",
-  GIT_CONFIG_NOSYSTEM: "1",
+const env = hermeticGitEnv({
   GIT_AUTHOR_NAME: "Test",
   GIT_AUTHOR_EMAIL: "test@example.invalid",
   GIT_COMMITTER_NAME: "Test",
   GIT_COMMITTER_EMAIL: "test@example.invalid",
-};
+});
 
 const git = (cwd, ...args) => {
   const r = spawnSync("git", args, { cwd, env, encoding: "utf8" });
