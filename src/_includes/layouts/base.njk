@@ -36,6 +36,10 @@
       {% set canonicalUrl = '/' ~ canonicalUrl %}
     {% endif %}
     <link rel="canonical" href="{{ site.host }}{{ canonicalUrl }}">
+    {% set markdownTwin = page | markdownTwin(tags, eleventyExcludeFromSitemap) %}
+    {% if markdownTwin %}
+    <link rel="alternate" type="text/markdown" href="{{ markdownTwin | url }}">
+    {% endif %}
     <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ '/feed.xml' | url }}">
     <meta name="theme-color" content="#0f172a">
     {# Social cards (P16-4). Everything derives from front matter and

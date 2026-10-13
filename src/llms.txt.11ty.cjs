@@ -10,11 +10,15 @@
  * ordered as in src/_data/series.mjs. Every URL is `site.host` (which carries
  * the path prefix) plus the page URL; no host is written in this file.
  *
+ * Each page that has a Markdown twin (P17-22, src/markdown-twins.11ty.cjs)
+ * gets its URL on the same line; the playground has none.
+ *
  * AI crawlers are allowed (docs/DECISIONS.md, "AI crawlers and licensing");
  * the content is CC BY 4.0, so the file says attribution is required, using
  * the sentence LICENSE-CONTENT.md prescribes.
  */
 const Sitemap = require("./sitemap.11ty.cjs");
+const { twinPath } = require("../lib/markdown-twin.cjs");
 
 const LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/";
 
@@ -38,9 +42,15 @@ module.exports = class {
 
     const pages = Array.from(
       new Map(
-        [...collections.all.filter(Sitemap.isIndexable), ...Sitemap.extraUrls]
-          .map((item) => ({
+        [
+          ...collections.all
+            .filter(Sitemap.isIndexable)
+            .map((item) => ({ item, md: twinPath(item.url) })),
+          ...Sitemap.extraUrls.map((item) => ({ item, md: null })),
+        ]
+          .map(({ item, md }) => ({
             url: item.url,
+            md,
             title: oneLine(
               item.data?.title || item.data?.heroConfig?.title || item.title,
             ),
@@ -61,7 +71,7 @@ module.exports = class {
       .sort((a, b) => a.url.localeCompare(b.url));
 
     const line = (p) =>
-      `- [${linkText(p.title)}](${base}${p.url})${p.description ? `: ${p.description}` : ""}`;
+      `- [${linkText(p.title)}](${base}${p.url})${p.description ? `: ${p.description}` : ""}${p.md ? ` Markdown: ${base}${p.md}` : ""}`;
 
     const section = (heading, items) =>
       items.length ? `## ${heading}\n\n${items.map(line).join("\n")}\n` : "";
