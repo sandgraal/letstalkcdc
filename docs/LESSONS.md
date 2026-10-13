@@ -300,3 +300,19 @@ false` since v4.4).
   [`check-merged-prs.sh`](../.claude/scripts/check-merged-prs.sh), merged by the
   maintainer.
 - Status: prevented
+
+### L-017 The CI artifact now keeps dot-directories (closes L-015)
+
+- Date: 2026-10-13 (source: P17-64; closes L-015, which stays as written)
+- What happened: L-015 recorded that `actions/upload-artifact` dropped
+  `_site/.well-known`, so the smoke job skipped its security.txt check. The
+  `build` job's upload step now sets `include-hidden-files: true` and the
+  skip is removed.
+- Root cause: as in L-015, the artifact hand-off was never checked against a
+  dot-directory in the build output.
+- Prevented by: the smoke check is strict in CI again; a missing
+  `.well-known/security.txt` fails the `smoke-tests` job, pinned by
+  [`smoke-security-txt.test.js`](../tests/unit/smoke-security-txt.test.js)
+  (runs `scripts/smoke.mjs` with `GITHUB_ACTIONS=true` and asserts the
+  failure). The workflow line itself is proven only by a green CI run.
+- Status: prevented

@@ -48,6 +48,9 @@ jobs:
         with:
           name: site-build
           path: _site/
+          # `_site/.well-known/` is a dot-directory; without this the action
+          # drops it and the smoke job cannot find security.txt.
+          include-hidden-files: true
           retention-days: 1
 
   # ───────────────────────────────────────────────────

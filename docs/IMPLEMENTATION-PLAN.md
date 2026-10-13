@@ -2742,7 +2742,7 @@ these blocks merging the kit or the drill (P17-10).
       _Status: shipped in the PR carrying this change (touches `.claude/**`
       and `docs/TEAM-CHARTER.md`, so the maintainer merges it by hand)._
 
-- [ ] **P17-64 · Maintainer: keep dot-directories in the CI site artifact,
+- [x] **P17-64 · Maintainer: keep dot-directories in the CI site artifact,
       then remove the smoke skip.** Outcome: the smoke job checks
       `/.well-known/security.txt` in CI again. Evidence: the `build` job in
       `.github/workflows/ci.yml` uploads `_site/` with
