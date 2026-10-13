@@ -63,7 +63,8 @@ scripts:
       <li>Stage events in a temporary table keyed by primary key and log position.</li>
       <li>Deduplicate to one row per key by ordering on the <strong>source log position</strong>
         (LSN/SCN/binlog position) — not <code>ts_ms</code>.
-        <code>ts_ms</code> is a millisecond commit time and is not unique per key, so
+        <code>ts_ms</code> is a millisecond processing time (the commit time is
+        <code>source.ts_ms</code>) and is not unique per key, so
         same-millisecond changes can tie and apply out of order; use the log position as
         the <strong>primary</strong> sort, with a within-transaction ordinal (Debezium
         <code>source.sequence</code>, or the row index) as the secondary key. If a position can
@@ -115,6 +116,9 @@ WHEN NOT MATCHED THEN
   INSERT (order_id, amount, status, deleted, source_lsn, processed_ts_ms)
   VALUES (src.order_id, src.amount, src.status, (src.op = 'd'), src.lsn, src.ts_ms);
 </code></pre>
+      <p class="muted">
+        Untested: not run in Snowflake (the guard logic was run as PostgreSQL MERGE).
+      </p>
       <p class="muted">
         Why <code>source_lsn</code> and a delete marker, and what makes a position safe to compare:
         <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>.

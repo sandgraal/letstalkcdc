@@ -8,6 +8,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Four merge and push guardrails relaxed, as the maintainer approved in
+  chat on 2026-10-12 (P17-65).** (1) `scripts/merge-pr.mjs` no longer lists
+  the root `package.json`, `package-lock.json`, `.claude/commands/**` or
+  `.claude/scripts/**` as maintainer-only (a symlink or submodule under the
+  two `.claude` directories is still refused). (2) New
+  `--maintainer-approved "<text>"` (10 or more characters) turns a gate 5
+  failure into a visible note and bypasses no other gate; it is an
+  honour-system record, not authentication. (3) A Dependabot lane: a patch or
+  minor bump by `dependabot[bot]` that changes only the root manifests skips
+  the review record and the audit comment; majors, pre-releases, unparseable
+  versions, groups whose body cannot be checked, Actions bumps and extra files
+  are refused with the reason. (4) `guard-bash.mjs` allows a `git push` of a
+  `claude/*` branch that touches `.github/`; every other push rule stands.
+  `docs/CONDUCTOR.md` has a "Merge-script exceptions" section; the decision is
+  in `docs/DECISIONS.md`.
+- **Hardening of those exceptions after an independent review (P17-65).** The
+  Dependabot lane now also requires every commit to be authored by Dependabot,
+  `author.is_bot` to be exactly true, the lockfile to resolve only from
+  `https://registry.npmjs.org/` (tightened again below), and `package.json` to
+  differ from `main` only in `version` and the four dependency maps. Inside
+  `.claude/commands/` and `.claude/scripts/`, `CLAUDE.md`, `AGENTS.md`,
+  `.mcp.json`, `.gitattributes`, `.gitmodules`, `.npmrc`, `.env*`,
+  `settings*.json` and any dotfile stay maintainer-only. A changed
+  `package.json` `scripts` object fails gate 5. `--maintainer-approved` text is
+  also written into the squash-merge commit body. `docs/CONDUCTOR.md` states
+  the limits, including that `.claude/scripts/check-merged-prs.sh` runs from
+  the Stop and SessionStart hooks.
+- **Second review of the merge-script exceptions (P17-65).** The Dependabot
+  lane now parses the merge result's `package-lock.json` as JSON (lockfileVersion
+  2 or 3; every `resolved` on the npm registry, no `link`, no file, git, URL or
+  `npm:` version or spec) instead of grepping for the word `resolved`, which a
+  JSON-escaped key evaded, and refuses any added patch line with a backslash.
+  `package.json` dependency maps must keep identical key sets, changed values
+  must be plain `[^~]x.y.z`, and the changed packages must be a non-empty
+  subset of those the PR title or group body names (a lockfile-only PR is now
+  refused). `--maintainer-approved` writes its record into the squash body only
+  when it overrode gate 5, and as the whole body. `docs/CONDUCTOR.md` states
+  that a compromised registry release or a malicious bump of a named package
+  still passes.
+- **Third review of the Dependabot lane (P17-65).** Lockfile versions and
+  dependency specs are now allowlists (plain semver for `version`; a semver
+  range or a dist-tag word for specs, which the real lockfile contains), so
+  `gist:`, `workspace:`, tarball names and the like are refused. Added and
+  removed `package.json` dependency keys are compared as own keys. Each changed
+  value must be higher than before and equal to the version the title (or the
+  package's line of the group body) names.
+- **`security.txt` and a contact page (P17-29).** `/.well-known/security.txt`
+  per RFC 9116 (`Contact` mailto the maintainer's designated public address,
+  `Expires` about a year ahead, `Preferred-Languages`, `Canonical` and
+  `Policy`), generated at build time so `Canonical` follows `site.host`. A
+  `/contact/` page covers reporting a content error (the GitHub form and the
+  errata page), a security problem (email, GitHub private reporting,
+  `security.txt`) and a general message, with no promised reply time. It is
+  linked from the footer, the privacy page and the methodology page, and is in
+  the sitemap and `llms.txt` through the shared rule. `SECURITY.md` lists the
+  email. Under the project site the file is served only below
+  `/letstalkcdc/.well-known/`, not at the host root, until the domain move. A
+  unit test builds the site and checks the fields, `Expires` window, sitemap,
+  llms.txt, footer link and that the address is in no `<title>`, meta tag or
+  JSON-LD.
 - **Session commands for the agent team (P17-60).** `/team-start`,
   `/team-end` and `/team-digest` in `.claude/commands/` make a working session
   start and end the same way: sync with worktrees only, read the handoff,
@@ -193,6 +253,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The merge gate no longer reports a false failure after a successful
+  merge (P17-57a).** `gh pr merge --delete-branch` exits non-zero ("failed to
+  delete local branch") when a worktree still holds the local branch, even
+  though GitHub has merged. After any non-zero exit the gate now re-reads
+  `state,mergedAt,mergeCommit,headRefOid`: MERGED with a merge commit at the
+  same head the gates evaluated prints `MERGED PR #N (verified after gh exited
+non-zero; merge commit <short sha>). gh said: <message>` and exits 0;
+  anything else, including a failed re-read or a PR merged at a different
+  head, still exits 1. The merge is never retried. Stub tests cover merged,
+  still open (even with a merge commit), a re-read that exits non-zero, a
+  different or missing head, and the unchanged success path, each asserting
+  one `gh pr merge` call. A worktree-held local branch is left in place:
+  remove the worktree (`bash scripts/worktree-prune.sh` does this for merged
+  work but leaves branches), then delete the branch with `git branch -D
+<name>`. No site change.
+
+- **Link check no longer fails on transient 429/503/504 from external hosts
+  (P17-63).** `linkcheck.yml` passes `--accept '100..=103,200..=299,429,503,504'`:
+  github.com pages of other projects answered `[503]` to runner IPs in a
+  different place each run and passed on re-run, and lychee does not retry a
+  5xx. 404, 410, 403, 500, 502, DNS and TLS errors still fail. A host that stays
+  down shows its status in the verbose log but does not fail the job.
+
+- **Content corrections from the second accuracy sample (P17-13).** Five
+  pages were wrong, each with a per-page errata entry
+  (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-12.
+  `/oracle-notes/`: the guard and the latest-wins query used the SCN alone
+  (`MAX(source_scn)`), but an Oracle SCN can repeat inside a transaction; they
+  now use a (position, tie-break) pair, the exposed SCN / commit timestamp is
+  for lag metrics only, and the Oracle SQL is labelled not run against an
+  Oracle database. `/non-relational/`: the Cassandra cell timestamp is a write
+  time assigned by the coordinator or the client, not a logical clock, so the
+  page now says it is reproduced only to mirror the source's conflict rule and
+  can be skewed; the LSN-equivalent checklist no longer offers the cell
+  timestamp or a MongoDB resume token; two unverifiable DynamoDB absolutes
+  (retention cannot be extended, a full scan is the only repair) are worded as
+  the page's assumption. `/exactly-once/`: the `processed_events` recipe now
+  says the ID insert and the sink write share one transaction (otherwise a
+  crash between them loses the event), the event-ID pseudocode and MERGEs are
+  stated to dedupe replays only, and two MERGE blocks are labelled untested.
+  `/partitioning/`: "at most, as a secondary tie-break" for `ts_ms` is now
+  "lag metrics only; use the ordinal as the tie-break", the simulator's
+  Ordering guarantee readout says "Per-key, broken for the hot key" once the
+  hot key is salted over several shards (new pure function in
+  `src/assets/js/lib/partitioning-kpi.js`), and the PostgreSQL block is now run
+  on PGlite by a test. `/materialization/`: `ts_ms` is a processing time, the
+  commit time is `source.ts_ms`; the Snowflake MERGE is labelled untested, and
+  its guard logic is run as a PostgreSQL MERGE on PGlite. A new test runs the
+  guard on `/sql-server-mysql-cdc/` on PGlite with the scenarios the page
+  lists. The thesis-lint allowlist reason for the Cassandra sentence is
+  updated. Open questions for the maintainer are listed in the PR.
+  Technical-editor review nits applied in a second commit: the Cassandra
+  paragraph is scoped (merging on cell timestamps can reproduce the source's
+  winner only with its rule for equal timestamps, which the page does not
+  state; "the one place this site endorses merging on the source's own
+  timestamp"), the DynamoDB 24-hour figure is worded as documented when the
+  page was written (heading, callout, assistant answer), `/oracle-notes/`
+  says the tie-break is one orderable column and links the merge cookbook,
+  `/exactly-once/` requires a unique key on the event ID in the sink's store
+  and says to use `INSERT ... ON CONFLICT DO NOTHING` (checked on PGlite),
+  the `/partitioning/` static KPI line no longer says "per-key only", and
+  the `ts_ms` residue in the assistant knowledge base, the style guide and
+  the Oracle quickstart (now also listed in its errata entry) is corrected.
+
+- **Smoke check for `security.txt` tolerates the CI artifact dropping
+  dot-directories (P17-29, P17-64).** The `smoke-tests` job failed with
+  `.well-known/security.txt: missing from build output` because
+  `actions/upload-artifact` leaves out hidden directories unless
+  `include-hidden-files: true` is set. `scripts/smoke.mjs` now skips that one
+  check, with a visible note, only when the run is CI and `_site` has no
+  dot-directory; any local run, or a CI run where `.well-known` exists, keeps
+  the strict check including `Contact`, `Expires` and `Canonical`. The test
+  that builds the site still covers the file. P17-64 asks the maintainer to
+  set the flag in `ci.yml`, after which the skip is removed.
 - **Content corrections from the accuracy sample (P17-12).** Five pages
   were wrong or unguarded, each with a per-page errata entry
   (`src/_data/errata.mjs`) and a `dateModified` of 2026-10-11.

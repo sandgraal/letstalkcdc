@@ -12,10 +12,16 @@ checked from the repository, the task says **unverified**.
 
 Agents merge only through `scripts/merge-pr.mjs` (the charter's Tier 2, in
 [`CONDUCTOR.md`](CONDUCTOR.md)). The script refuses a PR that is red, unreviewed
-or touches a maintainer-only path. PRs on those paths (`.github/**`, `.claude/**`,
-`CLAUDE.md`, the charter documents, `docs/DECISIONS.md`, manifests and lockfiles,
+or touches a maintainer-only path. PRs on those paths (`.github/**`, `.claude/**`
+except `.claude/commands/` and `.claude/scripts/`, `CLAUDE.md`, the charter
+documents, `docs/DECISIONS.md`, the playground's manifest and lockfile,
 `supabase/**`, licence files) are prepared by the team and merged by you. Task 1
-is that merge. Settings, accounts, secrets and decisions stay yours (Tier 3).
+is that merge. Since 2026-10-12 the root `package.json` and `package-lock.json`
+are off that list, a Dependabot patch or minor bump of them is merged without a
+review record, and you can tell the conductor in chat to merge a restricted PR
+(it records your words with `--maintainer-approved`; see
+[`CONDUCTOR.md`](CONDUCTOR.md#merge-script-exceptions)). Settings, accounts,
+secrets and decisions stay yours (Tier 3).
 
 ## How to use this guide
 

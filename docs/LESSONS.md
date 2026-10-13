@@ -241,10 +241,12 @@ Entries whose source is 'conductor session record' were observed by the conducto
   non-zero when a worktree still holds the local branch.
 - Root cause: the branch-deletion step fails while a worktree holds the branch,
   and that non-zero exit is read as a failed merge.
-- Prevented by: none yet. After any non-zero exit from the merge call, verify
-  with `gh pr view <n> --json state`; the fix is tracked in P17-57 of
-  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
-- Status: open
+- Prevented by: `scripts/merge-pr.mjs` (P17-57a) re-reads the PR after any
+  non-zero `gh pr merge` and succeeds only when it is MERGED with a merge
+  commit and its head equals the head the gates evaluated; any other state, a
+  failed re-read or a different head exits 1, and the merge is never retried.
+  Cases, including one per guard, are in `tests/unit/merge-pr.test.js`.
+- Status: prevented
 
 ### L-014 The merge watcher's rewake message still points at the Phase 13 queue
 
@@ -259,3 +261,25 @@ Entries whose source is 'conductor session record' were observed by the conducto
   [`check-merged-prs.sh`](../.claude/scripts/check-merged-prs.sh), a maintainer
   merge.
 - Status: open
+
+### L-015 The CI artifact drops dot-directories, so the smoke job lost security.txt
+
+- Date: 2026-10-12 (source: CI `smoke-tests` job on PR #459)
+- What happened: The smoke job failed with `.well-known/security.txt: missing
+from build output` although the build had produced it, because the `build`
+  job passes `_site/` to later jobs with `actions/upload-artifact`, which
+  excludes hidden files and directories by default (`include-hidden-files:
+false` since v4.4).
+- Root cause: a new dot-directory in the build output was only checked against
+  the deploy path (`actions/upload-pages-artifact@v3`, which keeps it), not
+  against the CI artifact hand-off, and the workflow file is the maintainer's.
+- Prevented by: the smoke check now skips only that one check, with a visible
+  note, when the run is CI and `_site` has no dot-directory at all
+  ([`smoke-security-txt.mjs`](../lib/smoke-security-txt.mjs), pinned by
+  `tests/unit/smoke-security-txt.test.js`); `tests/unit/security-contact.test.js`
+  builds the site itself and still covers the file. The real fix is
+  `include-hidden-files: true` on the upload-artifact step in ci.yml, a
+  maintainer change tracked as P17-64 in
+  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md). Until then the smoke job
+  does not check the file in CI.
+- Status: partially
