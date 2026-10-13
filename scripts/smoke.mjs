@@ -3,6 +3,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { extname, join, relative, resolve } from "node:path";
 
+const SMOKE_ENTITIES = { amp: "&", "#39": "'", quot: '"', lt: "<", gt: ">" };
+
 const root = resolve(".");
 const outputDirName = process.env.BUILD_OUTPUT_DIR ?? "_site";
 const outputDir = join(root, outputDirName);
@@ -316,8 +318,7 @@ for (const dir of ["intro", "merge-cookbook", "is-cdc-exactly-once"]) {
   const title = html
     .match(/<title>([\s\S]*?)<\/title>/)?.[1]
     .replace(/ \| [^|]+$/, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&#39;/g, "'")
+    .replace(/&(amp|#39|quot|lt|gt);/g, (_, e) => SMOKE_ENTITIES[e])
     .trim();
   if (title && !md.includes(title)) {
     failures.push(

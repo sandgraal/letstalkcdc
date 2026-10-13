@@ -17,6 +17,7 @@ import {
   rmSync,
 } from "node:fs";
 import { createRequire } from "node:module";
+import { JSDOM } from "jsdom";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,6 +98,24 @@ describe("htmlToMarkdown", () => {
     ).toBe("- a\n  - b\n\n1. x\n2. y");
   });
 
+  it("keeps backslashes in table cells, link text and alt text", () => {
+    expect(
+      md(
+        "<table><tr><th>h</th></tr><tr><td>a\\|b</td></tr><tr><td>end\\</td></tr></table>",
+      ),
+    ).toBe("| h |\n| --- |\n| a\\\\\\|b |\n| end\\\\ |");
+    expect(md('<p><a href="/x">a\\]b\\</a></p>')).toContain("[a\\\\\\]b\\\\](");
+    expect(md('<p><img alt="p\\q]" src="/i.png"></p>')).toContain(
+      "![p\\\\q\\]](",
+    );
+  });
+
+  it("decodes entities exactly once", () => {
+    expect(md("<p>&amp;lt; &amp;amp; &#39; &quot;</p>")).toBe(
+      "&lt; &amp; ' \"",
+    );
+  });
+
   it("renders tables with a header row and escapes pipes", () => {
     expect(
       md(
@@ -164,6 +183,18 @@ describe("renderTwin", () => {
     expect(out).toContain("Body");
     expect(out).toContain("CC BY 4.0");
   });
+  it("escapes quotes, angle brackets and ampersands in errata attributes", () => {
+    const out = renderTwin({
+      title: "T",
+      url: "/p/",
+      bodyHtml: "<p>Body</p>",
+      site: { ...site, host: 'https://e.org/a"b' },
+      errata: [{ title: 'a"<script>&', body: "<p>x</p>" }],
+    });
+    expect(out).toContain('**a"<script>&**');
+    // A quote in the host must not terminate the href attribute early.
+    expect(out).toContain("(https://e.org/a%22b/errata/)");
+  });
   it("adds the title as H1 when the body has none", () => {
     const out = renderTwin({
       title: "Only title",
@@ -220,22 +251,15 @@ const walk = (dir, rel = "") =>
     return e.isDirectory() ? walk(dir, r) : [r];
   });
 
-const decode = (s) =>
-  s
-    .replace(/<[^>]+>/g, "")
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) =>
-      String.fromCodePoint(parseInt(h, 16)),
-    )
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&rsquo;/g, "’")
-    .replace(/&lsquo;/g, "‘")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
+// Text of an HTML fragment as a parser sees it: no regex tag stripping or
+// entity decoding, so nothing here can be double-unescaped or half-sanitised.
+const textOf = (html) => {
+  const t = new JSDOM("").window.document.createElement("template");
+  t.innerHTML = html;
+  return t.content.textContent;
+};
+
+const decode = (s) => textOf(s).replace(/\s+/g, " ").trim();
 
 /** Headings and code blocks outside fences, in order. */
 const mdParts = (md) => {
@@ -269,15 +293,7 @@ const htmlParts = (html) => {
     (m) => `${"#".repeat(Number(m[1]))} ${decode(m[2])}`,
   );
   const code = [...main.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/g)].map((m) =>
-    m[1]
-      .replace(/<[^>]+>/g, "")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&amp;/g, "&")
-      .replace(/^\n/, "")
-      .trimEnd(),
+    textOf(m[1]).replace(/^\n/, "").trimEnd(),
   );
   return { headings, code };
 };
