@@ -332,19 +332,25 @@ function makeEnv({
     },
     ...(tempEntries ? { listTemp: async () => tempEntries } : {}),
   };
+  const call = (argv) =>
+    main(argv, {
+      run,
+      fs,
+      cwd,
+      out: (t) => out.push(t),
+      err: (t) => err.push(t),
+    });
   return {
     calls,
     out,
     err,
     fsCalls,
-    exec: (argv) =>
-      main(argv, {
-        run,
-        fs,
-        cwd,
-        out: (t) => out.push(t),
-        err: (t) => err.push(t),
-      }),
+    // P17-66: every test written before gates 4, 4b and 5 became advisory
+    // asserts that those gates REFUSE, which is what --strict keeps. `exec`
+    // therefore runs under --strict; `execDefault` runs the arguments as
+    // given, which is how a user runs the script.
+    exec: (argv) => call(["--strict", ...argv]),
+    execDefault: (argv) => call(argv),
     text: () => out.join("\n"),
     merged: () => calls.some((c) => c.file === "gh" && c.args[1] === "merge"),
   };
@@ -1735,7 +1741,7 @@ describe("gate 5 against real git (no stubs)", () => {
         ? Promise.resolve({ code: 0, stdout: JSON.stringify(pr), stderr: "" })
         : defaultRunner(file, args, options);
     const out = [];
-    const code = await main(["7"], {
+    const code = await main(["7", "--strict"], {
       run,
       cwd: caller,
       out: (t) => out.push(t),
@@ -2108,6 +2114,205 @@ describe("main flow", () => {
     const env = makeEnv({ ghMergeCode: 1 });
     expect(await env.exec(["7", "--execute"])).toBe(1);
     expect(env.err.join()).toMatch(/gh pr merge failed/);
+  });
+});
+
+describe("advisory gates by default (P17-66)", () => {
+  const red = { name: "e2e", status: "COMPLETED", conclusion: "FAILURE" };
+  const workflow = { files: [{ path: ".github/workflows/ci.yml" }] };
+  const paperwork = {
+    "a missing review record": [{ body: "Looks fine to me." }, "4", "record"],
+    "a missing audit-trail comment": [{ comments: [] }, "4b", "audit"],
+    "a maintainer-only file": [workflow, "5", "files"],
+  };
+  const gateLine = (status, num, id) =>
+    new RegExp(`${status} {2}${num}\\.? +${id}`);
+
+  it.each(Object.entries(paperwork))(
+    "merges with %s and prints a WARN line",
+    async (_name, [overrides, num, id]) => {
+      const env = makeEnv({ pr: greenPr(overrides) });
+      expect(await env.execDefault(["7", "--execute"])).toBe(0);
+      expect(env.merged()).toBe(true);
+      expect(env.text()).toMatch(gateLine("WARN", num, id));
+      expect(env.text()).not.toMatch(/FAIL/);
+      expect(env.text()).not.toMatch(/REFUSED/);
+      expect(env.text()).toMatch(/WARN: 1 warning \(/);
+      expect(env.text()).toMatch(/MERGED PR #7 .* with 1 warning\./);
+    },
+  );
+
+  it("a dry run passes with exit 0, counts the warnings and merges nothing", async () => {
+    const env = makeEnv({
+      pr: greenPr({ body: "no record", comments: [], ...workflow }),
+    });
+    expect(await env.execDefault(["7"])).toBe(0);
+    expect(env.merged()).toBe(false);
+    const text = env.text();
+    expect(text).toContain("WARN: 3 warnings (record, audit, files)");
+    expect(text).toMatch(
+      /No gate refuses \(3 warnings\)\. Dry run: nothing merged/,
+    );
+    expect(text).toMatch(/PASS {2}1\. +state/);
+    expect(text).toMatch(/PASS {2}6\. +merge/);
+  });
+
+  it("a WARN line still lists what was found", async () => {
+    const env = makeEnv({ pr: greenPr(workflow) });
+    await env.execDefault(["7"]);
+    expect(env.text()).toContain(
+      "touches .github/workflows/ci.yml: maintainer merges this one",
+    );
+  });
+
+  it("also warns, not refuses, for files that only git reports", async () => {
+    const env = makeEnv({
+      diff: [".github/workflows/ci.yml"],
+      mergeDiff: [".claude/hooks/guard-bash.mjs"],
+    });
+    expect(await env.execDefault(["7", "--execute"])).toBe(0);
+    expect(env.text()).toMatch(gateLine("WARN", "5", "files"));
+    expect(env.text()).toContain("touches .claude/hooks/guard-bash.mjs");
+  });
+
+  it("a clean PR has no warnings and says so as before", async () => {
+    const env = makeEnv();
+    expect(await env.execDefault(["7"])).toBe(0);
+    expect(env.text()).not.toMatch(/WARN/);
+    expect(env.text()).toContain("All gates pass. Dry run: nothing merged.");
+  });
+
+  it("a warning alone does not skip the slow test run on a branch that is behind", async () => {
+    const env = makeEnv({
+      pr: greenPr({ body: "no record" }),
+      ancestorCode: 1,
+    });
+    expect(await env.execDefault(["7"])).toBe(0);
+    expect(env.calls.some((c) => c.file === "npm")).toBe(true);
+  });
+
+  describe("the gates that protect main still refuse by default", () => {
+    const blocking = {
+      "gate 1 (draft)": [{ isDraft: true }, "1", "state"],
+      "gate 2 (red check)": [{ statusCheckRollup: [red] }, "2", "checks"],
+      "gate 3 (changes requested)": [
+        { reviewDecision: "CHANGES_REQUESTED" },
+        "3",
+        "review",
+      ],
+    };
+
+    it.each(Object.entries(blocking))(
+      "%s refuses",
+      async (_name, [overrides, num, id]) => {
+        // No review record and a workflow file as well: the refusal is the
+        // blocking gate's, and the warnings are reported next to it.
+        const env = makeEnv({
+          pr: greenPr({ body: "no record", ...workflow, ...overrides }),
+        });
+        expect(await env.execDefault(["7", "--execute"])).toBe(1);
+        expect(env.text()).toMatch(gateLine("FAIL", num, id));
+        expect(env.text()).toMatch(/REFUSED: 1 of 7 gates failed/);
+        expect(env.text()).toMatch(/plus 2 warnings/);
+        expect(env.merged()).toBe(false);
+      },
+    );
+
+    it("gate 6 (merge conflict) refuses", async () => {
+      const env = makeEnv({ mergeCode: 1 });
+      expect(await env.execDefault(["7", "--execute"])).toBe(1);
+      expect(env.text()).toMatch(gateLine("FAIL", "6", "merge"));
+      expect(env.merged()).toBe(false);
+    });
+
+    it("gate 6 (npm test fails on a branch that is behind) refuses", async () => {
+      const env = makeEnv({ ancestorCode: 1, testCode: 1 });
+      expect(await env.execDefault(["7", "--execute"])).toBe(1);
+      expect(env.text()).toMatch(gateLine("FAIL", "6", "merge"));
+      expect(env.merged()).toBe(false);
+    });
+  });
+
+  describe("--strict refuses exactly as before", () => {
+    it.each(Object.entries(paperwork))(
+      "%s",
+      async (_name, [overrides, num, id]) => {
+        const env = makeEnv({ pr: greenPr(overrides) });
+        expect(await env.execDefault(["7", "--execute", "--strict"])).toBe(1);
+        expect(env.text()).toMatch(gateLine("FAIL", num, id));
+        expect(env.text()).toMatch(/REFUSED: 1 of 7 gates failed/);
+        expect(env.text()).not.toMatch(/WARN/);
+        expect(env.merged()).toBe(false);
+      },
+    );
+
+    it("takes the flag in any position and says so in the header", async () => {
+      const env = makeEnv({ pr: greenPr(workflow) });
+      expect(await env.execDefault(["--strict", "7"])).toBe(1);
+      expect(env.text()).toContain("PR #7 (dry run, strict)");
+    });
+
+    it("a clean PR still merges", async () => {
+      const env = makeEnv();
+      expect(await env.execDefault(["7", "--execute", "--strict"])).toBe(0);
+      expect(env.merged()).toBe(true);
+    });
+  });
+
+  describe("--maintainer-approved is accepted and does nothing without --strict", () => {
+    const TEXT = "i approve merging PR 7 with the workflow change";
+
+    it("merges with a warning, records nothing and passes no --body", async () => {
+      const env = makeEnv({ pr: greenPr(workflow) });
+      expect(
+        await env.execDefault([
+          "7",
+          "--execute",
+          "--maintainer-approved",
+          TEXT,
+        ]),
+      ).toBe(0);
+      const merge = env.calls.find(
+        (c) => c.file === "gh" && c.args[1] === "merge",
+      );
+      expect(merge.args).not.toContain("--body");
+      expect(env.text()).toMatch(gateLine("WARN", "5", "files"));
+      expect(env.text()).toContain("nothing is recorded");
+      expect(env.text()).not.toContain("overrode:");
+    });
+
+    it("still validates the text (a short one exits 2)", async () => {
+      const env = makeEnv();
+      expect(
+        await env.execDefault(["7", "--maintainer-approved", "short"]),
+      ).toBe(2);
+    });
+  });
+
+  it("--help documents the modes", async () => {
+    const env = makeEnv();
+    expect(await env.execDefault(["--help"])).toBe(0);
+    expect(env.text()).toMatch(/--strict/);
+    expect(env.text()).toMatch(/ADVISORY/);
+    expect(env.text()).toMatch(/'N warnings' count/);
+    expect(env.text()).toMatch(/Gates 1, 2, 3 and 6/);
+  });
+
+  it("an unknown flag is still a usage error", async () => {
+    const env = makeEnv();
+    expect(await env.execDefault(["7", "--lenient"])).toBe(2);
+    expect(env.calls).toHaveLength(0);
+  });
+
+  it("the header explains the modes", () => {
+    const source = readFileSync(
+      path.join(process.cwd(), "scripts/merge-pr.mjs"),
+      "utf8",
+    );
+    const header = source.split("\nimport ")[0].replace(/\n\/\/ ?/g, " ");
+    expect(header).toMatch(/ADVISORY/);
+    expect(header).toMatch(/`--strict` restores/);
+    expect(header).toMatch(/N warnings/);
   });
 });
 

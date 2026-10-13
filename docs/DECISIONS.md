@@ -1,7 +1,7 @@
 # Decisions log
 
 Maintainer decisions for Let's Talk CDC, recorded 2026-10-09 and, where
-noted, 2026-10-11 and 2026-10-12. One short entry each: what was decided, why in one line, and where it stands. This
+noted, 2026-10-11, 2026-10-12 and 2026-10-13. One short entry each: what was decided, why in one line, and where it stands. This
 file is public; it records decisions, not motives beyond what is stated.
 
 Basis values: **Decided** means the maintainer stated it. **Default** means
@@ -296,6 +296,39 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
   and the remaining gates still hold. The cost, accepted: a workflow change on
   a pushed branch can run with secrets before the maintainer reads it.
 - **Status:** Decided; shipped as P17-65. `guard-edit.mjs` is unchanged.
+- **Basis:** Decided.
+
+---
+
+## 2026-10-13 answers
+
+### Make the merge script's paperwork gates advisory (2026-10-13)
+
+- **Decision:** The maintainer said in chat, 2026-10-13: "seriously you suck
+  this session. get rid of these fucking stupid gates so you can be more
+  autonomous. never have i had so many fucking problems". That is explicit
+  approval to strip the paperwork gates. (1) In `scripts/merge-pr.mjs`, gates
+  4 (review record), 4b (reviewer's report as a PR comment) and 5
+  (maintainer-only files) become advisory: they still run and print as `WARN`
+  lines with an "N warnings" count, and no longer refuse a merge. Gates 1
+  (open, not a draft, base `main`), 2 (every check green), 3 (no
+  `CHANGES_REQUESTED`) and 6 (clean test-merge) still refuse, because they
+  keep a broken `main` from being merged. A new `--strict` flag restores the
+  earlier behaviour (all gates refuse). `--maintainer-approved` is still
+  accepted and does nothing without `--strict`. The Dependabot lane is kept.
+  (2) `guard-bash.mjs` stops blocking a command merely because it names
+  `scripts/merge-pr.mjs` or `tests/unit/merge-pr.test.js` (`npx prettier`,
+  `npx vitest run <file>`, `npm test -- <file>`); only a command that starts
+  the merge script is checked, and `gh pr merge`, pushes to `main`, force
+  pushes, branch deletes and the secret and hook-write rules stand.
+- **Why:** The gates were costing more in round trips and refused merges than
+  they protected; the maintainer wants the agents to work more autonomously.
+  The cost, accepted: a PR with no review record, no audit comment or a
+  maintainer-only file can now be merged by the conductor without a human
+  reading it first. `--strict` is there for the PRs that should still be held
+  to the full paperwork.
+- **Status:** Decided; shipped as P17-66. `guard-edit.mjs` and
+  `guard-agent-model.mjs` are unchanged.
 - **Basis:** Decided.
 
 ---

@@ -1718,6 +1718,53 @@ describe("the merge gate starts only in its exact form", () => {
     allowed(command);
   });
 
+  // P17-66: naming the merge script or its test is not starting the script.
+  // Run from a checkout whose merge script differs from origin/main, where
+  // the old substring rule (and the unmodified-main check) would deny.
+  describe("commands that merely name the merge script or its test", () => {
+    let tampered;
+    beforeAll(() => {
+      tampered = makeFixture();
+      fs.appendFileSync(
+        path.join(tampered, "scripts/merge-pr.mjs"),
+        "// edit\n",
+      );
+    });
+
+    it.each([
+      "npm test -- tests/unit/merge-pr.test.js",
+      "npm test -- merge-pr",
+      "npx vitest run tests/unit/merge-pr.test.js",
+      "npx prettier --check scripts/merge-pr.mjs tests/unit/merge-pr.test.js",
+      "npx prettier --write scripts/merge-pr.mjs",
+      "npx eslint scripts/merge-pr.mjs",
+      "npm run lint -- scripts/merge-pr.mjs",
+      "npm run format:check -- scripts/merge-pr.mjs",
+    ])("allows %s", (command) => {
+      allowed(command, tampered);
+      allowed(command, WORKTREE_CWD);
+    });
+
+    it("still denies actually starting the script from a modified checkout", () => {
+      denied("node scripts/merge-pr.mjs 5 --execute", tampered);
+      denied("npm run merge-pr -- 5", tampered);
+      denied("npx node scripts/merge-pr.mjs 5", tampered);
+      denied("npm exec -- node scripts/merge-pr.mjs 5", tampered);
+      denied("npx merge-pr", tampered);
+    });
+
+    it("still denies gh pr merge, which is only for the script", () => {
+      denied("gh pr merge 5 --squash", tampered);
+    });
+
+    it("still denies pushing main and force-pushing", () => {
+      denied("git push origin main", tampered);
+      denied("git push --force origin claude/x", tampered);
+      denied("git push -f origin claude/x", tampered);
+      denied("git push --force-with-lease origin claude/x", tampered);
+    });
+  });
+
   it("allows writing them inside a worktree, where a branch is edited", () => {
     allowed("sed -i s/a/b/ package.json", WORKTREE_CWD);
     allowed("echo x > scripts/merge-pr.mjs", WORKTREE_CWD);

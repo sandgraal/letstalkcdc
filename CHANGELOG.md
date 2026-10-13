@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Merge script gates 4, 4b and 5 are advisory by default; `--strict`
+  restores them (P17-66).** After the maintainer said in chat on 2026-10-13 to
+  get rid of the paperwork gates so agents can be more autonomous (quoted in
+  `docs/DECISIONS.md`), `scripts/merge-pr.mjs` prints a missing review record,
+  a missing audit comment and a maintainer-only file as `WARN` lines with an
+  "N warnings" count and does not refuse. Gates 1 (open, non-draft, base
+  `main`), 2 (all checks green), 3 (no `CHANGES_REQUESTED`) and 6 (clean
+  test-merge) still refuse. `--strict` makes every gate refuse as before;
+  `--maintainer-approved` is still accepted and only matters with `--strict`.
+  `guard-bash.mjs` no longer denies `npx prettier`, `npx vitest run <file>`,
+  `npm test -- <file>` and similar commands for merely naming
+  `scripts/merge-pr.mjs` or its test; starting the script, `gh pr merge`,
+  pushes to `main` and force pushes stay denied. `docs/CONDUCTOR.md` has a
+  "Merge policy" section; the PR template marks the Review record optional.
+
 - **Four merge and push guardrails relaxed, as the maintainer approved in
   chat on 2026-10-12 (P17-65).** (1) `scripts/merge-pr.mjs` no longer lists
   the root `package.json`, `package-lock.json`, `.claude/commands/**` or

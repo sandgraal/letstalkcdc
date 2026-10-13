@@ -6,18 +6,28 @@
 // because the ruleset on main has no required status checks.
 //
 //   node scripts/merge-pr.mjs <pr-number>             dry run (default)
-//   node scripts/merge-pr.mjs <pr-number> --execute   merge if every gate passes
+//   node scripts/merge-pr.mjs <pr-number> --execute   merge if no gate refuses
+//   node scripts/merge-pr.mjs <pr-number> --strict    every gate refuses (below)
 //   node scripts/merge-pr.mjs --help
+//
+// Modes (P17-66, 2026-10-13, see docs/DECISIONS.md). By DEFAULT the paperwork
+// gates 4 (review record), 4b (audit comment) and 5 (maintainer-only files)
+// are ADVISORY: they still run and print as `WARN` lines with their findings
+// and a "N warnings" count, but they do not refuse a merge. The gates that
+// protect main from breaking still REFUSE: 1 (open, non-draft, base main),
+// 2 (every check green), 3 (no CHANGES_REQUESTED) and 6 (clean test-merge,
+// with `npm test` when behind). `--strict` restores the earlier behaviour: all
+// gates refuse, and `--maintainer-approved` works as described below.
 //
 // Gates (all are evaluated and reported, not just the first failure):
 //   1  state    PR is OPEN, not a draft, and targets main
 //   2  checks   every check on the head commit finished SUCCESS/NEUTRAL/SKIPPED
 //   3  review   reviewDecision is not CHANGES_REQUESTED
-//   4  record   body has exactly one "## Review record" with an approving
+//   4  record   (advisory by default) body has exactly one "## Review record" with an approving
 //               verdict and "Findings resolved: yes". Every Verdict line counts;
 //               a Verdict line inside an indented code block, <details> or an
 //               unclosed code fence fails the gate rather than being skipped.
-//   4b audit    the reviewer's report pasted verbatim as a PR comment so the
+//   4b audit    (advisory by default) the reviewer's report pasted verbatim as a PR comment so the
 //               review text survives on GitHub. Among the comments that contain
 //               a Verdict, the LATEST (by createdAt) must itself be an approval
 //               (exactly APPROVE or APPROVE WITH NITS, keyword case-insensitive,
@@ -49,7 +59,7 @@
 //               as the same GitHub account, so excluding them would block honest
 //               use. A long filler comment with an approving Verdict line passes;
 //               that is a documented limitation of a convention check.
-//   5  files    no changed file is on the maintainer-only list, and no changed
+//   5  files    (advisory by default) no changed file is on the maintainer-only list, and no changed
 //               path contains a control character (code < 0x20 or 0x7f), which
 //               is refused outright. The list is checked against the `gh` file
 //               list AND against git itself (the three-dot diff and the actual
@@ -122,10 +132,12 @@
 // rule (it also does not take effect as that directory). Comments are assumed
 // to be capped at 100 by `gh pr view --json comments`; 100 or more is refused.
 //
-// The one override is `--maintainer-approved "<text>"` (2026-10-12, see
-// docs/DECISIONS.md): it turns a gate 5 FAIL into a PASS with a visible note and
-// bypasses nothing else. It is an HONOUR-SYSTEM record, not authentication: the
-// script cannot tell whether the maintainer really said it. The conductor may
+// `--maintainer-approved "<text>"` (2026-10-12, see docs/DECISIONS.md) matters
+// only with --strict; without it gate 5 is advisory and the flag is accepted
+// as a no-op (nothing is overridden and nothing is recorded), so older
+// invocations do not error. Under --strict it turns a gate 5 FAIL into a PASS
+// with a visible note and bypasses nothing else. It is an HONOUR-SYSTEM
+// record, not authentication: the script cannot tell whether the maintainer really said it. The conductor may
 // pass it only after the maintainer's own chat message says to merge that PR.
 // When (and only when) it actually overrode a gate 5 failure, the text
 // (control characters removed, 200 characters) is also written into the
@@ -140,7 +152,8 @@
 // is `Bump <pkg> from <a> to <b>` or `Bump the <group> group ...` with every
 // per-package bump listed in the body, whose bumps are all patch or minor
 // (plain major.minor.patch), and whose changed files are only the root
-// package.json and package-lock.json, is exempt from gates 4 and 4b. Gates
+// package.json and package-lock.json, is exempt from gates 4 and 4b (under
+// --strict; by default they only warn). Gates
 // 1, 2, 3, 5 and 6 still apply; so does everything for GitHub Actions bumps
 // (they touch .github/). Any failure below voids the lane with a
 // `dependabot lane refused:` note and gates 4 and 4b then apply in full:
@@ -220,6 +233,11 @@ const PASSING_CONCLUSIONS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
 const APPROVING_VERDICTS = new Set(["APPROVE", "APPROVE WITH NITS"]);
 
 export const AUDIT_MIN_LENGTH = 200;
+
+// P17-66: these gates are paperwork. By default they WARN and never refuse;
+// --strict makes them refuse again. Everything else protects main from
+// breaking and always refuses.
+export const ADVISORY_GATE_IDS = new Set(["record", "audit", "files"]);
 
 export const SELF_ATTESTATION_NOTE =
   "Gates 4 and 4b are a convention check, not authentication: anyone who can edit the PR body or comment can write a passing review record. The audit-trail comment exists so a human can read the review afterwards.";
@@ -1317,7 +1335,8 @@ export function evaluateStaticGates(pr, options = {}) {
 export function formatGateTable(gates) {
   const lines = [];
   gates.forEach((gate, index) => {
-    const status = gate.failures.length === 0 ? "PASS" : "FAIL";
+    const status =
+      gate.failures.length === 0 ? "PASS" : gate.advisory ? "WARN" : "FAIL";
     const num = `${gate.num ?? index + 1}.`;
     lines.push(
       `  ${status}  ${num.padEnd(3)} ${gate.id.padEnd(7)} ${gate.label}`,
@@ -1914,31 +1933,36 @@ async function fetchPr(number, run, cwd, fields = PR_FIELDS) {
 }
 
 export const USAGE = [
-  'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--maintainer-approved "<text>"]',
+  'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--strict] [--maintainer-approved "<text>"]',
   "       node scripts/merge-pr.mjs --help",
   "",
   "Dry run by default: evaluates every gate and prints a table. --execute",
-  "squash-merges (and deletes the branch) only when every gate passes.",
+  "squash-merges (and deletes the branch) when no gate refuses.",
   "",
-  '--maintainer-approved "<text>" (10+ characters) turns a gate 5 failure into a',
-  "PASS with a visible note quoting <text>, and when it overrode something <text>",
-  "is the whole squash-merge commit body. It bypasses no other gate. It is an",
-  "honour-system record, not authentication: pass it only after the",
-  "maintainer's own chat message says to merge this PR.",
+  "By default gates 4, 4b and 5 are ADVISORY: they run and print as WARN lines",
+  "(and a 'N warnings' count) but do not refuse. Gates 1, 2, 3 and 6, which",
+  "protect main from breaking, always refuse. --strict makes every gate refuse.",
+  "",
+  '--maintainer-approved "<text>" (10+ characters) matters only with --strict: it',
+  "turns a gate 5 failure into a PASS with a visible note quoting <text>, and",
+  "when it overrode something <text> is the whole squash-merge commit body. It",
+  "bypasses no other gate. Without --strict it is accepted and does nothing",
+  "(gate 5 only warns). It is an honour-system record, not authentication:",
+  "pass it only after the maintainer's own chat message says to merge this PR.",
   "",
   "  1  state    open, not a draft, base main",
   "  2  checks   every check on the head commit green",
   "  3  review   no CHANGES_REQUESTED review decision",
-  "  4  record   exactly one '## Review record': Verdict APPROVE or APPROVE WITH",
+  "  4  record   (advisory) exactly one '## Review record': Verdict APPROVE or APPROVE WITH",
   "              NITS (every Verdict line), 'Findings resolved: yes'",
-  "  4b audit    the latest PR comment that mentions a verdict must itself be",
+  "  4b audit    (advisory) the latest PR comment that mentions a verdict must itself be",
   "              exactly 'Verdict: APPROVE' or APPROVE WITH NITS and 200+",
   "              characters (the reviewer's report pasted verbatim). Decorated",
   "              lines are read (**bold**, #, -, `code`, NBSP, full-width colon)",
   "              and it fails closed: any other line with the word 'verdict' is",
   "              a block, a quoted block too (a quoted approval counts for",
   "              nothing). 100+ comments are refused. Author comments count",
-  "  5  files    no maintainer-only file (agent instructions at any depth,",
+  "  5  files    (advisory) no maintainer-only file (agent instructions at any depth,",
   "              .claude/** except css-baseline.sha256 and regular files under",
   "              .claude/commands/ and .claude/scripts/ (but CLAUDE.md, AGENTS.md,",
   "              .mcp.json, .npmrc, .gitattributes, .gitmodules, .env*,",
@@ -1950,7 +1974,7 @@ export const USAGE = [
   "  4/4b Dependabot lane: a PR by dependabot[bot] (author is read, not the",
   "              title; is_bot must be true) bumping packages patch/minor,",
   "              touching only the root package.json / package-lock.json, skips",
-  "              gates 4 and 4b. Majors, pre-releases, unparseable versions and",
+  "              gates 4 and 4b (under --strict). Majors, pre-releases, unparseable versions and",
   "              groups whose body cannot be checked are refused with the",
   "              reason. Also required: every commit authored by dependabot,",
   "              a parsed lockfile (version 2 or 3) whose every entry resolves",
@@ -1966,8 +1990,8 @@ export const USAGE = [
   "              still runs here; the scrub is a mitigation, not a sandbox",
   "",
   `NOTE: ${SELF_ATTESTATION_NOTE}`,
-  "The only override is --maintainer-approved, for gate 5; --admin, --auto and",
-  "--rebase are never used.",
+  "The only override is --maintainer-approved, for gate 5 under --strict;",
+  "--admin, --auto and --rebase are never used.",
 ].join("\n");
 
 /**
@@ -1987,6 +2011,7 @@ export async function main(argv, deps = {}) {
   }
 
   let execute = false;
+  let strict = false;
   let approvalRaw = null;
   const unknown = [];
   const positional = [];
@@ -1994,6 +2019,8 @@ export async function main(argv, deps = {}) {
     const arg = argv[i];
     if (arg === "--execute") {
       execute = true;
+    } else if (arg === "--strict") {
+      strict = true;
     } else if (
       arg === "--maintainer-approved" ||
       arg.startsWith("--maintainer-approved=")
@@ -2022,10 +2049,10 @@ export async function main(argv, deps = {}) {
   const number = positional.length === 1 ? parsePrNumber(positional[0]) : null;
   if (number === null || unknown.length > 0) {
     err(
-      'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--maintainer-approved "<text>"]',
+      'usage: node scripts/merge-pr.mjs <pr-number> [--execute] [--strict] [--maintainer-approved "<text>"]',
     );
     err(
-      "<pr-number> must be a positive integer; --execute and --maintainer-approved <text> are the only flags (each at most once).",
+      "<pr-number> must be a positive integer; --execute, --strict and --maintainer-approved <text> are the only flags (each at most once).",
     );
     return 2;
   }
@@ -2059,12 +2086,17 @@ export async function main(argv, deps = {}) {
   let lane = dependabotLane(pr);
   const gates = evaluateStaticGates(pr, { lane });
 
-  // --maintainer-approved turns a gate 5 failure into a visible note and
-  // nothing else. It is applied again after gate 6, which can add file failures.
+  // Advisory gates warn instead of refusing unless --strict (P17-66).
+  const isAdvisory = (gate) => !strict && ADVISORY_GATE_IDS.has(gate.id);
+  const refuses = (gate) => gate.failures.length > 0 && !isAdvisory(gate);
+
+  // --maintainer-approved (only with --strict; otherwise gate 5 just warns)
+  // turns a gate 5 failure into a visible note and nothing else. It is applied
+  // again after gate 6, which can add file failures.
   const overridden = [];
   const applyApproval = () => {
     const filesGate = gates.find((gate) => gate.id === "files");
-    if (!approval || !filesGate) return;
+    if (!strict || !approval || !filesGate) return;
     overridden.push(...filesGate.failures);
     filesGate.failures = [];
     filesGate.notes =
@@ -2086,7 +2118,7 @@ export async function main(argv, deps = {}) {
     notes: [],
   };
   if (pr.state === "OPEN") {
-    const others = gates.some((gate) => gate.failures.length > 0);
+    const others = gates.some(refuses);
     const result = await testMerge(pr, { run, fs, cwd, runTests: !others });
     mergeGate.failures = result.failures;
     mergeGate.notes = result.notes;
@@ -2123,26 +2155,46 @@ export async function main(argv, deps = {}) {
   }
   gates.push(mergeGate);
 
-  const failed = gates.filter((gate) => gate.failures.length > 0);
-  out(`merge-pr: PR #${number} (${execute ? "execute" : "dry run"})`);
+  for (const gate of gates) gate.advisory = isAdvisory(gate);
+  const failed = gates.filter(refuses);
+  const warned = gates.filter(
+    (gate) => gate.failures.length > 0 && gate.advisory,
+  );
+  const warnings = `${warned.length} warning${warned.length === 1 ? "" : "s"}`;
+  out(
+    `merge-pr: PR #${number} (${execute ? "execute" : "dry run"}${strict ? ", strict" : ""})`,
+  );
   if (approval) out(`maintainer-approved: ${approval}`);
-  if (approval && overridden.length === 0) {
+  if (approval && !strict) {
+    out(
+      "maintainer-approved: gate 5 is advisory without --strict, so nothing needed overriding and nothing is recorded.",
+    );
+  } else if (approval && overridden.length === 0) {
     out("maintainer-approved: nothing was overridden, so it is not recorded.");
   }
   out(formatGateTable(gates));
+  if (warned.length > 0) {
+    out(
+      `WARN: ${warnings} (${warned.map((gate) => gate.id).join(", ")}): advisory, not refusing. Re-run with --strict to make them refuse.`,
+    );
+  }
 
   if (failed.length > 0) {
     out(
       `REFUSED: ${failed.length} of ${gates.length} gates failed (${failed
         .map((gate) => gate.id)
-        .join(", ")}).`,
+        .join(", ")})${warned.length > 0 ? `, plus ${warnings}` : ""}.`,
     );
     out(`Note: ${SELF_ATTESTATION_NOTE}`);
     return 1;
   }
 
   if (!execute) {
-    out("All gates pass. Dry run: nothing merged. Re-run with --execute.");
+    out(
+      warned.length > 0
+        ? `No gate refuses (${warnings}). Dry run: nothing merged. Re-run with --execute.`
+        : "All gates pass. Dry run: nothing merged. Re-run with --execute.",
+    );
     return 0;
   }
 
@@ -2204,7 +2256,9 @@ export async function main(argv, deps = {}) {
     );
     return 1;
   }
-  out(`MERGED PR #${number} (squash, branch deleted).`);
+  out(
+    `MERGED PR #${number} (squash, branch deleted)${warned.length > 0 ? ` with ${warnings}` : ""}.`,
+  );
   if (approval) out(`maintainer-approved: ${approval}`);
 
   try {

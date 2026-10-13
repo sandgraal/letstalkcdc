@@ -11,8 +11,10 @@ checked from the repository, the task says **unverified**.
 ## Who merges what
 
 Agents merge only through `scripts/merge-pr.mjs` (the charter's Tier 2, in
-[`CONDUCTOR.md`](CONDUCTOR.md)). The script refuses a PR that is red, unreviewed
-or touches a maintainer-only path. PRs on those paths (`.github/**`, `.claude/**`
+[`CONDUCTOR.md`](CONDUCTOR.md)). The script refuses a PR that is red, in conflict
+or has changes requested; since 2026-10-13 a missing review record or a
+maintainer-only path is a `WARN`, and only `--strict` refuses it. PRs on the
+maintainer-only paths (`.github/**`, `.claude/**`
 except `.claude/commands/` and `.claude/scripts/`, `CLAUDE.md`, the charter
 documents, `docs/DECISIONS.md`, the playground's manifest and lockfile,
 `supabase/**`, licence files) are prepared by the team and merged by you. Task 1
@@ -60,9 +62,9 @@ secrets and decisions stay yours (Tier 3).
 
 ### 1. Merge the restricted-path PRs the team prepares (now: P17-59)
 
-**Why.** The merge script refuses any PR that touches a maintainer-only path
-(`scripts/merge-pr.mjs`, and the list in `docs/CONDUCTOR.md`). The team prepares
-such PRs and stops. You read them and merge them. The post-merge sweep (P17-59,
+**Why.** The merge script flags any PR that touches a maintainer-only path
+(`scripts/merge-pr.mjs`, and the list in `docs/CONDUCTOR.md`): a `WARN` by
+default, a refusal under `--strict`. The team prepares such PRs and stops. You read them and merge them. The post-merge sweep (P17-59,
 shipped in the sweep PR) is one such PR; it edits `docs/CONDUCTOR.md`,
 `docs/TEAM-CHARTER.md`, `docs/DECISIONS.md` and `.claude/rules/`.
 
@@ -469,7 +471,8 @@ repository itself. Each needs your answer before work on it starts.
   any change to grants or policies.
 - **The domain**: the name, the purchase, DNS and the Pages custom domain.
 - **Anything on the maintainer-only path list** of `scripts/merge-pr.mjs`. The
-  script refuses those PRs; the team prepares them and you merge them (task 1).
+  script flags those PRs (it refuses them under `--strict`); the team prepares them
+  and you merge them (task 1).
 - **Merging outside the gate.** The team merges only through
   `scripts/merge-pr.mjs`, and only when it is confident. When it is not, it stops
   and asks you in the chat.

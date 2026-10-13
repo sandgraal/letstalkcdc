@@ -2550,11 +2550,27 @@ function checkLeaf(rawArgv, ctx, depth) {
   if (base === "gh") return checkGh(argv, ctx);
   if (base === "node" || base === "nodejs") return checkNode(argv, ctx);
   if (["npm", "pnpm", "yarn", "bun", "npx", "pnpx", "bunx"].includes(base)) {
-    if (argv.slice(1).some((w) => w.text.includes("merge-pr"))) {
+    // Gate only a command that STARTS the merge script, never one that merely
+    // names the file (`npx prettier --write scripts/merge-pr.mjs`,
+    // `npm test -- tests/unit/merge-pr.test.js`): editing, formatting and
+    // testing the script is ordinary work (P17-66). Starting it means the
+    // script name `merge-pr` before any `--` (for npx-style runners, as the
+    // command itself), or `node` with a merge-pr.mjs path anywhere.
+    const words = argv.slice(1).map((w) => w.text);
+    const dashes = words.indexOf("--");
+    const before = dashes === -1 ? words : words.slice(0, dashes);
+    const runner = base === "npx" || base === "pnpx" || base === "bunx";
+    const named = runner
+      ? before.find((t) => !t.startsWith("-")) === "merge-pr"
+      : before.includes("merge-pr");
+    const viaNode =
+      words.some((t) => t === "node" || t === "nodejs") &&
+      words.some((t) => path.basename(t) === "merge-pr.mjs");
+    if (named || viaNode) {
       // Exactly `npm run merge-pr -- <args>`: no npm flag (--prefix,
       // --script-shell, --userconfig, --workspace ...) can redirect which
       // package.json or shell runs the script.
-      const a = argv.slice(1).map((w) => w.text);
+      const a = words;
       const exact =
         base === "npm" &&
         (a[0] === "run" || a[0] === "run-script") &&
