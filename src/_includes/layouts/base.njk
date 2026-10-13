@@ -50,6 +50,11 @@
     {% if dateModified.toISOString %}{% set dateModified = dateModified.toISOString() %}{% endif %}
     {% if datePublished %}{% set datePublished = datePublished | string | truncate(10, true, '') %}{% endif %}
     {% if dateModified %}{% set dateModified = dateModified | string | truncate(10, true, '') %}{% endif %}
+    {# P17-26: a review is shown or declared only when BOTH reviewedBy and
+       reviewedOn are set (front matter). Otherwise nothing is claimed. #}
+    {% if reviewedOn.toISOString %}{% set reviewedOn = reviewedOn.toISOString() %}{% endif %}
+    {% if reviewedOn %}{% set reviewedOn = reviewedOn | string | truncate(10, true, '') %}{% endif %}
+    {% set hasReview = reviewedBy and reviewedOn %}
     {% set isArticle = (datePublished or dateModified) and not seo.noArticle[page.url] %}
     {% set pageHeadline = title or heroConfig.title or site.title %}
     {% set cardTitle = title or site.seoTitle %}
@@ -114,7 +119,9 @@
           "license": "https://creativecommons.org/licenses/by/4.0/",
           "mainEntityOfPage": {
             "@type": "WebPage",
-            "@id": "{{ site.host }}{{ canonicalUrl }}"
+            "@id": "{{ site.host }}{{ canonicalUrl }}"{% if hasReview %},
+            "reviewedBy": { "@type": "Person", "name": {{ reviewedBy | dump | replace("<", "\\u003c") | safe }} },
+            "lastReviewed": {{ reviewedOn | dump | safe }}{% endif %}
           }{% if schemaAbout and schemaAbout.length %},
           "about": {{ schemaAbout | dump | safe }}{% endif %}
         }
@@ -334,10 +341,15 @@
           </p>
           {% if dateModified %}
             <p class="page-meta__dates">
-              <time datetime="{{ dateModified }}">Last reviewed {{ dateModified }}</time>
+              <time datetime="{{ dateModified }}">Last updated {{ dateModified }}</time>
               {% if datePublished and datePublished != dateModified %}
                 · <time datetime="{{ datePublished }}">Originally published {{ datePublished }}</time>
               {% endif %}
+            </p>
+          {% endif %}
+          {% if hasReview %}
+            <p class="page-meta__dates page-meta__review">
+              Technically reviewed by {{ reviewedBy }} on <time datetime="{{ reviewedOn }}">{{ reviewedOn }}</time>
             </p>
           {% endif %}
           {% if author.advisoryUrl %}
