@@ -1881,24 +1881,37 @@ describe("branch operations cannot carry protected files into the primary checko
   });
 });
 
-describe("a pushed branch may not touch .github/", () => {
+// Released by the maintainer on 2026-10-12 (docs/DECISIONS.md): a claude/*
+// branch that edits .github/ may be pushed. Merging it stays the maintainer's.
+describe("a claude/* branch that touches .github/ may be pushed", () => {
   it.each([
     "git push origin claude/gh",
     "git push -u origin claude/gh",
     "git push origin claude/gh:claude/gh",
     "git push origin claude/x claude/gh",
-  ])("denies %s", (command) => {
-    const r = denied(command, FIXTURE);
-    expect(r.stderr).toMatch(/push touches \.github\//);
-    expect(r.stderr).toMatch(/the maintainer pushes these/);
+  ])("allows %s", (command) => {
+    allowed(command, FIXTURE);
   });
 
-  it("fails closed when the branch or origin/main cannot be compared", () => {
-    denied("git push origin claude/nonexistent", FIXTURE);
-    denied("git push origin claude/x", "/work/does-not-exist");
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), "guard-nogit-"));
-    fixtureDirs.push(bare);
-    denied("git push origin claude/x", bare);
+  it.each([
+    ["main from the .github branch", "git push origin claude/gh:main"],
+    ["main, plain", "git push origin main"],
+    ["to a different remote branch", "git push origin claude/gh:claude/x"],
+    ["forced", "git push --force origin claude/gh"],
+    ["force-with-lease", "git push --force-with-lease origin claude/gh"],
+    ["+refspec", "git push origin +claude/gh"],
+    ["delete", "git push --delete origin claude/gh"],
+    ["empty-source delete", "git push origin :claude/gh"],
+    ["a refspec it cannot parse", "git push origin claude/gh $EXTRA"],
+    ["a glob", "git push origin claude/g*"],
+    ["bare push", "git push"],
+    ["HEAD", "git push origin HEAD"],
+  ])("still denies %s", (_label, command) => {
+    denied(command, FIXTURE);
+  });
+
+  it("still denies a push in a directory the guard cannot determine", () => {
+    denied("cd $UNKNOWN_DIR && git push origin claude/gh", FIXTURE);
   });
 
   it.each([

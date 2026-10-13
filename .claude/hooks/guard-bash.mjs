@@ -1254,44 +1254,18 @@ function checkGitPush(args, cwds) {
       `Blocked: refspec "${spec}" is not a single \`claude/*\` branch pushed to the same name. ${PUSH_HELP}`,
     );
   }
-  return checkPushWorkflows(
-    refspecs.map((spec) => spec.split(":")[0]),
-    cwds,
-  );
-}
-
-/**
- * Workflows run on push with the repository's secrets, and some of ours have
- * `on: push` with no branch filter. A pushed branch that edits .github/ is
- * therefore code the maintainer has not reviewed running with secrets.
- * Fails closed: if git cannot answer, the push is denied.
- */
-function checkPushWorkflows(branches, cwds) {
-  const help =
-    "push touches .github/: workflows run on push with repo secrets; the maintainer pushes these";
-  for (const cwd of new Set(cwds)) {
+  // A branch that edits .github/ used to be denied here, because workflows run
+  // on push with the repository's secrets. The maintainer released that on
+  // 2026-10-12 (docs/DECISIONS.md): every refspec above is one `claude/*`
+  // branch pushed to the same name, so a `.github/` change on such a branch is
+  // allowed. Merging it into main is still the maintainer's (merge-pr gate 5).
+  // An unknown working directory still fails closed: the repository the push
+  // goes to cannot be identified.
+  for (const cwd of cwds) {
     if (cwd === null) {
       return deny(
-        `Blocked: ${help} (the directory is unknown, so the branch cannot be checked).`,
+        `Blocked: \`git push\` runs in a directory the guard cannot determine, so the branch cannot be checked. ${PUSH_HELP}`,
       );
-    }
-    for (const b of branches) {
-      const r = git(cwd, [
-        "log",
-        "-1",
-        "--format=%H",
-        `${MAIN_REF}..refs/heads/${b}`,
-        "--",
-        ".github",
-      ]);
-      if (!r.ok) {
-        return deny(
-          `Blocked: could not compare ${b} with origin/main to look for .github/ changes (git failed: is the branch local and origin/main fetched?). Failing closed. ${PUSH_HELP}`,
-        );
-      }
-      if (r.out !== "") {
-        return deny(`Blocked: ${help}. Branch ${b}, commit ${r.out}.`);
-      }
     }
   }
   return null;

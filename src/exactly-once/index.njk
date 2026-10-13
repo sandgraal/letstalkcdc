@@ -227,7 +227,15 @@ eleventyComputed:
                 tries to `INSERT` the event ID into a `processed_events` table.
                 If it succeeds, it proceeds; if it fails (due to a primary key
                 violation), it knows the event is a duplicate and can be safely
-                ignored.
+                ignored. The ID insert and the sink write must happen in the
+                <strong>same transaction</strong>: if the ID is recorded and the
+                process crashes before the sink write, the replayed event is
+                skipped as a duplicate and the change is lost permanently.
+                This needs a primary key or unique constraint on the event ID,
+                in the same transactional store as the sink. In PostgreSQL a
+                unique violation aborts the transaction, so use
+                <code>INSERT ... ON CONFLICT DO NOTHING</code> and check the row
+                count.
               </li>
               <li>
                 <strong>Staging + MERGE:</strong> Land events into a staging table keyed by
@@ -263,6 +271,18 @@ for (event of stream) {
 }</code></pre>
           </div>
         </div>
+        <p>
+          <strong>These dedupe replays only.</strong> Keyed on the primary key
+          alone, <code>upsert_into_sink(event.key, event.payload)</code> lets a
+          late, older change overwrite a newer row, and the two event-ID
+          <code>MERGE</code> statements below leave the table unchanged when they
+          see an event again (they re-apply the same payload) but do nothing
+          about order. The sink still needs the
+          position-ordered upsert (apply a change only if its source log
+          position is greater than the one stored, as the per-hop table above
+          says; see
+          <a href="{{ '/partitioning/' | url }}#recon">Making Sinks Bulletproof</a>).
+        </p>
         <div class="code-comparison">
           <div>
             <h3 class="h-as-4">Warehouse MERGE (Snowflake-style)</h3>
@@ -274,6 +294,10 @@ WHEN NOT MATCHED THEN
 WHEN MATCHED THEN
   UPDATE SET payload = s.p;  -- idempotent overwrite
 </code></pre>
+            <p class="muted">
+              Untested: not run in Snowflake. It dedupes replays by event ID
+              only; it does not order changes.
+            </p>
           </div>
           <div>
             <h3 class="h-as-4">BigQuery MERGE (idempotent)</h3>
@@ -285,6 +309,10 @@ WHEN NOT MATCHED THEN
 WHEN MATCHED THEN
   UPDATE SET payload = s.payload;
 </code></pre>
+            <p class="muted">
+              Untested: not run against a live BigQuery project. It dedupes
+              replays by event ID only; it does not order changes.
+            </p>
           </div>
         </div>
         <h2 id="outbox">

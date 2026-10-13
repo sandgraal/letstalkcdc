@@ -1,6 +1,6 @@
 module.exports = {
   datePublished: "2026-08-27",
-  dateModified: "2026-08-27",
+  dateModified: "2026-10-12",
   seriesKey: "non-relational",
   heroConfig: {
     title: "CDC Beyond Relational Databases",
