@@ -67,6 +67,24 @@ it is merged with `node scripts/merge-pr.mjs`. A handoff PR carries no plan
 item, so the one-plan-item-per-PR rule has nothing to count. Numbers in it
 come from commands run this session.
 
+The same commit also folds the changelog fragments: feature PRs never edit
+`CHANGELOG.md`, they add `changelog.d/<topic>.md` (see
+`changelog.d/README.md`). Do the Retro (step 5) first, so any
+`docs/LESSONS.md` entries are already in the handoff worktree, cut from
+`origin/main`; then, from that worktree:
+
+```bash
+npm run changelog:compile -- --dry-run
+npm run changelog:compile
+npm run format
+```
+
+This inserts each fragment into `## [Unreleased]`, deletes the fragment
+files, and leaves the rest of `CHANGELOG.md` as it was. Commit the handoff
+block, the folded entries and the deletions together, in one commit by the
+conductor. If `--check` rejects a fragment, fix or delete that file on its
+own; do not hand-edit around it.
+
 ### 5. Retro
 
 The learning loop from the "Retro" section of `docs/TEAM-CHARTER.md`: models

@@ -27,6 +27,10 @@ npm run test         # unit tests
 ## Pull requests
 
 - Keep PRs focused. One topic per PR is easier to review and easier to revert.
+- Do not edit `CHANGELOG.md` in a PR. Add one new file
+  `changelog.d/<topic>.md` instead (format in `changelog.d/README.md`; check it
+  with `npm run changelog:compile -- --check`). The maintainer folds fragments
+  into the changelog.
 - Match the surrounding code style. Prettier and ESLint run via `npm run lint`.
 - For new content modules, follow **[docs/adding-modules.md](./adding-modules.md)**.
 - For visual changes, attach before/after screenshots in light and dark mode.

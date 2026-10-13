@@ -132,7 +132,7 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
 - `docs/CONTRIBUTING.md`, `docs/SETUP.md` (env vars, Supabase), `docs/HOSTING.md`
   (deploy and CI runbook), `docs/DEVELOPMENT.md`, `docs/adding-modules.md`,
   `docs/javascript-architecture.md`. `docs/TRACING.md` is retired and
-  `docs/archive/` is history, not spec. `CHANGELOG.md` `[Unreleased]` is the scratchpad.
+  `docs/archive/` is history, not spec. **Never edit `CHANGELOG.md` in a PR**: add one file `changelog.d/<topic>.md` (see its README); the conductor folds them.
 - Roles: `.claude/agents/`; commands: `.claude/commands/`. The Stop hook
   `.claude/scripts/check-merged-prs.sh` may rewake a session when a `claude/*`
   PR merges (state: `.claude/.merge-watcher-state.json`; delete it to stop).
