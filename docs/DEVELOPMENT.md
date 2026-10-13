@@ -210,7 +210,9 @@ as github.com answer those transiently to CI runner IPs and lychee does not
 retry a 5xx. A 404, 410, 403, 500, 502, DNS or TLS error still fails. The
 trade-off: a page that is down for a long time shows its status code in the
 verbose log, but does not fail the job. Do not add a `.lycheeignore` entry for a
-one-off 503; see the comments in the workflow.
+one-off 503; see the comments in the workflow. It also excludes
+`https://docs.opensearch.org/latest/` (a redirect loop on CI runners only; the
+pages return 200 from a normal client) and the YouTube nocookie embed.
 `deploy.yml` publishes to GitHub Pages. The playground has its own workflows
 (`playground-preflight.yml`, `playground-generated-bundles.yml`,
 `playground-harness-nightly.yml`).
