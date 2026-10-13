@@ -29,6 +29,56 @@ Deploy to GitHub Pages (_site/ directory)
 
 `src/static/googleeb5f2ebb27afc761.html` is the Google Search Console ownership file, served at `/googleeb5f2ebb27afc761.html`. Never delete, edit or reformat it (a unit test pins its exact 53-byte content); removing it un-verifies the property.
 
+### Content-Security-Policy (a `<meta>` tag)
+
+GitHub Pages cannot send response headers, so the policy is a
+`<meta http-equiv="Content-Security-Policy">` that `base.njk` (and the three
+layout-less pages: `404`, `mermaid-sandbox`, `styleguide`) emit as a
+placeholder. An Eleventy transform (`lib/csp.mjs`, wired in
+`eleventy.config.mjs`) fills it in after each page renders, because inline
+scripts are allowed by SHA-256 hash and the hash needs the final HTML.
+
+- `script-src 'self'` plus one hash per inline script (the module list, the
+  theme and path-prefix helpers, the optional Supabase config and GoatCounter
+  loader, the dashboard module). No `'unsafe-inline'`, no `'unsafe-eval'`.
+  Adding an inline script needs no change here; adding an inline event-handler
+  attribute (`onclick=`, `onload=`) or a `javascript:` URL fails
+  `npm run smoke:core` and `tests/unit/csp.test.js`.
+- Optional origins appear only when their build variable is set:
+  `SUPABASE_URL` (connect-src), `GOATCOUNTER_CODE` (`gc.zgo.at` script plus
+  `<code>.goatcounter.com` for img and connect), `BUTTONDOWN_USERNAME`
+  (`buttondown.com` in form-action). Always: `https://img.youtube.com`
+  (thumbnails) and `https://www.youtube-nocookie.com` (frames).
+- Page CSS that used to swap in through `onload=` now uses
+  `data-deferred-style`, switched on by `src/assets/js/utils/deferred-styles.js`.
+- Proof: `tests/unit/csp.test.js` (policy, no eval, every hash) and
+  `tests/e2e/csp.spec.js` (every built page loads with the policy enforced and
+  reports zero violations; Mermaid, Chart.js, the assistant and the video embed
+  are exercised).
+
+**What a meta policy cannot do.** `frame-ancestors`, `report-uri`, `report-to`
+and `sandbox` are ignored in a `<meta>` tag, so none are set: the site cannot
+forbid being framed and receives no violation reports. Only response headers
+(an own domain behind a CDN) can do that. The policy also applies only after
+the parser reaches the tag, so it is the first tag after `charset`.
+
+**Residual gaps, stated plainly.**
+
+- `style-src` keeps `'unsafe-inline'`. About 58 pages carry a page-scoped
+  `<style>` block, 59 files use `style=` attributes (97 progress bars alone)
+  and Mermaid injects styles at run time. Removing it was tried: it produced
+  hundreds of violations. Style injection cannot run script, but it can
+  restyle or exfiltrate through CSS selectors. Closing it is CSS work (move
+  the blocks and attributes into classes).
+- Hash allow-listing trusts every inline script in the built HTML. A content
+  bug that lets markup through unescaped would still be allowed to add one.
+- The Change Feed Playground (`/playground/`) is a separate app, copied in at
+  deploy, with its own `<head>`. This policy does not cover it, and it loads
+  its Supabase library from jsDelivr.
+- The GoatCounter origins are taken from its public documentation and have not
+  been exercised against a live counter (no `GOATCOUNTER_CODE` is set in
+  the e2e build).
+
 ### Change Feed Playground (`/playground/`)
 
 The interactive Change Feed Playground lives in `playground/` (imported with its

@@ -10,6 +10,7 @@
  * @module app
  */
 
+import "./utils/deferred-styles.js";
 import { initTheme } from "./modules/theme.js";
 import { initNavigation } from "./modules/navigation.js";
 import { initSearch } from "./modules/search.js";
