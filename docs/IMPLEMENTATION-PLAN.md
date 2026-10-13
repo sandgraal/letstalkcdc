@@ -2528,7 +2528,7 @@ everything in the data-gated menu until 2026-11-06.
 Added 2026-10-11 from the review rounds of the kit's pull requests. None of
 these blocks merging the kit or the drill (P17-10).
 
-- [ ] **P17-52 · Narrow the thesis lint's exactly-once scope words, and
+- [x] **P17-52 · Narrow the thesis lint's exactly-once scope words, and
       decide R3.** Outcome: an exactly-once claim is no longer excused by a
       word that merely appears nearby. Evidence: in #444 the words
       `transactions`, `processing` and `hop` anywhere in a sentence excuse an
@@ -2543,6 +2543,7 @@ these blocks merging the kit or the drill (P17-10).
       shown for each narrowed word. Size: M. Role: `implementer`, then
       `reviewer`. Needs: #444 merged.
       _Status: not started._
+      Done 2026-10-13. The exactly-once scope words (hop, processing, transactions, opt-in and the rest) now excuse a claim only in its own clause and within eight words of it (`eosScoped` in `lib/thesis-lint.mjs`); 7 old false negatives fail in `tests/unit/thesis-lint.test.js`, each scope word has a mutation proof, and `npm run lint:thesis` is ok with 4 new hop-scoped allowlist entries (8 in all; no scope phrases were added to the lint, so "for sink connectors across the whole pipeline", "with respect to the end-to-end pipeline" and "exactly-once in its observable effect" fail). R3 is not implemented; the lint header records why.
 - [ ] **P17-53 · Technical-editor review of the four allowlisted copy
       findings.** Outcome: the four lines the thesis lint could not clear are
       either corrected or defended, and the allowlist is empty. Evidence: the
@@ -2625,7 +2626,7 @@ these blocks merging the kit or the drill (P17-10).
         retried. The leftover local branch is removed by hand: remove the
         worktree (`scripts/worktree-prune.sh` does this for merged work but
         leaves branches), then `git branch -D <name>`.
-- [ ] **P17-58 · Make commit-making tests hermetic about git identity.**
+- [x] **P17-58 · Make commit-making tests hermetic about git identity.**
       Outcome: every test that creates a commit or merge passes with no git
       identity configured, as on a CI runner. Evidence: macOS guesses an
       identity, CI runners do not; CI found tests depending on the runner's
@@ -2644,6 +2645,7 @@ these blocks merging the kit or the drill (P17-10).
 
       Size: S. Role: `implementer`. Needs: none.
       _Status: not started._
+      Done 2026-10-13. Audit of `tests/unit` for `git commit` / `git merge` calls: `guard-bash.test.js` (2 helpers), `guard-edit.test.js` (1), `worktree-prune.test.js` (1 helper plus one direct spawn), `merge-pr.test.js` (3 real-git blocks). Every one now runs with the environment from `tests/unit/helpers/git-env.js`: `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, `user.useConfigOnly=true`, inherited `GIT_CONFIG_*` removed, and its own identity. The `merge-pr.test.js` signature block (line ~4410) had no hermetic environment before. `check-merged-prs`, `doc-facts` and `no-appwrite` run git without committing. `tests/unit/git-env.test.js` proves a commit succeeds with the helper and is refused without an identity.
 
 - [x] **P17-61 · Learning loop: lessons ledger, regression-artifact rule,
       retro step, ratchet test.** Outcome: a mistake met once is stopped by the
@@ -2692,6 +2694,7 @@ these blocks merging the kit or the drill (P17-10).
       `docs/LESSONS.md` closes L-014. (c) the scheduled drift-check workflow
       stays open: it needs the maintainer. The box stays unticked until (c)
       is done. This change touches `.claude/**`, so the maintainer merges it._
+  - 2026-10-13: ledger sweep. L-018 closes L-002 (new `tests/unit/hermetic-git.test.js`), L-019 closes L-004 (time-relative wording check in `tests/unit/doc-facts.test.js`, allowlist: this plan and the ledger), L-020 closes L-006, L-021 closes L-001 (ruleset read via `gh api`). Open or partially, with no executable mechanism: L-003 (P17-55), L-007, L-008, L-009, L-010, L-011, L-012 (author part). (c) as written in the Accept line (the doc-facts check) is in; the "scheduled drift-check workflow" named in the 2026-10-12 status is not defined anywhere (no schedule, no scope, no failure action) and a workflow file is the maintainer's, so it is not built. The box stays unticked until the maintainer defines or drops it.
 
 - [ ] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
 - [x] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
@@ -2797,6 +2800,7 @@ these blocks merging the kit or the drill (P17-10).
       full unit suite passes and the ratchet floors are unchanged.
 - [x] **P17-67 · Changelog fragments (maintainer, 2026-10-13).** PRs add one file `changelog.d/<topic>.md` and never edit `CHANGELOG.md`; `scripts/changelog-compile.mjs` (`npm run changelog:compile`, `--check`, `--dry-run`) folds them into `[Unreleased]`; proved by `tests/unit/changelog-compile.test.js`. Touches `CLAUDE.md`, `.claude/` and `.github/`, so the maintainer merges it by hand.
 - [x] **P17-68 · Plan fragments (maintainer, 2026-10-13).** PRs add one file `plan.d/<item-id>-<topic>.md` (`item:`, `action: done|status|add`, then the text) and never edit this file; `scripts/plan-apply.mjs` (`npm run plan:apply`, `--check`, `--dry-run`) applies them; proved by `tests/unit/plan-apply.test.js`. This is the last PR that edits the plan directly. Touches `CLAUDE.md`, `.claude/` and `.github/`, so the maintainer merges it by hand.
+- [ ] **P17-71 · Merge gate preflight: fail fast when `node_modules` is missing.** Outcome: `scripts/merge-pr.mjs` checks, before the test-merge, that the caller's root has `node_modules` (the scratch worktree symlinks to it) and stops with a one-line message naming `npm ci` instead of `vitest: command not found`; a unit test covers it. Size: S. Role: `implementer`. Needs: none. This edits the merge script, which the hooks protect, so the maintainer merges it (L-022).
 
 ### Autopsy, in two parts
 
@@ -2924,7 +2928,7 @@ goes to `css-refactor` with before and after production hashes.
       `src/_data/series.mjs`; the host is `site.host`; the file states CC BY 4.0
       and that attribution is required. `robots.txt` is unchanged (it already
       allows everything). Test: `tests/unit/llms-txt.test.js`.
-- [ ] **P17-22 · Markdown copy of each page.** Outcome: every indexable page
+- [x] **P17-22 · Markdown copy of each page.** Outcome: every indexable page
       has a clean `.md` twin that retrieval tools can read. Accept: the build
       writes a Markdown version beside each indexable page's HTML (prose,
       headings, code blocks and tables; no scripts or navigation); each HTML
@@ -2933,6 +2937,7 @@ goes to `css-refactor` with before and after production hashes.
       sample pages. Verify: `npx vitest run`, `npm run build`,
       `npm run smoke:core`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: P17-21 (the index links to the copies).
+      Shipped in the PR carrying this change: `src/markdown-twins.11ty.cjs` writes an `index.md` beside every sitemap page (56 of them), converted by `lib/markdown-twin.cjs` with no dependency; `base.njk` links each with `<link rel="alternate" type="text/markdown">` and `llms.txt` lists each twin. Proved by `tests/unit/markdown-twin.test.js` (headings and code blocks equal the HTML on three sample pages) and the twin checks in `scripts/smoke.mjs`. GitHub Pages cannot set `X-Robots-Tag`, so each twin names its canonical HTML URL in its first lines.
 - [x] **P17-23 · Vendor Mermaid and Chart.js with SRI.** Outcome: the site
       stops loading these two libraries from a third-party CDN. Accept: both
       are served from the site's own `/assets/` from pinned npm versions
@@ -2952,7 +2957,7 @@ goes to `css-refactor` with before and after production hashes.
       remaining `rg` hit is `src/privacy/index.njk`, which must keep naming
       jsDelivr because the Change Feed Playground still loads its Supabase
       library from there (vendoring that is a separate item)._
-- [ ] **P17-24 · Meta Content-Security-Policy.** Outcome: a CSP is actually
+- [x] **P17-24 · Meta Content-Security-Policy.** Outcome: a CSP is actually
       served (the `.htaccess` check in `scripts/smoke.mjs` never ran, and
       GitHub Pages cannot set headers, so this is a `<meta>` policy). Accept:
       `base.njk` emits a policy that allows only the site itself plus the exact
@@ -2963,7 +2968,8 @@ goes to `css-refactor` with before and after production hashes.
       mechanism; the docs say that `frame-ancestors` is ignored in a meta tag.
       Verify: `npm run verify-all`, `npm run smoke:core`, the e2e run. Size: M.
       Role: `implementer`, then `reviewer`. Needs: P17-23.
-- [ ] **P17-25 · `labs-verify` GitHub Actions workflow.** Outcome: the compose
+      Shipped: a meta Content-Security-Policy on every page (lib/csp.mjs, Eleventy transform) with SHA-256 hashes for inline scripts and no script unsafe-inline or unsafe-eval; checked by `tests/unit/csp.test.js`, `tests/e2e/csp.spec.js` (95 tests, zero violations) and `npm run smoke:core`. Open gap: style-src keeps unsafe-inline; see docs/HOSTING.md.
+- [x] **P17-25 · `labs-verify` GitHub Actions workflow.** Outcome: the compose
       labs are run on a runner, so nobody needs Docker locally; this unblocks
       P15-37 and P15-46. Accept: first a short spike confirms that a hosted
       runner can run `docker compose` for the lab files (Actions runners ship
@@ -2974,7 +2980,8 @@ goes to `css-refactor` with before and after production hashes.
       minutes. Verify: a green workflow run URL and its uploaded log. Size: M.
       Role: `implementer`, then `reviewer`. Needs: the maintainer's approval,
       because it changes CI (as in P16-30).
-- [ ] **P17-26 · AI-provenance label driven by `reviewedBy` / `reviewedOn`.**
+      `.github/workflows/labs-verify.yml` and `scripts/labs-verify.mjs` run the Postgres path of `compose.yaml`. First run 38451400038 failed at the kcat read-back (the check expected flat events; the image emits `{schema, payload}`); after the fix, `workflow_dispatch` run https://github.com/sandgraal/letstalkcdc/actions/runs/38452455447 passed all 7 steps on branch `claude/p17-25-labs-fix`. Runner and tool versions are in that run's log.
+- [x] **P17-26 · AI-provenance label driven by `reviewedBy` / `reviewedOn`.**
       Outcome: readers can see when a human reviewed a page, and the site
       never claims a review that did not happen. Accept: optional `reviewedBy`
       and `reviewedOn` front matter; the page-meta block shows a line such as
@@ -2985,6 +2992,7 @@ goes to `css-refactor` with before and after production hashes.
       Verify: `npm run verify-all`, `npm run smoke:core`. Size: M. Role:
       `implementer`, then `reviewer`; `css-refactor` if the line needs a rule.
       Needs: none.
+      Shipped: optional `reviewedBy` + `reviewedOn` drive a "Technically reviewed by NAME on DATE" line and JSON-LD `reviewedBy`, only when both are set; the byline date now reads "Last updated". No page sets either field. Proved by `tests/unit/review-provenance.test.js`, `npm run verify-all` and `npm run smoke:core`.
 - [ ] **P17-27 · Fix the Matillion cloud-lab dedupe advice.** Outcome: the lab
       no longer teaches an unsafe pattern. Evidence:
       `src/cloud-labs/matillion-cdc/index.njk` (around line 621) tells readers
@@ -3000,7 +3008,7 @@ goes to `css-refactor` with before and after production hashes.
       `reviewer`. Needs: a maintainer read of the
       new wording before merge. The other cloud-lab pages were not checked by
       this item.
-- [ ] **P17-28 · Accessibility statement.** Outcome: a public statement of the
+- [x] **P17-28 · Accessibility statement.** Outcome: a public statement of the
       conformance target and the known gaps. Accept: `/accessibility/` states
       the WCAG 2.2 AA target, what is tested automatically (axe in CI, in both
       themes, including the playground) and what is not, the known gaps taken
@@ -3009,6 +3017,7 @@ goes to `css-refactor` with before and after production hashes.
       `npm run verify-all`, `npm run smoke:core`, `npm run smoke:a11y`. Size:
       S. Role: `implementer`, then `reviewer`. Needs: none; the report route is
       the GitHub issue template from P17-5 until P17-29 gives a contact email.
+      Published `/accessibility/` (WCAG 2.2 AA stated as a target, no conformance claim, automated checks with their limits, assistive-technology testing stated as not done, known gaps, report route via the contact page and the bug form, footer link). Wording approved by the maintainer on 2026-10-13 (merge all when green) after an independent claim-by-claim review. The item's "known gaps from open P15 items" has no open P15 accessibility item, so the gaps come from the e2e filter list instead; "and from P17-16 when it lands" is conditional on P17-16, which is maintainer-only and still open.
 - [x] **P17-29 · `security.txt` and a contact page.** Outcome: there is a
       standard way to report a security problem and to reach the author.
       Accept: `/.well-known/security.txt` per RFC 9116 with `Contact`,
@@ -3047,7 +3056,7 @@ that is satisfied. Where a module overlaps a Phase 16 item or the gap plan,
 check [`content-gap-plan-2026-10.md`](content-gap-plan-2026-10.md) first so
 nothing is written twice.
 
-- [ ] **P17-31 · Guided path: hub and progress.** Outcome: a `/path/` page
+- [x] **P17-31 · Guided path: hub and progress.** Outcome: a `/path/` page
       that shows three tracks and where the reader is. Justified by: low
       pages per visit or high exits on `/intro/` in GoatCounter, and questions
       of the form "where do I start". Accept: a hub driven by data in
@@ -3055,6 +3064,7 @@ nothing is written twice.
       locally only. Verify: `npm run verify-all`, `npm run smoke:core`. Size:
       S. Role: `implementer`. Needs: none for the build; choose the tracks from
       the data.
+      Shipped: the `/path/` hub, `src/_data/paths.mjs` (newcomer, operator, architect; only `intro/` seeded, routes are P17-32..34) validated against `series.mjs` by `lib/guided-paths.mjs`, and local-only progress in `src/assets/js/pages/path.js`. Proved by `tests/unit/guided-paths.test.js`, `npm run verify-all` and `npm run smoke:core`.
 - [ ] **P17-32 · Guided path track: newcomer.** Outcome: an ordered route for
       a reader new to CDC. Justified by: the top entry pages being the
       introductory ones. Accept: an ordered list of existing lessons with a
@@ -3084,7 +3094,7 @@ nothing is written twice.
       clicks and visits for the five pages against five comparable lessons,
       with the caveat that the sample is tiny. Verify: the exports used. Size:
       S. Role: `scout`, then `reviewer`. Needs: P17-35 plus 8 weeks of data.
-- [ ] **P17-37 · Assistant golden set and evaluation.** Outcome: a fixed list
+- [x] **P17-37 · Assistant golden set and evaluation.** Outcome: a fixed list
       of questions with the intent each should hit, and a test that scores the
       assistant against it. Justified by: any change to the assistant's
       matching (including P17-38) needing a measure. Accept: at least 40
@@ -3092,6 +3102,7 @@ nothing is written twice.
       too little real data, the questions are written from the lessons and the
       file says so. Verify: `npx vitest run`. Size: M. Role: `implementer`,
       then `reviewer`. Needs: P17-20.
+      Shipped: `tests/fixtures/assistant-golden.json` (55 in-scope and 8 out-of-scope questions, 10 of them adversarial, with thesis assertions and a forbidden-claims list), `scripts/assistant-golden.mjs` (offline report of precision@1 and not-answered rate, per intent), and `tests/unit/assistant-golden.test.js` with floors in `tests/fixtures/assistant-golden-baseline.json`. Baseline 53/63 pass, precision@1 45/55; 10 known failures are recorded for follow-up. The questions are written from the lessons because P17-20 had not run (the fixture says so). Proved by `npx vitest run tests/unit/assistant-golden.test.js`.
 - [ ] **P17-38 · Semantic search spike (retrieval only).** Outcome: a recorded
       answer to whether embedding-based retrieval beats the current search on
       the golden set, with no generation and no paid service. Justified by:

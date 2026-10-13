@@ -6,8 +6,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Latest handoff (2026-10-13)
+
+- **Merged this session (#430 to #482).** Merge gate and autonomy charter
+  (#445, #446, #447, #450, #454, #458); advisory gates, relaxed maintainer-only
+  list and Dependabot lane (#462, #463); changelog and plan fragments (#464,
+  #466); required status checks on the `default` ruleset (#470); meta CSP
+  (#481); Markdown twins of every page (#474, #451 `llms.txt`); review
+  provenance line (#472); accessibility statement (#480); `labs-verify`
+  workflow and lab fix (#477, #482); guided-path hub `/path/` (#478);
+  assistant golden question set (#476); thesis-lint scope narrowing (#479);
+  errata batches (#455, #461); `security.txt` and contact page (#459);
+  self-hosted Mermaid and Chart.js with SRI (#460); CI link-check fixes (#456,
+  #467, #469); Dependabot merges (#433, #435 to #437, #439 to #441).
+- **Open.** Dependabot #438 (`upload-pages-artifact` 5) drops `.well-known`;
+  the guard test fails, keep it unmerged. Dependabot #442 (`react-dom` 19)
+  conflicts with React 18 and testing-library 14; it needs a coordinated React
+  upgrade, a maintainer decision. No team PRs are open.
+- **Measured.** Assistant golden set passes 53 of 63, with 10 known failing
+  questions, 4 of them thesis-critical (`tests/fixtures/assistant-golden.json`
+  `knownFailures`). `/intro/` Lighthouse performance 0.89, and its dom-size
+  audit is accepted. `labs-verify` green run 38452455447; the README now says
+  PostgreSQL 16. 4,323 unit tests in 90 files pass; 90 HTML files, 59 sitemap
+  entries, 37 modules.
+- **Blocked.** On the maintainer: #442 React decision (raised 2026-10-13);
+  P17-48 domain and P17-49 hosting decisions, due 2026-10-23; P17-30 disclosure
+  page wording; P17-16 assistive-technology testing; P17-71 (a merge-script
+  edit, hook-protected).
+- **Next, in order.** (1) P17-53, editor review of the four passages P17-52
+  allowlisted. (2) P17-32 to P17-34, the guided-path tracks. (3) P17-35, answer
+  pages. (4) P17-30, disclosure page (maintainer wording). (5) P17-27, Matillion
+  advice, held until the disclosure is published. (6) Assistant golden
+  failures: fix the 10 known failing questions, above all `exactly_once`
+  outranking specific intents; raise the baseline as each passes. (7) P17-38
+  and P17-39. (8) P17-40 to P17-43, modules. (9) P17-50, dependency majors.
+  (10) P17-16, AT testing (maintainer). (11) P17-14 and P17-15, executed
+  SQL and Docker. (12) P17-19 and P17-20, data-gated, after 2026-11-06.
+- **Open risks.** The guard hooks are a net, not a boundary; the known bypass
+  forms are listed in `docs/CONDUCTOR.md`. The `*_SCHEMAS_ENABLE` variables in
+  `compose.yaml` are ineffective (Kafka Connect needs the `CONNECT_` prefix);
+  whether to change the lab's behaviour is a decision. Follow-up for
+  `.claude/rules/css.md`: style the guided-path steps through `css-refactor`
+  if needed. The meta CSP keeps `style-src 'unsafe-inline'`.
+
 ### Added
 
+- **Markdown copy of every page (P17-22).** Each indexable page now has a clean
+  Markdown twin at a predictable address: `/intro/` has `/intro/index.md`, and
+  the home page has `/index.md`. The twin holds the page's prose, headings,
+  lists, tables and code blocks, with absolute links, and none of the scripts or
+  navigation. Each HTML page points to its twin with
+  `<link rel="alternate" type="text/markdown">`, and `/llms.txt` lists the twin
+  next to each page. A twin names the canonical HTML page in its first lines,
+  because GitHub Pages cannot send a `noindex` or canonical header.
+- **Content-Security-Policy (P17-24).** Every page now carries a `<meta http-equiv="Content-Security-Policy">`: scripts only from the site itself plus a SHA-256 hash for each inline script (no `unsafe-inline`, no `unsafe-eval`), and only the exact third-party origins in use (YouTube no-cookie player and thumbnails; Supabase, GoatCounter and Buttondown when configured). Page stylesheets that swapped in through an inline `onload=` handler now use `data-deferred-style`. Styles still allow `unsafe-inline`. A meta tag cannot set `frame-ancestors` or report violations; see `docs/HOSTING.md`.
+- **`labs-verify` workflow (P17-25).** A manual and weekly GitHub Actions workflow now starts the Postgres path of the `compose.yaml` sandbox on a hosted runner and fails if Kafka Connect does not answer, the five seed products are missing, the documented connector does not reach RUNNING, or the snapshot and UPDATE change events do not show up in Kafka. The logic is in `scripts/labs-verify.mjs`. It is not a required check; the MySQL path and the cloud labs are not covered.
+- **Review provenance line (P17-26).** A page can now set `reviewedBy` and `reviewedOn` in its front matter; only when both are set does the page footer show "Technically reviewed by NAME on DATE" and the Article JSON-LD declare `reviewedBy`. No page sets them yet. The footer date, which used to read "Last reviewed" even when an edit (not a review) moved `dateModified`, now reads "Last updated".
+- **Accessibility statement (P17-28).** New `/accessibility/` page, linked from the footer: states WCAG 2.2 AA as the target without claiming conformance, what the automated axe and pa11y checks cover and cannot catch, that testing with assistive technology has not been done, the known gaps, and how to report a barrier. The wording awaits maintainer approval.
+- **Guided paths hub (P17-31).** A new `/path/` page lays out three tracks, Newcomer, Operator and Architect, as ordered lists of existing lessons. It works without JavaScript; with it, each step is labelled "completed" or "opened" from the progress already kept in your browser (localStorage only, nothing is sent). The track contents are still to come: only the introduction is listed so far, and the other two tracks say they are being written.
+- **Assistant golden question set (P17-37).** A fixed list of 63 questions (55 in scope, 8 out of scope, 10 adversarial) is scored against the assistant's matcher and knowledge base, offline, with `node scripts/assistant-golden.mjs`. The questions that touch the thesis also check the returned answer: it must state at-least-once delivery or ordering on the log position, and no answer may claim end-to-end exactly-once or ordering on `ts_ms`. A test holds the score at or above a recorded floor (45 of 55 in-scope questions answered by the intended intent today) and lists the 10 questions that fail now.
 - **Merge script gates 4, 4b and 5 are advisory by default; `--strict`
   restores them (P17-66).** After the maintainer said in chat on 2026-10-13 to
   get rid of the paperwork gates so agents can be more autonomous (quoted in
@@ -230,6 +287,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The thesis lint no longer accepts a loose scope word as per-hop scoping (P17-52).**
+  A word such as `hop`, `processing` or `transactions` now excuses an
+  exactly-once claim only when it sits in the claim's own clause and within
+  eight words of it, so "Transactions are fine, but the pipeline is
+  exactly-once" fails the lint. Four real lines that state a per-hop claim in context are allowlisted
+  in `lib/thesis-lint.allow.json` instead of loosening the scope words. The lint header records why rule R3 is not implemented.
 - **Required status checks on the `default` ruleset (P17-3).** `main` now requires `build`, `lint`, `unit-tests`, `e2e-tests`, `a11y-tests`, `smoke-tests` and `security-audit` (branches need not be up to date); `lychee` and `lighthouse` are not required, and `CLAUDE.md` and the maintainer tasks say so.
 - **Changelog fragments, so a PR never edits `CHANGELOG.md` (P17-67).** Add one
   new file under `changelog.d/` (optional first line
@@ -298,6 +361,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`labs-verify` read-back (P17-25).** The first run (38451400038) failed to see any change event although kcat was reading the right topic, `dbserver1.public.products`: the `debezium/connect` image ignores the compose `KEY_CONVERTER_SCHEMAS_ENABLE` and `VALUE_CONVERTER_SCHEMAS_ENABLE` variables, so events arrive wrapped as `{schema, payload}` and the check looked for a flat envelope. The check now accepts both shapes, and a failed run writes `topics.log` (`kcat -L`) next to the other logs. `sandbox/README.md` now says PostgreSQL 16, the version the run logged (16.6).
+- **Commit-making tests no longer depend on the machine's git identity (P17-58).**
+  Tests that run `git commit` or `git merge` now share
+  `tests/unit/helpers/git-env.js`, which gives them no global or system git
+  config, `user.useConfigOnly`, and their own identity, so they behave the same
+  on a CI runner as on a developer machine that guesses a name. The
+  `merge-pr.test.js` signature block had no such environment and now has.
 - **CI keeps `_site/.well-known` between jobs (P17-64, L-015).** The `build` job's
   `actions/upload-artifact` step now sets `include-hidden-files: true`, so the
   smoke job sees `/.well-known/security.txt` again. The temporary CI skip in
@@ -1534,6 +1604,15 @@ Net effect: `src/assets/css/` drops from 47 to 13 files. Verified the
 production output `_site/assets/css/styles.css` is byte-identical
 (SHA256 `4843ff26…`) before and after the purge — no shipped CSS rule
 changed.
+
+### Docs
+
+- **Closed four ledger entries that now have a mechanism (P17-62).**
+  `docs/LESSONS.md` gains L-018 to L-021, closing L-002, L-004, L-006 and L-001.
+  New tests back two of them: `tests/unit/hermetic-git.test.js` fails a
+  commit-making test that skips the hermetic git environment, and
+  `tests/unit/doc-facts.test.js` fails on time-relative wording such as "not on
+  main yet" in tracked Markdown.
 
 ## [2.0.0] — 2026-02-06
 

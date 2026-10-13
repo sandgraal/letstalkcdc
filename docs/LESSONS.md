@@ -382,3 +382,17 @@ false` since v4.4).
   `lighthouse` are deliberately not required
   ([`DECISIONS.md`](DECISIONS.md)).
 - Status: prevented
+
+### L-022 The merge gate needs `node_modules` in the checkout that runs it
+
+- Date: 2026-10-13 (source: conductor session record)
+- What happened: Running the merge gate from a checkout without
+  `node_modules` failed its local test step with `vitest: command not found`,
+  because the scratch worktree symlinks to the caller's `node_modules`. The
+  message did not say the install was missing.
+- Root cause: the script assumes the caller's root has been installed and has
+  no preflight for it.
+- Prevented by: none yet. Tracked in P17-71 of
+  [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md); until then run `npm ci`
+  in the checkout that runs `scripts/merge-pr.mjs`.
+- Status: open

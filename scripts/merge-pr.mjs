@@ -3,7 +3,7 @@
 //
 // The single sanctioned way for an AI agent to merge a pull request.
 // "Merge after green CI and review" is enforced here rather than trusted,
-// because the ruleset on main has no required status checks.
+// because the ruleset on main requires CI checks but not review (and not "up to date").
 //
 //   node scripts/merge-pr.mjs <pr-number>             dry run (default)
 //   node scripts/merge-pr.mjs <pr-number> --execute   merge if no gate refuses

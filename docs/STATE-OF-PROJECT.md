@@ -1,5 +1,9 @@
 # State of the project — 2026-10-11
 
+> Update 2026-10-13: the TL;DR bullets and the rows marked (2026-10-13) in
+> Measured were re-run on `origin/main` after the fold; the per-file guard
+> test counts and the rest are not re-measured and keep their 2026-10-11 values.
+
 A dated snapshot, written after the handoff kit (Phase 17) merged. Every number
 below came from a command run on 2026-10-11 in a worktree of `main` at
 **`05f7e7d`** (`05f7e7de0bf99f333c46fef1a38d0bae0ab78454`, "docs(agents): team
@@ -15,30 +19,30 @@ running checklist is [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md).
 - The handoff kit is on `main`: 12 commits since the previous snapshot's
   `bd5a2a4` (`git log --oneline bd5a2a4..origin/main | wc -l`). Phase 17 items
   P17-1, P17-2, P17-4, P17-5, P17-6, P17-7, P17-8 and P17-9 are shipped.
-- 36 modules (`series.mjs`), 3,454 unit tests in 66 files (3,453 pass and 1 is skipped until `_site/` exists).
-- 10 PRs are open, all Dependabot bumps (#433 to #442). The team has none open;
+- 37 modules (`series.mjs`), 4,323 unit tests in 90 files, all passing (2026-10-13).
+- 2 PRs are open, both Dependabot (#438, #442; 2026-10-13). The team has none open;
   the post-merge sweep (P17-59) shipped in the sweep PR.
-- `main` has no required status checks yet (ruleset state below). Turning them
-  on is the first maintainer task today.
+- The `default` ruleset has required status checks since 2026-10-13 (seven
+  checks, "up to date" off; see the ruleset rows below).
 - The maintainer answered the three charter questions on 2026-10-11; see
   [`DECISIONS.md`](DECISIONS.md).
 
 ## Measured
 
-| What                             | Value                                                                              | Command                                                                             |
-| -------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Unit tests                       | 3,453 passed, 1 skipped (3,454), 66 files, 66 s; 3,454 passed after a build exists | `npm test -- --testTimeout=120000`                                                  |
-| Modules                          | 36                                                                                 | `node -e 'import("./src/_data/series.mjs").then(m=>console.log(m.default.length))'` |
-| HTML files in `_site/`           | 87                                                                                 | `npm run build`, then `find _site -name '*.html' \| wc -l`                          |
-| Sitemap entries (local build)    | 56                                                                                 | `grep -c '<loc>' _site/sitemap.xml`                                                 |
-| Open plan boxes on `main`        | 64                                                                                 | `git show origin/main:docs/IMPLEMENTATION-PLAN.md \| grep -c '^ *- \[ \]'`          |
-| Open plan boxes with this sweep  | 59 (157 ticked)                                                                    | `grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`; `grep -c '^ *- \[x\]' ...`      |
-| Guard and gate tests, by file    | `guard-bash` 961, `guard-edit` 103, `merge-pr` 326                                 | `npx vitest run tests/unit/<file> --reporter=verbose`, counting test lines          |
-| Thesis lint, roster, docs, prune | `thesis-lint` 276, `agent-roster` 27, `doc-facts` 27, `worktree-prune` 13          | same command                                                                        |
-| Merged since the last snapshot   | #428, #429, #430, #431, #432, #443, #444, #445, #446, #447, #448, #449             | `gh pr list --state merged -L 15`                                                   |
-| Open PRs                         | 10: #433 to #442, all `chore(deps)` Dependabot                                     | `gh pr list --state open`                                                           |
-| Ruleset `default` rules          | `deletion, non_fast_forward, code_scanning, code_quality, pull_request`            | `gh api repos/sandgraal/letstalkcdc/rulesets/16512225 --jq '[.rules[].type]'`       |
-| Required status checks           | **None yet** (to be added by the maintainer, task 2)                               | same command; no `required_status_checks` rule                                      |
+| What                             | Value                                                                                                        | Command                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Unit tests                       | 4,323 passed, 90 files, 77 s (2026-10-13)                                                                    | `npm test -- --testTimeout=120000`                                                  |
+| Modules                          | 37 (2026-10-13)                                                                                              | `node -e 'import("./src/_data/series.mjs").then(m=>console.log(m.default.length))'` |
+| HTML files in `_site/`           | 90 (2026-10-13)                                                                                              | `npm run build`, then `find _site -name '*.html' \|                                 |
+| Sitemap entries (local build)    | 59 (2026-10-13)                                                                                              | `grep -c '<loc>' _site/sitemap.xml`                                                 |
+| Open plan boxes on `main`        | not re-measured                                                                                              | `git show origin/main:docs/IMPLEMENTATION-PLAN.md \|                                |
+| Open plan boxes with this sweep  | 46 open, 181 ticked (2026-10-13, after the fold)                                                             | `grep -c '^ *- \[ \]' docs/IMPLEMENTATION-PLAN.md`; `grep -c '^ *- \[x\]' ...`      |
+| Guard and gate tests, by file    | `guard-bash` 961, `guard-edit` 103, `merge-pr` 326                                                           | `npx vitest run tests/unit/<file> --reporter=verbose`, counting test lines          |
+| Thesis lint, roster, docs, prune | `thesis-lint` 276, `agent-roster` 27, `doc-facts` 27, `worktree-prune` 13                                    | same command                                                                        |
+| Merged since the last snapshot   | #428, #429, #430, #431, #432, #443, #444, #445, #446, #447, #448, #449                                       | `gh pr list --state merged -L 15`                                                   |
+| Open PRs                         | 2: #438, #442, both Dependabot (2026-10-13)                                                                  | `gh pr list --state open`                                                           |
+| Ruleset `default` rules          | `deletion, non_fast_forward, code_scanning, code_quality, pull_request, required_status_checks` (2026-10-13) | `gh api repos/sandgraal/letstalkcdc/rulesets/16512225 --jq '[.rules[].type]'`       |
+| Required status checks           | Seven: build, lint, unit-tests, e2e-tests, a11y-tests, smoke-tests, security-audit; strict off (2026-10-13)  | same command; no `required_status_checks` rule                                      |
 
 ## CI state of `main`
 
