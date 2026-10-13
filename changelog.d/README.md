@@ -23,7 +23,9 @@ one or more lines, written exactly as it should read inside a bullet.
   optional. The default is `Changed`.
 - The rest is the entry text without the leading `- `. Continuation lines
   are indented for you.
-- Do not start the text with a list marker or a `#`.
+- The text may not start with `#`, `- `, `* `, `+ ` or a number and a dot
+  (`1. `). The check rejects it. In particular `#464 fixed X` reads as a
+  heading and must be reworded, for example `PR 464 fixed X`.
 - Files that are not `.md`, an empty entry or an unknown type are rejected.
 
 Check it before you push:
@@ -47,9 +49,20 @@ npm run format                           # then commit CHANGELOG.md and the dele
 ```
 
 Each entry goes to the top of the first matching `### <Type>` heading inside
-`## [Unreleased]` (newest first). A missing heading is created. The
-compile is idempotent: a second run finds no fragments. Existing
-`CHANGELOG.md` text is never rewritten.
+`## [Unreleased]`. Entries within one type group are ordered by fragment
+**file name** (`a-...md` before `b-...md`), not by date, so name files with
+that in mind. A missing heading is created. The compile is idempotent: a
+second run finds no fragments. Existing `CHANGELOG.md` text is never
+rewritten.
+
+`CHANGELOG.md` is written atomically (temp file in the same directory, then
+rename) before any fragment is deleted. If a delete fails, the script lists the
+fragments that remain and exits 1. Rerun it: a fragment whose exact bullet is
+already under its type in `## [Unreleased]` is deleted without being inserted
+again, so nothing is duplicated.
+
+`--dir <path>` and `--changelog <path>` need a value; a missing value or one
+starting with `--` prints the usage and exits 2.
 
 This directory is outside Eleventy's input directory (`src/`), so it is
 never built into the site.

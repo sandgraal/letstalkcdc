@@ -6,24 +6,38 @@
  *   npm run changelog:compile -- --dry-run print what would change, write nothing
  *   npm run changelog:compile -- --check   validate the fragments, write nothing
  *
+ * Options: `--dir <path>` and `--changelog <path>` each take a value. A value
+ * that is missing or starts with `--` (so `--dir --check` cannot swallow the
+ * next flag) is rejected: usage on stderr, exit 2. Exit 1 means fragments were
+ * rejected or a write/delete failed; exit 0 is success.
  * A pull request never edits CHANGELOG.md. It adds ONE new file under
  * changelog.d/ (unique name, so no merge conflict) and the conductor folds the
  * fragments into `## [Unreleased]` in one commit. See changelog.d/README.md.
  *
  * Fragment format: an optional first line `type: Added|Changed|Fixed|Removed|
  * Security|Docs` (default Changed), then the entry text exactly as it should
- * read inside a bullet (without the leading "- ").
+ * read inside a bullet (without the leading "- "). The entry may not start
+ * with `#`, `- `, `* `, `+ ` or a number and a dot (`1. `): `#464 fixed X` is
+ * rejected as a heading and must be reworded, e.g. `PR 464 fixed X`.
  *
  * Each entry is inserted at the TOP of the first `### <Type>` heading inside
- * `## [Unreleased]` (newest first, as the file already does). A missing heading
- * is created in the order Added, Changed, Fixed, Removed, Security, Docs.
- * Folded fragments are deleted, so a second run finds nothing to do. No
- * dependencies.
+ * `## [Unreleased]` (newest first, as the file already does). Within one type
+ * group the entries are ordered by fragment FILE NAME (a before b), not by
+ * date. A missing heading is created in the order Added, Changed, Fixed,
+ * Removed, Security, Docs.
+ *
+ * Safety: CHANGELOG.md is written atomically (temp file in the same
+ * directory, then rename) BEFORE any fragment is deleted. If a delete fails,
+ * the script names the fragments that remain and exits 1. A rerun is safe: a
+ * fragment whose exact bullet is already in `## [Unreleased]` under its type is
+ * not inserted again, only deleted. No dependencies.
  */
 import {
   existsSync,
   readdirSync,
   readFileSync,
+  renameSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -43,6 +57,7 @@ export const TYPES = [
 ];
 export const DEFAULT_TYPE = "Changed";
 const UNRELEASED = /^## \[Unreleased\]\s*$/;
+const REAL_IO = { writeFileSync, renameSync, unlinkSync, rmSync };
 
 /**
  * Parse one fragment.
@@ -114,6 +129,61 @@ function toBullet(fragment) {
 }
 
 /**
+ * True when the fragment's exact bullet (first line and every continuation
+ * line) already sits under a `### <type>` heading inside `## [Unreleased]`.
+ * This is what makes a rerun after a partial delete safe. Pure.
+ * @param {string} text CHANGELOG.md content
+ * @param {{type: string, lines: string[]}} fragment
+ */
+export function isPresent(text, fragment) {
+  const lines = text.split("\n");
+  const begin = lines.findIndex((l) => UNRELEASED.test(l));
+  if (begin === -1) return false;
+  let end = lines.findIndex((l, i) => i > begin && /^## /.test(l));
+  if (end === -1) end = lines.length;
+  const bullet = toBullet(fragment);
+  let inType = false;
+  for (let i = begin + 1; i < end; i++) {
+    if (/^### /.test(lines[i])) {
+      inType = lines[i] === `### ${fragment.type}`;
+      continue;
+    }
+    if (!inType || lines[i] !== bullet[0]) continue;
+    if (!bullet.every((b, k) => lines[i + k] === b)) continue;
+    // The existing bullet must not continue past the fragment's last line.
+    let n = i + bullet.length;
+    while (n < end && lines[n].trim() === "") n++;
+    if (n >= end || !lines[n].startsWith("  ")) return true;
+  }
+  return false;
+}
+
+/**
+ * Write a file atomically: temp file in the same directory, then rename, so a
+ * failure leaves the original untouched and no temp file behind.
+ * @param {string} file
+ * @param {string} content
+ * @param {typeof REAL_IO} io
+ */
+export function writeAtomic(file, content, io = REAL_IO) {
+  const tmp = path.join(
+    path.dirname(file),
+    `.${path.basename(file)}.${process.pid}.tmp`,
+  );
+  try {
+    io.writeFileSync(tmp, content);
+    io.renameSync(tmp, file);
+  } catch (err) {
+    try {
+      io.rmSync(tmp, { force: true });
+    } catch {
+      // the original error is the one worth reporting
+    }
+    throw err;
+  }
+}
+
+/**
  * Insert fragments into changelog text. Pure.
  * @param {string} text CHANGELOG.md content
  * @param {{type: string, lines: string[]}[]} fragments
@@ -170,64 +240,138 @@ export function insertFragments(text, fragments) {
 
 /**
  * Validate and fold. Writes nothing when `check` or `dryRun` is set, and
- * nothing when any fragment is malformed.
- * @param {{dir?: string, changelog?: string, check?: boolean, dryRun?: boolean}} [opts]
- * @returns {{ok: boolean, problems: string[], folded: string[], output: string|null}}
+ * nothing when any fragment is malformed. Order: write CHANGELOG.md
+ * atomically, then delete fragments. A fragment already present in Unreleased
+ * is not inserted again (`skipped`) but is still deleted.
+ * @param {{dir?: string, changelog?: string, check?: boolean, dryRun?: boolean, io?: typeof REAL_IO}} [opts]
+ * @returns {{ok: boolean, problems: string[], folded: string[], skipped: string[], remaining: string[], output: string|null}}
  */
 export function compile({
   dir = DEFAULT_DIR,
   changelog = DEFAULT_CHANGELOG,
   check = false,
   dryRun = false,
+  io = REAL_IO,
 } = {}) {
   const fragments = readFragments(dir);
   const problems = fragments.flatMap((f) => f.problems);
   const folded = fragments.map((f) => f.name);
-  if (problems.length) return { ok: false, problems, folded, output: null };
+  const fail = (list, remaining = []) => ({
+    ok: false,
+    problems: list,
+    folded,
+    skipped: [],
+    remaining,
+    output: null,
+  });
+  if (problems.length) return fail(problems);
   if (check || fragments.length === 0)
-    return { ok: true, problems, folded, output: null };
-  if (!existsSync(changelog))
     return {
-      ok: false,
-      problems: [`${changelog} does not exist`],
+      ok: true,
+      problems,
       folded,
+      skipped: [],
+      remaining: [],
       output: null,
     };
+  if (!existsSync(changelog)) return fail([`${changelog} does not exist`]);
+  const before = readFileSync(changelog, "utf8");
   let output;
+  let skipped;
   try {
-    output = insertFragments(readFileSync(changelog, "utf8"), fragments);
+    const fresh = fragments.filter((f) => !isPresent(before, f));
+    skipped = fragments.filter((f) => !fresh.includes(f)).map((f) => f.name);
+    output = fresh.length ? insertFragments(before, fresh) : before;
   } catch (err) {
-    return { ok: false, problems: [err.message], folded, output: null };
+    return fail([err.message]);
   }
-  if (!dryRun) {
-    writeFileSync(changelog, output);
-    for (const name of folded) unlinkSync(path.join(dir, name));
+  if (dryRun)
+    return { ok: true, problems, folded, skipped, remaining: [], output };
+  if (output !== before) {
+    try {
+      writeAtomic(changelog, output, io);
+    } catch (err) {
+      return fail(
+        [
+          `could not write ${changelog}: ${err.message}; nothing was deleted, fix it and rerun`,
+        ],
+        folded,
+      );
+    }
   }
-  return { ok: true, problems, folded, output };
+  const remaining = [];
+  for (const name of folded) {
+    try {
+      io.unlinkSync(path.join(dir, name));
+    } catch (err) {
+      remaining.push(name);
+      problems.push(`could not delete ${name}: ${err.message}`);
+    }
+  }
+  return {
+    ok: remaining.length === 0,
+    problems,
+    folded,
+    skipped,
+    remaining,
+    output,
+  };
+}
+
+const USAGE =
+  "Usage: changelog-compile [--check] [--dry-run] [--dir <path>] [--changelog <path>]\n";
+
+/**
+ * Parse argv. A `--dir`/`--changelog` value that is missing or starts with
+ * `--` is an error.
+ * @param {string[]} argv
+ * @returns {{error?: string, check?: boolean, dryRun?: boolean, help?: boolean, dir?: string, changelog?: string}}
+ */
+export function parseArgs(argv) {
+  const out = {
+    help: argv.includes("--help") || argv.includes("-h"),
+    check: argv.includes("--check"),
+    dryRun: argv.includes("--dry-run"),
+  };
+  for (const name of ["--dir", "--changelog"]) {
+    const i = argv.indexOf(name);
+    if (i === -1) continue;
+    const v = argv[i + 1];
+    if (v === undefined || v.startsWith("--"))
+      return { error: `${name} needs a path value` };
+    out[name.slice(2)] = path.resolve(v);
+  }
+  return out;
 }
 
 function main(argv) {
-  const flag = (n) => argv.includes(n);
-  const value = (n) => {
-    const i = argv.indexOf(n);
-    return i === -1 ? undefined : argv[i + 1];
-  };
-  if (flag("--help") || flag("-h")) {
-    process.stdout.write(
-      "Usage: changelog-compile [--check] [--dry-run] [--dir <path>] [--changelog <path>]\n",
-    );
+  const args = parseArgs(argv);
+  if (args.help) {
+    process.stdout.write(USAGE);
     return 0;
   }
-  const check = flag("--check");
-  const dryRun = flag("--dry-run");
+  if (args.error) {
+    process.stderr.write(`${args.error}\n${USAGE}`);
+    return 2;
+  }
+  const { check, dryRun } = args;
   const result = compile({
     check,
     dryRun,
-    dir: value("--dir") ? path.resolve(value("--dir")) : DEFAULT_DIR,
-    changelog: value("--changelog")
-      ? path.resolve(value("--changelog"))
-      : DEFAULT_CHANGELOG,
+    dir: args.dir ?? DEFAULT_DIR,
+    changelog: args.changelog ?? DEFAULT_CHANGELOG,
   });
+  if (!result.ok && result.remaining.length) {
+    process.stderr.write(
+      `changelog fragments failed:\n${result.problems
+        .map((p) => `  - ${p}`)
+        .join(
+          "\n",
+        )}\nThese fragments remain: ${result.remaining.join(", ")}\n` +
+        "Rerun after fixing; entries already in CHANGELOG.md are skipped, not duplicated.\n",
+    );
+    return 1;
+  }
   if (!result.ok) {
     process.stderr.write(
       `changelog fragments rejected, nothing written:\n${result.problems
@@ -247,7 +391,11 @@ function main(argv) {
     );
   } else {
     process.stdout.write(
-      `folded ${n} fragment(s) into CHANGELOG.md and deleted them: ${result.folded.join(", ")}\n`,
+      `folded ${n - result.skipped.length} fragment(s) into CHANGELOG.md and deleted ${n}: ${result.folded.join(", ")}` +
+        (result.skipped.length
+          ? ` (${result.skipped.length} already present, not inserted again: ${result.skipped.join(", ")})`
+          : "") +
+        "\n",
     );
   }
   return 0;

@@ -8,6 +8,9 @@ import {
   parseFragment,
   readFragments,
   insertFragments,
+  isPresent,
+  parseArgs,
+  writeAtomic,
   DEFAULT_DIR,
 } from "../../scripts/changelog-compile.mjs";
 
@@ -128,11 +131,36 @@ describe("changelog-compile", () => {
       );
     });
 
-    it("does not touch a same-named heading in a released version", () => {
-      frag("new.md", "type: Added\n\nNew.");
-      run();
-      const released = read().slice(read().indexOf("## [2.0.0]"));
-      expect(released).toBe(CHANGELOG.slice(CHANGELOG.indexOf("## [2.0.0]")));
+    it("never files into a released version, even when only that version has the type", () => {
+      // The type is ABSENT from Unreleased and PRESENT (with a later-ordered
+      // sibling) in 2.0.0, so only a search bounded to Unreleased passes.
+      const text = `# Changelog
+
+## [Unreleased]
+
+### Added
+
+- **Unreleased added.**
+
+## [2.0.0] - 2026-02-06
+
+### Changed
+
+- **Released changed.**
+
+### Fixed
+
+- **Released fixed.**
+`;
+      fs.writeFileSync(changelog, text);
+      frag("new.md", "type: Changed\n\nNew changed.");
+      expect(run().ok).toBe(true);
+      const out = read();
+      const cut = (t) => t.slice(t.indexOf("## [2.0.0]"));
+      expect(cut(out)).toBe(cut(text));
+      expect(out.slice(0, out.indexOf("## [2.0.0]"))).toBe(
+        "# Changelog\n\n## [Unreleased]\n\n### Added\n\n- **Unreleased added.**\n\n### Changed\n\n- New changed.\n\n",
+      );
     });
 
     it("files each fragment under its own type, in file-name order", () => {
@@ -207,6 +235,132 @@ describe("changelog-compile", () => {
       expect(read().split("Only once.").length - 1).toBe(1);
     });
 
+    it("writes CHANGELOG.md before deleting any fragment", () => {
+      frag("a.md", "A.");
+      frag("b.md", "B.");
+      const calls = [];
+      run({
+        io: {
+          ...fs,
+          renameSync: (...a) => (calls.push("rename"), fs.renameSync(...a)),
+          unlinkSync: (...a) => (calls.push("unlink"), fs.unlinkSync(...a)),
+        },
+      });
+      expect(calls).toEqual(["rename", "unlink", "unlink"]);
+    });
+
+    it("keeps every fragment and the old CHANGELOG when the write fails", () => {
+      frag("a.md", "A.");
+      const r = run({
+        io: {
+          ...fs,
+          renameSync: () => {
+            throw new Error("disk full");
+          },
+        },
+      });
+      expect(r.ok).toBe(false);
+      expect(r.problems[0]).toMatch(/could not write .*disk full/);
+      expect(read()).toBe(CHANGELOG);
+      expect(fs.existsSync(path.join(fragDir, "a.md"))).toBe(true);
+    });
+
+    it("writeAtomic leaves no partial file and no temp file when the write dies midway", () => {
+      const io = {
+        ...fs,
+        writeFileSync: (f, content) => {
+          fs.writeFileSync(f, content.slice(0, 10));
+          throw new Error("killed midway");
+        },
+      };
+      expect(() => writeAtomic(changelog, "x".repeat(500), io)).toThrow(
+        /killed midway/,
+      );
+      expect(read()).toBe(CHANGELOG);
+      expect(fs.readdirSync(dir).sort()).toEqual([
+        "CHANGELOG.md",
+        "changelog.d",
+      ]);
+    });
+
+    it("writeAtomic replaces the file with the full content", () => {
+      writeAtomic(changelog, "new\n");
+      expect(read()).toBe("new\n");
+      expect(fs.readdirSync(dir).sort()).toEqual([
+        "CHANGELOG.md",
+        "changelog.d",
+      ]);
+    });
+
+    it("reports the fragments that remain when a delete fails, then a rerun does not duplicate", () => {
+      frag("a.md", "Entry A.");
+      frag("b.md", "type: Fixed\n\nEntry B.\nSecond line.");
+      const first = run({
+        io: {
+          ...fs,
+          unlinkSync: (f) => {
+            if (f.endsWith("b.md")) throw new Error("EPERM");
+            fs.unlinkSync(f);
+          },
+        },
+      });
+      expect(first.ok).toBe(false);
+      expect(first.remaining).toEqual(["b.md"]);
+      expect(first.problems[0]).toMatch(/could not delete b\.md: EPERM/);
+      expect(fs.readdirSync(fragDir)).toEqual(["b.md"]);
+      const afterFirst = read();
+      expect(afterFirst).toContain("- Entry A.");
+      expect(afterFirst).toContain("- Entry B.\n  Second line.");
+
+      const again = run();
+      expect(again.ok).toBe(true);
+      expect(again.skipped).toEqual(["b.md"]);
+      expect(read()).toBe(afterFirst);
+      expect(read().split("Entry B.").length - 1).toBe(1);
+      expect(fs.readdirSync(fragDir)).toEqual([]);
+    });
+
+    it("a rerun skips fragments already present when every delete failed", () => {
+      frag("a.md", "Entry A.");
+      frag("b.md", "Entry B.");
+      run({
+        io: {
+          ...fs,
+          unlinkSync: () => {
+            throw new Error("EPERM");
+          },
+        },
+      });
+      const once = read();
+      const again = run();
+      expect(again.skipped).toEqual(["a.md", "b.md"]);
+      expect(read()).toBe(once);
+      expect(fs.readdirSync(fragDir)).toEqual([]);
+    });
+
+    it("isPresent matches the whole bullet under its own type only", () => {
+      const f = (type, ...lines) => ({ type, lines });
+      expect(
+        isPresent(
+          CHANGELOG,
+          f("Added", "**Old added.**", "More of old added."),
+        ),
+      ).toBe(true);
+      // same first line but the existing bullet continues: a different entry
+      expect(isPresent(CHANGELOG, f("Added", "**Old added.**"))).toBe(false);
+      // right text, wrong type
+      expect(
+        isPresent(
+          CHANGELOG,
+          f("Fixed", "**Old added.**", "More of old added."),
+        ),
+      ).toBe(false);
+      // only in a released version
+      expect(isPresent(CHANGELOG, f("Added", "**Release entry.**"))).toBe(
+        false,
+      );
+    });
+
     it("--dry-run returns the result but writes and deletes nothing", () => {
       frag("a.md", "A.");
       const r = run({ dryRun: true });
@@ -258,6 +412,38 @@ describe("changelog-compile", () => {
       expect(r.status).toBe(1);
       expect(r.stderr).toContain("bad.md: the entry text is empty");
       expect(read()).toBe(CHANGELOG);
+    });
+
+    it("exits 2 with usage when --dir or --changelog is followed by another flag or nothing", () => {
+      const raw = (...args) =>
+        spawnSync(process.execPath, [script, ...args], { encoding: "utf8" });
+      for (const args of [
+        ["--dir", "--check"],
+        ["--changelog", "--dry-run", "--dir", fragDir],
+        ["--dir", fragDir, "--changelog"],
+      ]) {
+        const r = raw(...args);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toMatch(/needs a path value/);
+        expect(r.stderr).toContain("Usage: changelog-compile");
+      }
+      expect(parseArgs(["--dir", "--check"]).error).toMatch(/--dir/);
+      expect(parseArgs(["--dir", "x", "--check"]).error).toBeUndefined();
+    });
+
+    it("exits 1 and names the remaining fragments when a delete fails", () => {
+      frag("a.md", "Entry A.");
+      fs.chmodSync(fragDir, 0o555);
+      try {
+        // Root ignores directory permissions; skip the assertion there.
+        if (process.getuid?.() === 0) return;
+        const r = cli();
+        expect(r.status).toBe(1);
+        expect(r.stderr).toContain("These fragments remain: a.md");
+        expect(read()).toContain("- Entry A.");
+      } finally {
+        fs.chmodSync(fragDir, 0o755);
+      }
     });
 
     it("exits 0 on --check, then folds with exit 0", () => {
