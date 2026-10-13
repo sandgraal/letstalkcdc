@@ -22,5 +22,29 @@
     "textIncludes": "Exactly-once delivery across systems.",
     "reason": "Bold lead-in of a list item under the h2 '8. What not to test for'. The item goes on to say this is one hop and that the sink still needs the guard, so it is a teaching statement, but the lead-in is a bare noun phrase and the contrast is in the following sentence, which the neighbour rule does not accept (it needs an explicit strong marker such as 'never' or 'wrong'). An editor should reword the lead-in to 'Exactly-once delivery across systems is not achievable.', after which this entry goes stale and is deleted.",
     "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/exactly-once/index.njk",
+    "textIncludes": "so the observable effect is exactly-once",
+    "reason": "technical-editor 2026-10-13: scoped per hop in context (hop name, opt-in, quoted vendor doc, or hedge in the same sentence); the KIP-618 / Kafka 3.3.0 claim and the Kafka-docs quote remain needs-SME.",
+    "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/is-cdc-exactly-once/index.njk",
+    "textIncludes": "Kafka Connect supports exactly-once for source connectors from version 3.3.0",
+    "reason": "technical-editor 2026-10-13: scoped per hop in context (hop name, opt-in, quoted vendor doc, or hedge in the same sentence); the KIP-618 / Kafka 3.3.0 claim and the Kafka-docs quote remain needs-SME.",
+    "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/is-cdc-exactly-once/index.njk",
+    "textIncludes": "it can provide exactly-once for sink connectors, but it depends on the connector",
+    "reason": "technical-editor 2026-10-13: scoped per hop in context (hop name, opt-in, quoted vendor doc, or hedge in the same sentence); the KIP-618 / Kafka 3.3.0 claim and the Kafka-docs quote remain needs-SME.",
+    "owner": "needs-editor-review"
+  },
+  {
+    "file": "src/is-cdc-exactly-once/index.njk",
+    "textIncludes": "exactly-once with respect to its input and output topics",
+    "reason": "technical-editor 2026-10-13: scoped per hop in context (hop name, opt-in, quoted vendor doc, or hedge in the same sentence); the KIP-618 / Kafka 3.3.0 claim and the Kafka-docs quote remain needs-SME.",
+    "owner": "needs-editor-review"
   }
 ]

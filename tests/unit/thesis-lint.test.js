@@ -378,6 +378,51 @@ describe("review hardening: bare exactly-once claims (R2)", () => {
   });
 });
 
+describe("P17-52: exactly-once scope words must qualify the claim itself", () => {
+  // Each sentence holds a scope word the old sentence-wide test accepted, but
+  // the claim is made in a clause (or at a distance) the word does not reach.
+  const violations = {
+    "transactions in another clause":
+      "<p>Transactions are fine, but the pipeline is exactly-once.</p>",
+    "transactions after the claim, after a conjunction":
+      "<p>Our pipeline is exactly-once and it handles transactions for you.</p>",
+    "processing in another clause":
+      "<p>Processing is fast; the whole pipeline is exactly-once.</p>",
+    "hop in another clause":
+      "<p>We added a hop last week, so the platform is exactly-once.</p>",
+    "hop far from the claim":
+      "<p>The hop we added last week to the whole pipeline across every system you run is exactly-once.</p>",
+    "opt-in elsewhere in the sentence":
+      "<p>Our newsletter is opt-in: the platform is exactly-once.</p>",
+    "single system far away":
+      "<p>It runs on a single system and then the vendor says the service is exactly-once.</p>",
+    "for sink connectors across the whole pipeline":
+      "<p>Debezium gives you exactly-once for sink connectors across the whole pipeline.</p>",
+    "with respect to the end-to-end pipeline":
+      "<p>CDC delivers exactly-once with respect to the end-to-end pipeline.</p>",
+    "observable effect of the whole pipeline":
+      "<p>The pipeline from database to warehouse is exactly-once in its observable effect.</p>",
+  };
+  it.each(Object.entries(violations))("fails: %s", (_n, html) => {
+    expect(rules(page(html))).toEqual(["R2"]);
+  });
+
+  const legitimate = {
+    "hop beside the claim": "<p>The producer hop is exactly-once.</p>",
+    "hop in a question, a few words away":
+      "<p>Which hops of a pipeline can be exactly-once?</p>",
+    "processing beside the claim":
+      "<p>Flink gives exactly-once processing inside its own state.</p>",
+    "transactions before the claim":
+      "<p>With Kafka transactions a step is exactly-once.</p>",
+    "vendor quotation with the scope inside the quote":
+      '<p>The docs say exactly-once delivery "for other destination systems generally requires cooperation with such systems".</p>',
+  };
+  it.each(Object.entries(legitimate))("passes: %s", (_n, html) => {
+    expect(rules(page(html))).toEqual([]);
+  });
+});
+
 describe("review hardening: more timestamp-as-order patterns (R1)", () => {
   const prose = [
     "<p>Sort the events by their commit timestamp and keep the newest.</p>",
