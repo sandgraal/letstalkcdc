@@ -3,6 +3,7 @@ import { spawnSync, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { hermeticGitEnv } from "./helpers/git-env.js";
 
 /**
  * Holds the Edit/Write guard (.claude/hooks/guard-edit.mjs) to the
@@ -279,13 +280,7 @@ describe("denies writes to the live config", () => {
           {
             cwd: dir,
             stdio: "pipe",
-            env: {
-              ...process.env,
-              GIT_AUTHOR_NAME: "t",
-              GIT_AUTHOR_EMAIL: "t@example.com",
-              GIT_COMMITTER_NAME: "t",
-              GIT_COMMITTER_EMAIL: "t@example.com",
-            },
+            env: hermeticGitEnv(),
           },
         );
       git("init", "-q", "-b", "main");
