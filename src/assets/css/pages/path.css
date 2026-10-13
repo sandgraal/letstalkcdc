@@ -1,0 +1,21 @@
+/* /path/ hub (P17-31). 00-reset.css strips list markers (ol,ul{list-style:none}),
+   so restore visible numbering for the ordered step lists. State is carried by
+   text ("(completed)"), never by colour. */
+.path-steps {
+  list-style: decimal;
+  padding-inline-start: var(--space-lg);
+  margin-block: var(--space-md);
+}
+
+.path-steps > li {
+  padding-inline-start: var(--space-2xs);
+}
+
+.path-steps > li + li {
+  margin-block-start: var(--space-sm);
+}
+
+.path-steps > li::marker {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}

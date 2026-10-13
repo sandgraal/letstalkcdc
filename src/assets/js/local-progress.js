@@ -35,7 +35,7 @@ const storage = {
  */
 export function getCompletedModules() {
   const data = storage.get(STORAGE_KEY);
-  return new Set(data?.completed || []);
+  return new Set(Array.isArray(data?.completed) ? data.completed : []);
 }
 
 /**
@@ -43,7 +43,8 @@ export function getCompletedModules() {
  * @returns {Object} Map of module key to visit data
  */
 export function getVisitedModules() {
-  return storage.get(VISIT_KEY) || {};
+  const data = storage.get(VISIT_KEY);
+  return data && typeof data === "object" && !Array.isArray(data) ? data : {};
 }
 
 /**
@@ -77,7 +78,12 @@ export function markModuleVisited(moduleKey) {
 export function markModuleCompleted(moduleKey) {
   if (!moduleKey) return;
 
-  const data = storage.get(STORAGE_KEY) || { completed: [], badges: [] };
+  const stored = storage.get(STORAGE_KEY);
+  const data =
+    stored && typeof stored === "object" && !Array.isArray(stored)
+      ? stored
+      : { completed: [], badges: [] };
+  if (!Array.isArray(data.completed)) data.completed = [];
   if (!data.completed.includes(moduleKey)) {
     data.completed.push(moduleKey);
     data.completedAt = data.completedAt || {};
@@ -103,6 +109,21 @@ export function isModuleCompleted(moduleKey) {
 }
 
 /**
+ * Whether a module opts out of progress tracking (series.mjs
+ * `excludeFromProgress: true`), e.g. the /path/ hub, which is a menu and not
+ * a lesson. Such a page gets no "Mark as Complete" button and is not counted
+ * in the overall-progress denominator.
+ * @param {Array} modules - Array of module objects
+ * @param {string} moduleKey - The module key
+ * @returns {boolean}
+ */
+export function isExcludedFromProgress(modules, moduleKey) {
+  return (modules || []).some(
+    (m) => m.key === moduleKey && m.excludeFromProgress === true,
+  );
+}
+
+/**
  * Get completion percentage across all modules
  * @param {Array} modules - Array of module objects with 'key' property
  * @returns {number} Percentage (0-100)
@@ -110,7 +131,9 @@ export function isModuleCompleted(moduleKey) {
 export function getOverallProgress(modules) {
   if (!modules || modules.length === 0) return 0;
   const completed = getCompletedModules();
-  const validModules = modules.filter((m) => m.key && m.state !== "disabled");
+  const validModules = modules.filter(
+    (m) => m.key && m.state !== "disabled" && !m.excludeFromProgress,
+  );
   if (validModules.length === 0) return 0;
 
   // Only count completed modules that are in the current valid modules list
@@ -132,7 +155,7 @@ export function getCategoryProgress(modules) {
   const categories = {};
 
   modules.forEach((module) => {
-    if (module.state === "disabled") return;
+    if (module.state === "disabled" || module.excludeFromProgress) return;
 
     module.tags?.forEach((tag) => {
       const label = typeof tag === "string" ? tag : tag.label;

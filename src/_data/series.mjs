@@ -401,6 +401,8 @@ export default [
       "Three routes through the lessons for newcomers, operators and architects, with your progress kept in this browser only.",
     href: "path/",
     ctaLabel: "Pick a Path",
+    // A menu, not a lesson: no "Mark as Complete", not in the progress total.
+    excludeFromProgress: true,
     tags: [{ label: "Extras", variant: "tag-extras" }],
     skillLevel: "Beginner",
   },

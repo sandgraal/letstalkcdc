@@ -13,6 +13,11 @@ import { getCompletedModules, getVisitedModules } from "../local-progress.js";
  * @param {Record<string, unknown>} visited series keys opened at least once
  */
 export function applyPathProgress(root, completed, visited) {
+  // Stored data is untrusted: anything unexpected counts as "nothing yet".
+  if (!(completed instanceof Set)) {
+    completed = new Set(Array.isArray(completed) ? completed : []);
+  }
+  if (!visited || typeof visited !== "object") visited = {};
   root.querySelectorAll("[data-path-track]").forEach((track) => {
     const steps = [...track.querySelectorAll("[data-path-step]")];
     let done = 0;

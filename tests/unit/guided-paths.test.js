@@ -19,6 +19,12 @@ import {
   REQUIRED_TRACKS,
 } from "../../lib/guided-paths.mjs";
 import { applyPathProgress } from "../../src/assets/js/pages/path.js";
+import {
+  getCompletedModules,
+  getVisitedModules,
+  getOverallProgress,
+  isExcludedFromProgress,
+} from "../../src/assets/js/local-progress.js";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -195,6 +201,87 @@ describe("applyPathProgress", () => {
   });
 });
 
+describe("untrusted stored progress", () => {
+  it("treats a non-array `completed` as empty", () => {
+    for (const bad of [{ a: 1 }, "abc", 7, null]) {
+      localStorage.setItem(
+        "cdc-local-progress",
+        JSON.stringify({ completed: bad }),
+      );
+      expect([...getCompletedModules()]).toEqual([]);
+    }
+    localStorage.removeItem("cdc-local-progress");
+  });
+
+  it("treats non-object visit data as empty", () => {
+    localStorage.setItem("cdc-module-visits", JSON.stringify(["x"]));
+    expect(getVisitedModules()).toEqual({});
+    localStorage.removeItem("cdc-module-visits");
+  });
+
+  it("labels the page without throwing on odd inputs", () => {
+    const doc = new JSDOM(
+      `<section data-path-track><p data-path-progress></p><ol>
+        <li data-path-step data-series-key="a"><a href="#">A</a><span data-path-status></span></li></ol></section>`,
+    ).window.document;
+    applyPathProgress(doc, { a: 1 }, "nope");
+    expect(doc.querySelector("[data-path-progress]").textContent).toMatch(
+      /^0 of 1/,
+    );
+  });
+});
+
+describe("hub opt-out of progress", () => {
+  const modules = [
+    { key: "a" },
+    { key: "b" },
+    { key: "path", excludeFromProgress: true },
+  ];
+
+  it("marks only the /path/ hub as excluded in series.mjs", () => {
+    expect(
+      series.filter((m) => m.excludeFromProgress).map((m) => m.key),
+    ).toEqual(["path"]);
+  });
+
+  it("leaves the hub out of the overall-progress denominator", () => {
+    localStorage.setItem(
+      "cdc-local-progress",
+      JSON.stringify({ completed: ["a"] }),
+    );
+    expect(getOverallProgress(modules)).toBe(50);
+    localStorage.setItem(
+      "cdc-local-progress",
+      JSON.stringify({ completed: ["a", "b"] }),
+    );
+    expect(getOverallProgress(modules)).toBe(100);
+    localStorage.removeItem("cdc-local-progress");
+  });
+
+  it("reports exclusion only for flagged keys", () => {
+    expect(isExcludedFromProgress(modules, "path")).toBe(true);
+    expect(isExcludedFromProgress(modules, "a")).toBe(false);
+    expect(isExcludedFromProgress(undefined, "a")).toBe(false);
+  });
+
+  it("shows no Mark as Complete button on the hub, but does on a lesson", async () => {
+    const { initializeProgressUI } =
+      await import("../../src/assets/js/progress-ui.js");
+    const page = (slug) => {
+      document.body.innerHTML = `<div><nav class="series-nav"></nav><div data-progress-toolbar></div></div>`;
+      document.body.dataset.journeySlug = slug;
+      window.CDC_MODULES = modules;
+      initializeProgressUI();
+      return document.querySelectorAll("[data-mark-complete]").length;
+    };
+    expect(page("path")).toBe(0);
+    expect(page("a")).toBe(1);
+    document.body.innerHTML = "";
+    delete document.body.dataset.journeySlug;
+    delete window.CDC_MODULES;
+  });
+});
+
 describe("/path/ built page", () => {
   const PREFIX = "/site";
   let out;
@@ -251,6 +338,22 @@ describe("/path/ built page", () => {
     expect(operator.querySelector("a").getAttribute("href")).toBe(
       `${PREFIX}/intro/`,
     );
+  });
+
+  it("links the page stylesheet that numbers the steps", () => {
+    const hrefs = [...doc.querySelectorAll("link[rel=stylesheet], link[href]")]
+      .map((l) => l.getAttribute("href"))
+      .filter(Boolean);
+    expect(hrefs).toContain(`${PREFIX}/assets/css/pages/path.css`);
+    expect(doc.querySelector("ol.path-steps")).not.toBeNull();
+    expect(
+      readFileSync(path.join(ROOT, "src/assets/css/pages/path.css"), "utf8"),
+    ).toMatch(/list-style:\s*decimal/);
+    expect(existsSync(path.join(out, "assets/css/pages/path.css"))).toBe(true);
+  });
+
+  it("has no Mark as Complete button or lesson-progress script path to one", () => {
+    expect(doc.querySelector("[data-mark-complete]")).toBeNull();
   });
 
   it("loads the page script and keeps the thesis sentence", () => {

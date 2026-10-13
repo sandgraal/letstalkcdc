@@ -4,6 +4,9 @@ title: "Guided Paths"
 description: "Three routes through the CDC lessons for newcomers, operators and architects. Your progress is kept in this browser only; nothing is sent anywhere."
 canonicalPath: "/path/"
 skillLevel: "Beginner"
+eleventyComputed:
+  head_extra: |
+    <link rel="stylesheet" href="{{ '/assets/css/pages/path.css' | url }}">
 scripts:
   - "/assets/js/pages/path.js"
 ---
@@ -37,7 +40,7 @@ scripts:
   <p role="status" data-path-progress data-total="{{ track.steps | length }}">
     {{ track.steps | length }} {{ "step" if track.steps | length == 1 else "steps" }}.
   </p>
-  <ol aria-label="{{ track.title }} track, in order">
+  <ol class="path-steps" aria-label="{{ track.title }} track, in order">
     {% for step in track.steps %}
     <li data-path-step data-series-key="{{ step.key }}">
       <a href="{{ ('/' ~ step.href) | url }}">{{ step.title }}</a>
