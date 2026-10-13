@@ -396,6 +396,12 @@ describe("P17-52: exactly-once scope words must qualify the claim itself", () =>
       "<p>Our newsletter is opt-in: the platform is exactly-once.</p>",
     "single system far away":
       "<p>It runs on a single system and then the vendor says the service is exactly-once.</p>",
+    "for sink connectors across the whole pipeline":
+      "<p>Debezium gives you exactly-once for sink connectors across the whole pipeline.</p>",
+    "with respect to the end-to-end pipeline":
+      "<p>CDC delivers exactly-once with respect to the end-to-end pipeline.</p>",
+    "observable effect of the whole pipeline":
+      "<p>The pipeline from database to warehouse is exactly-once in its observable effect.</p>",
   };
   it.each(Object.entries(violations))("fails: %s", (_n, html) => {
     expect(rules(page(html))).toEqual(["R2"]);
@@ -409,12 +415,6 @@ describe("P17-52: exactly-once scope words must qualify the claim itself", () =>
       "<p>Flink gives exactly-once processing inside its own state.</p>",
     "transactions before the claim":
       "<p>With Kafka transactions a step is exactly-once.</p>",
-    "observable effect":
-      "<p>Compose the stages so the observable effect is exactly-once.</p>",
-    "with respect to":
-      "<p>The step is exactly-once with respect to its input and output topics.</p>",
-    "for source connectors":
-      "<p>Kafka Connect supports exactly-once for source connectors, in distributed mode only.</p>",
     "vendor quotation with the scope inside the quote":
       '<p>The docs say exactly-once delivery "for other destination systems generally requires cooperation with such systems".</p>',
   };
