@@ -388,7 +388,7 @@ remove the matching regex from `.lycheeignore`.
   catching regressions while perf-improvement work lands. Raise it as
   scores improve.
 
-- [ ] **`/intro/` perf debt — uncovered by the LHCI fix above.** The
+- [x] **`/intro/` perf debt — uncovered by the LHCI fix above.** The
       0.86 score is held back by:
   - `cumulative-layout-shift: 0.58` — large layout shifts during load
     [✓ re-measured 2026-10-08: audit 1.0 in 9/9 runs, CLS median 0.0025,
@@ -400,10 +400,17 @@ remove the matching regex from `.lycheeignore`.
   - `mainthread-work-breakdown: 0.5` — minimize main-thread work
     [✓ audit 1.0 in 9/9 runs (0.6–1.5 s) — see P13-5]
   - `unsized-images: 0.5` — add explicit `width`/`height` to images [✓ closed by Phase 7 SVG dimensions]
-  - **Still open (2026-10-08, P13-5):** `dom-size` is the only sub-item
-    below 0.9 (0.5, 1,035 elements in 9/9 runs); everything else in this
-    box scores 1.0. The box stays open until `dom-size` is trimmed or
-    consciously accepted.
+  - **`dom-size` consciously accepted (2026-10-13).** Lighthouse 13.5.0
+    (installed) reports DOM size as `dom-size-insight` with weight 0, so
+    it does not affect the performance score. `npm run lighthouse` on
+    `/intro/` (3 runs) gave performance 0.89 and accessibility 1.00, with
+    1,042 elements (static HTML 942 excluding script, style, noscript and
+    template; the gap is runtime-created nodes), and it passes the
+    error-level assertions (performance minScore 0.84, accessibility
+    0.93). The heaviest section is the quiz (203 elements). Low-risk trims
+    would save only about 90-120 elements and could not reach the legacy
+    800-element threshold without hiding content from no-JS readers and
+    crawlers, so the item is accepted, not trimmed.
   - `dom-size: 0.5` — DOM is excessively large (raw HTML count: 947
     elements after the operational-checklist input-removal trim;
     LHCI's count is slightly higher because it includes
@@ -588,7 +595,7 @@ first so the threshold can ratchet up as we land them.
       Renaming the 12 legacy callers to use `--color-*` directly is a
       separate cleanup — opens the door for an `@layer` migration too.
 
-- [x] Raised the `/intro/` perf threshold in `.lighthouserc.json`
+- [x] Raised the `/intro/` perf threshold in `lighthouse-ci.config.json`
       from `minScore: 0.8` to `0.82`. Honest 3-run distribution
       after PR #270/#274/#275 lands at perf 0.86–0.94 with median
       0.87 on a loaded dev machine. **Picked 0.82 (not 0.85)** for
@@ -2407,7 +2414,7 @@ everything in the data-gated menu until 2026-11-06.
       _2026-10-12 (UTC): shipped in #445. It was reviewed through three rounds and
       the last fix commit did not get a fourth independent review. CI revealed
       tests depended on the runner's git identity (fixed in 66a3c08)._
-- [ ] **P17-3 · Required status checks on the `default` ruleset.** Outcome:
+- [x] **P17-3 · Required status checks on the `default` ruleset.** Outcome:
       GitHub itself refuses a merge when the checks fail (today the ruleset
       has none, so the claim in `CLAUDE.md` that `main` is branch-protected
       was only partly true). Accept: the ruleset requires the format, lint,
@@ -2422,6 +2429,7 @@ everything in the data-gated menu until 2026-11-06.
       required set was decided as seven checks (`build`, `lint`, `unit-tests`,
       `e2e-tests`, `a11y-tests`, `smoke-tests`, `security-audit`; not `lychee`
       or `lighthouse`); the procedure is in `MAINTAINER-TASKS.md` task 2._
+      Done 2026-10-13: the maintainer saved a `required_status_checks` rule on the `default` ruleset (16512225) for `build`, `lint`, `unit-tests`, `e2e-tests`, `a11y-tests`, `smoke-tests` and `security-audit`; `strict_required_status_checks_policy` is false (branches need not be up to date); `lychee` and `lighthouse` are deliberately not required. Verified read-only with `gh api repos/sandgraal/letstalkcdc/rulesets/16512225`.
 - [x] **P17-4 · Lean `CLAUDE.md`, rules, skills and the merge-watcher fix.**
       Outcome: an agent loads a short `CLAUDE.md` and pulls detail on demand
       instead of carrying one long file. Accept: `CLAUDE.md` holds the
