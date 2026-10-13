@@ -7,7 +7,7 @@ A complete Docker Compose-based CDC (Change Data Capture) sandbox for hands-on p
 The sandbox provides a fully integrated CDC stack:
 
 - **Source Databases**:
-  - **PostgreSQL 14** with sample inventory data (products, customers, orders)
+  - **PostgreSQL 16** (verified by labs-verify run 38451400038) with sample inventory data (products, customers, orders)
   - **MySQL 8** with sample inventory data (same schema for comparison)
 - **Streaming Platform**:
   - **Apache Kafka** for event streaming
