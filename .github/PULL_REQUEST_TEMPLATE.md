@@ -21,12 +21,13 @@
 <!-- Agent roles used (scout, implementer, reviewer, ...) and rough wall time. -->
 
 <!--
-Authors: replace every <placeholder> below with the real value. Use
-exactly APPROVE or APPROVE WITH NITS (not both) for the verdict, and
-exactly yes once every finding is resolved. Paste the reviewer's summary
-under the block. The merge script parses this block and rejects a
-placeholder left in place; keep the heading and the four labels exactly
-as written.
+The Review record section below is optional, for traceability only. Since 2026-10-13 the merge script warns about
+a missing or malformed Review record but does not refuse on it (only
+`--strict` does). If you fill it in, replace every <placeholder> with the real
+value, use exactly APPROVE or APPROVE WITH NITS for the verdict, and exactly
+yes once every finding is resolved; paste the reviewer's summary under the
+block. Keep the heading and the four labels as written so the script can read
+them.
 -->
 
 ## Review record

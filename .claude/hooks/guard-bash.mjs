@@ -2532,7 +2532,7 @@ function checkSimple(rawArgv, ctx, depth, redirs = []) {
         const r = checkString(body, ctx, depth + 1);
         if (r) return r;
       }
-      const r = checkLeaf(argv.slice(k), ctx, depth);
+      const r = checkLeaf(argv.slice(k), ctx, depth, true);
       if (r) return r;
     }
     return null;
@@ -2540,7 +2540,98 @@ function checkSimple(rawArgv, ctx, depth, redirs = []) {
   return checkLeaf(argv, ctx, depth);
 }
 
-function checkLeaf(rawArgv, ctx, depth) {
+// Tools and package.json scripts that take `scripts/merge-pr.mjs` or its test
+// as a file argument and cannot start the script (P17-66).
+const NAMING_TOOLS = new Set(["prettier", "eslint", "vitest"]);
+const NAMING_SCRIPTS = new Set([
+  "format",
+  "format:check",
+  "lint",
+  "lint:fix",
+  "test",
+]);
+// npx/npm exec flags that may precede the tool and take no value.
+const NAMING_LEAD = new Set([
+  "--",
+  "-y",
+  "--yes",
+  "--no",
+  "--no-install",
+  "-q",
+  "--quiet",
+  "--silent",
+]);
+// Words that can run another command, so a command containing one never
+// counts as merely naming the file.
+const NAMING_STARTERS = new Set([
+  "-c",
+  "sh",
+  "bash",
+  "zsh",
+  "dash",
+  "ksh",
+  "fish",
+  "node",
+  "nodejs",
+  "env",
+  "xargs",
+  "eval",
+  "npm",
+  "npx",
+  "pnpm",
+  "pnpx",
+  "yarn",
+  "bun",
+  "bunx",
+]);
+
+/**
+ * True only for `npx|npm exec <tool> ...` with tool in NAMING_TOOLS and for
+ * `npm run|run-script <script>` / `npm test` with script in NAMING_SCRIPTS,
+ * where no word is a shell, `node`, `-c`/`--call`, an expansion, or carries
+ * a chaining metacharacter, and (for scripts) no npm option sits between the
+ * script name and `--`. Everything else mentioning merge-pr stays denied.
+ */
+function onlyNamesMergeFile(base, args) {
+  const words = args.map((w) => w.text);
+  for (const w of args) {
+    const t = w.text;
+    if (w.exp || w.glob) return false;
+    if (/[\s;&|`$()<>\\"'\n]/.test(t)) return false;
+    if (NAMING_STARTERS.has(t) || NAMING_STARTERS.has(path.basename(t))) {
+      return false;
+    }
+    if (t === "--call" || t.startsWith("--call=")) return false;
+  }
+  if (base === "npx") {
+    let i = 0;
+    while (i < words.length && NAMING_LEAD.has(words[i])) i++;
+    return NAMING_TOOLS.has(words[i]);
+  }
+  if (base !== "npm") return false;
+  if (words[0] === "exec") {
+    let i = 1;
+    while (i < words.length && NAMING_LEAD.has(words[i])) i++;
+    return NAMING_TOOLS.has(words[i]);
+  }
+  let script;
+  let rest;
+  if (words[0] === "run" || words[0] === "run-script") {
+    script = words[1];
+    rest = words.slice(2);
+  } else if (words[0] === "test") {
+    script = "test";
+    rest = words.slice(1);
+  } else {
+    return false;
+  }
+  if (!NAMING_SCRIPTS.has(script)) return false;
+  const dashes = rest.indexOf("--");
+  const npmSide = dashes === -1 ? rest : rest.slice(0, dashes);
+  return !npmSide.some((t) => t.startsWith("-"));
+}
+
+function checkLeaf(rawArgv, ctx, depth, wrapped = false) {
   const argv = stripPrefix(rawArgv);
   if (argv.length === 0) return null;
   const head = argv[0];
@@ -2550,11 +2641,24 @@ function checkLeaf(rawArgv, ctx, depth) {
   if (base === "gh") return checkGh(argv, ctx);
   if (base === "node" || base === "nodejs") return checkNode(argv, ctx);
   if (["npm", "pnpm", "yarn", "bun", "npx", "pnpx", "bunx"].includes(base)) {
-    if (argv.slice(1).some((w) => w.text.includes("merge-pr"))) {
+    // Deny by substring: an npm-family command that mentions `merge-pr` in
+    // ANY word (or quoted string) can start the merge script, so it is held
+    // to the exact form below. The one exception (P17-66) is a short
+    // allowlist of tools and scripts that merely take the file as an
+    // argument and cannot start it: editing, formatting and testing the
+    // script is ordinary work. A command whose words are built from a
+    // variable or that runs under a wrapper (`S=merge-pr; npm run $S`,
+    // `echo merge-pr | xargs npm run`) is held to the same rule when the
+    // surrounding command line mentions `merge-pr`.
+    const words = argv.slice(1).map((w) => w.text);
+    const mentions =
+      words.some((t) => t.includes("merge-pr")) ||
+      (ctx.mentionsMerge && (wrapped || argv.slice(1).some((w) => w.exp)));
+    if (mentions && !onlyNamesMergeFile(base, argv.slice(1))) {
       // Exactly `npm run merge-pr -- <args>`: no npm flag (--prefix,
       // --script-shell, --userconfig, --workspace ...) can redirect which
       // package.json or shell runs the script.
-      const a = argv.slice(1).map((w) => w.text);
+      const a = words;
       const exact =
         base === "npm" &&
         (a[0] === "run" || a[0] === "run-script") &&
@@ -2645,7 +2749,12 @@ function checkString(command, ctx, depth) {
   }
 
   const prevGitish = ctx.gitish;
+  const prevMentions = ctx.mentionsMerge;
   ctx.gitish = cmds.some((c) => c.argv.some((w) => GITGH_WORD.test(w.text)));
+  // A nested string inherits the mention from the line around it.
+  ctx.mentionsMerge =
+    prevMentions ||
+    cmds.some((c) => c.argv.some((w) => w.text.includes("merge-pr")));
   try {
     for (const { argv, redirs } of cmds) {
       const r = checkSimple(argv, ctx, depth, redirs);
@@ -2653,6 +2762,7 @@ function checkString(command, ctx, depth) {
     }
   } finally {
     ctx.gitish = prevGitish;
+    ctx.mentionsMerge = prevMentions;
   }
 
   // Downloads piped into an interpreter.
@@ -2721,6 +2831,7 @@ export function checkBashCall(input) {
     cdSeen: false,
     cwds: [],
     gitish: false,
+    mentionsMerge: false,
   };
   ctx.cwds = [ctx.cwd];
   try {

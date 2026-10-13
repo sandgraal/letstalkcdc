@@ -12,9 +12,10 @@ The charter, the roles and the skills are Tier 3 paths (`.claude/agents/**`,
 by the maintainer by hand, not through the merge script. Two controls, kept
 apart: the Edit/Write guard protects only settings, hooks, scripts and agents
 (rules, skills and commands are instructions and can be edited in a worktree),
-but `scripts/merge-pr.mjs` refuses **all** of `.claude/**` (except
-`.claude/css-baseline.sha256`), so rule, skill, command and agent changes are
-always merged by the maintainer.
+but `scripts/merge-pr.mjs` flags **all** of `.claude/**` (except
+`.claude/css-baseline.sha256`): a WARN by default since 2026-10-13, a refusal
+under `--strict` (see `docs/CONDUCTOR.md`, "Merge policy"). Read that WARN, and
+the diff, before merging a rule, skill, command or agent change.
 
 ## Mission
 
@@ -164,7 +165,7 @@ Use-when notes:
 - **WIP limit: the conductor keeps at most 3 of its own PRs open.** At 3,
   stop opening new ones: wait for CI, run the review, merge through
   `node scripts/merge-pr.mjs <n> --execute` (a PR on a maintainer-only path
-  is handed to the maintainer instead), then continue. A fourth open PR
+  gets a WARN from the script; `--strict` refuses it), then continue. A fourth open PR
   means review queue is the bottleneck, so the next action is to review,
   not to write.
 - **Never idle-wait.** While CI runs or a reviewer works, run roles in the
