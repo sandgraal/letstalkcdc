@@ -337,5 +337,6 @@ Status values: **Decided** (in force), **In progress**, **Not started**,
 
 - Domain name (decision due 2026-10-23)
 - Approval of the vendor-disclosure wording (P17-30)
-- Whether "Require branches to be up to date" is switched on for the
-  required status checks (optional; off by default; P17-3)
+
+Decided 2026-10-13 (P17-3): "Require branches to be up to date" stays off
+(`strict_required_status_checks_policy: false`) on the required status checks.

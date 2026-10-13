@@ -122,9 +122,9 @@ Delegate CSS changes to the `css-refactor` role; details in `.claude/rules/css.m
 - Linking a CSS file from a template that Eleventy does not pass through
   (404 in production). Add a passthrough in `eleventy.config.mjs`.
 - Bumping a version claim in docs without the version-specific examples.
-- Force-pushing `main`. `main` has no `required_status_checks` in the `default`
-  ruleset (only `pull_request`, `deletion`, `non_fast_forward`, code scanning
-  and quality), so a red CI run does not block a merge. Policy: docs/CONDUCTOR.md.
+- Force-pushing `main`. The `default` ruleset requires seven checks (`build`, `lint`,
+  `unit-tests`, `e2e-tests`, `a11y-tests`, `smoke-tests`, `security-audit`), not
+  "up to date"; `lychee` and `lighthouse` are not required. Policy: docs/CONDUCTOR.md.
 - `npm install` in CI (use `npm ci`); pushing without format and lint.
 
 ## Where to read more
