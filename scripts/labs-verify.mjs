@@ -315,6 +315,10 @@ async function main() {
   ok =
     ok &&
     (await step("seed data (README: 5 products)", () => {
+      const v = psql("SHOW server_version;"); // informational, not asserted
+      say(
+        `postgres server_version: ${v.status === 0 ? v.stdout.trim() : `unavailable (psql exit ${v.status})`}`,
+      );
       const r = psql("SELECT COUNT(*) FROM products;");
       return r.status === 0
         ? evaluateSeedCount(parseCount(r.stdout))
@@ -385,9 +389,9 @@ async function main() {
             "-f",
             "%s\\n",
           ]);
-          writeFileSync(
+          appendFileSync(
             path.join(logDir, "kcat.log"),
-            `${r.stdout}\n${r.stderr}`,
+            `--- poll at ${new Date().toISOString()} ---\n${r.stdout}\n${r.stderr}\n`,
           );
           if (r.status !== 0)
             return { ok: false, reason: `kcat exit ${r.status}` };

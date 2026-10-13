@@ -104,6 +104,16 @@ describe("labs-verify decisions", () => {
     ).toMatch(/lsn/);
     expect(evaluateChangeEvents(undefined).ok).toBe(false);
   });
+
+  it("a snapshot read (op r) at the updated weight is not the update", () => {
+    const rows = [
+      { ...snapshot[0], after: { id: 1, weight: 3.0 } },
+      ...snapshot.slice(1),
+    ];
+    const r = evaluateChangeEvents(rows);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/no update event/);
+  });
 });
 
 describe("pollUntil", () => {
@@ -172,5 +182,9 @@ describe("labs-verify workflow", () => {
     expect(wf).toMatch(/concurrency:\n {2}group: labs-verify/);
     expect(wf).not.toMatch(/pull_request|push:|secrets\./);
     expect(wf).toContain("node scripts/labs-verify.mjs");
+  });
+
+  it("does not run on forks", () => {
+    expect(wf).toContain("if: github.repository == 'sandgraal/letstalkcdc'");
   });
 });

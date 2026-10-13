@@ -30,6 +30,8 @@ concurrency:
 
 jobs:
   postgres-sandbox:
+    # Forks inherit the schedule; do not spend their minutes on it.
+    if: github.repository == 'sandgraal/letstalkcdc'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
