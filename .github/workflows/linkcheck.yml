@@ -46,7 +46,7 @@ jobs:
           repo="$(printf '%s' "$REPOSITORY" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
           echo "repo-files=^https://github\.com/${repo}/(blob|tree|edit)/main/" >> "$GITHUB_OUTPUT"
           echo "repo-root=^https://github\.com/${repo}/?\$" >> "$GITHUB_OUTPUT"
-      - uses: lycheeverse/lychee-action@v2.0.2
+      - uses: lycheeverse/lychee-action@v2.9.0
         env:
           # Authenticated requests to github.com avoid the rate-limited 404s
           # that show up under unauthenticated CI runs.
