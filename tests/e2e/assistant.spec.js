@@ -1,5 +1,6 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
+import { E2E_SUPABASE_URL, E2E_SUPABASE_KEY } from "./helpers/supabase-e2e.js";
 
 /**
  * E2E coverage for the assistant FAB panel.
@@ -139,15 +140,18 @@ test.describe("assistant panel", () => {
   }) => {
     // Configure the client BEFORE any page script runs (base.njk only emits
     // these when the build has SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY).
-    await page.addInitScript(() => {
-      window.SUPABASE_URL = "https://feedback-test.supabase.co";
-      window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_e2e";
-      localStorage.removeItem("assistantFeedback");
-    });
+    await page.addInitScript(
+      ({ url, key }) => {
+        window.SUPABASE_URL = url;
+        window.SUPABASE_PUBLISHABLE_KEY = key;
+        localStorage.removeItem("assistantFeedback");
+      },
+      { url: E2E_SUPABASE_URL, key: E2E_SUPABASE_KEY },
+    );
 
     const posts = [];
     await page.route(
-      "https://feedback-test.supabase.co/rest/v1/assistant_feedback",
+      `${E2E_SUPABASE_URL}/rest/v1/assistant_feedback`,
       async (route) => {
         const request = route.request();
         posts.push({
@@ -199,8 +203,8 @@ test.describe("assistant panel", () => {
 
     const [post] = posts;
     expect(post.method).toBe("POST");
-    expect(post.headers.apikey).toBe("sb_publishable_e2e");
-    expect(post.headers.authorization).toBe("Bearer sb_publishable_e2e");
+    expect(post.headers.apikey).toBe(E2E_SUPABASE_KEY);
+    expect(post.headers.authorization).toBe(`Bearer ${E2E_SUPABASE_KEY}`);
     expect(post.headers.prefer).toBe("return=minimal");
     expect(post.body.question).toBe("What is change data capture?");
     expect(post.body.helpful).toBe(true);

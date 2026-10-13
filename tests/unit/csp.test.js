@@ -8,6 +8,11 @@
  * inline script's SHA-256 is in the page's own script-src. The browser-side
  * proof (zero violations on every page) is tests/e2e/csp.spec.js.
  */
+import {
+  E2E_SUPABASE_URL,
+  E2E_SUPABASE_KEY,
+} from "../e2e/helpers/supabase-e2e.js";
+import { JSDOM } from "jsdom";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -98,6 +103,29 @@ describe("lib/csp.mjs", () => {
       <script>var a = 1;</script>
       <script type="module">import "/y.js";</script>`;
     expect(inlineScripts(html)).toEqual(["var a = 1;", 'import "/y.js";']);
+  });
+
+  it("closes a script on any HTML-spec end tag, not only a bare </script>", () => {
+    const html = [
+      "<script>a(1)</script >",
+      "<script>b(2)</SCRIPT\n>",
+      "<script>c(3)</script/>",
+      '<script data-x="a>b">d(4)</script foo="1">',
+      "<script>var s = '</scripts>'; e(5)</script>",
+      "<scripty>not a script</scripty>",
+    ].join("\n");
+    expect(inlineScripts(html)).toEqual([
+      "a(1)",
+      "b(2)",
+      "c(3)",
+      "d(4)",
+      "var s = '</scripts>'; e(5)",
+    ]);
+  });
+
+  it("hashes scripts with an unusual end tag so checkPageCsp sees them covered", () => {
+    const html = `<head><meta http-equiv="Content-Security-Policy" content="${CSP_PLACEHOLDER}"><script>x()</script ><script>y()</SCRIPT\n></head>`;
+    expect(checkPageCsp(applyCsp(html, {}))).toEqual([]);
   });
 
   it("replaces the placeholder with hashes of the exact script text", () => {
@@ -200,6 +228,36 @@ describe("built pages", () => {
       for (const p of checkPageCsp(html)) problems.push(`${rel}: ${p}`);
     }
     expect(problems).toEqual([]);
+  });
+
+  it("covers every inline classic script, found by a DOM parser rather than the regex", () => {
+    const problems = [];
+    for (const [rel, html] of pages) {
+      if (exempt(rel) || !policyOf(html)) continue;
+      const dom = new JSDOM(html);
+      const script = directive(policyOf(html), "script-src");
+      for (const el of dom.window.document.querySelectorAll("script")) {
+        if (el.hasAttribute("src")) continue;
+        const type = (el.getAttribute("type") || "").toLowerCase();
+        if (type && type !== "module" && !/javascript|ecmascript/.test(type)) {
+          continue;
+        }
+        if (!script.includes(sha(el.textContent))) {
+          problems.push(`${rel}: ${el.textContent.trim().slice(0, 40)}`);
+        }
+      }
+      dom.window.close();
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("builds CI's e2e site with the origin and key the assistant e2e spec mocks", () => {
+    const ci = readFileSync(
+      path.join(ROOT, ".github/workflows/ci.yml"),
+      "utf8",
+    );
+    expect(ci).toContain(`SUPABASE_URL: ${E2E_SUPABASE_URL}`);
+    expect(ci).toContain(`SUPABASE_PUBLISHABLE_KEY: ${E2E_SUPABASE_KEY}`);
   });
 
   it("puts the policy before any script or stylesheet in <head>", () => {
