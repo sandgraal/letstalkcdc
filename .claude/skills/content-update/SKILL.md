@@ -34,4 +34,4 @@ rules are in `.claude/rules/content.md`; read them first.
 - Do not write that the maintainer reviewed the page until he says so.
 - Report what you checked and what you could not (no Docker, no vendor
   account). "Untested" is an honest answer; a guess is not.
-- Close the plan item and add a `changelog.d/<topic>.md` fragment (never edit `CHANGELOG.md`).
+- Close the plan item with a `plan.d/<item-id>-<topic>.md` fragment (`action: done`; never edit the plan) and add a `changelog.d/<topic>.md` fragment (never edit `CHANGELOG.md`).

@@ -146,9 +146,10 @@ One plan item per PR, using the PR template, with a `## Review record`
 report pasted as a PR comment. Have a role write the body and the report to
 files in the OS temp directory, then use `gh pr create --body-file <path>`
 and `gh pr comment <n> --body-file <path>`. Never put a body or report inline
-on the command line. Tick the plan checkbox in the PR that ships the work,
-as in `CLAUDE.md` and `docs/CONDUCTOR.md`; the PR number goes into the item's
-status line in a follow-up commit once the PR exists.
+on the command line. Close the plan item with a `plan.d/` fragment in the PR
+that ships the work, as in `CLAUDE.md` and `docs/CONDUCTOR.md`; the PR number
+goes into the item's status line in a follow-up `plan.d/` fragment
+(`action: status`) once the PR exists.
 
 ### 7. Stop conditions: ask in the chat, do not guess
 

@@ -2742,7 +2742,7 @@ these blocks merging the kit or the drill (P17-10).
       _Status: shipped in the PR carrying this change (touches `.claude/**`
       and `docs/TEAM-CHARTER.md`, so the maintainer merges it by hand)._
 
-- [ ] **P17-64 · Maintainer: keep dot-directories in the CI site artifact,
+- [x] **P17-64 · Maintainer: keep dot-directories in the CI site artifact,
       then remove the smoke skip.** Outcome: the smoke job checks
       `/.well-known/security.txt` in CI again. Evidence: the `build` job in
       `.github/workflows/ci.yml` uploads `_site/` with
@@ -2788,6 +2788,7 @@ these blocks merging the kit or the drill (P17-10).
       (Merge policy) and `docs/DECISIONS.md` (quote) record it. Accept: the
       full unit suite passes and the ratchet floors are unchanged.
 - [x] **P17-67 · Changelog fragments (maintainer, 2026-10-13).** PRs add one file `changelog.d/<topic>.md` and never edit `CHANGELOG.md`; `scripts/changelog-compile.mjs` (`npm run changelog:compile`, `--check`, `--dry-run`) folds them into `[Unreleased]`; proved by `tests/unit/changelog-compile.test.js`. Touches `CLAUDE.md`, `.claude/` and `.github/`, so the maintainer merges it by hand.
+- [x] **P17-68 · Plan fragments (maintainer, 2026-10-13).** PRs add one file `plan.d/<item-id>-<topic>.md` (`item:`, `action: done|status|add`, then the text) and never edit this file; `scripts/plan-apply.mjs` (`npm run plan:apply`, `--check`, `--dry-run`) applies them; proved by `tests/unit/plan-apply.test.js`. This is the last PR that edits the plan directly. Touches `CLAUDE.md`, `.claude/` and `.github/`, so the maintainer merges it by hand.
 
 ### Autopsy, in two parts
 

@@ -69,20 +69,27 @@ come from commands run this session.
 
 The same commit also folds the changelog fragments: feature PRs never edit
 `CHANGELOG.md`, they add `changelog.d/<topic>.md` (see
-`changelog.d/README.md`). Do the Retro (step 5) first, so any
-`docs/LESSONS.md` entries are already in the handoff worktree, cut from
-`origin/main`; then, from that worktree:
+`changelog.d/README.md`). It applies the plan fragments the same way: feature
+PRs never edit `docs/IMPLEMENTATION-PLAN.md`, they add
+`plan.d/<item-id>-<topic>.md` (see `plan.d/README.md`). Do the Retro (step 5)
+first, so any `docs/LESSONS.md` entries and `action: add` plan fragments are
+already in the handoff worktree, cut from `origin/main`; then, from that
+worktree:
 
 ```bash
 npm run changelog:compile -- --dry-run
 npm run changelog:compile
+npm run plan:apply -- --dry-run
+npm run plan:apply
 npm run format
 ```
 
-This inserts each fragment into `## [Unreleased]`, deletes the fragment
-files, and leaves the rest of `CHANGELOG.md` as it was. Commit the handoff
-block, the folded entries and the deletions together, in one commit by the
-conductor. If `--check` rejects a fragment, fix or delete that file on its
+This inserts each changelog fragment into `## [Unreleased]`, flips or extends
+the plan items the `plan.d/` fragments name, deletes both sets of fragment
+files, and leaves the rest of `CHANGELOG.md` and the plan as they were. Commit
+the handoff block, the folded entries, the plan changes and the deletions
+together, in one commit by the conductor. If `--check` rejects a fragment
+(`npm run plan:apply -- --check` for the plan), fix or delete that file on its
 own; do not hand-edit around it.
 
 ### 5. Retro
@@ -100,7 +107,7 @@ and brief a role for any file change (the conductor has no edit tools).
 3. Append a `docs/LESSONS.md` entry for each lesson not already covered, in
    the ledger's format (append only; a correction is a new entry).
 4. Where a check is missing, open the item: a PR that adds the test, or a plan
-   item under "Handoff kit follow-ups".
+   item under "Handoff kit follow-ups" (a `plan.d/` fragment with `action: add`).
 5. Anything that needs the maintainer (a guardrail that would have to change,
    a baseline, a ruleset) goes under "Needs you".
 

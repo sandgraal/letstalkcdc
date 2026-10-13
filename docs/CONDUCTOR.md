@@ -89,9 +89,12 @@ teaches CDC needs a `technical-editor` report as well as the `reviewer`'s.
 4. **Brief** the role (template below).
 5. **Verify** with `verifier`; **review** with `reviewer` for anything that
    changes logic, templates or CSS.
-6. **Close**: flip the plan checkbox and add a fragment file under
-   `changelog.d/` (never edit `CHANGELOG.md`) in the same commit as the work. Then push the branch and open a PR into
-   `main` (Tier 1).
+6. **Close**: add a fragment file under `plan.d/` (never edit
+   `docs/IMPLEMENTATION-PLAN.md`; `action: done` flips the box) and one under
+   `changelog.d/` (never edit `CHANGELOG.md`) in the same commit as the work.
+   Then push the branch and open a PR into `main` (Tier 1). The conductor
+   applies both sets in the `/team-end` handoff PR with `npm run plan:apply`
+   and `npm run changelog:compile`.
 7. **Review, then merge through the script (Tier 2).** An independent
    `reviewer` reports on the diff. Paste its full report as a PR comment
    and put a `## Review record` in the PR body
@@ -167,7 +170,9 @@ An item is done only when all of these hold:
       the item ends in a regression artifact (a test, lint, hook or doc check)
       or a one-line reason why none is possible, and a
       [`LESSONS.md`](LESSONS.md) entry when the lesson is not already covered.
-- [ ] The plan checkbox is flipped, with a one-line note of what proved it.
+- [ ] A `plan.d/<item-id>-<topic>.md` fragment (`action: done`) closes the item,
+      with a one-line note of what proved it. The plan itself is not edited in
+      the PR.
 - [ ] A `changelog.d/<topic>.md` fragment is added if a reader or contributor
       would notice. `CHANGELOG.md` itself is not edited in the PR.
 - [ ] The PR description states what changed, how it was verified, and what
@@ -632,8 +637,8 @@ easier. A mistake is only closed by a mechanism (see [`LESSONS.md`](LESSONS.md))
 - **The repo is the memory.** At the end of a session append what changed and
   what is next to the "Latest handoff" block in `CHANGELOG.md`
   `[Unreleased]` (the conductor's one direct edit; feature PRs add a
-  `changelog.d/` fragment instead) and to the item in
-  `IMPLEMENTATION-PLAN.md`. Never rely on local memory files, chat
+  `changelog.d/` fragment instead) and, as a `plan.d/` fragment with
+  `action: status`, to the item in `IMPLEMENTATION-PLAN.md`. Never rely on local memory files, chat
   history or the state of a worktree: the next session starts from `git log`,
   the plan and the changelog.
 
