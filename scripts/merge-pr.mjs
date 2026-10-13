@@ -190,6 +190,19 @@
 // commit author is a claim in the commit). Checks, the test-merge and the
 // reviewer of the dependency itself remain the controls.
 //
+// Branch cleanup. `--delete-branch` deletes the REMOTE branch, which is the
+// part that matters. gh also tries to delete the LOCAL branch and fails when a
+// git worktree still holds it ("failed to delete local branch"), exiting
+// non-zero although GitHub has merged. So after any non-zero `gh pr merge` this
+// script re-reads the PR (`state,mergedAt,mergeCommit,headRefOid`): MERGED with
+// a merge commit AND a head equal to the one the gates evaluated (the value
+// given to `--match-head-commit`) is reported as success with gh's message
+// (exit 0); anything else, including a failed re-read or a different head, is
+// a failure (exit 1). The merge is never retried. A worktree-held local branch
+// is left in place: remove the worktree (`bash scripts/worktree-prune.sh` does
+// this for merged work, but it leaves branches) and then delete the leftover
+// local branch by hand with `git branch -D <name>`.
+//
 // The gate functions below are pure (parsed JSON in, failure list out). All
 // process, git and filesystem access goes through injected dependencies so the
 // tests need no network.
@@ -1935,6 +1948,39 @@ export async function testMerge(
   return result;
 }
 
+// After a non-zero `gh pr merge`: ask GitHub what happened. Returns
+// { oid } when the PR is MERGED with a merge commit at the head the gates
+// evaluated, { mismatch } when it is merged at a different (or unreported)
+// head, and null for anything else (still open, unreadable, malformed). All
+// doubt fails closed.
+async function mergedCommitOf(number, expectedHead, run, cwd) {
+  try {
+    const res = await run(
+      "gh",
+      [
+        "pr",
+        "view",
+        String(number),
+        "--json",
+        "state,mergedAt,mergeCommit,headRefOid",
+      ],
+      { cwd },
+    );
+    if (res.code !== 0) return null;
+    const view = JSON.parse(res.stdout);
+    const oid = view?.mergeCommit?.oid;
+    if (view?.state !== "MERGED" || typeof oid !== "string" || !oid) {
+      return null;
+    }
+    if (view.headRefOid !== expectedHead) {
+      return { mismatch: view.headRefOid };
+    }
+    return { oid };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPr(number, run, cwd, fields = PR_FIELDS) {
   const res = await run(
     "gh",
@@ -2282,9 +2328,27 @@ export async function main(argv, deps = {}) {
   }
   const merge = await run("gh", mergeArgs, { cwd: root });
   if (merge.code !== 0) {
-    err(
-      `merge-pr: gh pr merge failed: ${tail(merge.stderr || merge.stdout, 5)}`,
-    );
+    const message = tail(merge.stderr || merge.stdout, 5);
+    // gh can merge on GitHub and still exit non-zero, e.g. "failed to delete
+    // local branch" when a worktree holds it. Do not trust the exit code: ask
+    // GitHub. Never retry the merge itself. Fail closed on any doubt.
+    const merged = await mergedCommitOf(number, pr.headRefOid, run, root);
+    if (merged?.oid) {
+      out(
+        `MERGED PR #${number} (verified after gh exited non-zero; merge commit ${merged.oid.slice(0, 7)})${warned.length > 0 ? ` with ${warnings}` : ""}. gh said: ${message}`,
+      );
+      if (approval) out(`maintainer-approved: ${approval}`);
+      return 0;
+    }
+    if (merged) {
+      const short = (value) =>
+        typeof value === "string" && value ? value.slice(0, 7) : "(missing)";
+      err(
+        `merge-pr: PR is merged at a different head than the one reviewed: ${short(merged.mismatch)}, expected ${short(pr.headRefOid)}. gh said: ${message}`,
+      );
+      return 1;
+    }
+    err(`merge-pr: gh pr merge failed: ${message}`);
     return 1;
   }
   out(
