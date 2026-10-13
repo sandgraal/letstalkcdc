@@ -316,3 +316,69 @@ false` since v4.4).
   (runs `scripts/smoke.mjs` with `GITHUB_ACTIONS=true` and asserts the
   failure). The workflow line itself is proven only by a green CI run.
 - Status: prevented
+
+### L-018 Commit-making tests must be hermetic about git identity (closes L-002)
+
+- Date: 2026-10-13 (source: P17-58 and P17-62; closes L-002, which stays as written)
+- What happened: L-002 recorded that tests running `git commit` passed on a
+  laptop that guesses a git identity and failed on a CI runner with none. The
+  audit it asked for is done (#473): every such test now builds its
+  environment with `hermeticGitEnv()`.
+- Root cause: as in L-002, a test inherited the developer machine's git config.
+- Prevented by: [`hermetic-git.test.js`](../tests/unit/hermetic-git.test.js)
+  fails any `tests/unit/*.test.js` that passes `"commit"` or `"merge"` as a git
+  argument without importing and calling `hermeticGitEnv` from
+  [`helpers/git-env.js`](../tests/unit/helpers/git-env.js), so a new
+  commit-making test cannot skip it; [`git-env.test.js`](../tests/unit/git-env.test.js)
+  proves a commit with no identity is refused and the helper's is accepted. The
+  detector matches argument-array calls, so a commit made through a shell string
+  would escape it.
+- Status: prevented
+
+### L-019 Time-relative wording in docs is now a failing test (closes L-004)
+
+- Date: 2026-10-13 (source: P17-62(c); closes L-004, which stays as written)
+- What happened: L-004 recorded docs saying "not on main yet" or "until this PR
+  merges", false within hours, with "no test for the relative wording itself".
+  There is one now.
+- Root cause: as in L-004, prose about the state of a branch is true only when
+  written, and nothing checked it.
+- Prevented by: the "time-relative wording" block in
+  [`doc-facts.test.js`](../tests/unit/doc-facts.test.js) fails on those phrases
+  in any tracked Markdown file except `docs/archive/`, `CHANGELOG.md`, and two
+  allowlisted files that hold dated history (`docs/IMPLEMENTATION-PLAN.md`,
+  `docs/LESSONS.md`). A phrase list catches the known wordings, not every
+  paraphrase; the cold-start drill in
+  [`COLD-START-DRILL.md`](COLD-START-DRILL.md) remains the end-to-end check.
+- Status: prevented
+
+### L-020 The merge watcher's stale directive is fixed and pinned (closes L-006)
+
+- Date: 2026-10-13 (source: P17-62; closes L-006, which stays as written)
+- What happened: L-006 recorded that the watcher's directive still named the
+  Phase 13 queue after #432 fixed its window and ordering. L-016 records that
+  the directive now says to run `/team-start`.
+- Root cause: as in L-006 and L-014, the directive text was not updated with the
+  charter.
+- Prevented by: [`check-merged-prs.test.js`](../tests/unit/check-merged-prs.test.js)
+  covers the window, the out-of-order merge and, per L-016, the directive text
+  (it names `/team-start`, not Phase 13).
+- Status: prevented
+
+### L-021 The default ruleset now requires status checks (closes L-001)
+
+- Date: 2026-10-13 (source: P17-3; closes L-001, which stays as written)
+- What happened: L-001 recorded a PR merging with a red check because GitHub
+  required none. On 2026-10-13 the maintainer saved a `required_status_checks`
+  rule on the `default` ruleset (16512225); a read of it the same day lists
+  `build`, `lint`, `unit-tests`, `e2e-tests`, `a11y-tests`, `smoke-tests` and
+  `security-audit`.
+- Root cause: as in L-001, nothing but habit refused a red merge.
+- Prevented by: that ruleset rule (GitHub refuses the merge) together with
+  `scripts/merge-pr.mjs`, which refuses a PR whose checks are not all green
+  (`tests/unit/merge-pr.test.js`). The ruleset is a repository setting, not a
+  file, so no test in this repo proves it; verify with
+  `gh api repos/sandgraal/letstalkcdc/rulesets/16512225`. `lychee` and
+  `lighthouse` are deliberately not required
+  ([`DECISIONS.md`](DECISIONS.md)).
+- Status: prevented
