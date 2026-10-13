@@ -24,10 +24,17 @@ export default defineConfig({
     target: "es2020",
     minify: "esbuild",
     rollupOptions: {
+      // Vite drops entry exports for app builds; the Chart.js entry exists to
+      // be imported dynamically and must keep `Chart` and `registerables`.
+      // The other entries export nothing, so their output is unchanged.
+      preserveEntrySignatures: "exports-only",
       input: {
         app: resolve("src/assets/js/app.js"),
         "progress-ui": resolve("src/assets/js/progress-ui.js"),
         "video-embed": resolve("src/assets/js/video-embed.js"),
+        // Chart.js, lazily imported by src/scripts/dashboard.js (P17-23). Not
+        // referenced by any <script> tag, so it stays out of the initial JS.
+        "chart-vendor": resolve("src/vendor-entry/chart.js"),
       },
       output: {
         entryFileNames: "js/[name].[hash].js",

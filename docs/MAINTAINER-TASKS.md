@@ -443,9 +443,10 @@ repository itself. Each needs your answer before work on it starts.
 - **Second content reviewer.** Name a second human reviewer and say where review
   texts are kept. P15-48 records that the review text for PR #376 could not be
   retrieved.
-- **Third-party scripts.** Mermaid and Chart.js load from `cdn.jsdelivr.net`.
-  Mermaid uses a floating major version and there is no integrity hash. Pin and
-  vendor them, or accept the CDN dependency.
+- **Third-party scripts.** Mermaid and Chart.js are self-hosted with
+  Subresource Integrity (P17-23). Only the Change Feed Playground's Supabase
+  library still loads from `cdn.jsdelivr.net`; vendor it or accept the CDN
+  dependency there.
 - **Codacy instruction file.** Settled: the retired Codacy instruction file was
   removed in #432, so there is nothing to decide. What remains is the dashboard
   check for `.codacy/cli.sh` in task 5.

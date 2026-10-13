@@ -68,6 +68,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unit test builds the site and checks the fields, `Expires` window, sitemap,
   llms.txt, footer link and that the address is in no `<title>`, meta tag or
   JSON-LD.
+- **Retro step and open lessons in the session commands; the merge watcher
+  points at `/team-start` (P17-62 a, b).** `/team-end` gains the Retro step
+  from the charter (what went wrong, what check would have caught it, ledger
+  entries, missing checks as items, "Needs you", and the self-improvement
+  boundary); `/team-start` starts by reading the `open` and `partially`
+  lessons. The merge watcher's rewake directive now says to run `/team-start`
+  instead of naming the Phase 13 queue (L-016 closes L-014). Unit tests pin
+  all three. The scheduled drift-check workflow (c) stays open.
 - **Session commands for the agent team (P17-60).** `/team-start`,
   `/team-end` and `/team-digest` in `.claude/commands/` make a working session
   start and end the same way: sync with worktrees only, read the handoff,
@@ -207,6 +215,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Mermaid and Chart.js are self-hosted with Subresource Integrity
+  (P17-23).** Both libraries are pinned dev dependencies (`mermaid` 11.17.2,
+  `chart.js` 4.4.4) and no longer load from `cdn.jsdelivr.net`. Mermaid is
+  copied at build time to a content-hashed `/assets/vendor/mermaid.<hash>.min.js`
+  and the loaders add `integrity` (sha384, computed from the file) and
+  `crossorigin`; Chart.js is a lazily imported, hashed Vite chunk. Both are
+  still fetched only on pages that draw a diagram or a chart. The privacy page
+  now names jsDelivr only for the Playground's Supabase library. A unit test
+  checks the hashed files, every integrity value and that no CDN host appears
+  in `src/` or the built site, apart from the privacy page.
+  The Chart.js Vite entry lives in `src/vendor-entry/` so the unrunnable
+  source file is not published. In `npm run dev` without a Vite build the
+  charts stay off and the console warning says to run `npm run build:js` once
+  (`docs/DEVELOPMENT.md`). An end-to-end test serves Mermaid with one byte
+  changed and checks that the browser refuses it.
+
 - **`/intro/` Lighthouse performance floor ratcheted from 0.82 to 0.84.**
   Set from ten CI `lighthouse` jobs after the render-blocking stylesheet fix
   (median score 0.88, best-of-3 per job 0.86 to 0.92). The badge in
@@ -236,6 +260,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assistant panel discloses that the question is sent with the vote.
 
 ### Fixed
+
+- **The merge gate no longer reports a false failure after a successful
+  merge (P17-57a).** `gh pr merge --delete-branch` exits non-zero ("failed to
+  delete local branch") when a worktree still holds the local branch, even
+  though GitHub has merged. After any non-zero exit the gate now re-reads
+  `state,mergedAt,mergeCommit,headRefOid`: MERGED with a merge commit at the
+  same head the gates evaluated prints `MERGED PR #N (verified after gh exited
+non-zero; merge commit <short sha>). gh said: <message>` and exits 0;
+  anything else, including a failed re-read or a PR merged at a different
+  head, still exits 1. The merge is never retried. Stub tests cover merged,
+  still open (even with a merge commit), a re-read that exits non-zero, a
+  different or missing head, and the unchanged success path, each asserting
+  one `gh pr merge` call. A worktree-held local branch is left in place:
+  remove the worktree (`bash scripts/worktree-prune.sh` does this for merged
+  work but leaves branches), then delete the branch with `git branch -D
+<name>`. No site change.
+
+- **Link check no longer fails on transient 429/503/504 from external hosts
+  (P17-63).** `linkcheck.yml` passes `--accept '100..=103,200..=299,429,503,504'`:
+  github.com pages of other projects answered `[503]` to runner IPs in a
+  different place each run and passed on re-run, and lychee does not retry a
+  5xx. 404, 410, 403, 500, 502, DNS and TLS errors still fail. A host that stays
+  down shows its status in the verbose log but does not fail the job.
 
 - **Content corrections from the second accuracy sample (P17-13).** Five
   pages were wrong, each with a per-page errata entry

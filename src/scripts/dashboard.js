@@ -135,22 +135,38 @@ const appendAgentLog = (message, type = "info", source = "CDC_AGENT") => {
   renderLogEntry(normalized);
 };
 
+// Chart.js is vendored (P17-23): src/vendor-entry/chart.js is built by Vite
+// into a hashed chunk, and the page template publishes its URL in
+// <meta name="cdc-vendor-chart">. Dynamic import() cannot carry SRI, which is
+// why this is a same-origin file rather than a CDN URL. Without a Vite build
+// (a fresh `npm run dev`) that URL does not exist, so the warning says how to
+// make it (docs/DEVELOPMENT.md).
+const CHART_BUILD_HINT = "charts need `npm run build:js` once";
+
+const getChartModuleUrl = () => {
+  const content = doc
+    ?.querySelector('meta[name="cdc-vendor-chart"]')
+    ?.getAttribute("content");
+  return content ? new URL(content, doc.baseURI).href : null;
+};
+
 const loadChartModule = async () => {
   if (chartModulePromise) return chartModulePromise;
-  chartModulePromise =
-    // NOTE: chart.js v4 ships no `dist/chart.esm.js` — that path 404s, which
-    // silently disabled every chart on the site. jsDelivr's `/+esm` endpoint
-    // serves a real ES module with the named exports used below.
-    import("https://cdn.jsdelivr.net/npm/chart.js@4.4.4/+esm")
-      .then((mod) => {
-        const { Chart, registerables } = mod;
-        Chart.register(...registerables);
-        return mod;
-      })
-      .catch((error) => {
-        console.warn("CDC Dashboard: Failed to load Chart.js", error);
-        return null;
-      });
+  const url = getChartModuleUrl();
+  if (!url) {
+    console.warn(
+      `CDC Dashboard: Chart.js location not found (${CHART_BUILD_HINT})`,
+    );
+    chartModulePromise = Promise.resolve(null);
+    return chartModulePromise;
+  }
+  chartModulePromise = import(url).catch((error) => {
+    console.warn(
+      `CDC Dashboard: Failed to load Chart.js (${CHART_BUILD_HINT})`,
+      error,
+    );
+    return null;
+  });
   return chartModulePromise;
 };
 

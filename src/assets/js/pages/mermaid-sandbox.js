@@ -1,6 +1,8 @@
+import { getMermaidScript } from "../utils/vendor-scripts.js";
+
 const doc = document;
 
-const loadScript = (src) =>
+const loadScript = (src, integrity) =>
   new Promise((resolve, reject) => {
     const existing = [...doc.scripts].find((s) => s.src === src);
     if (existing) {
@@ -17,6 +19,7 @@ const loadScript = (src) =>
     }
     const script = doc.createElement("script");
     script.src = src;
+    script.setAttribute("integrity", integrity);
     script.defer = true;
     script.crossOrigin = "anonymous";
     script.addEventListener("load", () => {
@@ -31,9 +34,15 @@ const loadScript = (src) =>
 
 const initMermaid = async () => {
   if (!window.mermaid) {
-    await loadScript(
-      "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
-    );
+    const mermaidScript = getMermaidScript();
+    if (!mermaidScript) {
+      console.warn(
+        "Mermaid.js failed to load:",
+        new Error("Mermaid script location not found"),
+      );
+      return;
+    }
+    await loadScript(mermaidScript.src, mermaidScript.integrity);
   }
   const mermaid = window.mermaid;
   if (!mermaid) return;

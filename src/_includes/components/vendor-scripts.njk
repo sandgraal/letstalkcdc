@@ -1,0 +1,6 @@
+{#- Where the lazily loaded libraries live (P17-23). These tags load nothing;
+    src/assets/js/utils/vendor-scripts.js reads them when a page actually has
+    a diagram or a chart. The Mermaid integrity value is the sha384 of the file
+    at the hashed path, computed at build time (lib/vendor-assets.mjs). #}
+<meta name="cdc-vendor-mermaid" content="{{ vendor.mermaid.path | url }}" data-integrity="{{ vendor.mermaid.integrity }}">
+<meta name="cdc-vendor-chart" content="{{ 'src/vendor-entry/chart.js' | viteAsset | url }}">

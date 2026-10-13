@@ -15,6 +15,11 @@ not this session.
 Models: Sonnet and Haiku only. Nothing above Sonnet is ever requested; a task
 that seems to need more is split or taken to the maintainer.
 
+Before step 1, read the `open` and `partially` lessons first
+(`rg -n "^- Status: (open|partially)" docs/LESSONS.md`) and apply them to
+everything below; a `prevented` lesson is held by its test and needs no
+re-reading.
+
 ## Steps
 
 ### 1. Sync, without disturbing the primary checkout

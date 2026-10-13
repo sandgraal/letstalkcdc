@@ -30,7 +30,14 @@ be unstyled.
 
 In dev there is no Vite manifest, so the `viteAsset` filter falls back to the
 unhashed source paths. Run `npm run build` once for a production-shaped
-`_site/`. The Docker sandbox's Kafka UI also listens on port 8080, so stop one
+`_site/`.
+
+Charts need `npm run build:js` once. Chart.js is a Vite-built chunk with no
+unhashed fallback, so on a fresh checkout `npm run dev` shows no charts (the
+dashboard loader logs a console warning saying so). Run `npm run build:js`, then
+restart `npm run dev`. From then on the dev server serves the bundled, hashed
+JS from `dist/` instead of the live sources, so after editing `src/assets/js/`
+run `npm run build:js` again, or delete `dist/` to go back to live sources. The Docker sandbox's Kafka UI also listens on port 8080, so stop one
 before starting the other.
 
 ## The bar before you push
@@ -197,7 +204,13 @@ the URL and how many runs were invalid. A URL with no valid run, or `/intro/`
 than a pass or a score failure (`minValidRuns` and `minValidRunsForError` in the
 config).
 
-`linkcheck.yml` builds the site and crawls it with lychee.
+`linkcheck.yml` builds the site and crawls it with lychee. It accepts HTTP 429,
+503 and 504 as success (`--accept` in the workflow), because external hosts such
+as github.com answer those transiently to CI runner IPs and lychee does not
+retry a 5xx. A 404, 410, 403, 500, 502, DNS or TLS error still fails. The
+trade-off: a page that is down for a long time shows its status code in the
+verbose log, but does not fail the job. Do not add a `.lycheeignore` entry for a
+one-off 503; see the comments in the workflow.
 `deploy.yml` publishes to GitHub Pages. The playground has its own workflows
 (`playground-preflight.yml`, `playground-generated-bundles.yml`,
 `playground-harness-nightly.yml`).

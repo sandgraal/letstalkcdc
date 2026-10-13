@@ -2608,6 +2608,15 @@ these blocks merging the kit or the drill (P17-10).
       for part (b). Size: M. Role: `reviewer` writes the design, `implementer`
       does part (b). Needs: #445 merged; P17-1 merged for the path list.
       _Status: not started._
+  - [x] **P17-57a (false failure after merge):** shipped in the PR carrying
+        this change. After a non-zero `gh pr merge` (for example "failed to
+        delete local branch" while a worktree holds it) the gate re-reads
+        `state,mergedAt,mergeCommit,headRefOid`; MERGED with a merge commit at
+        the head the gates evaluated is success (exit 0, gh's message
+        included), anything else fails closed (exit 1); the merge is never
+        retried. The leftover local branch is removed by hand: remove the
+        worktree (`scripts/worktree-prune.sh` does this for merged work but
+        leaves branches), then `git branch -D <name>`.
 - [ ] **P17-58 · Make commit-making tests hermetic about git identity.**
       Outcome: every test that creates a commit or merge passes with no git
       identity configured, as on a CI runner. Evidence: macOS guesses an
@@ -2667,7 +2676,14 @@ these blocks merging the kit or the drill (P17-10).
       `npx vitest run tests/unit/team-commands.test.js tests/unit/doc-facts.test.js tests/unit/ratchet.test.js`,
       `npm run verify-all`. Size: S. Role: `implementer`, then `reviewer`.
       Needs: P17-60 merged for (a); (c) waits for P17-59.
-      _Status: not started._
+      _Status 2026-10-12: (a) [x] and (b) [x] done in one commit: the Retro step in
+      `/team-end`, the open-lessons line in `/team-start`, both pinned in
+      `tests/unit/team-commands.test.js`; the watcher directive in
+      `.claude/scripts/check-merged-prs.sh` now says to run `/team-start`,
+      pinned in `tests/unit/check-merged-prs.test.js`; L-016 in
+      `docs/LESSONS.md` closes L-014. (c) the scheduled drift-check workflow
+      stays open: it needs the maintainer. The box stays unticked until (c)
+      is done. This change touches `.claude/**`, so the maintainer merges it._
 
 - [ ] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
 - [x] **P17-59 · Post-merge consistency sweep and drill re-run.** Outcome: no
@@ -2693,6 +2709,24 @@ these blocks merging the kit or the drill (P17-10).
       in `docs/COLD-START-DRILL.md`. P17-10 closes after a confirmation drill
       on real `main`._
 
+- [x] **P17-63 · Stop transient 429/503/504 from external hosts failing the
+      link check.** Outcome: the `lychee` job no longer fails a PR because a
+      healthy external host shed load, and still fails a real broken link.
+      Evidence: in the 2026-10-11 and 2026-10-12 CI runs `lychee` failed on
+      `[503] ... Network error: Service Unavailable` for github.com blob URLs
+      of other projects (debezium, confluent schema-registry,
+      memiiso/debezium-server-iceberg), a different URL each run, and passed
+      on re-run; lychee does not retry a 5xx, so retry settings do not help.
+      Accept: `linkcheck.yml` passes `--accept '100..=103,200..=299,429,503,504'`
+      (the default range repeated, plus the three transient statuses); 404,
+      410, 403, 500, 502, DNS and TLS errors still fail; the trade-off is
+      written in `docs/DEVELOPMENT.md` and the workflow comments. Verify:
+      `npx prettier --check .`, `npm run lint`, `npm test`; the flag cannot be
+      run locally (no lychee), so the first CI run of the PR must show the
+      job parsing it and ending green. Size: S. Role: `implementer`. Needs:
+      none. Touches `.github/**`, so the maintainer merges it.
+      _Status 2026-10-12: shipped in the PR carrying this change; awaiting CI
+      validation of the flag._
 - [x] **P17-60 · Session commands: `/team-start`, `/team-end`, `/team-digest`.**
       Outcome: a working session of the agent team starts and ends the same
       way every time. Accept: `.claude/commands/team-start.md`, `team-end.md`
@@ -2877,7 +2911,7 @@ goes to `css-refactor` with before and after production hashes.
       sample pages. Verify: `npx vitest run`, `npm run build`,
       `npm run smoke:core`. Size: M. Role: `implementer`, then `reviewer`.
       Needs: P17-21 (the index links to the copies).
-- [ ] **P17-23 · Vendor Mermaid and Chart.js with SRI.** Outcome: the site
+- [x] **P17-23 · Vendor Mermaid and Chart.js with SRI.** Outcome: the site
       stops loading these two libraries from a third-party CDN. Accept: both
       are served from the site's own `/assets/` from pinned npm versions
       through the Vite build (the loaders in
@@ -2890,6 +2924,12 @@ goes to `css-refactor` with before and after production hashes.
       `npm run smoke:perf`, and `rg -n "jsdelivr|unpkg|cdnjs" src` with each
       remaining hit explained. Size: M. Role: `implementer`, then `reviewer`.
       Needs: none.
+      _Status 2026-10-12: shipped in the PR carrying this change. Mermaid is
+      copied at build time to `/assets/vendor/mermaid.<hash>.min.js` and
+      loaded with `integrity`; Chart.js is a hashed Vite chunk. The one
+      remaining `rg` hit is `src/privacy/index.njk`, which must keep naming
+      jsDelivr because the Change Feed Playground still loads its Supabase
+      library from there (vendoring that is a separate item)._
 - [ ] **P17-24 · Meta Content-Security-Policy.** Outcome: a CSP is actually
       served (the `.htaccess` check in `scripts/smoke.mjs` never ran, and
       GitHub Pages cannot set headers, so this is a `<meta>` policy). Accept:

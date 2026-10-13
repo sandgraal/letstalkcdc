@@ -11,6 +11,7 @@ eleventyExcludeFromSitemap: true
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <meta content="noindex, nofollow" name="robots"/>
 <title>Mermaid Sandbox</title>
+{% include "components/vendor-scripts.njk" %}
 <!-- Isolated sandbox: only client-side render inside iframe. -->
 <link rel="stylesheet" href="{{ '/assets/css/pages/mermaid-sandbox.css' | url }}">
 
