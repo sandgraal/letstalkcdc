@@ -4,7 +4,7 @@
 
 ## Why
 
-<!-- Plan item (for example P17-5) or issue, and the problem it solves. -->
+<!-- Plan item (for example P17-5) or issue, and the problem it solves. Close it with a plan.d/<item-id>-<topic>.md fragment (action: done); do not edit docs/IMPLEMENTATION-PLAN.md. -->
 
 ## How verified
 

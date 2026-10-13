@@ -9,7 +9,7 @@ Distilled from `docs/adding-modules.md`; read that file for full examples.
 Content rules (thesis, errata, dates) are in `.claude/rules/content.md`.
 
 1. **Plan item.** Find or add the item in `docs/IMPLEMENTATION-PLAN.md`
-   (Phase 17, the plan's current phase, is the team queue). You flip its box in the same commit.
+   (Phase 17, the plan's current phase, is the team queue). A new item is a `plan.d/` fragment with `action: add`; you close it with `action: done` in the same PR. Never edit the plan.
 2. **Register in `src/_data/series.mjs`** first: `key` (the slug), `title`,
    `description`, `href` (`<key>/`, no leading slash, copy a neighbour),
    `tags`, `skillLevel` and `related` (other keys). This drives the overview
@@ -36,4 +36,4 @@ Content rules (thesis, errata, dates) are in `.claude/rules/content.md`.
    `src/data/assistant.yml` with a golden-question test; add glossary terms in
    `src/_data/glossary.mjs`.
 9. **Verify.** `npm run verify-all` and `npm run smoke:core`.
-10. **Close out.** Flip the plan box, add a `changelog.d/<topic>.md` fragment (never edit `CHANGELOG.md`).
+10. **Close out.** Add a `plan.d/<item-id>-<topic>.md` fragment with `action: done` (never edit the plan) and a `changelog.d/<topic>.md` fragment (never edit `CHANGELOG.md`).

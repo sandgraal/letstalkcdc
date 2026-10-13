@@ -17,6 +17,7 @@
     "lint:thesis": "node scripts/thesis-lint.mjs",
     "merge-pr": "node scripts/merge-pr.mjs",
     "changelog:compile": "node scripts/changelog-compile.mjs",
+    "plan:apply": "node scripts/plan-apply.mjs",
     "audit:seo": "node scripts/seo-audit.mjs",
     "check:css-baseline": "node scripts/check-css-baseline.mjs",
     "smoke:core": "node scripts/smoke.mjs && node scripts/visual-smoke.mjs",
