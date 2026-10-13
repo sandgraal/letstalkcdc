@@ -96,8 +96,19 @@ export function parseKcatEvents(output) {
 }
 
 /**
- * Decide from parsed change events. The converters run with schemas off, so
- * an event is the flat envelope { before, after, source, op }. Expect the
+ * Unwrap one Kafka Connect JSON value. With schemas on it is
+ * { schema, payload: { before, after, source, op } }; with schemas off it is
+ * the flat envelope. The image ignores the compose KEY/VALUE_CONVERTER_SCHEMAS_ENABLE
+ * variables (run 38451400038 read back schema-wrapped events), so accept both.
+ */
+export function unwrapEnvelope(event) {
+  if (event && typeof event === "object" && event.payload && event.schema)
+    return event.payload;
+  return event;
+}
+
+/**
+ * Decide from parsed change events, flat or schema-wrapped. Expect the
  * snapshot reads (op "r") for every seed row and the documented UPDATE
  * (op "u", id 1, weight 3.0).
  */
@@ -105,7 +116,7 @@ export function evaluateChangeEvents(
   events,
   { seed = SEED_PRODUCTS, weight = UPDATED_WEIGHT } = {},
 ) {
-  const list = Array.isArray(events) ? events : [];
+  const list = (Array.isArray(events) ? events : []).map(unwrapEnvelope);
   const snapshot = new Set(
     list.filter((e) => e?.op === "r").map((e) => e.after?.id),
   );
@@ -400,6 +411,25 @@ async function main() {
         { timeoutMs: 90_000, intervalMs: 5_000 },
       ),
     ));
+
+  if (!ok) {
+    // Always-on diagnostic: say which topics exist so a failed read-back is
+    // self-explanatory (wrong prefix/schema vs. no events).
+    const meta = compose([
+      "exec",
+      "-T",
+      "kcat",
+      "kcat",
+      "-b",
+      "kafka:29092",
+      "-L",
+    ]);
+    writeFileSync(
+      path.join(logDir, "topics.log"),
+      `kcat -L (expected topic ${TOPIC})\n${meta.stdout}\n${meta.stderr}`,
+    );
+    say(`topics at failure: see topics.log (expected ${TOPIC})`);
+  }
 
   const logs = compose(["logs", "--no-color", "--timestamps"]);
   writeFileSync(
