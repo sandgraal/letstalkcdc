@@ -43,7 +43,7 @@ jobs:
     steps:
       # Check out source code
       - name: Check Out Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Determine Fortify configuration
         id: fortify-config
